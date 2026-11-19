@@ -449,4 +449,9 @@ describe('real Firebase workspace boundary',()=>{
   expect(cons.map((c:any)=>c.id)).toEqual(['c1']);
   expect(JSON.stringify(cons)).not.toContain('PRIVADO');
  });
+ it('galeria e idades ainda não migradas respondem vazio só para a própria Casa',async()=>{
+  expect(await run({kind:'rpc',name:'house_gallery_mail_images',args:{p_house:'ashkar'}})).toEqual([]);
+  expect(await run({kind:'rpc',name:'get_house_character_ages',args:{p_house:'ashkar'}})).toEqual([]);
+  await expect(run({kind:'rpc',name:'house_gallery_mail_images',args:{p_house:'other'}})).rejects.toThrow('access_denied');
+ });
 });

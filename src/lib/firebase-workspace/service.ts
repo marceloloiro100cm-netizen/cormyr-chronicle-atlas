@@ -362,6 +362,13 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    denied();return [];
   };
   const rpc=async(name:string,args:Row)=>{
+   // Galeria e idades canônicas ainda não foram migradas (imagens dependem do
+   // Storage; idades, do motor de personagens). Responder vazio, depois de
+   // conferir a Casa, evita erro na tela sem inventar dados.
+   if(name==='house_gallery_mail_images'||name==='get_house_character_ages'){
+    checkHouse(args['p_house']);
+    return [];
+   }
    if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
    if(name==='dated_mail_action'){
     if(scope.profile==='editor')denied();

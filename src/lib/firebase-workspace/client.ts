@@ -15,7 +15,7 @@ export async function workspaceRequest(input:Record<string,unknown>):Promise<any
    r.status===403?'Acesso não autorizado.':
    r.status===409?'A data ou o registro mudou. Atualize a página e confira a semana do HUB antes de repetir.':
    r.status===429?'Limite de missivas desta semana atingido.':
-   r.status===501?'Esta modalidade ainda não está disponível no Firebase (por exemplo, múltiplos destinatários, rascunho, agendamento ou vínculos).':
+   r.status===501?'Esta função ainda não está disponível no Firebase. Nada foi alterado.':
    r.status===400?'Dados da operação inválidos. Confira os campos da missiva.':
    'Não foi possível acessar os dados operacionais do Firebase. Tente novamente após a homologação.';
   // Only a fixed lowercase server code (never provider text) is kept for diagnosis.
