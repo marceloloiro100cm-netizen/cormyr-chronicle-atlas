@@ -18,7 +18,8 @@ describe('original mail filters target exactly the historical Firebase contract'
       box:'recebidas',number:'4',kind:'geral',origin:'fewmerry',
       house:'erdenor',court:'none',unit:'none',
       answered:'no',read:'no',text:'test',
-      group_house_ids:['erdenor'],
+      // Grupo 1 = Costa do Dragão (Fewmerry); Erdenor é Horselands (Grupo 2).
+      group_house_ids:['fewmerry'],
     });
     expect(result).not.toHaveProperty('group');
   });
