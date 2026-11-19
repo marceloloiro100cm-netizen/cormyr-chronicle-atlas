@@ -180,7 +180,7 @@ export function createFirebaseAccountService({
      if(!runtimeReady(live.data(),snapshotId))deny('account_runtime_not_ready',503);
      if(request.exists)deny('request_key_conflict',409);
      if(source.data()?.profile==='narrador')deny('narrator_cannot_be_reassigned',403);
-     const version=previous.exists?previous.data()?.version??0:0;
+     const version=previous.exists?previous.data()?.version??0:source.data()?.version??0;
      if(version!==input.expectedVersion)deny('version_conflict',409);
      if(created&&source.exists)deny('source_account_conflict',409);
      const result=publicResult(account);
@@ -204,9 +204,19 @@ export function createFirebaseAccountService({
  }
  async function list(token){
   await narrator(token);
-  const all=await listCurrentAccountAccess(db,snapshotId);
-  return {items:all.filter(a=>a.profile==='jogador'||a.profile==='editor')
-   .map(publicResult),readOnly:true};
+  const [all,users]=await Promise.all([
+    listCurrentAccountAccess(db,snapshotId),auth.listUsers(1000),
+  ]);
+  if(!Array.isArray(users?.users)||users.pageToken)
+    deny('account_inventory_unavailable',503);
+  const byUid=new Map(users.users.map(u=>[u.uid,u]));
+  return {items:all.filter(a=>
+    (a.profile==='jogador'||a.profile==='editor')&&byUid.has(a.userId))
+   .map(a=>{
+     const user=byUid.get(a.userId);
+     return {...publicResult(a),email:user.email??null,
+       name:a.name??user.displayName??null};
+   }),readOnly:true};
  }
  async function status(token){
   const uid=await actor(token);
