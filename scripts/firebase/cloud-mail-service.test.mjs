@@ -621,3 +621,42 @@ test('Reply fails closed on runtime revocation and cannot bypass round limits',a
   }),'authentication_required',401);
 });
 
+
+test('A two-House send is atomic, idempotent and deducts both copies once',async()=>{
+ const f=fixture(),service=f.service();
+ const items=[
+   req({requestKey:'batch-1234_0',recipientHouseId:'house-b'}),
+   req({requestKey:'batch-1234_1',recipientHouseId:'house-a'}),
+ ];
+ const before=[...f.records].filter(([k])=>k.startsWith('migration'));
+ const first=await service.sendBatch(sampleToken,items);
+ assert.equal(first.duplicate,false);
+ assert.equal(first.ids.length,2);
+ assert.equal(first.deliveryRound,3);
+ for(const id of first.ids){
+  const record=f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+id);
+  assert.equal(record.batchKey,'batch-1234_0');
+  assert.equal(record.publicationState,'delivered');
+ }
+ assert.equal((await service.sendBatch(sampleToken,items)).duplicate,true);
+ const counter=[...f.records].filter(([p])=>p.includes('mailSenderRoundCounts/'));
+ assert.equal(counter[0][1].count,2);
+ assert.deepEqual([...f.records].filter(([k])=>k.startsWith('migration')),before);
+ await rejects(()=>service.sendBatch(sampleToken,[
+   items[0],{...items[1],subject:'A different letter'},
+ ]),'invalid_mail_batch',400);
+ assert.equal(counter[0][1].count,2);
+});
+
+test('Invalid multi-send target fails before any recipient is written',async()=>{
+ const f=fixture();
+ for(const invalid of [
+  [req({requestKey:'a-batch-11',recipientHouseId:'house-b'}),
+   req({requestKey:'a-batch-12',recipientHouseId:'missing'})],
+  [req({requestKey:'same-request',recipientHouseId:'house-a'}),
+   req({requestKey:'same-request',recipientHouseId:'house-b'})],
+ ]){
+  await assert.rejects(()=>f.service().sendBatch(sampleToken,invalid));
+  assert.equal([...f.records].filter(([k])=>k.includes('/letters/')).length,0);
+ }
+});

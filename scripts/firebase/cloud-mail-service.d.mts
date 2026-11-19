@@ -16,6 +16,9 @@ export interface CloudMailRuntime {
   status(idToken:string):Promise<{
     enabled:boolean;canSend:boolean;originHouseIds:string[];readOnly:boolean;
   }>;
+  sendBatch(idToken:string,input:unknown):Promise<{
+    ids:string[];duplicate:boolean;state:string;deliveryRound:number;
+  }>;
   send(idToken:string,input:unknown):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;

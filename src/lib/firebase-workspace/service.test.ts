@@ -1,6 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn()}));
+ runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn(),batch:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -10,7 +10,7 @@ vi.mock('../../../scripts/firebase/cloud-readonly-service.mjs',()=>({CloudAccess
 })}));
 vi.mock('../../../scripts/firebase/cloud-mail-service.mjs',()=>({
  CloudMailError:class extends Error{constructor(public code:string,public status=403){super(code);}},
- createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send}),
+ createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch}),
 }));
 import {createWorkspaceService} from './service';
 const access=[{userId:'a',playerId:'pa',profile:'jogador',admin:false,active:true,requirePasswordChange:false,memberHouseIds:['ashkar'],editHouseIds:['ashkar']},
@@ -32,7 +32,7 @@ const db:any={collection:(name:string)=>({doc:()=>({
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();vi.unstubAllEnvs();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();f.batch.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],
@@ -193,6 +193,20 @@ describe('real Firebase workspace boundary',()=>{
    ...args,p_args:{...args.p_args,p_targets:['h:other','narrator']},
   }})).rejects.toThrow('mail_feature_not_yet_available');
   expect(f.send).toHaveBeenCalledTimes(1);
+ });
+ it('uses one approved Cloud transaction for multiple House targets',async()=>{
+  vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  f.batch.mockResolvedValue({ids:['b'.repeat(64),'c'.repeat(64)],duplicate:false,state:'delivered',deliveryRound:2});
+  const args={p_action:'send_linked_mail',p_date:'1522-01-01',p_args:{
+   p_key:'batch-abc123',p_origin:'ashkar',p_targets:['h:ashkar','h:other'],
+   p_subject:'Carta conjunta',p_content:'Mesma mensagem',p_court:null,p_unit:null,
+   p_role:null,p_draft:false,p_week:null,p_signed_by:null,
+  }};
+  const reply=await run({kind:'rpc',name:'dated_mail_action',args});
+  expect(reply.ids).toHaveLength(2);expect(reply.state).toBe('delivered');
+  expect(f.batch).toHaveBeenCalledTimes(1);expect(f.send).not.toHaveBeenCalled();
+  const sent=f.batch.mock.calls[0][1];
+  expect(sent.map((x:any)=>x.requestKey)).toEqual(['batch-abc123_0','batch-abc123_1']);
  });
  it('links original Mark as read to the guarded Firebase transaction only when enabled',async()=>{
   await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).rejects.toThrow('workspace_operation_not_implemented');

@@ -5,7 +5,7 @@ import {createFirebaseCloudMail,CloudMailError} from '../../../scripts/firebase/
 import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-runtime-approval.mjs';
 import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
 import {projectCloudLetters} from '../mail/firebase-operational-mail';
-import {originalMailSend,OriginalMailBridgeError} from '../mail/firebase-original-send';
+import {originalMailSend,originalMailBatch,OriginalMailBridgeError} from '../mail/firebase-original-send';
 import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
@@ -171,15 +171,26 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
        parsed.day!==t.day||parsed.festival!==t.festival)
      throw new CloudAccessError('calendar_unavailable',503);
     let request;
-    try{request=originalMailSend(args,key);}
-    catch(e){
+    let batch;
+    try{
+     const targets=args['p_args']?.['p_targets'];
+     if(Array.isArray(targets)&&targets.length>1)
+      batch=originalMailBatch(args,key);
+     else request=originalMailSend(args,key);
+    }catch(e){
      if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);
      throw e;
     }
     try{
-     const sent=await createFirebaseCloudMail({
+     const mailService=createFirebaseCloudMail({
       db,auth,snapshotId,projectId:'cormyr',enabled:true,
-     }).send(token,request);
+     });
+     if(batch){
+      const sent=await mailService.sendBatch(token,batch);
+      return {ids:sent.ids,duplicate:sent.duplicate,state:sent.state,
+       week:sent.deliveryRound};
+     }
+     const sent=await mailService.send(token,request);
      return {ids:[sent.id],duplicate:sent.duplicate,state:sent.state,
       week:sent.deliveryRound};
     }catch(e){

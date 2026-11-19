@@ -53,3 +53,25 @@ export function originalMailSend(input:unknown,canonicalDate:string):
   expectedCampaignDate:canonicalDate,
  };
 }
+
+/**
+ * Preserve the original composer request key across a single atomic batch.
+ * Never turn a batch into sequential one-recipient sends.
+ */
+export function originalMailBatch(input:unknown,canonicalDate:string):
+ (CloudMailMessageRequest&{expectedCampaignDate:string})[]{
+ const envelope=isObj(input)?input:invalid();
+ const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
+ const targets=args['p_targets'];
+ if(!Array.isArray(targets))return invalid();
+ if(targets.length<2||targets.length>20)return unsupported();
+ if(targets.some(t=>typeof t!=='string')||
+    new Set(targets).size!==targets.length||
+    targets.includes('narrator'))return invalid();
+ const requests=targets.map((target,i)=>{
+  const single={...envelope,p_args:{...args,p_targets:[target],
+   p_key:String(args['p_key'])+'_'+i}};
+  return originalMailSend(single,canonicalDate);
+ });
+ return requests;
+}

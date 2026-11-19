@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {originalMailSend,OriginalMailBridgeError} from './firebase-original-send';
+import {originalMailSend,originalMailBatch,OriginalMailBridgeError} from './firebase-original-send';
 const dt='1522-01-01';
 const form=(changes:Record<string,unknown>={})=>({
  p_action:'send_linked_mail',p_date:dt,p_args:{
@@ -34,5 +34,21 @@ describe('original composer -> one atomic Firebase Cloud delivery',()=>{
     {p_key:'short'},{p_origin:'../other'},{p_content:''}])
     expect(()=>originalMailSend(form(changes),dt)).toThrow('invalid_mail_request');
   expect(()=>originalMailSend({...form(),other:'silent'},dt)).toThrow(OriginalMailBridgeError);
+ });
+});
+
+describe('multi-target House routing is atomic',()=>{
+ it('derives unique idempotency keys without changing original targets',()=>{
+  const batch=originalMailBatch(form({p_targets:['h:house-a','h:house-b']}),'1522-01-01');
+  expect(batch.map(x=>x.requestKey)).toEqual(['valid_mail_123_0','valid_mail_123_1']);
+  expect(batch.map(x=>x.recipientHouseId)).toEqual(['house-a','house-b']);
+  expect(batch.every(x=>x.expectedCampaignDate==='1522-01-01')).toBe(true);
+ });
+ it('rejects duplicates, narrator mixed targets and unsupported feature flags',()=>{
+  for(const targets of [
+   ['h:house-a','h:house-a'],['h:house-a','narrator'],['narrator','h:house-b'],
+  ])expect(()=>originalMailBatch(form({p_targets:targets}),dt)).toThrow();
+  expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_draft:true}),dt))
+    .toThrow('mail_feature_not_yet_available');
  });
 });

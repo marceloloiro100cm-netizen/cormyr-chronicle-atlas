@@ -297,6 +297,102 @@ export function createFirebaseCloudMail({
       });
     },
 
+    /**
+     * Full multi-recipient atomic delivery. Auth, every target House, each
+     * idempotency document and the per-round quota are read before any write.
+     * Retrying an already-complete batch never duplicates a recipient.
+     */
+    async sendBatch(idToken,input){
+      const uid=await uidFromToken(idToken);
+      if(!Array.isArray(input)||input.length<2||input.length>20)
+        deny('invalid_mail_batch',400);
+      const requests=input.map(validateRequest);
+      const first=requests[0];
+      const targets=new Set(),keys=new Set();
+      for(const req of requests){
+        const target=req.recipientKind+':'+(req.recipientHouseId??'narrator');
+        if(keys.has(req.requestKey)||targets.has(target)||
+           req.originHouseId!==first.originHouseId||
+           req.subject!==first.subject||req.content!==first.content||
+           req.expectedCampaignDate!==first.expectedCampaignDate)
+          deny('invalid_mail_batch',400);
+        keys.add(req.requestKey);targets.add(target);
+      }
+      return db.runTransaction(async tx=>{
+        const {actor,date,round}=await readyTransaction(tx,uid);
+        if(first.expectedCampaignDate!==undefined&&
+           first.expectedCampaignDate!==date)
+          deny('campaign_date_changed',409);
+        if(actor.role==='narrador'){
+          if(first.originHouseId!==null||
+             requests.some(req=>req.recipientKind!=='house'))
+            deny('recipient_not_allowed');
+        }else if(!actor.editHouses.includes(first.originHouseId)){
+          deny('origin_house_not_authorized');
+        }
+        const houseIds=[...new Set(requests.flatMap(req=>[
+          req.originHouseId,req.recipientKind==='house'?req.recipientHouseId:null,
+        ]).filter(Boolean))];
+        const docRefs=houseIds.map(h=>
+          stage.collection('houses').doc(hash('house:'+h)));
+        const ids=requests.map(req=>hash('cloud-mail:'+uid+':'+req.requestKey));
+        const mailRefs=ids.map(id=>letters.doc(id));
+        const limitRef=limits.doc(hash('mail-count:'+uid+':'+round));
+        const [houses,existing,counter]=await Promise.all([
+          Promise.all(docRefs.map(ref=>tx.get(ref))),
+          Promise.all(mailRefs.map(ref=>tx.get(ref))),
+          tx.get(limitRef),
+        ]);
+        if(houses.some((doc,i)=>!doc.exists||doc.data()?.active!==true||
+           doc.data()?.season!==2||doc.data()?.sourceId!==houseIds[i]))
+          deny('house_unavailable',404);
+        const fingerprints=requests.map(req=>hash(JSON.stringify(req)));
+        const countExisting=existing.filter(d=>d.exists).length;
+        if(countExisting!==0&&countExisting!==requests.length)
+          deny('batch_partial_exists',409);
+        if(countExisting===requests.length){
+          if(existing.some((doc,i)=>doc.data()?.id!==ids[i]||
+             doc.data()?.senderUid!==uid||
+             doc.data()?.requestFingerprint!==fingerprints[i]||
+             doc.data()?.publicationState!=='delivered'))
+            deny('request_key_conflict',409);
+          return {ids,duplicate:true,state:'delivered',
+            deliveryRound:existing[0].data().deliveryRound};
+        }
+        const count=counter.exists?counter.data()?.count:0;
+        if(!Number.isSafeInteger(count)||count<0||
+           count+requests.length>MAX_MAIL_PER_ROUND)
+          deny('mail_round_limit',429);
+        const timestamp=clock();
+        if(typeof timestamp!=='string'||!Number.isFinite(Date.parse(timestamp)))
+          deny('invalid_server_clock',503);
+        // All Firestore reads above; only writes below.
+        requests.forEach((req,i)=>{
+          const id=ids[i],requestFingerprint=fingerprints[i];
+          tx.create(mailRefs[i],{
+            id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
+            requestKey:req.requestKey,requestFingerprint,
+            senderUid:uid,senderPlayerId:actor.playerId,
+            senderName:actor.role==='narrador'?'Narrador':'Jogador',
+            originHouseId:req.originHouseId,recipientKind:req.recipientKind,
+            recipientHouseId:req.recipientKind==='house'?req.recipientHouseId:null,
+            recipientPlayerId:null,subject:req.subject,content:req.content,
+            createdAt:timestamp,deliveredAt:timestamp,campaignDate:date,
+            creationRound:round,deliveryRound:round,
+            publicationState:'delivered',deletedAt:null,version:1,
+            batchKey:first.requestKey,
+          });
+          tx.create(audits.doc(id),{
+            action:'send',actorUid:uid,letterId:id,requestFingerprint,
+            occurredAt:timestamp,batchKey:first.requestKey,
+          });
+        });
+        if(counter.exists)tx.update(limitRef,{count:count+requests.length});
+        else tx.create(limitRef,{count:requests.length,round,actorUid:uid});
+        return {ids,duplicate:false,state:'delivered',deliveryRound:round};
+      });
+    },
+
     async send(idToken,input){
       const uid=await uidFromToken(idToken);
       const req=validateRequest(input);
