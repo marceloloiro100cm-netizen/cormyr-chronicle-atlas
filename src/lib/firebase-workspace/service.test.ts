@@ -191,7 +191,7 @@ describe('real Firebase workspace boundary',()=>{
   }})).rejects.toThrow('campaign_date_changed');
   await expect(run({kind:'rpc',name:'dated_mail_action',args:{
    ...args,p_args:{...args.p_args,p_targets:['h:other','narrator']},
-  }})).rejects.toThrow('mail_feature_not_yet_available');
+  }})).rejects.toThrow('invalid_mail_request');
   expect(f.send).toHaveBeenCalledTimes(1);
  });
  it('uses one approved Cloud transaction for multiple House targets',async()=>{
