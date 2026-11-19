@@ -50,8 +50,10 @@ env:
     value: "true"
     availability:
       - RUNTIME
+  # Traduções en/es/de pertencem ao projeto posterior; nenhuma rota de
+  # tradução pode ser liberada por ativação acidental do catálogo em português.
   - variable: CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED
-    value: "true"
+    value: "false"
     availability:
       - RUNTIME
   - variable: CORMYR_FIREBASE_PUBLIC_TIME_ENABLED
