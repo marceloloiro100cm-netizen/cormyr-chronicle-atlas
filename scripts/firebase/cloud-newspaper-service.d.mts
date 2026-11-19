@@ -4,6 +4,12 @@ export class CloudNewspaperError extends Error {
   constructor(code:string,status?:number);
 }
 export interface CloudNewspaperRuntime {
+  listReaderReceipts(token:string):Promise<{items:{
+    newspaper_id:string;user_id:string;read_version:number;read_at:string;
+  }[]}>;
+  markReader(token:string,input:unknown):Promise<{
+    recorded:boolean;alreadyRecorded:boolean;
+  }>;
   listEditorial(token:string):Promise<unknown>;
   getEditorial(token:string,input:unknown):Promise<unknown>;
   saveEdition(token:string,input:unknown):Promise<unknown>;

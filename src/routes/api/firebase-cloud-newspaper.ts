@@ -54,7 +54,8 @@ async function handle(request:Request):Promise<Response>{
     return fail(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(!['status','publish','listEditorial','getEditorial','saveEdition'].includes(String(payload['action'])))
+    if(!['status','publish','listEditorial','getEditorial','saveEdition',
+      'getReceipts','markRead','markUnread'].includes(String(payload['action'])))
       return fail(400,'invalid_action');
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
       await Promise.all([
@@ -71,7 +72,11 @@ async function handle(request:Request):Promise<Response>{
       enabled:true,
     });
     const idToken=token.slice(7);
-    const result=payload['action']==='getEditorial'?await paper.getEditorial(idToken,payload)
+    const result=payload['action']==='getReceipts'
+      ?Object.keys(payload).length===1?await paper.listReaderReceipts(idToken):null
+      :['markRead','markUnread'].includes(String(payload['action']))
+      ?await paper.markReader(idToken,payload)
+      :payload['action']==='getEditorial'?await paper.getEditorial(idToken,payload)
       :payload['action']==='saveEdition'?await paper.saveEdition(idToken,payload)
       :payload['action']==='listEditorial'?(Object.keys(payload).length===1?await paper.listEditorial(idToken):null)
       :payload['action']==='status'

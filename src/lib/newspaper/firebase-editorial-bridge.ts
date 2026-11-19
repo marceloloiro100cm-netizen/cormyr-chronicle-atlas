@@ -127,6 +127,31 @@ export async function createFirebaseNewspaperEdition(input:DraftInput):Promise<N
   id:null,expectedVersion:0,state:'draft',content:content(input)});
  return originalNewspaperEdition(saved);
 }
+
+export async function loadFirebaseNewspaperReceipts():Promise<{
+ newspaper_id:string;user_id:string;read_version:number;read_at:string;
+}[]>{
+ if(!isFirebaseNewspaperWorkspace())return [];
+ try{
+  const result=await request<{items:{
+    newspaper_id:string;user_id:string;read_version:number;read_at:string;
+  }[]}>({action:'getReceipts'});
+  if(!Array.isArray(result.items)||result.items.length>500)
+    throw Error('Recibos editoriais inválidos.');
+  return result.items;
+ }catch(error){
+  // The immutable archive remains readable before the operational runtime
+  // is released; no fake successes or writes are performed in that phase.
+  if((error as {status?:number})?.status===503)return [];
+  throw error;
+ }
+}
+export async function markFirebaseNewspaperRead(id:string,read:boolean):Promise<void>{
+ if(!isFirebaseNewspaperWorkspace())throw Error('Área Firebase não está ativa.');
+ if(typeof id!=='string'||!/^[-a-zA-Z0-9]{1,128}$/.test(id))
+  throw Error('Edição inválida.');
+ await request({action:read?'markRead':'markUnread',id});
+}
 export async function updateFirebaseNewspaperEdition(
  current:NewspaperEdition,input:UpdateInput):Promise<NewspaperEdition>{
  if(!isFirebaseNewspaperWorkspace()||!CLOUD.test(current.id))

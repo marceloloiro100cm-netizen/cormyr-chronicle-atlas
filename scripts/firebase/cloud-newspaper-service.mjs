@@ -87,6 +87,7 @@ export function createFirebaseCloudNewspaper({
   const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
   const editions=runtime.collection('publishedNewspapers');
   const audits=runtime.collection('newspaperAudits');
+  const readReceipts=runtime.collection('newspaperReadReceipts');
   async function actorId(token){
     if(typeof token!=='string'||token.length<10||token.length>10000)
       deny('authentication_required',401);
@@ -113,6 +114,51 @@ export function createFirebaseCloudNewspaper({
     readyRuntime(docs[6]?.data(),snapshotId,cal);
     return {calendarDate:date,config:docs[6].data()};
   }
+  const receiptId=(uid,editionId)=>digest('newspaper-read:'+uid+':'+editionId);
+  function readerScope(uid,scope){
+    if(!scope||scope.userId!==uid||scope.active!==true||
+       scope.requirePasswordChange!==false||
+       !['jogador','narrador','editor'].includes(scope.profile)||
+       scope.admin!==(scope.profile==='narrador')||
+       !Array.isArray(scope.memberHouseIds)||
+       !Array.isArray(scope.editHouseIds)||
+       scope.memberHouseIds.some(x=>!ID.test(x))||
+       scope.editHouseIds.some(x=>!ID.test(x))||
+       (scope.profile==='jogador'&&
+        (!ID.test(scope.playerId)||scope.memberHouseIds.length===0))||
+       (scope.profile==='editor'&&
+        (scope.memberHouseIds.length!==0||scope.editHouseIds.length!==0)))
+      deny('reader_not_authorized',403);
+  }
+  function verifiedPaper(row,id,cloudId){
+    if(!row||row.id!==id||
+       !['published','archived'].includes(row.state)||
+       typeof row.publishedAt!=='string'||row.cancelledAt!=null||
+       (cloudId&&(row.source!=='firebase-cloud'||
+         row.sourceSnapshotId!==snapshotId)))
+      deny('edition_unavailable',404);
+    const version=cloudId?row.version:row.publicationRevision;
+    if(!number(version,0,2147483646))
+      deny('edition_integrity_unverified',503);
+    return version;
+  }
+  async function readerTransaction(tx,uid,id,receiptRef){
+    const cloudId=id.startsWith('cloud-');
+    const target=cloudId?editions.doc(id):
+      roots[3].collection('editions').doc(id);
+    const [stageDocs,cal,scope,live,paper,receipt]=await Promise.all([
+      Promise.all(roots.map(ref=>tx.get(ref))),tx.get(calendar),
+      tx.get(domain.collection('access').doc(uid)),tx.get(runtime),
+      tx.get(target),tx.get(receiptRef),
+    ]);
+    readyRoots(stageDocs);
+    readerScope(uid,scope.data());
+    const effective=effectiveCloudCalendar(cal.data(),live.data(),snapshotId);
+    calendarKey(effective);
+    readyRuntime(live.data(),snapshotId,effective);
+    if(!paper.exists)deny('edition_unavailable',404);
+    return {version:verifiedPaper(paper.data(),id,cloudId),receipt};
+  }
   const editorialView=v=>({
     id:v.id,editionNo:v.editionNo,title:v.title,subtitle:v.subtitle??'',
     blocks:v.blocks,version:v.version,state:v.state,
@@ -121,6 +167,64 @@ export function createFirebaseCloudNewspaper({
     campaignDate:v.campaignDate,publishedAt:v.publishedAt,
   });
   return {
+    async listReaderReceipts(token){
+      const uid=await actorId(token);
+      const [scope,...rootDocs]=await Promise.all([
+        domain.collection('access').doc(uid).get(),
+        ...roots.map(ref=>ref.get()),calendar.get(),runtime.get(),
+      ]);
+      readerScope(uid,scope.data());
+      readyRoots(rootDocs.slice(0,4));
+      const effective=effectiveCloudCalendar(rootDocs[4].data(),
+        rootDocs[5].data(),snapshotId);
+      calendarKey(effective);
+      readyRuntime(rootDocs[5].data(),snapshotId,effective);
+      const result=await readReceipts.where('viewerUid','==',uid).limit(501).get();
+      if(!Array.isArray(result.docs)||result.docs.length>500)
+        deny('newspaper_receipts_too_large',503);
+      return {items:result.docs.map(d=>{
+        const v=d.data();
+        if(!v||v.viewerUid!==uid||!validId(v.editionId)||
+           d.id!==receiptId(uid,v.editionId)||
+           !number(v.readVersion,0,2147483646)||
+           typeof v.readAt!=='string'||!Number.isFinite(Date.parse(v.readAt)))
+          deny('newspaper_receipt_unverified',503);
+        return {newspaper_id:v.editionId,user_id:uid,
+          read_version:v.readVersion,read_at:v.readAt};
+      })};
+    },
+    async markReader(token,input){
+      const uid=await actorId(token);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['action','id'].includes(k))||
+         !['markRead','markUnread'].includes(input.action)||
+         !validId(input.id))
+        deny('invalid_receipt_request',400);
+      const id=input.id;
+      const receiptRef=readReceipts.doc(receiptId(uid,id));
+      return db.runTransaction(async tx=>{
+        const {version,receipt}=await readerTransaction(tx,uid,id,receiptRef);
+        const old=receipt.data();
+        if(receipt.exists&&
+           (old?.viewerUid!==uid||old.editionId!==id||
+            !number(old.readVersion,0,2147483646)))
+          deny('invalid_existing_receipt',409);
+        if(input.action==='markUnread'){
+          if(receipt.exists)tx.delete(receiptRef);
+          return {recorded:false,alreadyRecorded:!receipt.exists};
+        }
+        if(receipt.exists&&old.readVersion>=version)
+          return {recorded:true,alreadyRecorded:true};
+        const now=clock();
+        if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
+          deny('invalid_server_clock',503);
+        const next={viewerUid:uid,editionId:id,readVersion:version,readAt:now};
+        if(receipt.exists)tx.update(receiptRef,next);
+        else tx.create(receiptRef,next);
+        return {recorded:true,alreadyRecorded:false};
+      });
+    },
+
     async listEditorial(token){
       const uid=await actorId(token);
       return db.runTransaction(async tx=>{

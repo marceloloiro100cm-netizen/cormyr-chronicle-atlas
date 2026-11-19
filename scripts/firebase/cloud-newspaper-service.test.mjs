@@ -45,6 +45,7 @@ function fixture(profile='editor'){
         get:reference=>reference.get(),
         create(reference,value){writes.push({operation:'create',path:reference.path,value});},
         update(reference,value){writes.push({operation:'update',path:reference.path,value});},
+        delete(reference){writes.push({operation:'delete',path:reference.path});},
       };
       const result=await fn(tx);
       for(const w of writes){
@@ -52,7 +53,8 @@ function fixture(profile='editor'){
         if(w.operation==='update'&&!records.has(w.path))throw Error('missing');
       }
       for(const w of writes){
-        records.set(w.path,w.operation==='create'?structuredClone(w.value):
+        if(w.operation==='delete')records.delete(w.path);
+        else records.set(w.path,w.operation==='create'?structuredClone(w.value):
           {...records.get(w.path),...structuredClone(w.value)});
       }
       return result;
@@ -222,3 +224,39 @@ test('editorial writes and private drafts reject players, forged fields and reus
     'invalid_editorial_content',400);
 });
 
+
+test('a player records and clears only their own published newspaper receipt',async()=>{
+ const f=fixture('jogador');
+ f.records.set(f.access,{...f.records.get(f.access),
+  playerId:'player-a',memberHouseIds:['house-a'],editHouseIds:['house-a']});
+ const id='cloud-'+'a'.repeat(64),url='campaignCloudRuntime/'+snapshot+'/publishedNewspapers/'+id;
+ f.records.set(url,{id,source:'firebase-cloud',sourceSnapshotId:snapshot,
+  state:'published',publishedAt:'2026-11-16T14:00:00Z',
+  cancelledAt:null,version:2});
+ const once=await f.service().markReader(token,{action:'markRead',id});
+ assert.equal(once.recorded,true);
+ assert.equal((await f.service().markReader(token,{action:'markRead',id})).alreadyRecorded,true);
+ const key='campaignCloudRuntime/'+snapshot+'/newspaperReadReceipts/';
+ assert.equal([...f.records].filter(([p])=>p.startsWith(key)).length,1);
+ const gone=await f.service().markReader(token,{action:'markUnread',id});
+ assert.equal(gone.recorded,false);
+ assert.equal([...f.records].filter(([p])=>p.startsWith(key)).length,0);
+ const original=f.records.get(url);
+ assert.equal(original.version,2);
+ await denied(()=>f.service().markReader(token,{
+  action:'markRead',id:'../other',
+ }),'invalid_receipt_request',400);
+});
+
+test('unpublished imported editions cannot receive operational read receipts',async()=>{
+ const f=fixture('jogador');
+ f.records.set(f.access,{...f.records.get(f.access),
+  playerId:'player-a',memberHouseIds:['house-a'],editHouseIds:['house-a']});
+ const id='11111111-1111-4111-8111-111111111111';
+ f.records.set('migrationNewspaperRuntimeStage/'+snapshot+'/editions/'+id,{
+  id,state:'draft',publishedAt:null,cancelledAt:null,publicationRevision:1,
+ });
+ await denied(()=>f.service().markReader(token,{action:'markRead',id}),
+  'edition_unavailable',404);
+ assert.equal([...f.records.keys()].some(p=>p.includes('newspaperReadReceipts')),false);
+});

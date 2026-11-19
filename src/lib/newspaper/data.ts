@@ -4,6 +4,7 @@ import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 import {
  isFirebaseNewspaperWorkspace,loadFirebaseNewspaperEditions,
  createFirebaseNewspaperEdition,updateFirebaseNewspaperEdition,
+ loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,
 } from './firebase-editorial-bridge';
 import {
  PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,NEWSPAPER_ENGRAVINGS,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
@@ -27,7 +28,16 @@ export async function getNewspaperReceipts():Promise<NewspaperRead[]>{
  const {data,error}=await db.from('campaign_newspaper_reads')
   .select('newspaper_id,user_id,read_version,read_at').limit(5000);
  if(error)throw error;
- return (data??[]) as NewspaperRead[];
+ const imported=(data??[]) as NewspaperRead[];
+ if(!isFirebaseNewspaperWorkspace())return imported;
+ const live=await loadFirebaseNewspaperReceipts();
+ const byKey=new Map(imported.map(row=>[row.newspaper_id+'|'+row.user_id,row]));
+ for(const row of live){
+  const key=row.newspaper_id+'|'+row.user_id;
+  const current=byKey.get(key);
+  if(!current||row.read_version>=current.read_version)byKey.set(key,row);
+ }
+ return [...byKey.values()];
 }
 export async function createNewspaperEdition(input:{
  campaign_date:string;title:string;subtitle?:string;template:NewspaperTemplate;blocks:NewspaperBlock[];
@@ -56,11 +66,13 @@ export async function updateNewspaperEdition(current:NewspaperEdition,input:{
  return data as NewspaperEdition;
 }
 export async function markNewspaperRead(id:string):Promise<void>{
+ if(isFirebaseNewspaperWorkspace())return markFirebaseNewspaperRead(id,true);
  const {error}=await db.rpc('mark_campaign_newspaper_read',{p_newspaper:id});
  if(error)throw error;
 }
 /** O leitor devolve a edição a "não lida": apaga só o próprio recibo, e o aviso volta. */
 export async function markNewspaperUnread(id:string):Promise<void>{
+ if(isFirebaseNewspaperWorkspace())return markFirebaseNewspaperRead(id,false);
  const {error}=await db.rpc('mark_campaign_newspaper_unread',{p_newspaper:id});
  if(error)throw error;
 }
