@@ -2,6 +2,10 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
 import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 import {
+ isFirebaseNewspaperWorkspace,loadFirebaseNewspaperEditions,
+ createFirebaseNewspaperEdition,updateFirebaseNewspaperEdition,
+} from './firebase-editorial-bridge';
+import {
  PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,NEWSPAPER_ENGRAVINGS,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
 } from './model';
@@ -9,13 +13,15 @@ import {
 // Os direitos de acesso são sempre conferidos pelo PostgreSQL (RLS), jamais pela UI.
 const db=supabase as unknown as SupabaseClient;
 export async function getNewspaperEditions():Promise<NewspaperEdition[]>{
- // Publicação agendada: o banco publica os rascunhos cuja data do Reino chegou. Falha aqui nunca
- // impede a leitura (por exemplo, antes de a migration 0122 existir).
- try{await db.rpc('publish_due_campaign_newspapers');}catch{/* segue sem publicar */}
+ if(!isFirebaseNewspaperWorkspace()){
+  // Legacy route is unavailable in Firebase but remains unchanged for preview.
+  try{await db.rpc('publish_due_campaign_newspapers');}catch{/* read continues */}
+ }
  const {data,error}=await db.from('campaign_newspapers').select('*')
   .order('edition_no',{ascending:false}).limit(300);
  if(error)throw error;
- return (data??[]) as NewspaperEdition[];
+ const archived=(data??[]) as NewspaperEdition[];
+ return isFirebaseNewspaperWorkspace()?loadFirebaseNewspaperEditions(archived):archived;
 }
 export async function getNewspaperReceipts():Promise<NewspaperRead[]>{
  const {data,error}=await db.from('campaign_newspaper_reads')
@@ -27,6 +33,7 @@ export async function createNewspaperEdition(input:{
  campaign_date:string;title:string;subtitle?:string;template:NewspaperTemplate;blocks:NewspaperBlock[];
  font_style?:NewspaperFont;
 }):Promise<NewspaperEdition>{
+ if(isFirebaseNewspaperWorkspace())return createFirebaseNewspaperEdition(input);
  const {data,error}=await db.from('campaign_newspapers').insert({
   campaign_date:input.campaign_date,title:input.title,
   subtitle:input.subtitle??'',template:input.template,
@@ -41,6 +48,7 @@ export async function updateNewspaperEdition(current:NewspaperEdition,input:{
  font_style:NewspaperFont;blocks:NewspaperBlock[];pdf_path:string|null;state:NewspaperState;
  publish_on?:string|null;
 }):Promise<NewspaperEdition>{
+ if(isFirebaseNewspaperWorkspace())return updateFirebaseNewspaperEdition(current,input);
  const {data,error}=await db.from('campaign_newspapers').update(input)
   .eq('id',current.id).eq('version',current.version).select('*').maybeSingle();
  if(error)throw error;
