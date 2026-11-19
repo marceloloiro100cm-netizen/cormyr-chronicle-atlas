@@ -34,6 +34,11 @@
  * screen (CouncilOpening) while access and the archive load, offers "Sair" on
  * an access error and retries only transient access-check failures (denials
  * still lock at once). Re-captured after review.
+ * 2026-11-19 (item 1, telas Firebase ocultas): adição exclusivamente
+ * condicional ao workspace Firebase de um acesso a diagnóstico de contas
+ * no menu do Narrador e de uma aba de economia Firebase na Ficha.
+ * Nenhuma guia, filtro ou ação preexistente foi removida ou modificada.
+ * A mudança reaproveita componentes e rotas Firebase já existentes.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -46,7 +51,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'7a405cb2a3a67d6e49dcb7d87e9b8b554fba02ac',
+  'src/components/players/players-workspace.tsx':'bb10d86cb31a67416204b225303e6a3adf1e8fc7',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'55117d8e466edee9ccfaa46356999505cf5268d2',
@@ -54,7 +59,7 @@ const originals={
   'src/components/newspaper/newspaper-editorial.css':'c203f7f932be078925d9835eb4161fc0d3d49318',
   'src/components/newspaper/NewspaperCanvas.tsx':'bb4fabbaa87b8ff10006c3fab2f302c5c522d196',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
-  'src/components/players/ficha-tab.tsx':'5074b9d6ee0507d047b546e78d4e5511fa9834ca',
+  'src/components/players/ficha-tab.tsx':'d6a763834c157a1582db66489469b289836ea476',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',
 };
 for(const [path,expected] of Object.entries(originals)){
