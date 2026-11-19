@@ -116,6 +116,8 @@ export function createFirebaseCloudNewspaper({
   const editorialView=v=>({
     id:v.id,editionNo:v.editionNo,title:v.title,subtitle:v.subtitle??'',
     blocks:v.blocks,version:v.version,state:v.state,
+    ...(v.template?{template:v.template}:{}),
+    ...(v.font_style?{font_style:v.font_style}:{}),
     campaignDate:v.campaignDate,publishedAt:v.publishedAt,
   });
   return {
