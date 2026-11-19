@@ -50,6 +50,10 @@ describe('multi-target House routing is atomic',()=>{
   ])expect(()=>originalMailBatch(form({p_targets:targets}),dt)).toThrow();
   expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_draft:true}),dt))
     .toThrow('mail_feature_not_yet_available');
+  expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_key:undefined}),dt))
+    .toThrow('invalid_mail_request');
+  expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_key:'x'.repeat(126)}),dt))
+    .toThrow('invalid_mail_request');
  });
 });
 

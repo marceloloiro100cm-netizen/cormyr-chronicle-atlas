@@ -65,6 +65,10 @@ export function originalMailBatch(input:unknown,canonicalDate:string):
  const targets=args['p_targets'];
  if(!Array.isArray(targets))return invalid();
  if(targets.length<2||targets.length>20)return unsupported();
+ // Unlike a single send, a batch derives per-recipient idempotency keys.
+ // Reject missing/invalid base keys BEFORE adding any suffix.
+ if(typeof args['p_key']!=='string'||!KEY.test(args['p_key'])||
+    args['p_key'].length>125)return invalid();
  if(targets.some(t=>typeof t!=='string')||
     new Set(targets).size!==targets.length||
     targets.includes('narrator'))return invalid();
