@@ -11,6 +11,8 @@ import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailIns
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {CORE_CATALOG} from '../house/catalog';
+import {constructionStateHash} from '../house/firebase-construction-transaction';
+import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/firebase-letter-consequences';
 import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
 import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
@@ -165,6 +167,7 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    if(!Array.isArray(snap.docs)||snap.docs.length>2000)throw new CloudAccessError('schedule_events_too_large',503);
    return snap.docs.map((d:any)=>d.data()).filter((v:any)=>isEventId(v?.id)&&Number.isSafeInteger(v?.version));
   };
+  const consequences=()=>createFirebaseLetterConsequences({db,snapshotId});
   const notesCollection=()=>db.collection('campaignCloudRuntime').doc(snapshotId).collection('narratorMailNotes');
   const runtimeApproved=async()=>{
    const [live,gate,calendar]=await Promise.all([
@@ -226,7 +229,27 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    if(r.unitId&&!units.some((u:any)=>u?.id===r.unitId&&u.destroyed!==true&&u.destroyed!=='true'))
     throw new CloudAccessError('unit_unavailable',400);
   };
-  const sheets=async()=> (await rows('noble_house_sheets')).filter(r=>houseAllowed(r['house_id']));
+  // Operational House sheets (seeded from the imported sheet by owner
+  // decision) supersede the immutable import once activated and verified.
+  let economiesPromise:Promise<Map<string,{state:Row;version:number}>>|undefined;
+  const economies=()=>economiesPromise??=(async()=>{
+   const snap=await db.collection('campaignCloudRuntime').doc(snapshotId).collection('houseEconomies').limit(51).get();
+   const out=new Map<string,{state:Row;version:number}>();
+   for(const d of (snap.docs??[]) as any[]){
+    const v=d.data();
+    if(v?.status==='active'&&v.seedVerified===true&&v.sourceSnapshotId===snapshotId&&
+       typeof v.houseId==='string'&&Number.isSafeInteger(v.version)&&v.state&&typeof v.state==='object'&&
+       v.stateHash===constructionStateHash(v.state))out.set(v.houseId,{state:v.state,version:v.version});
+   }
+   return out;
+  })();
+  const sheets=async()=>{
+   const [imported,live]=await Promise.all([rows('noble_house_sheets'),economies()]);
+   return imported.filter(r=>houseAllowed(r['house_id'])).map(r=>{
+    const op=live.get(r['house_id']);
+    return op?{...r,state:op.state,version:op.version,operational:true}:r;
+   });
+  };
   const sheetFor=async(id:string)=>{
    checkHouse(id);
    const sheet=(await sheets()).find(r=>r['house_id']===id);
@@ -275,6 +298,14 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     if(name==='letter_versions'){
      const imported=admin?await rows(name):[];
      return [...imported,...await cloudVersions(ds)];
+    }
+    if(name==='campaign_letter_consequences'){
+     const all=[...(await rows(name)),...await consequences().list()];
+     // Players see consequences of their House on letters they can read (0068).
+     return all.filter(c=>admin||scope.memberHouseIds.includes(c['house_id'])&&
+      ds.letters.some(l=>l.id===c['letter_id']&&canReadLetterAs(ds,l,scope.uid)))
+      .map(c=>({id:c['id'],letter_id:c['letter_id'],house_id:c['house_id'],changes:c['changes'],
+       active:c['active']===true,created_at:c['created_at']}));
     }
     if(!admin)return [];
     if(name==='narrator_mail_notes'){
@@ -415,6 +446,26 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     if(!match)throw new CloudAccessError('access_denied',403);
     const source=match['source']==='firebase-cloud'?'firebase-cloud':'imported';
     return asAccess(()=>cloudMail().markUnread(token,{source,letterId:id}));
+   }
+   if(name==='apply_letter_consequence'||name==='reverse_letter_consequence'){
+    if(!admin)denied();
+    mailFlag();
+    if(!await runtimeApproved())throw new CloudAccessError('campaign_not_launched',409);
+    try{
+     if(name==='reverse_letter_consequence')
+      return await consequences().reverse({actorUid:scope.uid,id:args['p_id'],key:args['p_key'],
+       expectedVersion:args['p_expected_version'],reason:args['p_reason']});
+     const letterId=args['p_letter'],houseId=args['p_house'];
+     if(typeof letterId!=='string'||typeof houseId!=='string')throw new CloudAccessError('invalid_consequence',400);
+     const ds=await mail();
+     if(!ds.letters.some(l=>l.id===letterId&&l.deleted_at===null))throw new CloudAccessError('letter_not_found',404);
+     if(!(await visible('campaign_houses')).some(h=>h['id']===houseId))throw new CloudAccessError('house_unavailable',404);
+     return await consequences().apply({actorUid:scope.uid,letterId,houseId,changes:args['p_changes'],
+      explanation:args['p_explanation'],key:args['p_key'],expectedVersion:args['p_expected_version']});
+    }catch(e){
+     if(e instanceof LetterConsequenceError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
    }
    if(name==='schedule_letter_draft'){
     if(scope.profile==='editor')denied();

@@ -21,7 +21,7 @@ type WeekView={
 type HistoryItem={id:string;action:string;at:string;from:DateView|null;to:DateView|null;
   fromRound:number|null;toRound:number|null;monthsCrossed:number;reason:string|null};
 
-async function requestWeek<T=WeekView>(action:'get'|'save'|'publish'|'advance'|'history'|'publishEvents',fields?:Record<string,unknown>):Promise<T>{
+async function requestWeek<T=WeekView>(action:'get'|'save'|'publish'|'advance'|'history'|'publishEvents'|'processHouseMonths',fields?:Record<string,unknown>):Promise<T>{
   const auth=firebasePilotAuth();
   const token=await auth?.getToken();
   if(!token)throw Error('Entre novamente com sua conta de Narrador.');
@@ -75,10 +75,15 @@ function WeeklyAdvance({view,onDone}:{view:WeekView;onDone:()=>void}){
     if(!window.confirm(`Fechar a Semana ${view.openRound} e abrir a Semana ${(view.openRound??0)+1} em ${formatCampaignPeriod(date)}? Envios da semana atual deixam de ser editáveis e as programadas para a nova semana são entregues.`))return;
     setBusy(true);setMessage('');
     try{
-      const r=await requestWeek<{openRound:number;publishedEvents?:number}>('advance',{expectedCalendarVersion:current.version,
+      const r=await requestWeek<{openRound:number;publishedEvents?:number;
+        houses?:{results?:{status:string;completedProjects?:number}[];error?:string}|null}>('advance',{expectedCalendarVersion:current.version,
         expectedOpenRound:view.openRound,proposedDate:date,reason:reason.trim(),requestKey:key,
         ...(monthTurn?{acknowledgeHouseEffectsPending:ack}:{})});
-      setMessage(`Semana ${r.openRound} aberta.`+(r.publishedEvents?` ${r.publishedEvents} evento(s) do calendário publicado(s).`:''));onDone();
+      const processed=r.houses?.results?.filter(x=>x.status==='processed').length??0;
+      const works=r.houses?.results?.reduce((n,x)=>n+(x.completedProjects??0),0)??0;
+      setMessage(`Semana ${r.openRound} aberta.`+(r.publishedEvents?` ${r.publishedEvents} evento(s) do calendário publicado(s).`:'')+
+        (r.houses?.error?' O processamento mensal das Casas ficou pendente: use "Processar efeitos mensais".':
+         r.houses?` ${processed} Casa(s) processada(s) para o novo mês; ${works} obra(s) concluída(s).`:''));onDone();
     }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível abrir a semana.');}
     finally{setBusy(false);}
   }
@@ -90,7 +95,7 @@ function WeeklyAdvance({view,onDone}:{view:WeekView;onDone:()=>void}){
     <p className="text-sm">Semana aberta agora: {view.openRound}. A próxima será a Semana {(view.openRound??0)+1}.
       Sugestão: início da próxima désdia ({date.day}/{date.month+1}/{date.year} CV).</p>
     {(view.pendingHouseEffectMonths??0)>0&&<p role="status" className="text-sm rounded border p-2">
-      Efeitos mensais das Casas pendentes de reconciliação: {view.pendingHouseEffectMonths} mês(es).</p>}
+      Efeitos mensais das Casas ainda não processados: {view.pendingHouseEffectMonths} mês(es). Use "Processar efeitos mensais pendentes".</p>}
     <form onSubmit={e=>void advance(e)} className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <label className="text-sm">Ano (CV)<input type="number" min="1" max="9999" required className="block w-full rounded border p-2"
@@ -111,17 +116,40 @@ function WeeklyAdvance({view,onDone}:{view:WeekView;onDone:()=>void}){
         placeholder="Ex.: Fechamento da semana e abertura da próxima désdia"/></label>
       {monthTurn&&<label className="flex gap-2 text-sm rounded border p-2">
         <input type="checkbox" checked={ack} onChange={e=>setAck(e.target.checked)}/>
-        Esta abertura vira o mês. Entendo que os efeitos mensais das Casas (produção, posses e obras)
-        ainda não são processados no Firebase e ficam registrados como pendentes.</label>}
+        Esta abertura vira o mês. Confirmo que as obras e posses das Casas ativadas serão processadas
+        pelo motor de regras para o novo mês; Casas ainda não ativadas recuperam o mês ao serem ativadas.</label>}
       <button type="submit" disabled={busy||(monthTurn&&!ack)} className="rounded border px-4 py-2 disabled:opacity-50">
         {busy?'Abrindo…':`Fechar Semana ${view.openRound} e abrir Semana ${(view.openRound??0)+1}`}</button>
     </form>
+    <div className="flex flex-wrap gap-2">
+    <button type="button" disabled={busy} className="rounded border px-3 py-1 text-sm" onClick={async()=>{
+      if(!window.confirm('Ativar no Firebase todas as Casas da temporada que ainda não foram ativadas, usando as fichas importadas como base?'))return;
+      setBusy(true);setMessage('');
+      try{
+        const token=await firebasePilotAuth()?.getToken();
+        const r=await fetch('/api/firebase-house-activation',{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+          headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action:'activateAll'})});
+        if(!r.ok)throw Error('Não foi possível ativar as Casas agora.');
+        const body=await r.json() as {result:{results:{houseId:string;status:string}[]}};
+        const label:Record<string,string>={activated:'ativada',already_initialized:'já ativa',
+          calendar_mismatch:'mês da ficha diferente do calendário',source_unusable:'ficha importada incompleta',
+          treasury_invalid:'tesouro inválido',existing_document_requires_review:'documento existente para revisão'};
+        setMessage('Casas: '+body.result.results.map(x=>x.houseId+' ('+(label[x.status]??x.status)+')').join(', ')+'.');
+      }catch(e){setMessage(e instanceof Error?e.message:'Falha ao ativar as Casas.');}
+      finally{setBusy(false);}}}>Ativar todas as Casas com as fichas importadas</button>
+    {(view.pendingHouseEffectMonths??0)>0&&<button type="button" disabled={busy} className="rounded border px-3 py-1 text-sm" onClick={async()=>{
+      setBusy(true);setMessage('');
+      try{const r=await requestWeek<{results:{status:string}[]}>('processHouseMonths');
+        setMessage(`Processamento mensal: ${r.results.filter(x=>x.status==='processed').length} Casa(s) atualizada(s), ${r.results.filter(x=>x.status==='already_current').length} já em dia.`);onDone();}
+      catch(e){setMessage(e instanceof Error?e.message:'Falha no processamento mensal.');}
+      finally{setBusy(false);}}}>Processar efeitos mensais pendentes</button>}
     <button type="button" disabled={busy} className="rounded border px-3 py-1 text-sm" onClick={async()=>{
       setBusy(true);setMessage('');
       try{const r=await requestWeek<{published:number}>('publishEvents');
         setMessage(r.published?`${r.published} evento(s) do calendário publicado(s).`:'Nenhum evento pendente de publicação.');}
       catch(e){setMessage(e instanceof Error?e.message:'Falha ao publicar eventos.');}
       finally{setBusy(false);}}}>Publicar eventos do calendário sem abrir semana</button>
+    </div>
     {message&&<p role="status" className="text-sm">{message}</p>}
     <details><summary className="text-sm">Histórico de aberturas</summary>
       {history===null?<p className="text-sm">Carregando…</p>:history.length===0?<p className="text-sm">Nenhum registro.</p>:

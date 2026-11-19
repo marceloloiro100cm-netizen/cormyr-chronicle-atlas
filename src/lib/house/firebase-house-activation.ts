@@ -7,6 +7,12 @@ import type {Firestore} from 'firebase-admin/firestore';
 import {prepareHouseEconomySeedDraft} from './firebase-economy-seed-preflight';
 import {monthFromHarptosDate} from '../calendar/house-time-impact';
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
+import {advance} from './engine';
+import {constructionStateHash} from './firebase-construction-transaction';
+import type {HouseState} from './types';
+/** Up to three monthly openings may be caught up when an imported sheet is
+ * one désdia cycle behind the official month (owner decision, 19/11/2026). */
+const MAX_CATCH_UP_MONTHS=3;
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 const id=(s:unknown):s is string=>typeof s==='string'&&/^[^/\u0000-\u001f\u007f]{1,128}$/.test(s);
 const record=(v:unknown):v is Record<string,unknown>=>Boolean(v)&&typeof v==='object'&&!Array.isArray(v);
@@ -77,34 +83,78 @@ export function createFirebaseHouseActivation({db,auth,snapshotId,enabled=false,
           x.data()?.['houseId']===houseId&&x.data()?.['sourceSnapshotId']===snapshotId);
         return {status:complete?'already_initialized':'existing_document_requires_review',houseId,preview:null,sourceHash:null};
       }
+      const target=monthFromHarptosDate(calendar);
+      const sheetMonth=sheet['state']['month'];
+      // Seed at the sheet's own month; the canonical engine then advances it
+      // to the official month (projects complete exactly as in a month turn).
+      const seedMonth=typeof sheetMonth==='number'&&Number.isSafeInteger(sheetMonth)&&
+        sheetMonth<target&&target-sheetMonth<=MAX_CATCH_UP_MONTHS?sheetMonth:target;
       const plan=prepareHouseEconomySeedDraft({snapshotId,houseId,
-        sourceSheetVersion:sheet['version'],calendarMonth:monthFromHarptosDate(calendar),
+        sourceSheetVersion:sheet['version'],calendarMonth:seedMonth,
         sourceState:sheet['state'],existingDocumentPresent:false});
       const balance=sheet['state']['treasury'];
       if(plan.status!=='ready_for_operator_review'||!plan.draft||!plan.preview)
         return {status:plan.status,houseId,preview:null,sourceHash:null};
       if(typeof balance!=='number'||!Number.isSafeInteger(balance)||balance<0||balance>1000000000)
         return {status:'treasury_invalid',houseId,preview:null,sourceHash:null};
-      const preview={...plan.preview,treasury:balance,calendarMonth:monthFromHarptosDate(calendar)};
+      const preview={...plan.preview,treasury:balance,calendarMonth:target,
+        catchUpMonths:target-seedMonth};
       if(!activate)return {status:'ready_for_operator_review',houseId,preview,sourceHash:plan.draft.sourceStateHash};
       if(input['expectedSourceVersion']!==sheet['version']||
          input['expectedSourceHash']!==plan.draft.sourceStateHash)
         return fail('source_version_conflict',409);
       const at=now();
       if(!Number.isFinite(Date.parse(at)))return fail('invalid_server_clock',503);
-      tx.create(economy,{...plan.draft,status:'active',sourceReconciled:true,seedVerified:true,
-        sourceAuthority:'owner_adopted_firebase',activatedBy:uid,activatedAt:at});
+      let seeded:Record<string,unknown>={...plan.draft,status:'active',sourceReconciled:true,seedVerified:true,
+        sourceAuthority:'owner_adopted_firebase',activatedBy:uid,activatedAt:at};
+      if(seedMonth<target){
+        let advanced:HouseState;
+        try{advanced=JSON.parse(JSON.stringify(advance(plan.draft.state,target))) as HouseState;}
+        catch{return fail('house_month_catch_up_failed',503);}
+        seeded={...seeded,state:advanced,stateHash:constructionStateHash(advanced),version:1,
+          monthlyProcessedTo:target,lastMonthlyProcessingAt:at};
+      }
+      tx.create(economy,seeded);
       tx.create(treasury,{houseId,status:'active',private:true,sourceSnapshotId:snapshotId,
         sourceReconciled:true,sourceSheetVersion:sheet['version'],balance,version:0,
         activatedBy:uid,activatedAt:at});
       tx.create(audit,{action:'activate_imported_house',actorUid:uid,houseId,
         sourceSnapshotId:snapshotId,sourceSheetVersion:sheet['version'],
-        sourceStateHash:plan.draft.sourceStateHash,calendarVersion:calendar.version,at});
+        sourceStateHash:plan.draft.sourceStateHash,calendarVersion:calendar.version,
+        catchUpMonths:target-seedMonth,at});
       tx.update(runtime,{constructionReadApproved:true,constructionSeededVerified:true,
         treasuryReadApproved:true,treasuryWriteApproved:true,treasurySeededVerified:true});
       return {status:'activated',houseId,preview,sourceHash:plan.draft.sourceStateHash};
     });
   }
-  return {execute};
+  /**
+   * Owner decision (19/11/2026): every active season-2 House starts from its
+   * imported sheet. Each House uses the same reviewed inspect/activate path,
+   * in its own transaction; existing documents are never reseeded.
+   */
+  async function activateAll(token:string){
+    const houses=await domain.collection('houses').get();
+    const ids=houses.docs.map(d=>d.data()).filter(h=>h?.['active']===true&&h['season']===2&&id(h['sourceId']))
+      .map(h=>h['sourceId'] as string).sort();
+    if(ids.length>50)return fail('too_many_houses',503);
+    const results:{houseId:string;status:string}[]=[];
+    for(const houseId of ids){
+      try{
+        const inspected=await execute(token,{action:'inspect',houseId}) as {status:string;preview:{sourceSheetVersion:number}|null;sourceHash:string|null};
+        if(inspected.status!=='ready_for_operator_review'||!inspected.preview||!inspected.sourceHash){
+          results.push({houseId,status:inspected.status});continue;
+        }
+        const done=await execute(token,{action:'activate',houseId,
+          expectedSourceVersion:inspected.preview.sourceSheetVersion,expectedSourceHash:inspected.sourceHash}) as {status:string};
+        results.push({houseId,status:done.status});
+      }catch(e){
+        // Authentication or narrator failures stop the whole batch.
+        if(e instanceof HouseActivationError&&(e.status===401||e.code==='narrator_required'))throw e;
+        results.push({houseId,status:e instanceof HouseActivationError?e.code:'unavailable'});
+      }
+    }
+    return {results};
+  }
+  return {execute,activateAll};
 }
 

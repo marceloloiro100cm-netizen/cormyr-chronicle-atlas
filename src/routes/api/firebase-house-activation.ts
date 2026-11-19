@@ -33,7 +33,10 @@ async function handle(request:Request){
     const name='cormyr-house-activation';
     const app=getApps().find(a=>a.name===name)??initializeApp({projectId:'cormyr',credential:applicationDefault()},name);
     const service=createFirebaseHouseActivation({db:getFirestore(app),auth:getAuth(app),snapshotId,enabled:true});
-    const result=await service.execute(token.slice(7),input);
+    const all=input&&typeof input==='object'&&!Array.isArray(input)&&
+      (input as Record<string,unknown>)['action']==='activateAll';
+    if(all&&Object.keys(input as object).length!==1)return fail(400,'invalid_activation_request');
+    const result=all?await service.activateAll(token.slice(7)):await service.execute(token.slice(7),input);
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof HouseActivationError)return fail(e.status,e.code);

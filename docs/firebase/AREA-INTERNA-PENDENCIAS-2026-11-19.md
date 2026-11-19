@@ -45,3 +45,32 @@ Ver `MISSIVAS-V4-2026-11-19.md`. Restam imagens e consequências na ficha.
   calendário sem abrir semana". Jogadores e Editor-Chefe veem os publicados
   no calendário e na **cronologia** (com as missivas entregues que podem ler).
 - **Histórico** das aberturas no HUB e no calendário interno do Narrador.
+
+## Fichas operacionais, mês e consequências (19/11/2026, decisão do proprietário)
+
+- **Base:** as fichas importadas. O HUB tem "Ativar todas as Casas com as
+  fichas importadas": cada Casa passa pelo mesmo fluxo revisado de ativação
+  (transação própria, nunca sobrescreve). Se a ficha importada estiver até
+  3 meses atrás do calendário, o motor original (`advance`) a traz ao mês
+  oficial, com auditoria.
+- **Virada de mês:** ao abrir uma semana que muda o mês, o servidor processa
+  todas as Casas ativadas com o motor original (obras concluídas, mês da
+  ficha atualizado), uma transação por Casa, com auditoria
+  (`houseMonthlyAudits`). Falhas ficam pendentes e podem ser refeitas pelo
+  botão "Processar efeitos mensais pendentes".
+- **Leitura:** Conselho, ficha e missivas passam a ler a ficha operacional
+  (versão própria) quando a Casa está ativada; antes disso, a importada.
+- **Consequências das missivas:** aplicar e estornar gravam na ficha
+  operacional, como no SQL original (perdas viram alocação, ganhos são
+  bônus reversíveis), com chave de repetição, versão otimista e auditoria.
+  Jogadores veem só as consequências da própria Casa em cartas que podem ler.
+
+## Ainda pendente (motivo)
+
+- **Encomendas de notícia (1 Riqueza):** a Redação Firebase ainda recusa
+  blocos de encomenda nas edições; cobrar sem poder publicar seria injusto.
+  Precisa da extensão do serviço editorial.
+- **Imagens (missivas, galeria e encomendas):** armazenamento privado do
+  Firebase Storage a provisionar pelo proprietário.
+- **Idades de personagens, representação do Narrador, administração de
+  contas e Drive:** domínios próprios, sem dependência das missivas.
