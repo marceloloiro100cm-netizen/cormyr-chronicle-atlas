@@ -1,4 +1,5 @@
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
+import {chooseCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
 /**
  * Safe, per-House operational economy read. No Firestore response bodies from
  * private documents are forwarded: only an allowlisted projection is returned.
@@ -175,8 +176,12 @@ export function createFirebaseOperationalEconomyRead({
           noble.collection('sheets').doc(hash('noble-sheet:'+houseId)),
           runtime.collection('houseEconomies').doc(hash('house:'+houseId)),
         ];
-        const docs=await Promise.all(refs.map(ref=>tx.get(ref)));
-        authorize(docs[4]?.data(),uid,houseId);
+        const [docs,overlay]=await Promise.all([
+          Promise.all(refs.map(ref=>tx.get(ref))),
+          tx.get(runtime.collection('accountAccess').doc(uid)),
+        ]);
+        authorize(chooseCurrentAccountAccess(uid,docs[4]?.data(),
+          overlay.exists?overlay.data():null,docs[6]?.data()),uid,houseId);
         if(!docs.slice(0,4).every(d=>d.exists&&ready(d.data())))
           return reject('migration_stage_not_ready',503);
         const calendar=validCalendar(effectiveCloudCalendar(docs[5]?.data(),docs[6]?.data(),snapshotId));
