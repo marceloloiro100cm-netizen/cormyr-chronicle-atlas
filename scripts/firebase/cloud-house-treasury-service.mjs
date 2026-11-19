@@ -7,6 +7,7 @@ import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
  * seven noble resources or purchases/starts a holding or construction.
  */
 import {createHash} from 'node:crypto';
+import {chooseCurrentAccountAccess} from './operational-account-access.mjs';
 import {validateHarptosDate,harptosKey} from './stage-temporal-emulator.mjs';
 
 const SHA=/^[a-f0-9]{64}$/;
@@ -124,13 +125,17 @@ export function createFirebaseCloudTreasury({
       .doc(hash('noble-sheet:'+houseId));
     const treasuryRef=treasury.doc(hash('house:'+houseId));
     // Read all documents before transaction writes.
-    const docs=await Promise.all([
-      tx.get(stage),tx.get(authStage),tx.get(timeStage),tx.get(nobleStage),
-      tx.get(stage.collection('access').doc(uid)),
-      tx.get(timeStage.collection('calendar').doc('current')),
-      tx.get(runtime),tx.get(houseRef),tx.get(sheetRef),tx.get(treasuryRef),
+    const [docs,overlay]=await Promise.all([
+      Promise.all([
+        tx.get(stage),tx.get(authStage),tx.get(timeStage),tx.get(nobleStage),
+        tx.get(stage.collection('access').doc(uid)),
+        tx.get(timeStage.collection('calendar').doc('current')),
+        tx.get(runtime),tx.get(houseRef),tx.get(sheetRef),tx.get(treasuryRef),
+      ]),
+      tx.get(runtime.collection('accountAccess').doc(uid)),
     ]);
-    const actor=docs[4]?.data();
+    const actor=chooseCurrentAccountAccess(uid,docs[4]?.data(),
+      overlay.exists?overlay.data():null,docs[6]?.data());
     authorized(actor,uid,houseId,mode);
     if(!rootsReady(docs.slice(0,4)))
       fail('migration_stage_not_ready',503);
