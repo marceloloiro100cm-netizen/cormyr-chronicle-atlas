@@ -38,7 +38,10 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
      (m['recipientKind']==='house'&&!validId(m['recipientHouseId']))||
      (m['recipientPlayerId']!==null)||
      (m['senderPlayerId']!==null&&!validId(m['senderPlayerId']))||
-     (m['replyToId']!==undefined&&!SHA.test(String(m['replyToId']))))
+     (m['replyToId']!==undefined&&!SHA.test(String(m['replyToId'])))||
+     (m['batchKey']!==undefined&&
+       (typeof m['batchKey']!=='string'||m['batchKey'].length>128||
+        !/^[a-zA-Z0-9_-]+$/.test(m['batchKey']))))
     bad();
   seen.add(doc.id);
   return {
@@ -54,9 +57,10 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
    creation_week:m['creationRound'],delivery_week:m['deliveryRound'],
    letter_number:null,letter_kind:'reservada',
    court_member_id:null,court_assignment:null,military_unit_id:null,
-   batch_key:null,campaign_date:typeof m['campaignDate']==='string'
+   batch_key:m['batchKey']??null,campaign_date:typeof m['campaignDate']==='string'
      ?m['campaignDate']:null,
-   conversation_id:m['replyToId']??null,source:'firebase-cloud',
+   // Original letter and its Cloud response share the parent conversation.
+   conversation_id:m['replyToId']??doc.id,source:'firebase-cloud',
   };
  });
 }
