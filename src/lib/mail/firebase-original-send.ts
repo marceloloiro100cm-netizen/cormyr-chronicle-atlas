@@ -23,32 +23,33 @@ export function originalMailSend(input:unknown,canonicalDate:string):
  if(envelope['p_action']!=='send_linked_mail'||
     typeof envelope['p_date']!=='string'||
     Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k)))
-  invalid();
+  return invalid();
  if(typeof canonicalDate!=='string'||envelope['p_date']!==canonicalDate)
   throw new OriginalMailBridgeError('campaign_date_changed',409);
- if(Object.keys(args).some(k=>!fields.has(k)))unsupported();
- if(args['p_draft']!==false&&!nullable(args['p_draft'])||
+ if(Object.keys(args).some(k=>!fields.has(k)))return unsupported();
+ if((args['p_draft']!==false&&!nullable(args['p_draft']))||
     !nullable(args['p_week'])||!nullable(args['p_court'])||
     !nullable(args['p_unit'])||!nullable(args['p_role'])||
-    !nullable(args['p_signed_by']))unsupported();
- if(typeof args['p_key']!=='string'||!KEY.test(args['p_key'])||
-    typeof args['p_subject']!=='string'||!args['p_subject'].trim()||
-    typeof args['p_content']!=='string'||!args['p_content'].trim()||
-    args['p_origin']!==null&&args['p_origin']!==undefined&&
-      (typeof args['p_origin']!=='string'||!ID.test(args['p_origin']))||
-    !Array.isArray(args['p_targets']))
-  invalid();
- if(args['p_targets'].length!==1)unsupported();
- const target=args['p_targets'][0];
- if(typeof target!=='string')invalid();
+    !nullable(args['p_signed_by']))return unsupported();
+ const key=args['p_key'],subject=args['p_subject'],content=args['p_content'];
+ const origin=args['p_origin'],targets=args['p_targets'];
+ if(typeof key!=='string'||!KEY.test(key)||
+    typeof subject!=='string'||!subject.trim()||
+    typeof content!=='string'||!content.trim()||
+    !nullable(origin)&&(typeof origin!=='string'||!ID.test(origin))||
+    !Array.isArray(targets))
+  return invalid();
+ if(targets.length!==1)return unsupported();
+ const target:unknown=targets[0];
+ if(typeof target!=='string')return invalid();
  const kind:'house'|'narrator'=target==='narrator'?'narrator':
   target.startsWith('h:')?'house':invalid();
  const house=kind==='house'?target.slice(2):null;
- if(house!==null&&!ID.test(house))invalid();
+ if(house!==null&&!ID.test(house))return invalid();
  return {
-  requestKey:args['p_key'],originHouseId:args['p_origin']??null,
+  requestKey:key as string,originHouseId:nullable(origin)?null:origin as string,
   recipientKind:kind,recipientHouseId:house,
-  subject:args['p_subject'],content:args['p_content'],
+  subject:subject as string,content:content as string,
   expectedCampaignDate:canonicalDate,
  };
 }
