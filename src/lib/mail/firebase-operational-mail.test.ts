@@ -25,7 +25,7 @@ describe('Approved operational letters preserve original Council filters',()=>{
   expect(letters[0]).toMatchObject({id,sender_user_id:'author',
    recipient_house_id:'house-b',origin_house_id:'house-a',
    delivery_week:2,publication_state:'delivered'});
-  expect(letters[0]?.conversation_id).toBe(id);
+  expect(letters[0]?.['conversation_id']).toBe(id);
   expect(letters[1]).toMatchObject({conversation_id:id,
    recipient_house_id:null,origin_house_id:'house-b'});
   expect(JSON.stringify(letters)).not.toContain('sourceSnapshotId');
@@ -33,8 +33,8 @@ describe('Approved operational letters preserve original Council filters',()=>{
  it('preserves approved batch grouping without exposing runtime secrets',()=>{
   const id='f'.repeat(64);
   const result=projectCloudLetters([mk(id,{batchKey:'safe-send-001'})],snapshot);
-  expect(result[0]?.batch_key).toBe('safe-send-001');
-  expect(result[0]?.conversation_id).toBe(id);
+  expect(result[0]?.['batch_key']).toBe('safe-send-001');
+  expect(result[0]?.['conversation_id']).toBe(id);
   expect(JSON.stringify(result)).not.toContain('requestFingerprint');
   expect(()=>projectCloudLetters([mk(id,{batchKey:'../private'})],snapshot)).toThrow();
  });
