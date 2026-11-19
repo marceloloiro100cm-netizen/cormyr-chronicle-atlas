@@ -169,3 +169,52 @@ test('a draft with active status, approved writes or bogus round never passes',a
     assert.equal(f.counts().writes,0);
   }
 });
+
+
+const activeCalendarRuntime=()=>({
+  status:'active',private:true,sourceSnapshotId:SNAP,
+  sourceSnapshotReconciled:true,applicationEnabled:true,
+  mailWriteApproved:true,publicTimeApproved:true,
+  calendarSource:'operational',calendarVersion:6,publishedTimeVersion:6,
+  calendar:{year:1522,month:0,day:11,festival:null,version:6},
+  openRound:3,launchDraftVersion:1,sourceAuthority:'owner_adopted_firebase',
+});
+const activeMailRuntime=()=>({
+  status:'active',private:true,sourceSnapshotId:SNAP,
+  applicationEnabled:true,sourceLiveReconciled:true,mailEnabled:true,
+  calendarVersion:6,openRound:3,
+});
+test('read-only preflight verifies live temporal and mail metadata without claiming source delta',async()=>{
+  const f=dbFixture({houseExists:true,mailExists:true,
+    houseDraftFields:activeCalendarRuntime(),
+    mailDraftFields:activeMailRuntime()});
+  const report=await inspectCloudRuntimeSources({db:f.db,snapshotId:SNAP});
+  assert.equal(report.operationalCalendarPublished,true);
+  assert.equal(report.mailRuntimeAligned,true);
+  assert.equal(report.currentRoundApproved,false);
+  assert.equal(report.freshSourceDeltaReconciled,false);
+  assert.equal(report.readyForPlayers,false);
+  assert.equal(report.releaseDecision,'NO_GO');
+  assert.equal(f.counts().writes,0);
+  for(const privateValue of [SNAP,'1522','DO_NOT_LEAK'])
+    assert.ok(!JSON.stringify(report).includes(privateValue));
+});
+test('live calendar and mail are independently reported when their metadata diverges',async()=>{
+  for(const change of [
+    {houseDraftFields:{...activeCalendarRuntime(),calendarVersion:7},
+     mailDraftFields:activeMailRuntime()},
+    {houseDraftFields:activeCalendarRuntime(),
+     mailDraftFields:{...activeMailRuntime(),openRound:4}},
+    {houseDraftFields:{...activeCalendarRuntime(),publicTimeApproved:false},
+     mailDraftFields:activeMailRuntime()},
+    {houseDraftFields:{...activeCalendarRuntime(),sourceAuthority:'unknown'},
+     mailDraftFields:activeMailRuntime()},
+  ]){
+    const f=dbFixture({houseExists:true,mailExists:true,...change});
+    const report=await inspectCloudRuntimeSources({db:f.db,snapshotId:SNAP});
+    assert.equal(report.operationalCalendarPublished&&report.mailRuntimeAligned,false);
+    assert.equal(report.freshSourceDeltaReconciled,false);
+    assert.equal(report.readyForPlayers,false);
+    assert.equal(f.counts().writes,0);
+  }
+});
