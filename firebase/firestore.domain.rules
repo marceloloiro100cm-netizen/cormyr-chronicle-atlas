@@ -43,8 +43,12 @@ service cloud.firestore {
       // because the minimal migration view omitted the deletion flag.
       return resource.data.keys().hasAll(['deletedAt','publicationState']) &&
         resource.data.publicationState == 'delivered' &&
-        ((resource.data.recipientPlayerId != null) !=
-          (resource.data.recipientHouseId != null)) &&
+        (((resource.data.recipientPlayerId != null) !=
+          (resource.data.recipientHouseId != null)) ||
+          (resource.data.keys().hasAny(['recipientKind']) &&
+            resource.data.recipientKind == 'narrator' &&
+            resource.data.recipientPlayerId == null &&
+            resource.data.recipientHouseId == null)) &&
         (narrator(snapshot) ||
           (resource.data.deletedAt == null && player(snapshot) && (
             resource.data.senderUid == request.auth.uid ||

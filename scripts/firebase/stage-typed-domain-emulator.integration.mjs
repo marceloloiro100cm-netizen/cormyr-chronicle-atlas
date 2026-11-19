@@ -63,8 +63,8 @@ async function run(){
   const plan=buildTypedDomainPlan(source,snapshot);
   assert.equal(plan.summary.planValid,true);
   assert.equal(plan.summary.accountsWithoutProfile,1);
-  assert.equal(plan.summary.typedCollections.lettersQuarantine,2);
-  assert.equal(plan.summary.typedCollections.letters,4);
+  assert.equal(plan.summary.typedCollections.lettersQuarantine,1);
+  assert.equal(plan.summary.typedCollections.letters,5);
   assert.equal(plan.summary.letterCoverage.source,6);
   assert.equal(plan.summary.letterCoverage.complete,true);
   const adminApp=initializeApp({projectId},'cormyr-domain-test-admin');
@@ -78,7 +78,7 @@ async function run(){
       plan.docs[type].find(entry=>entry.payload.id===key)?.id);
   try{
     const result=await writeTypedDomainToEmulator(plan,adminDb);
-    assert.equal(result.emulatorWrites,19); // root markers + 3 houses + 3 players + 5 access + 4 letters + 2 quarantine
+    assert.equal(result.emulatorWrites,19); // root markers + 3 houses + 3 players + 5 access + 5 letters + 1 quarantine
     const alice=env.authenticatedContext('alice').firestore();
     const bob=env.authenticatedContext('bob').firestore();
     const narrator=env.authenticatedContext('narrator').firestore();
@@ -109,11 +109,18 @@ async function run(){
     await assertFails(getDoc(ref(unknown,'letters','letterA')));
     await assertFails(getDoc(ref(anon,'letters','letterA')));
 
-    // A quarantine letter is never authorized, including narrator/admin:
-    // neither a missing recipient nor a double recipient may leak through
-    // the old sender/house rule as if it were an addressed letter.
+    // The original two-null recipient denotes Narrator. The explicit kind is
+    // required; sender and Narrator can see it, unrelated profiles cannot.
+    await assertSucceeds(getDoc(ref(narrator,'letters','legacyNoRecipient')));
+    await assertSucceeds(getDoc(ref(alice,'letters','legacyNoRecipient')));
+    await assertFails(getDoc(ref(bob,'letters','legacyNoRecipient')));
+    await assertFails(getDoc(ref(editor,'letters','legacyNoRecipient')));
+    await assertFails(getDoc(ref(anon,'letters','legacyNoRecipient')));
+
+    // Only genuinely ambiguous double-addressed originals are quarantined;
+    // nobody may read or overwrite the quarantined row.
     const quarantined=plan.docs.lettersQuarantine.map(entry=>entry.id);
-    assert.equal(quarantined.length,2);
+    assert.equal(quarantined.length,1);
     const quarantineRef=(db,id)=>doc(db,'migrationDomainStage',snapshot,'lettersQuarantine',id);
     for(const id of quarantined){
       for(const ctx of [alice,bob,narrator,editor,unknown,anon]){
@@ -143,7 +150,7 @@ async function run(){
     await assertFails(getDoc(ref(alice,'letters','letterA')));
     await assertSucceeds(getDoc(ref(alice,'letters','letterSent')));
 
-    console.log('Typed Firestore emulator: four domain views staged; ambiguous letters quarantined; reader/writer denial, cross-house isolation, role forgery and revocation verified.');
+    console.log('Typed Firestore emulator: narrator mail retained; ambiguous double recipients quarantined; reader/writer denial, cross-house isolation, role forgery and revocation verified.');
   }finally{
     await env.cleanup();
     await deleteApp(adminApp);
