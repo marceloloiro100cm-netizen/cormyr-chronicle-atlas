@@ -17,7 +17,7 @@ describe('Revisão de acesso Firebase no Conselho',()=>{
       .toBeInTheDocument();
     expect(screen.getByText('Contas pendentes do Firebase'))
       .toBeInTheDocument();
-    expect(screen.getByText(/sem criar, ativar ou alterar contas/))
+    expect(screen.getByText(/só fica disponível depois da homologação/))
       .toBeInTheDocument();
   });
 });
