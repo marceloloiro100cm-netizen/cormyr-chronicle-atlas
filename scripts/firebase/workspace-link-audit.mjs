@@ -6,6 +6,8 @@
 import {readWorkspaceTable} from './workspace-import.mjs';
 import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
 
+// spy_operations links its agent through asset_id (not agent_id).
+// This is the original SQL schema used by the 10 imported operations.
 export const RELATIONS=[
   ['casas','house_memberships','player_id','campaign_players','id',false],
   ['casas','house_memberships','house_id','campaign_houses','id',false],
@@ -23,7 +25,7 @@ export const RELATIONS=[
   ['jornal','campaign_newspaper_revisions','newspaper_id','campaign_newspapers','id',false],
   ['jornal','campaign_newspaper_reads','newspaper_id','campaign_newspapers','id',false],
   ['espionagem','spy_assets','owner_house_id','campaign_houses','id',false],
-  ['espionagem','spy_operations','agent_id','spy_assets','id',false],
+  ['espionagem','spy_operations','asset_id','spy_assets','id',false],
   ['espionagem','spy_operation_events','operation_id','spy_operations','id',false],
   ['espionagem','spy_mission_timeline','operation_id','spy_operations','id',false],
   ['espionagem','spy_agent_history','agent_id','spy_assets','id',false],

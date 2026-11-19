@@ -17,7 +17,7 @@ const MODULES={
     'campaign_newspaper_staff','campaign_newspaper_story_models',
     'campaign_newspaper_engravings','campaign_newspaper_settings',
     'campaign_newspaper_revisions'],
-  espionagem:['spy_regional_connections','spy_assets','spy_agent_history',
+  espionagem:['spy_assets','spy_agent_history',
     'spy_agent_upgrades','spy_agent_removals','spy_portrait_catalog','spy_locations',
     'spy_operations','spy_operation_segments','spy_operation_events',
     'spy_noble_house_stats','spy_mission_decisions','spy_mission_timeline',

@@ -38,3 +38,17 @@ apagadas nem confundidas com edições duplicadas sem reconciliação.
    históricas mais amplas.
 5. A importação do jornal preserva revisões históricas sem torná-las
    automaticamente publicações independentes.
+
+## Resultado da auditoria Cloud executada
+
+A primeira auditoria protegida [#44510616229](https://github.com/marceloloiro100cm-netizen/cormyr-chronicle-atlas/actions/runs/44510616229)
+verificou as 42 tabelas e confirmou **zero referências órfãs**. A execução foi
+marcada para revisão porque o verificador consultava o campo inexistente
+`spy_operations.agent_id`, em vez do campo correto `spy_operations.asset_id`.
+Todas as 10 operações importadas usavam o nome correto. Corrigido o contrato
+de auditoria, sem alterar nenhum registro do Firebase. O verificador também
+expectava `spy_regional_connections`, nome não presente no catálogo SQL,
+nas migrações ou nas 42 tabelas importadas; essa expectativa espúria foi removida.
+Ainda é necessário executar novamente a auditoria protegida para comprovar
+zero campos faltantes com a versão corrigida. O resultado de uma auditoria
+anterior não autoriza a liberação de alterações de dados.

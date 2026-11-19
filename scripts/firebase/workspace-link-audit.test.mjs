@@ -17,7 +17,7 @@ function dataset(){
   {newspaper_id:'paper-2'}];
  tables.campaign_newspaper_reads=[{newspaper_id:'paper-1'}];
  tables.spy_assets=[{id:'agent-1',owner_house_id:'h1'}];
- tables.spy_operations=[{id:'op-1',agent_id:'agent-1'}];
+ tables.spy_operations=[{id:'op-1',asset_id:'agent-1'}];
  tables.spy_mission_timeline=[{operation_id:'op-1'}];
  return tables;
 }
@@ -28,10 +28,13 @@ test('detects only aggregate cross-module orphan references',()=>{
  assert.equal(normal.orphanReferences,0);
  assert.equal(normal.modules.jornal.valid,4);
  assert.equal(normal.modules.espionagem.valid,3);
+ assert.equal(normal.modules.espionagem.missingField,0);
+ assert.ok(RELATIONS.some(r=>r[1]==='spy_operations'&&r[2]==='asset_id'));
+ assert.ok(!RELATIONS.some(r=>r[1]==='spy_operations'&&r[2]==='agent_id'));
  assert.equal(normal.operationalConnected,false);
  tables.campaign_newspaper_revisions.push({newspaper_id:'missing-secret-edition'});
  tables.letter_replies.push({id:'reply-2',letter_id:'missing-secret-letter'});
- tables.spy_operations.push({id:'op-2',agent_id:'missing-secret-spy'});
+ tables.spy_operations.push({id:'op-2',asset_id:'missing-secret-spy'});
  const broken=analyzeWorkspaceLinks(tables);
  assert.equal(broken.orphanReferences,3);
  assert.equal(broken.modules.jornal.orphan,1);
