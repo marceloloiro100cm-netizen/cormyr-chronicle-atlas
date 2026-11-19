@@ -39,6 +39,17 @@ type NewspaperDetail={edition:NewspaperItem&{blocks:unknown;pdf_path:string|null
 type NewspaperRevision={id:number;previous_version:number;changed_at:string|null};
 type NewspaperRevisions={total:number;revisions:NewspaperRevision[]};
 type NewspaperRevisionDetail={revision:NewspaperRevision&{snapshot:unknown}};
+type SpyAgent={id:string;owner_house_id:string;codename:string;
+  status:string;mission_successes:number;kind:string|null;
+  current_location_id:string|null;version:number};
+type SpyMission={id:string;asset_id:string;owner_house_id:string;
+  mission_kind:string;target_type:string;target_id:string;status:string;
+  timeline?:{departure_key:string|null;arrival_key:string|null;
+    investigation_end_key:string|null;origin_region:string|null;
+    destination_region:string|null;travel_days:number|null}};
+type SpyArchive={readOnly:true;source:string;operationalConnected:false;
+  agents:{total:number;items:SpyAgent[]};
+  missions:{total:number;items:SpyMission[]}};
 const moduleLabels:Record<string,string>={
   casas:'Casas e fichas',registros:'Registros e versões',
   missivas:'Missivas e respostas',jornal:'Jornal e edições',espionagem:'Espionagem e missões',
@@ -87,6 +98,8 @@ function FirebaseOriginalArchive(){
   const [paperRevisions,setPaperRevisions]=useState<NewspaperRevisions|null>(null);
   const [paperRevision,setPaperRevision]=useState<NewspaperRevisionDetail|null>(null);
   const [paperPage,setPaperPage]=useState(0);
+  const [spies,setSpies]=useState<SpyArchive|null>(null);
+  const [spyHouseId,setSpyHouseId]=useState('');
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -129,6 +142,7 @@ function FirebaseOriginalArchive(){
         setMail(null);setAudit(null);setLinks(null);
         setNewspapers(null);setNewspaper(null);
         setPaperRevisions(null);setPaperRevision(null);
+        setSpies(null);
         setError(e instanceof Error?e.message:'Consulta indisponível.');
       }
     }finally{if(generation.current===current)setBusy(false);}
@@ -212,6 +226,14 @@ function FirebaseOriginalArchive(){
       });
     if(result.revision?.id!==revisionId)throw Error('Versão não localizada.');
     setPaperRevision(result);
+  });
+  const loadSpies=()=>void run(async()=>{
+    const result=await readFirebaseArchive<SpyArchive>('listOriginalSpies',
+      spyHouseId?{houseId:spyHouseId}:{});
+    if(result.readOnly!==true||!Array.isArray(result.agents?.items)||
+       !Array.isArray(result.missions?.items))
+      throw Error('Acervo de espionagem inconsistente.');
+    setSpies(result);
   });
   const canView=session?.profile==='narrador'||session?.profile==='jogador';
   return <main className="mx-auto max-w-5xl space-y-6 p-5 md:p-8">
@@ -369,6 +391,61 @@ function FirebaseOriginalArchive(){
           </details>)}
         </div>}
       </article>}
+    </section>}
+    {canView&&<section className="space-y-3 rounded border p-4">
+      <h2 className="text-lg font-semibold">Espionagem · Agentes e missões originais</h2>
+      <p className="text-sm">Consulta histórica dos agentes e das operações
+        importadas. Apenas Casas autorizadas pelo Firebase aparecem para o
+        jogador; nenhum segredo de outras Casas ou decisão reservada
+        do Narrador é incluído.</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">Casa
+          <select className="ml-2 rounded border p-2" value={spyHouseId}
+            onChange={e=>{setSpyHouseId(e.target.value);setSpies(null);}}>
+            <option value="">Todas as Casas autorizadas</option>
+            {houses.filter(h=>session?.profile==='narrador'||
+              session?.memberHouseIds.includes(h.id)).map(h=>
+              <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={busy} onClick={loadSpies}
+          className="rounded border px-3 py-2 text-sm">Consultar espionagem real</button>
+      </div>
+      {spies&&<div className="space-y-4">
+        <div>
+          <h3 className="font-semibold">Agentes ({spies.agents.total})</h3>
+          {spies.agents.items.length===0&&
+            <p className="text-sm">Nenhum espião histórico neste escopo.</p>}
+          {spies.agents.items.map(a=><div key={a.id}
+            className="border-t py-2 text-sm">
+            <strong>{a.codename}</strong>
+            <p>Casa: {houses.find(h=>h.id===a.owner_house_id)?.name??a.owner_house_id}
+              {' '}· Estado: {a.status} · Sucessos: {a.mission_successes}
+              {' '}· Versão {a.version}</p>
+          </div>)}
+        </div>
+        <div>
+          <h3 className="font-semibold">Missões ({spies.missions.total})</h3>
+          {spies.missions.items.length===0&&
+            <p className="text-sm">Nenhuma missão histórica neste escopo.</p>}
+          {spies.missions.items.map(m=><details key={m.id}
+            className="border-t py-2 text-sm">
+            <summary className="cursor-pointer">
+              {m.mission_kind} · {m.status}
+              {' '}· {houses.find(h=>h.id===m.owner_house_id)?.name??m.owner_house_id}
+            </summary>
+            <p className="mt-2">Alvo registrado: {m.target_type} · {m.target_id}</p>
+            {m.timeline&&<p>Trajeto: {m.timeline.origin_region??'não definido'}
+              {' '}→ {m.timeline.destination_region??'não definido'}.
+              Duração: {m.timeline.travel_days??'não informada'} dias.
+              Partida: {m.timeline.departure_key??'—'}.
+              Chegada: {m.timeline.arrival_key??'—'}.</p>}
+          </details>)}
+        </div>
+        <p className="text-xs opacity-70">O acervo é somente leitura:
+          nenhuma operação ou melhoria é comprada, movimentada ou resolvida
+          por esta tela.</p>
+      </div>}
     </section>}
     {canView&&<section className="space-y-3 rounded border p-4">
       <h2 className="text-lg font-semibold">Missivas históricas</h2>
