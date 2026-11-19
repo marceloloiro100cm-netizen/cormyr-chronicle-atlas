@@ -1,3 +1,5 @@
+import {applyHouseDomainOperation,requireHouseOperationRole,
+ requireHouseOperationPhase,needsHouseOperationCalendar} from './operation-core';
 import {isNarrativeNpc} from './narrative-npc';
 import {attachVassal,createVassal,vassalState} from './vassals';
 import { createServerFn } from '@tanstack/react-start';
@@ -9,7 +11,6 @@ import { CORE_CATALOG } from './catalog';
 import { newHouseState, RESOURCE_KEYS, type HouseState, type CatalogItem, type Unit, type Resource, type CourtMember } from './types';
 import { alternativeFortune, balances, activeHoldings,createUnit, purchase, UNIT_TYPES, validateResources } from './engine';
 import { calendarMonthIndex, requireCalendarAlignment, reconcileHouseCalendar } from './calendar-consistency';
-import { isMonthSensitiveHouseAction } from './monthly-operation-policy';
 import { confirmFortune, convertResources, runTournament } from './fortune';
 import { historyAdjustments, memberBonusAdjustments, historicalFoundationYear, rollFoundation, rollHistoricalEvent } from './creation-history';
 import { improveEquipment } from './equipment';
@@ -116,7 +117,7 @@ export const loadHouseHub=createServerFn({method:'POST'}).middleware([requireSup
 export const houseOperation=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(operationSchema).handler(async({data,context})=>{
   const [role,membership]=await Promise.all([context.supabase.rpc('is_campaign_admin'),context.supabase.rpc('in_campaign_house',{h:data.houseId,edit_required:true})]);
   const admin=Boolean(role.data);if(!admin&&!membership.data)throw new Error('Edição desta casa não autorizada.');
-  if(['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_glory','approve','advance','import','correct','fortune','survivors','grant_unit_xp','vassal_approve','vassal_end','vassal_loyalty','vassal_npcs','sync_calendar','return_to_draft','clear_pending'].includes(data.action)&&!admin)throw new Error('Somente o Narrador pode confirmar esta operação.');
+  requireHouseOperationRole(data.action,admin);
   const {supabaseAdmin:db}=await import('@/integrations/supabase/client.server');
   const duplicate=await db.from('noble_house_ledger').select('after_state,version,actor,action').eq('house_id',data.houseId).eq('operation_key',data.key).maybeSingle();
   if(duplicate.error)throw new Error('Não foi possível conferir a operação.');
@@ -143,13 +144,12 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
     RESOURCE_KEYS.every(r=>state.base[r]===0);
 
-  if(data.action==='advance')throw new Error('Avanço individual desativado: publique a data no Calendário global do Narrador.');
-  if(state.phase==='active'&&isMonthSensitiveHouseAction(data.action)){
+  if(needsHouseOperationCalendar(state,data.action)){
     const response=await context.supabase.rpc('get_campaign_calendar');
     if(response.error||!response.data)throw new Error('Calendário global indisponível; nenhuma operação mensal foi gravada.');
     requireCalendarAlignment(state,response.data as {year:number;month:number});
   }
-  if(state.phase==='review'&&!['admin_edit','restore_legacy_effects','reconcile_legacy_costs','treasury_deposit','donate_gold','donate_glory','spend_influence','redeem_intrigue','crest_import','approve','correct','return_to_draft','clear_pending'].includes(data.action))throw new Error('Criação em revisão; aguarde aprovação ou correção do Narrador.');
+  requireHouseOperationPhase(state,data.action);
   if(data.action==='draft') {
     if(state.phase!=='draft')throw new Error('Ficha em revisão ou ativa exige edição auditada do Narrador.');
     const values=resourcesSchema.parse(args['base']);validateResources(values);
@@ -223,19 +223,10 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next.identity={...state.identity,crestPath:path};
     rule='Cormyr · importação de imagem de brasão (privada, vinculada à ficha e auditada)';
   }
-  if(data.action==='domain') {const domain=z.object({id:z.string().uuid(),name:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);if(state.domains.some(d=>d.id===domain.id))throw new Error('Domínio já cadastrado.');next.domains.push({...domain,terrain:'',features:[]});}
-  if(data.action==='domain_edit'){
-    const input=z.object({id:z.string(),name:z.string().trim().min(1).max(160),notes:z.string().max(4000)}).parse(args);
-    const d=next.domains.find(d=>d.id===input.id);if(!d)throw new Error('Domínio não encontrado.');
-    d.name=input.name;d.notes=input.notes;rule='Correção de nome e notas do domínio, sem alterar posses';
-  }
-  if(data.action==='domain_delete'){
-    const {id}=z.object({id:z.string()}).parse(args);
-    if(state.phase!=='draft')throw new Error('A exclusão de domínio só é permitida na criação; em campanha exige conciliação auditada.');
-    const d=state.domains.find(d=>d.id===id);if(!d)throw new Error('Domínio não encontrado.');
-    if(state.holdings.some(h=>h.domainId===id)||state.units.some(u=>u.domainId===id))
-      throw new Error('O domínio possui bens ou tropas; não pode ser excluído.');
-    next.domains=next.domains.filter(d=>d.id!==id);rule='Exclusão de domínio vazio na criação';
+  if(['domain','domain_edit','domain_delete'].includes(data.action)){
+    const updated=applyHouseDomainOperation(state,
+      data.action as 'domain'|'domain_edit'|'domain_delete',args);
+    next=updated.state;rule=updated.rule;
   }
   if(data.action==='purchase') {
     const purchaseArgs=z.object({id:z.string().uuid(),itemId:z.string(),domainId:z.string(),name:z.string().max(160),parentId:z.string().optional(),supportId:z.string().optional(),replaceId:z.string().optional(),weaponSpecialty:z.enum(['fighting','marksmanship']).optional()}).parse(args);
