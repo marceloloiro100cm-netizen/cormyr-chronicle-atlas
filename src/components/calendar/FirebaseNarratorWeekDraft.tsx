@@ -12,6 +12,7 @@ type WeekView={
   archivedCalendar:DateView&{version:number};
   draft:WeekDraft|null;editable:boolean;
   calendarPublished:boolean;mailEnabled:boolean;saved?:boolean;
+  requiresReconciliation?:boolean;
   operationalCalendar?:(DateView&{version:number})|null;
   openRound?:number|null;
 };
@@ -142,7 +143,12 @@ export function FirebaseNarratorWeekDraft(){
         <strong> 3ª désdia começa no dia 21</strong>. A rodada 3 das
         Missivas é configurada explicitamente, não deduzida da data.
       </p>
-      {!loaded.calendarPublished&&loaded.editable&&<button type="button"
+      {loaded.requiresReconciliation&&<p role="alert" className="rounded border p-3">
+        O calendário operacional já está ativo, mas contém versões ou
+        aprovações inconsistentes. Não é seguro preparar ou publicar outra
+        rodada antes da reconciliação técnica.
+      </p>}
+      {!loaded.calendarPublished&&loaded.editable&&!loaded.requiresReconciliation&&<button type="button"
         disabled={busy} onClick={()=>void prepareThirdTenday()}
         className="rounded border px-4 py-2 disabled:opacity-50">
         Preparar 3ª désdia e rodada 3 com a data oficial
@@ -157,11 +163,11 @@ export function FirebaseNarratorWeekDraft(){
           :'versão operacional não disponível'}.
         {' '}Rodada aberta: {loaded.openRound??'não confirmada'}.
         {' '}{loaded.mailEnabled
-          ?'Missivas liberadas pelos dois runtimes.'
+          ?'Controles de Missivas alinhados nos dois runtimes.'
           :'Missivas ainda bloqueadas: os dois runtimes não estão alinhados.'}
         {' '}O histórico importado permanece preservado.
       </p>}
-      {!loaded.calendarPublished&&<form onSubmit={event=>void save(event)} className="space-y-3">
+      {!loaded.calendarPublished&&loaded.editable&&<form onSubmit={event=>void save(event)} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="text-sm">Ano (CV)
             <input type="number" min="1" max="9999" required
@@ -218,7 +224,7 @@ export function FirebaseNarratorWeekDraft(){
           Atualizar
         </button>
       </form>}
-      {!loaded.calendarPublished&&loaded.draft&&<div className="rounded border p-4 space-y-3">
+      {!loaded.calendarPublished&&loaded.editable&&loaded.draft&&<div className="rounded border p-4 space-y-3">
         <h3 className="font-semibold">Publicar configuração inicial</h3>
         <p className="text-sm">Rodada {loaded.draft.proposedOpenRound} ·
           {' '}{loaded.draft.proposedDate.day}/{loaded.draft.proposedDate.month+1}/{loaded.draft.proposedDate.year} CV.
