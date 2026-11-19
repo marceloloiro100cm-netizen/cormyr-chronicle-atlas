@@ -46,7 +46,7 @@ async function handle(request:Request):Promise<Response>{
   if(action==='list'||action==='status'){
     if(Object.keys(input).length!==1)return fail(400,'invalid_request');
   }else if(action==='completePassword'){
-    if(Object.keys(input).some(k=>!['action','password','requestKey'].includes(k)))
+    if(Object.keys(input).some(k=>!['action','password','requestKey','expectedVersion'].includes(k)))
       return fail(400,'invalid_request');
   }else if(action==='submit'){
     if(Object.keys(input).some(k=>!['action','targetUid','expectedVersion','requestKey',
