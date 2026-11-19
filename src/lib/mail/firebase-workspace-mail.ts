@@ -165,7 +165,6 @@ export async function loadWorkspaceMailPage(db:unknown,snapshotId:string,
   validateWorkspaceMailInput(input);
   const results=await Promise.all(TABLES.map(name=>
     readWorkspaceTable(db,snapshotId,name)));
-  const tables=Object.fromEntries(TABLES.map((name,i)=>[name,results[i]]))
-    as WorkspaceMailTables;
+  const tables=Object.fromEntries(TABLES.map((name,i)=>[name,results[i]])) as WorkspaceMailTables;
   return runWorkspaceMailPage(tables,viewer,input);
 }
