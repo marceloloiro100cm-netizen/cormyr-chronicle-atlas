@@ -89,6 +89,8 @@ export function inspectModuleSourceContracts(tables,runMailPage){
       typeof p.id==='string'&&typeof p.user_id==='string'&&p.user_id.length>0&&
       m.some(x=>x.player_id===p.id));
     let playerProjection='not_applicable';
+    let playerHouseScope='not_applicable';
+    let playerSpyScope='not_applicable';
     if(candidates.length){
       const selected=candidates[0];
       const houses=[...new Set(m.filter(x=>x.player_id===selected.id)
@@ -98,6 +100,24 @@ export function inspectModuleSourceContracts(tables,runMailPage){
       const view=runMailPage(mailRows,viewer,{page:0,size:20,filters:{}});
       if(!view||!Number.isSafeInteger(view.total)||view.letters.length>20)
         blocked();
+      // Verify the actual imported player-to-House memberships across
+      // the same House, spy and record projections used by the live API.
+      // Do not log the selected identity, House IDs or private rows.
+      const knownHouseIds=new Set(tables.campaign_houses.map(h=>h.id));
+      if(houses.some(id=>!knownHouseIds.has(id)))blocked();
+      const playerHouses=listImportedHouseSheets(tables,viewer);
+      if(playerHouses.items.length!==houses.length||
+         playerHouses.items.some(h=>!houses.includes(h.houseId)))blocked();
+      const playerRecords=filterWorkspaceRecords(tables.campaign_records,viewer);
+      if(playerRecords.some(r=>r.visibility==='gm'||
+        r.visibility==='house'&&!houses.includes(r.house_id)||
+        r.visibility==='player'&&r.player_id!==selected.id))blocked();
+      playerHouseScope='source_shape_valid';
+      const playerSpies=projectWorkspaceSpies(tables,viewer);
+      for(const group of [playerSpies.agents,playerSpies.missions,
+        playerSpies.history,playerSpies.removals])
+        if(group.items.some(item=>!houses.includes(item.owner_house_id)))blocked();
+      playerSpyScope='source_shape_valid';
       playerProjection='source_shape_valid';
     }
     return {status:'source_projection_consistent',readOnly:true,
@@ -115,7 +135,8 @@ export function inspectModuleSourceContracts(tables,runMailPage){
       missivas:{letters:tables.campaign_letters.length,
         replies:tables.letter_replies.length,
         receipts:tables.letter_receipts.length,
-        rounds:tables.letter_rounds.length,playerProjection},
+        rounds:tables.letter_rounds.length,playerProjection,
+        playerHouseScope,playerSpyScope},
       operationalUIConnected:false,liveWritesChecked:false,
       sourceLiveReconciled:false};
   }catch{
