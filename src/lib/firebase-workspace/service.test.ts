@@ -49,6 +49,37 @@ describe('real Firebase workspace boundary',()=>{
   f.calls=0;f.after={...f.scope,memberHouseIds:[]};
   await expect(run({kind:'query',table:'campaign_records',steps:[]})).rejects.toThrow('access_denied');
  });
+ it('rebuilds the real mail recipient directory and tolerates a House without a sheet',async()=>{
+  f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
+  f.tables.campaign_players[0].name='Jogadora Ashkar';
+  f.tables.campaign_players.push({id:'revoked',user_id:'revoked',name:'Pessoa revogada',roster_house_id:'ashkar'});
+  f.tables.campaign_houses[0].season=2;
+  f.tables.campaign_houses.push({id:'no-sheet',name:'Casa sem ficha',active:true,season:2});
+  f.tables.noble_house_sheets=[{house_id:'ashkar',version:12,state:{
+   court:[{id:'visible',name:'Arauto',role:'Mensageiro',private_notes:'NÃO EXPOR'},
+    {id:'unresolved',npcId:'missing',name:'NÃO EXPOR'}],
+   units:[{id:'u1',name:'Guardas',destroyed:false,internal:'NÃO EXPOR'},
+    {id:'u2',name:'Perdas',destroyed:true}],
+  }}];
+  const data=await run({kind:'rpc',name:'mail_compose_options'});
+  expect(data.players.some((p:any)=>p.name==='Jogadora Ashkar')).toBe(true);
+  expect(data.players.some((p:any)=>p.name==='Pessoa revogada')).toBe(false);
+  expect(data.houses.map((h:any)=>h.name)).toEqual(['Casa sem ficha','Ashkar'].sort((a,b)=>a.localeCompare(b,'pt-BR')));
+  const empty=data.houses.find((h:any)=>h.id==='no-sheet');
+  expect(empty).toMatchObject({version:null,court:[],units:[]});
+  const ashkar=data.houses.find((h:any)=>h.id==='ashkar');
+  expect(ashkar.court).toEqual([{id:'visible',name:'Arauto',role:'Mensageiro'}]);
+  expect(ashkar.units).toEqual([{id:'u1',name:'Guardas',available:true},{id:'u2',name:'Perdas',available:false}]);
+  expect(JSON.stringify(data)).not.toContain('NÃO EXPOR');
+ });
+ it('players only receive compose links from their currently authorized Houses',async()=>{
+  f.tables.campaign_houses[0].season=2;
+  f.tables.campaign_houses.push({id:'other',name:'Outra Casa',active:true,season:2});
+  f.tables.noble_house_sheets=[];
+  const data=await run({kind:'rpc',name:'mail_compose_options'});
+  expect(data.houses.map((h:any)=>h.id)).toEqual(['ashkar']);
+  expect(data.players.find((p:any)=>p.id==='pa').houses).toEqual(['ashkar']);
+ });
  it('unknown operations never fall back to Supabase or synthetic success',async()=>{
   await expect(run({kind:'rpc',name:'arbitrary_write',args:{}})).rejects.toThrow('workspace_operation_not_implemented');
  });

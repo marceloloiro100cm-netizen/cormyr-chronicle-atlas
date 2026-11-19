@@ -114,10 +114,42 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    }
    if(name==='mail_compose_options'){
     if(scope.profile==='editor')denied();
-    return {players:[],houses:await Promise.all((await visible('campaign_houses')).filter(h=>houseAllowed(h['id'])).map(async h=>{
-     const s=await sheetFor(h['id']) as any;
-     return {id:h['id'],name:h['name'],version:s.version,court:s.state.court??[],units:(s.state.units??[]).map((u:any)=>({...u,available:!u.destroyed}))};
-    }))};
+    const [directory,links,allHouses,houseSheets,records]=await Promise.all([
+     players(),memberships(),visible('campaign_houses'),sheets(),visible('campaign_records')]);
+    // Same active, password-cleared recipient directory as the original RPC.
+    // Historic roster entries are never an access grant.
+    const activePlayers=directory.filter(p=>p['active']===true&&p['require_password_change']!==true&&
+      typeof p['user_id']==='string'&&p['user_id'].length>0);
+    const playersOut=activePlayers.map(p=>({
+     id:p['id'],name:typeof p['name']==='string'?p['name']:'Jogador',
+     houses:links.filter(m=>m['player_id']===p['id']).map(m=>m['house_id']),
+    })).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+    // Original SQL LEFT JOIN: a season-two House without a sheet is still
+    // addressable and simply has no court, units or version yet.
+    const housesOut=allHouses.filter(h=>h['season']===2&&houseAllowed(h['id']))
+      .map(h=>{
+       const sheet=houseSheets.find(s=>s['house_id']===h['id']);
+       const state=sheet?.['state']&&typeof sheet['state']==='object'?sheet['state']:null;
+       const court=Array.isArray(state?.court)?state.court:[];
+       const units=Array.isArray(state?.units)?state.units:[];
+       return {
+        id:h['id'],name:h['name'],version:sheet?.['version']??null,
+        court:court.flatMap((c:any)=>{
+         if(typeof c?.id!=='string'||!c.id)return [];
+         const npcId=typeof c.npcId==='string'?c.npcId:'';
+         const npc=npcId?records.find(r=>r['id']===npcId&&r['house_id']===h['id']&&
+          r['kind']==='character'&&!/^ficha\\b/i.test(String(r['title']??''))):null;
+         if(npcId&&!npc)return [];
+         return [{id:c.id,name:typeof npc?.['title']==='string'?npc['title']:
+           typeof c.name==='string'&&c.name?c.name:'Integrante sem identificação',
+          role:typeof c.role==='string'?c.role:''}];
+        }),
+        units:units.filter((u:any)=>typeof u?.id==='string'&&u.id)
+         .map((u:any)=>({id:u.id,name:typeof u.name==='string'?u.name:'',
+          available:u.destroyed!==true&&u.destroyed!=='true'})),
+       };
+      }).sort((a,b)=>String(a.name).localeCompare(String(b.name),'pt-BR'));
+    return {players:playersOut,houses:housesOut};
    }
    throw new CloudAccessError('workspace_operation_not_implemented',501);
   };
