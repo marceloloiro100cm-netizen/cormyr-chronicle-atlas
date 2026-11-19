@@ -1,0 +1,311 @@
+import {createFileRoute} from '@tanstack/react-router';
+import {useCallback,useEffect,useRef,useState} from 'react';
+import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
+
+/**
+ * Conferência do acervo ORIGINAL importado ao Firestore.
+ * Não substitui o Conselho, não representa dados de demonstração e não grava.
+ * Autorização de cada consulta é refeita no servidor pelo Firebase Admin.
+ */
+type Profile='narrador'|'jogador'|'editor';
+type Session={authenticated:true;profile:Profile;memberHouseIds:string[]};
+type House={id:string;name:string};
+type ModuleStatus={tablesImported:number;tablesExpected:number;rows:number;missingTables:string[]};
+type Audit={status:string;tablesImported?:number;rowsImported?:number;metadataConsistent?:boolean;
+  modules?:Record<string,ModuleStatus>;operationalConnected?:boolean};
+type LinkModule={relations:number;valid:number;orphan:number;blank:number;missingField:number};
+type LinkAudit={status:string;sourceRelationshipsChecked?:boolean;
+  orphanReferences?:number;unverifiedFields?:number;
+  modules?:Record<string,LinkModule>;operationalConnected?:boolean};
+type RecordItem={id:string;title:string;kind:string;visibility:string;
+  house_id:string|null;version:number;updated_at:string|null};
+type RecordList={readOnly:true;total:number;items:RecordItem[]};
+type RecordDetail={record:RecordItem&{content:string}};
+type RecordVersion={version:number;created_at:string|null;snapshot:unknown};
+type VersionList={total:number;versions:RecordVersion[]};
+type MailEntry={id:string;subject:string;sender_name:string|null;
+  content:string;created_at:string;publication_state:string;
+  recipient_house_id:string|null;origin_house_id:string|null};
+type MailReply={letter_id:string;content:string;author_name:string|null;created_at:string};
+type MailPage={total:number;letters:MailEntry[];replies:MailReply[];
+  kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;
+    scheduled_replies_next:number;drafts:number}};
+const moduleLabels:Record<string,string>={
+  casas:'Casas e fichas',registros:'Registros e versões',
+  missivas:'Missivas e respostas',jornal:'Jornal e edições',espionagem:'Espionagem e missões',
+};
+
+async function readFirebaseArchive<T>(action:string,extra:Record<string,unknown>={}):Promise<T>{
+  const auth=firebasePilotAuth();
+  const token=await auth?.getToken();
+  if(!token)throw Error('Sessão Firebase ausente. Entre novamente pelo portal.');
+  const response=await fetch('/api/firebase-cloud-read',{
+    method:'POST',credentials:'omit',cache:'no-store',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify({action,...extra}),
+  });
+  if(!response.ok)throw Error(response.status===403
+    ?'Seu perfil não pode consultar este acervo.'
+    :response.status===404?'Registro não localizado para esta conta.'
+    :response.status===401?'A sessão expirou. Entre novamente.'
+    :'O acervo real ainda não está disponível para esta consulta.');
+  const data:unknown=await response.json();
+  if(!data||typeof data!=='object'||!('result' in data))
+    throw Error('Resposta incompleta do Firebase.');
+  return (data as {result:T}).result;
+}
+export const Route=createFileRoute('/firebase-acervo')({
+  component:FirebaseOriginalArchive,
+  head:()=>({meta:[{title:'Conferência do acervo Firebase — Cormyr'}]}),
+});
+
+function FirebaseOriginalArchive(){
+  const [session,setSession]=useState<Session|null>(null);
+  const [houses,setHouses]=useState<House[]>([]);
+  const [houseId,setHouseId]=useState('');
+  const [audit,setAudit]=useState<Audit|null>(null);
+  const [links,setLinks]=useState<LinkAudit|null>(null);
+  const [records,setRecords]=useState<RecordList|null>(null);
+  const [record,setRecord]=useState<RecordDetail|null>(null);
+  const [versions,setVersions]=useState<VersionList|null>(null);
+  const [mail,setMail]=useState<MailPage|null>(null);
+  const [mailBox,setMailBox]=useState('');
+  const [mailText,setMailText]=useState('');
+  const [mailWeek,setMailWeek]=useState('');
+  const [mailPage,setMailPage]=useState(0);
+  const [loading,setLoading]=useState(true);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const generation=useRef(0);
+  useEffect(()=>{
+    const current=++generation.current;
+    void (async()=>{
+      try{
+        const checked=await readFirebaseArchive<Session>('session');
+        if(checked.authenticated!==true||
+          !['narrador','jogador','editor'].includes(checked.profile)||
+          !Array.isArray(checked.memberHouseIds))
+          throw Error('Perfil Firebase não confirmado.');
+        const catalog=checked.profile==='editor'?[]:
+          await readFirebaseArchive<House[]>('listHouses');
+        if(generation.current!==current)return;
+        setSession(checked);
+        setHouses(catalog);
+        setHouseId(checked.profile==='jogador'?checked.memberHouseIds[0]??'':'');
+      }catch(e){
+        if(generation.current===current)setError(e instanceof Error?e.message:
+          'Não foi possível confirmar o Firebase.');
+      }finally{if(generation.current===current)setLoading(false);}
+    })();
+    return()=>{generation.current++;};
+  },[]);
+  const run=useCallback(async(work:()=>Promise<void>)=>{
+    if(busy)return;
+    const current=++generation.current;
+    setBusy(true);setError('');
+    try{
+      await work();
+      // A revoked token cannot keep an old private result on screen.
+      const confirm=await readFirebaseArchive<Session>('session');
+      if(!confirm.authenticated||confirm.profile!==session?.profile)
+        throw Error('Permissões alteradas. Entre novamente.');
+    }catch(e){
+      if(generation.current===current){
+        setRecords(null);setRecord(null);setVersions(null);
+        setMail(null);setAudit(null);setLinks(null);
+        setError(e instanceof Error?e.message:'Consulta indisponível.');
+      }
+    }finally{if(generation.current===current)setBusy(false);}
+  },[busy,session?.profile]);
+  const inspect=()=>void run(async()=>{
+    const [m,l]=await Promise.all([
+      readFirebaseArchive<Audit>('inspectWorkspaceImport'),
+      readFirebaseArchive<LinkAudit>('inspectWorkspaceLinks'),
+    ]);
+    if(m.status!=='complete'||l.status!=='complete')throw Error('Importação ainda não conferida.');
+    setAudit(m);setLinks(l);
+  });
+  const loadRecords=()=>void run(async()=>{
+    setRecord(null);setVersions(null);
+    const result=await readFirebaseArchive<RecordList>('listOriginalRecords',{
+      ...(houseId?{houseId}:{}),
+    });
+    if(result.readOnly!==true||!Array.isArray(result.items))
+      throw Error('Inventário dos registros inconsistente.');
+    setRecords(result);
+  });
+  const openRecord=(id:string)=>void run(async()=>{
+    setRecord(null);setVersions(null);
+    const result=await readFirebaseArchive<RecordDetail>('getOriginalRecord',{recordId:id});
+    if(result.record?.id!==id||typeof result.record.content!=='string')
+      throw Error('Registro indisponível.');
+    setRecord(result);
+  });
+  const loadVersions=()=>void run(async()=>{
+    if(!record)return;
+    const result=await readFirebaseArchive<VersionList>('listOriginalRecordVersions',{
+      recordId:record.record.id,
+    });
+    if(!Array.isArray(result.versions))throw Error('Histórico inconsistente.');
+    setVersions(result);
+  });
+  const loadMail=(page:number)=>void run(async()=>{
+    setMail(null);
+    const filters:Record<string,unknown>={};
+    if(mailBox)filters['box']=mailBox;
+    if(mailText.trim())filters['text']=mailText.trim();
+    if(mailWeek.trim())filters['number']=mailWeek.trim();
+    const result=await readFirebaseArchive<MailPage>('listOriginalMail',{
+      filters,page,size:20,
+    });
+    if(!Array.isArray(result.letters)||!Array.isArray(result.replies)||
+      !Number.isSafeInteger(result.total))
+      throw Error('Consulta de missivas inconsistente.');
+    setMailPage(page);setMail(result);
+  });
+  const canView=session?.profile==='narrador'||session?.profile==='jogador';
+  return <main className="mx-auto max-w-5xl space-y-6 p-5 md:p-8">
+    <header className="space-y-2 border-b pb-4">
+      <p className="text-sm opacity-70">Cormyr Chronicle Atlas · Firebase</p>
+      <h1 className="text-2xl font-semibold">Conferência do acervo original</h1>
+      <p className="text-sm">Consulta privada dos dados reais importados. Somente leitura:
+        nenhuma ação aqui altera missivas, fichas, versões, espiões ou o jornal.
+        O Conselho e suas telas originais permanecem separados.</p>
+      <a className="underline text-sm" href="/firebase-access">Voltar ao Conselho</a>
+    </header>
+    {loading&&<p role="status">Validando a sessão no Firebase…</p>}
+    {error&&<p role="alert" className="rounded border p-3 text-sm">{error}</p>}
+    {!loading&&!session&&<p className="text-sm">Entre pelo portal Firebase e
+      abra este endereço na mesma aba para conferir o acervo.</p>}
+    {session&&<p className="text-sm">Perfil autorizado nesta sessão:
+      <strong> {session.profile==='narrador'?'Narrador':
+        session.profile==='editor'?'Editor-Chefe':'Jogador'}</strong>.</p>}
+    {session?.profile==='narrador'&&<section className="space-y-3 rounded border p-4">
+      <h2 className="text-lg font-semibold">Integridade dos dados importados</h2>
+      <p className="text-sm">Totais e integridade dos vínculos, sem abrir conteúdos
+        particulares de outras Casas.</p>
+      <button type="button" className="rounded border px-3 py-2 text-sm"
+        disabled={busy} onClick={inspect}>Conferir acervo no Firestore</button>
+      {audit&&links&&<>
+        <p className="text-sm">Tabelas importadas: <strong>{audit.tablesImported}</strong>.
+          Registros: <strong>{audit.rowsImported}</strong>.
+          Referências órfãs: <strong>{links.orphanReferences}</strong>.
+          Campos sem correspondência: <strong>{links.unverifiedFields}</strong>.</p>
+        <div className="overflow-x-auto"><table className="w-full text-sm">
+          <thead><tr className="text-left"><th className="p-2">Módulo</th>
+            <th className="p-2">Linhas</th><th className="p-2">Tabelas</th>
+            <th className="p-2">Vínculos órfãos</th></tr></thead>
+          <tbody>{Object.entries(audit.modules??{}).map(([key,item])=>
+            <tr key={key} className="border-t"><td className="p-2">
+              {moduleLabels[key]??key}</td><td className="p-2">{item.rows}</td>
+              <td className="p-2">{item.tablesImported}/{item.tablesExpected}</td>
+              <td className="p-2">{links.modules?.[key]?.orphan??'—'}</td></tr>)}</tbody>
+        </table></div>
+        <p className="text-xs opacity-75">Estes totais não comprovam gravações
+          operacionais, sincronização de alterações posteriores ou habilitação
+          automática das interfaces.</p>
+      </>}
+    </section>}
+    {session?.profile==='editor'&&<section className="rounded border p-4 text-sm">
+      O perfil editorial não recebe permissão para ler missivas ou documentos
+      particulares de Casas. A homologação do acervo histórico do jornal será
+      disponibilizada separadamente.
+    </section>}
+    {canView&&<section className="space-y-3 rounded border p-4">
+      <h2 className="text-lg font-semibold">Registros e fichas históricos</h2>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">Casa consultada
+          <select value={houseId} className="ml-2 rounded border p-2"
+            onChange={e=>{setHouseId(e.target.value);setRecords(null);
+              setRecord(null);setVersions(null);}}>
+            {session?.profile==='narrador'&&<option value="">Todas as Casas</option>}
+            {houses.filter(h=>session?.profile==='narrador'||
+              session?.memberHouseIds.includes(h.id)).map(h=>
+              <option value={h.id} key={h.id}>{h.name}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={busy} onClick={loadRecords}
+          className="rounded border px-3 py-2 text-sm">Consultar registros reais</button>
+      </div>
+      {records&&<div className="space-y-2">
+        <p className="text-sm">Registros autorizados: {records.total}</p>
+        {records.items.map(item=><div key={item.id}
+          className="flex flex-wrap justify-between gap-2 border-t py-2 text-sm">
+          <span>{item.title} · {item.kind} · v{item.version}</span>
+          <button className="underline" disabled={busy} type="button"
+            onClick={()=>openRecord(item.id)}>Ler registro</button>
+        </div>)}
+        {records.total===0&&<p className="text-sm">Nenhum registro acessível
+          neste escopo da campanha.</p>}
+      </div>}
+      {record&&<article className="space-y-3 rounded border p-3">
+        <h3 className="font-semibold">{record.record.title}</h3>
+        <pre className="whitespace-pre-wrap break-words text-sm">{record.record.content}</pre>
+        <button type="button" disabled={busy} onClick={loadVersions}
+          className="rounded border px-3 py-2 text-sm">Consultar versões anteriores</button>
+        {versions&&<div className="space-y-2">
+          <p className="text-sm">Versões preservadas: {versions.total}</p>
+          {versions.versions.map((v,i)=><details key={i} className="border-t py-2">
+            <summary className="cursor-pointer text-sm">Versão {v.version}</summary>
+            <pre className="whitespace-pre-wrap break-words text-xs">
+              {JSON.stringify(v.snapshot,null,2)}</pre>
+          </details>)}
+        </div>}
+      </article>}
+    </section>}
+    {canView&&<section className="space-y-3 rounded border p-4">
+      <h2 className="text-lg font-semibold">Missivas históricas</h2>
+      <p className="text-sm">Filtros aplicados pelo mesmo contrato de visibilidade
+        da segunda temporada. Rascunhos e mensagens particulares de outras Casas
+        não são liberados ao jogador.</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">Caixa
+          <select value={mailBox} onChange={e=>setMailBox(e.target.value)}
+            className="ml-2 rounded border p-2">
+            {[
+              ['','Todas'],['recebidas','Recebidas'],['enviadas','Enviadas'],
+              ['rascunhos','Rascunhos'],['programadas','Programadas'],
+              ['historico','Histórico'],['copias','Cópias'],
+              ['excluidas','Excluídas'],['lixeira','Lixeira'],
+            ].map(([value,label])=><option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">Semana
+          <input className="ml-2 w-20 rounded border p-2" value={mailWeek}
+            inputMode="numeric" onChange={e=>setMailWeek(e.target.value)}
+            placeholder="Todas"/>
+        </label>
+        <label className="text-sm">Buscar
+          <input className="ml-2 max-w-48 rounded border p-2" value={mailText}
+            onChange={e=>setMailText(e.target.value)} placeholder="Texto ou assunto"/>
+        </label>
+        <button type="button" disabled={busy} onClick={()=>loadMail(0)}
+          className="rounded border px-3 py-2 text-sm">Consultar missivas reais</button>
+      </div>
+      {mail&&<div className="space-y-2">
+        <p className="text-sm">Missivas visíveis: {mail.total}</p>
+        {mail.letters.map(item=><details key={item.id} className="border-t py-3">
+          <summary className="cursor-pointer font-medium">{item.subject}
+            <span className="ml-2 text-xs opacity-70">({item.publication_state})</span>
+          </summary>
+          <p className="mt-2 text-sm">Remetente: {item.sender_name??'Não identificado'}</p>
+          <pre className="mt-2 whitespace-pre-wrap break-words text-sm">{item.content}</pre>
+          {mail.replies.filter(v=>v.letter_id===item.id).map((reply,i)=>
+            <div className="mt-3 border-l pl-3" key={i}>
+              <p className="text-sm font-medium">{reply.author_name??'Resposta'}</p>
+              <pre className="whitespace-pre-wrap break-words text-sm">{reply.content}</pre>
+            </div>)}
+        </details>)}
+        {mail.total===0&&<p className="text-sm">Nenhuma missiva neste filtro.</p>}
+        <div className="flex items-center gap-4 text-sm">
+          <button type="button" disabled={busy||mailPage===0}
+            onClick={()=>loadMail(mailPage-1)} className="underline">Anterior</button>
+          <span>Página {mailPage+1}</span>
+          <button type="button" disabled={busy||(mailPage+1)*20>=mail.total}
+            onClick={()=>loadMail(mailPage+1)} className="underline">Próxima</button>
+        </div>
+      </div>}
+    </section>}
+    {busy&&<p role="status" className="text-sm">Consultando o Firebase…</p>}
+  </main>;
+}
