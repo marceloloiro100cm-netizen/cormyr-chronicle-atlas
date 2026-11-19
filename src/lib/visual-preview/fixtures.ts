@@ -3,6 +3,9 @@ import {blankChronicleSheet, serializeChronicleSheet, CHARACTER_SKILLS} from '@/
 import {dateKey, parseDate} from '@/lib/calendar/harptos';
 import {spyPortraitManifest} from '@/lib/espionage/spy-portrait-manifest';
 import {makeNewspaperBlock, NEWSPAPER_ENGRAVINGS, type NewspaperBlock} from '@/lib/newspaper/model';
+import {LEGACY_HOUSE_SEEDS} from '@/lib/house/legacy-seeds';
+import {canReadLetterAs, canReadReply, mailInsights, mailInsightsGrouped, mailOverviewGrouped, mailPage, mailTrashPage,
+  type MailDataset, type MailFilters, type MailLetter, type MailReply} from '@/lib/mail/mail-page-contract';
 import type {Row, RpcHandler, VisualDb} from './mock-supabase';
 import type {VisualPreviewProfile} from './state';
 
@@ -106,45 +109,102 @@ function houseRecords(house: PreviewHouse, index: number, actor: string): Row[] 
   ];
 }
 
-type Letter = Row & {id: string; recipient_house_id: string | null; origin_house_id: string | null; sender_user_id: string};
-type Reply = Row & {id: string; letter_id: string; author_user_id: string; recipient_user_id: string; house_id: string | null};
+type Letter = MailLetter & Row;
+type Reply = MailReply & Row;
 
+/** Membros da corte usados como referência nas missivas (mesmos ids das opções de envio). */
+export function previewCourt(index: number) {
+  return [
+    {id: previewUuid(54, index * 10 + 1), name: 'Corin Valemar', role: 'Mestre de Armas'},
+    {id: previewUuid(54, index * 10 + 2), name: 'Elandra Voss', role: 'Meistre'},
+  ];
+}
+/** Unidades militares: as da ficha conciliada (legacy-seeds) quando existem. */
+export function previewUnits(house: PreviewHouse, index: number) {
+  const units = LEGACY_HOUSE_SEEDS[house.id]?.units ?? [];
+  return units.length ? units.map(u => ({id: u.id, name: u.name, available: !u.destroyed}))
+    : [{id: previewUuid(55, index), name: 'Guarda da Casa', available: true}];
+}
+
+/**
+ * Correspondência de demonstração de uma Casa. Cobre todos os casos que os
+ * filtros originais distinguem: Narrador → Casa, Casa → Narrador (com membro
+ * da corte e unidade militar), Casa → Casa (cópia para mediação), carta geral
+ * em lote, rascunho, carta programada, resposta programada e lixeira.
+ */
 function houseMail(house: PreviewHouse, index: number, others: PreviewHouse[]) {
   const narrator = PREVIEW_USERS.narrador;
   const me = {user: playerUserId(index), player: playerId(index), name: playerName(house)};
   const neighbour = others[(index + 1) % others.length]!;
   const neighbourIndex = PREVIEW_HOUSES.indexOf(neighbour);
+  const court = previewCourt(index)[0]!;
+  const unit = previewUnits(house, index)[0]!;
   const common = {
     sync_state: 'synced', last_synced_at: iso(16), deleted_at: null, deleted_by: null, version: 1,
     batch_key: null, court_member_id: null, court_assignment: null, military_unit_id: null,
     house_sheet_version: null, historical_recipient_name: null, historical_source: null,
     administrative_actor: null, reply_to_id: null, updated_at: iso(16),
   };
+  const id = (n: number) => previewUuid(20, index * 10 + n);
+  const thread = (n: number) => previewUuid(21, index * 10 + n);
   const fromNarrator: Letter = {
-    ...common, id: previewUuid(20, index * 10 + 1), sender_user_id: narrator.id, sender_player_id: null,
+    ...common, id: id(1), sender_user_id: narrator.id, sender_player_id: null,
     sender_name: 'Narrador', recipient_house_id: house.id, recipient_player_id: null, origin_house_id: null,
     subject: 'Convocação ao Conselho de Suzail', letter_number: 3, letter_kind: 'reservada',
-    publication_state: 'delivered', creation_week: 3, delivery_week: 3, conversation_id: previewUuid(21, index * 10 + 1),
+    publication_state: 'delivered', creation_week: 3, delivery_week: 3, conversation_id: thread(1),
     created_at: iso(15), delivered_at: iso(15), campaign_date: '1522-01-15',
     content: `Ao Lorde da Casa ${house.name},\n\nA Coroa convoca as Casas de ${house.region} ao Conselho de Suzail na próxima désdia. ` +
       'Tragam relatórios das colheitas e das guarnições.\n\nTexto de demonstração da prévia visual.',
   };
   const toNarrator: Letter = {
-    ...common, id: previewUuid(20, index * 10 + 2), sender_user_id: me.user, sender_player_id: me.player,
+    ...common, id: id(2), sender_user_id: me.user, sender_player_id: me.player,
     sender_name: me.name, recipient_house_id: null, recipient_player_id: null, origin_house_id: house.id,
+    court_member_id: court.id, court_assignment: court.role, military_unit_id: unit.id,
     subject: 'Relatório das colheitas de Hammer', letter_number: 2, letter_kind: 'reservada',
-    publication_state: 'delivered', creation_week: 2, delivery_week: 2, conversation_id: previewUuid(21, index * 10 + 2),
+    publication_state: 'delivered', creation_week: 2, delivery_week: 2, conversation_id: thread(2),
     created_at: iso(9), delivered_at: iso(9), campaign_date: '1522-01-08',
-    content: 'Ao Narrador,\n\nAs colheitas foram modestas, mas os celeiros resistem ao inverno. Pedimos orientação sobre o pedágio do rio.\n\nTexto de demonstração.',
+    content: `Ao Narrador,\n\nPor ordem de ${court.name}, a ${unit.name} escoltou as carroças até o celeiro. As colheitas foram modestas, mas os celeiros resistem ao inverno. Pedimos orientação sobre o pedágio do rio.\n\nTexto de demonstração.`,
   };
   const fromNeighbour: Letter = {
-    ...common, id: previewUuid(20, index * 10 + 3), sender_user_id: playerUserId(neighbourIndex),
+    ...common, id: id(3), sender_user_id: playerUserId(neighbourIndex),
     sender_player_id: playerId(neighbourIndex), sender_name: playerName(neighbour),
     recipient_house_id: house.id, recipient_player_id: null, origin_house_id: neighbour.id,
     subject: `Proposta de aliança da Casa ${neighbour.name}`, letter_number: 3, letter_kind: 'reservada',
-    publication_state: 'delivered', creation_week: 3, delivery_week: 3, conversation_id: previewUuid(21, index * 10 + 3),
+    publication_state: 'delivered', creation_week: 3, delivery_week: 3, conversation_id: thread(3),
     created_at: iso(16), delivered_at: iso(16), campaign_date: '1522-01-17',
     content: `Saudações da Casa ${neighbour.name}.\n\nPropomos um pacto de defesa mútua enquanto os goblins rondam as fronteiras.\n\nTexto de demonstração.`,
+  };
+  const general: Letter = {
+    ...common, id: id(4), sender_user_id: narrator.id, sender_player_id: null, sender_name: 'Arauto Real',
+    recipient_house_id: house.id, recipient_player_id: null, origin_house_id: null, batch_key: 'preview-edito-real',
+    subject: 'Edito Real sobre o pedágio dos rios', letter_number: 1, letter_kind: 'geral',
+    publication_state: 'delivered', creation_week: 1, delivery_week: 1, conversation_id: thread(4),
+    created_at: iso(4), delivered_at: iso(4), campaign_date: '1521-12-25',
+    content: 'Por ordem da Coroa, o pedágio dos rios fica suspenso durante o inverno em todo o reino.\n\nTexto de demonstração.',
+  };
+  const scheduled: Letter = {
+    ...common, id: id(5), sender_user_id: narrator.id, sender_player_id: null, sender_name: 'Narrador',
+    recipient_house_id: house.id, recipient_player_id: null, origin_house_id: null,
+    subject: 'Notícias da fronteira', letter_number: 4, letter_kind: 'reservada',
+    publication_state: 'scheduled', creation_week: 3, delivery_week: 4, conversation_id: thread(5),
+    created_at: iso(17), delivered_at: null, campaign_date: null,
+    content: 'Batedores relatam fogueiras nas colinas. Programada para a próxima rodada. Texto de demonstração.',
+  };
+  const draft: Letter = {
+    ...common, id: id(6), sender_user_id: me.user, sender_player_id: me.player, sender_name: me.name,
+    recipient_house_id: neighbour.id, recipient_player_id: null, origin_house_id: house.id,
+    subject: `Resposta à Casa ${neighbour.name} (rascunho)`, letter_number: null, letter_kind: 'reservada',
+    publication_state: 'draft', creation_week: 3, delivery_week: null, conversation_id: thread(6),
+    created_at: iso(17, 18), delivered_at: null, campaign_date: null,
+    content: 'Rascunho ainda não enviado. Texto de demonstração.',
+  };
+  const trashed: Letter = {
+    ...common, id: id(7), sender_user_id: me.user, sender_player_id: me.player, sender_name: me.name,
+    recipient_house_id: null, recipient_player_id: null, origin_house_id: house.id,
+    subject: 'Pedido de audiência (cancelado)', letter_number: 1, letter_kind: 'reservada',
+    publication_state: 'delivered', creation_week: 1, delivery_week: 1, conversation_id: thread(7),
+    created_at: iso(3), delivered_at: iso(3), campaign_date: '1521-12-22', deleted_at: iso(5), deleted_by: me.user,
+    content: 'Missiva retirada pela Casa. Texto de demonstração.',
   };
   const replyCommon = {
     sync_state: 'synced', last_synced_at: iso(17), deleted_at: null, version: 1, reply_to_id: null,
@@ -154,15 +214,25 @@ function houseMail(house: PreviewHouse, index: number, others: PreviewHouse[]) {
     {...replyCommon, id: previewUuid(22, index * 10 + 1), letter_id: fromNarrator.id, author_user_id: me.user,
       author_player_id: me.player, author_name: me.name, house_id: house.id, recipient_user_id: narrator.id,
       created_at: iso(16), delivered_at: iso(16), publication_state: 'delivered', delivery_week: 3, creation_week: 3,
-      campaign_date: '1522-01-16', conversation_id: fromNarrator['conversation_id'], idempotency_key: previewUuid(23, index * 10 + 1),
+      campaign_date: '1522-01-16', conversation_id: thread(1), idempotency_key: previewUuid(23, index * 10 + 1),
       content: 'A Casa comparecerá ao Conselho com seus relatórios. Texto de demonstração.'},
     {...replyCommon, id: previewUuid(22, index * 10 + 2), letter_id: toNarrator.id, author_user_id: narrator.id,
       author_player_id: null, author_name: 'Narrador', house_id: house.id, recipient_user_id: me.user,
       created_at: iso(11), delivered_at: iso(11), publication_state: 'delivered', delivery_week: 2, creation_week: 2,
-      campaign_date: '1522-01-10', conversation_id: toNarrator['conversation_id'], idempotency_key: previewUuid(23, index * 10 + 2),
+      campaign_date: '1522-01-10', conversation_id: thread(2), idempotency_key: previewUuid(23, index * 10 + 2),
       content: 'O pedágio permanece suspenso até o fim do inverno. Texto de demonstração.'},
+    {...replyCommon, id: previewUuid(22, index * 10 + 3), letter_id: toNarrator.id, author_user_id: narrator.id,
+      author_player_id: null, author_name: 'Narrador', house_id: house.id, recipient_user_id: me.user,
+      created_at: iso(17, 20), delivered_at: null, publication_state: 'scheduled', delivery_week: 4, creation_week: 3,
+      campaign_date: null, conversation_id: thread(2), idempotency_key: previewUuid(23, index * 10 + 3),
+      content: 'Resposta programada para a rodada 4. Texto de demonstração.'},
   ];
-  return {letters: [fromNarrator, toNarrator, fromNeighbour], replies};
+  const receipts = [
+    {letter_id: fromNarrator.id, user_id: me.user, read_at: iso(15, 18)},
+    {letter_id: general.id, user_id: me.user, read_at: iso(5)},
+    {letter_id: toNarrator.id, user_id: narrator.id, read_at: iso(10)},
+  ];
+  return {letters: [fromNarrator, toNarrator, fromNeighbour, general, scheduled, draft, trashed], replies, receipts};
 }
 
 function editionBlocks(headline: string, subtitle: string, body: string, image: string, quote: string): NewspaperBlock[] {
@@ -314,20 +384,28 @@ export function buildVisualDb(profile: VisualPreviewProfile, memberHouseHints: r
   const mail = PREVIEW_HOUSES.map((h, i) => houseMail(h, i, PREVIEW_HOUSES));
   const allLetters = mail.flatMap(m => m.letters);
   const allReplies = mail.flatMap(m => m.replies);
-  const canSeeLetter = (l: Letter) => admin || (profile === 'jogador' &&
-    (l.recipient_house_id === house.id || l.origin_house_id === house.id || l.sender_user_id === user.id));
-  const letters = allLetters.filter(canSeeLetter);
-  const letterIds = new Set(letters.map(l => l.id));
-  const replies = allReplies.filter(r => letterIds.has(r.letter_id));
-  // Propostas de aliança ficam não lidas para exibir o contador de missivas.
-  const receipts = letters.filter(l => !String(l['subject']).startsWith('Proposta de aliança'))
-    .map(l => ({letter_id: l.id, user_id: user.id, read_at: iso(17)}));
+  const allReceipts = mail.flatMap(m => m.receipts);
   const rounds = [
     {number: 1, status: 'closed', closed: true, harptos_period: '1521-12:désdia-3', opened_at: iso(1), opened_by: PREVIEW_USERS.narrador.id, closed_at: iso(5), closed_by: PREVIEW_USERS.narrador.id, updated_at: iso(5)},
     {number: 2, status: 'closed', closed: true, harptos_period: '1522-01:désdia-1', opened_at: iso(6), opened_by: PREVIEW_USERS.narrador.id, closed_at: iso(12), closed_by: PREVIEW_USERS.narrador.id, updated_at: iso(12)},
     {number: CURRENT_ROUND, status: 'open', closed: false, harptos_period: '1522-01:désdia-2', opened_at: iso(13), opened_by: PREVIEW_USERS.narrador.id, closed_at: null, closed_by: null, updated_at: iso(13)},
   ];
   const ownPlayer = players.filter(p => p.user_id === user.id);
+  /** Mesmo conjunto de dados para tabelas e RPCs: a visibilidade sai do contrato original. */
+  const mailData: MailDataset = {
+    letters: allLetters, replies: allReplies, receipts: allReceipts, rounds,
+    players: players.map(p => ({id: p.id, user_id: p.user_id, roster_house_id: p.roster_house_id, active: p.active, require_password_change: p.require_password_change})),
+    memberships: members.map(m => ({player_id: m.player_id, house_id: m.house_id})),
+    houses: PREVIEW_HOUSES.map(h => ({id: h.id, name: h.name})),
+    adminUserIds: new Set([PREVIEW_USERS.narrador.id]),
+    editorUserIds: new Set([PREVIEW_USERS.editor.id]),
+  };
+  const letters = allLetters.filter(l => canReadLetterAs(mailData, l, user.id));
+  const replies = allReplies.filter(r => canReadReply(mailData, r, user.id));
+  const receipts = profile === 'editor' ? [] : allReceipts.filter(r => admin || r.user_id === user.id);
+  const viewer = {uid: user.id};
+  const filtersOf = (args: Record<string, unknown>) => (args['p_filters'] ?? {}) as MailFilters;
+  const houseIdsOf = (args: Record<string, unknown>) => Array.isArray(args['p_house_ids']) ? args['p_house_ids'].map(String) : [];
 
   const calendarSnapshot = {
     ...PREVIEW_CALENDAR, version: 12, auto_advance: false, published_week: CURRENT_ROUND, last_round: CURRENT_ROUND,
@@ -342,25 +420,6 @@ export function buildVisualDb(profile: VisualPreviewProfile, memberHouseHints: r
   };
   let represented: number | null = null;
 
-  const mailVisible = (args: Record<string, unknown>) => {
-    const filters = (args['p_filters'] ?? {}) as Record<string, unknown>;
-    if (filters['box'] === 'lixeira') return {list: [] as Letter[], filters};
-    const group = Array.isArray(filters['group_house_ids']) ? new Set(filters['group_house_ids'].map(String)) : null;
-    const list = allLetters.filter(canSeeLetter).filter(l => !group ||
-      group.has(String(l.recipient_house_id ?? '')) || group.has(String(l.origin_house_id ?? '')));
-    return {list, filters};
-  };
-  const mailPage = (args: Record<string, unknown>) => {
-    const {list} = mailVisible(args);
-    const page = Number(args['p_page'] ?? 0), size = Number(args['p_size'] ?? 20);
-    const sorted = [...list].sort((a, b) => String(b['created_at']).localeCompare(String(a['created_at'])));
-    const pageLetters = sorted.slice(page * size, page * size + size);
-    const ids = new Set(pageLetters.map(l => l.id));
-    return {
-      total: list.length, letters: pageLetters, replies: allReplies.filter(r => ids.has(r.letter_id)),
-      ...(admin ? {kpis: {delivered: list.length, awaiting_house: 4, awaiting_narrator: 6, scheduled_replies_next: 2, drafts: 1}} : {}),
-    };
-  };
   const ageDashboard = (args: Record<string, unknown>) => {
     const year = Number(args['p_year'] ?? PREVIEW_CALENDAR.year), target = Number(args['p_target_year'] ?? year);
     const characters = PREVIEW_HOUSES.filter(h => h.lord).map((h, i) => ({
@@ -435,20 +494,14 @@ export function buildVisualDb(profile: VisualPreviewProfile, memberHouseHints: r
       .map((r, i) => ({record_id: r['id'], character_id: previewUuid(53, i), age: PREVIEW_CALENDAR.year - 1484, as_of_year: PREVIEW_CALENDAR.year, status: 'ok', death_year: null})),
     get_campaign_chronology: args => ({year: Number(args['p_year']), month: Number(args['p_month']), events: [], rounds: [], unassigned_round_count: 0}),
     reply_delivery_week: () => CURRENT_ROUND,
-    mail_page: mailPage,
-    mail_trash_page: () => ({total: 0, letters: [], replies: []}),
-    mail_insights: () => [],
-    mail_insights_grouped: () => [],
-    mail_overview_grouped: args => {
-      const ids = new Set(Array.isArray(args['p_house_ids']) ? args['p_house_ids'].map(String) : []);
-      const delivered = allLetters.filter(l => ids.has(String(l.recipient_house_id ?? '')) || ids.has(String(l.origin_house_id ?? ''))).length;
-      return {total: delivered, scheduled: ids.size ? 2 : 0, drafts: ids.size ? 1 : 0, delivered};
-    },
+    mail_page: args => mailPage(mailData, viewer, filtersOf(args), Number(args['p_page'] ?? 0), Number(args['p_size'] ?? 20)),
+    mail_trash_page: args => mailTrashPage(mailData, viewer, filtersOf(args), Number(args['p_page'] ?? 0), Number(args['p_size'] ?? 20)),
+    mail_insights: () => mailInsights(mailData, viewer),
+    mail_insights_grouped: args => mailInsightsGrouped(mailData, viewer, houseIdsOf(args)),
+    mail_overview_grouped: args => mailOverviewGrouped(mailData, viewer, houseIdsOf(args)),
     mail_compose_options: () => ({
       players: players.map(p => ({id: p.id, name: p.name, houses: [String(p.roster_house_id)]})),
-      houses: houses.map((h, i) => ({id: h.id, name: h.name, version: 4,
-        court: [{id: previewUuid(54, i * 10 + 1), name: 'Corin Valemar', role: 'Mestre de Armas'}, {id: previewUuid(54, i * 10 + 2), name: 'Elandra Voss', role: 'Meistre'}],
-        units: [{id: previewUuid(55, i), name: 'Guarda da Casa', available: true}]})),
+      houses: PREVIEW_HOUSES.map((h, i) => ({id: h.id, name: h.name, version: 4, court: previewCourt(i), units: previewUnits(h, i)})),
     }),
     house_gallery_mail_images: () => [],
     publish_due_campaign_newspapers: () => 0,
@@ -500,8 +553,11 @@ export function buildVisualDb(profile: VisualPreviewProfile, memberHouseHints: r
     },
     mark_letter_read: args => {
       const list = tables['letter_receipts'] ??= [];
-      if (!list.some(r => r['letter_id'] === args['p_id'] && r['user_id'] === user.id))
-        list.push({letter_id: args['p_id'], user_id: user.id, read_at: new Date().toISOString()});
+      if (!list.some(r => r['letter_id'] === args['p_id'] && r['user_id'] === user.id)) {
+        const receipt = {letter_id: String(args['p_id']), user_id: user.id, read_at: new Date().toISOString()};
+        list.push(receipt);
+        allReceipts.push(receipt);
+      }
       return null;
     },
     mark_newspaper_commissions_seen: args => {
@@ -519,11 +575,12 @@ export function buildVisualDb(profile: VisualPreviewProfile, memberHouseHints: r
     campaign_representation_action: args => {
       if (args['p_action'] !== 'read' || represented === null) throw new Error('Prévia visual: esta ação ainda não está conectada ao Firebase.');
       const target = PREVIEW_HOUSES[represented]!;
-      const own = mail[represented]!;
+      const playerUid = playerUserId(represented);
       return {
-        player: {name: playerName(target), user_id: playerUserId(represented)},
+        player: {name: playerName(target), user_id: playerUid},
         records: houseRecords(target, represented, PREVIEW_USERS.narrador.id),
-        letters: own.letters, replies: own.replies, week: CURRENT_ROUND,
+        letters: allLetters.filter(l => canReadLetterAs(mailData, l, playerUid)),
+        replies: allReplies.filter(r => canReadReply(mailData, r, playerUid)), week: CURRENT_ROUND,
         houses: [{id: target.id, name: target.name, region: target.region, crest: target.crest, lord_name: target.lord, castle: target.castle}],
       };
     },
