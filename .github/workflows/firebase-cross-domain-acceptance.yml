@@ -55,8 +55,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install pinned Firebase emulators and SDKs (no Cloud credentials)
-        run: npm install --no-save --package-lock=false --legacy-peer-deps firebase-tools@15.35.0 firebase-admin@14.5.1 firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+      - name: Install pinned Firebase emulators and SDKs in isolation
+        run: |
+          # Do not resolve the site's archived Supabase dependency graph here.
+          # Only emulator-only Firebase packages are installed in this job.
+          npm install --prefix "$RUNNER_TEMP/cormyr-emulator-deps" \
+            --no-save --package-lock=false --legacy-peer-deps \
+            firebase-tools@15.35.0 firebase-admin@14.5.1 \
+            firebase@13.3.0 @firebase/rules-unit-testing@6.0.0
+          ln -s "$RUNNER_TEMP/cormyr-emulator-deps/node_modules" node_modules
       - name: Cross-domain tests — synthetic Auth and Firestore only
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
