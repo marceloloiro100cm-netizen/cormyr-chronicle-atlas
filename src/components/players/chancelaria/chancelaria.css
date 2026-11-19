@@ -1,0 +1,83 @@
+/* Chancelaria de Missivas (protótipo v4), escopo restrito a .chancelaria. */
+.chancelaria{--ch-wax:#8e2b2b;--ch-ok:#3c6e47;--ch-sched:#9a6a12;display:grid;gap:12px;color:var(--foreground)}
+.chancelaria .ch-top{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--campaign-gold);padding-bottom:10px}
+.chancelaria .ch-top h2{margin:2px 0 0;font-family:Georgia,serif;font-size:26px}
+.chancelaria .ch-sub{font-size:12px;font-weight:700;color:var(--campaign-gold);text-transform:uppercase;letter-spacing:.04em}
+.chancelaria .ch-actions,.chancelaria .ch-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chancelaria .ch-btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--campaign-paper);color:var(--foreground);font:inherit;font-size:14px;cursor:pointer;text-decoration:none;white-space:normal}
+.chancelaria .ch-btn:hover{border-color:var(--campaign-gold)}
+.chancelaria .ch-btn.primary{background:var(--campaign-purple);color:#f5ecd9;border-color:var(--campaign-gold)}
+.chancelaria .ch-btn.wax{background:var(--ch-wax);color:#fff;border-color:var(--ch-wax)}
+.chancelaria .ch-btn.small{min-height:32px;padding:4px 10px;font-size:13px}
+.chancelaria .ch-btn:disabled{opacity:.55;cursor:not-allowed}
+.chancelaria .ch-badge{font-size:12px;font-weight:700;border:1px solid var(--campaign-gold);border-radius:999px;padding:4px 10px}
+.chancelaria .ch-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chancelaria .ch-toolbar input[type=search]{flex:1 1 220px;min-height:38px}
+.chancelaria .ch-inline{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.chancelaria .ch-inline select{min-height:38px;width:auto}
+.chancelaria .ch-seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.chancelaria .ch-seg button{border:0;background:var(--campaign-paper);color:var(--foreground);padding:8px 12px;font:inherit;font-size:13px;cursor:pointer;min-height:38px}
+.chancelaria .ch-seg button.on{background:var(--campaign-purple);color:#f5ecd9}
+.chancelaria .ch-queues{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.chancelaria .ch-queue{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;border:1px solid var(--border);border-radius:8px;background:var(--campaign-paper);color:var(--foreground);padding:10px;cursor:pointer;font:inherit}
+.chancelaria .ch-queue.on{border-color:var(--campaign-gold);box-shadow:inset 0 0 0 1px var(--campaign-gold)}
+.chancelaria .ch-q-title{font-weight:700;font-size:14px}
+.chancelaria .ch-q-count{font-weight:700;font-size:14px;border-radius:999px;padding:0 8px;background:var(--campaign-light);color:var(--foreground)}
+.chancelaria .ch-q-count.hot{background:var(--ch-wax);color:#fff}
+.chancelaria .ch-q-desc{grid-column:1/-1;font-size:12px;color:var(--muted-foreground)}
+.chancelaria .ch-note{font-size:13px;margin:0;color:var(--muted-foreground)}
+.chancelaria .ch-muted{color:var(--muted-foreground);font-size:12px}
+.chancelaria .ch-ws{display:grid;grid-template-columns:minmax(260px,380px) minmax(0,1fr);gap:14px;align-items:start}
+.chancelaria .ch-list{display:grid;gap:6px;max-height:75vh;overflow:auto;padding-right:4px}
+.chancelaria .ch-item{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:8px;background:var(--campaign-paper)}
+.chancelaria .ch-item.sel{border-color:var(--campaign-gold);box-shadow:inset 3px 0 0 var(--campaign-gold)}
+.chancelaria .ch-item.unread .ch-item-title{font-weight:800}
+.chancelaria .ch-item-open{flex:1;display:grid;gap:3px;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:10px;cursor:pointer;min-width:0}
+.chancelaria .ch-item-top{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chancelaria .ch-item-title{font-family:Georgia,serif;font-size:16px;overflow-wrap:anywhere}
+.chancelaria .ch-item-meta{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
+.chancelaria .ch-readtoggle{border:0;border-left:1px solid var(--border);background:none;color:inherit;width:44px;cursor:pointer;font-size:18px}
+.chancelaria .ch-kind{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;background:var(--campaign-light);color:var(--foreground)}
+.chancelaria .ch-kind.narrador{background:var(--campaign-purple);color:#f5ecd9}
+.chancelaria .ch-kind.ao-narrador{background:var(--campaign-gold);color:#1d1410}
+.chancelaria .ch-kind.entre{background:#3b5577;color:#fff}
+.chancelaria .ch-tag{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px}
+.chancelaria .ch-tag.new{background:var(--ch-wax);color:#fff}
+.chancelaria .ch-tag.sched{background:var(--ch-sched);color:#fff}
+.chancelaria .ch-pill{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px}
+.chancelaria .ch-pill.ok{border-color:var(--ch-ok);color:var(--ch-ok)}
+.chancelaria .ch-reader{min-width:0}
+.chancelaria .ch-card{border:1px solid var(--border);border-radius:10px;background:var(--campaign-paper);padding:18px;display:grid;gap:12px;overflow-wrap:anywhere}
+.chancelaria .ch-card h3{font-family:Georgia,serif;font-size:24px;margin:0}
+.chancelaria .ch-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chancelaria .ch-spacer{flex:1}
+.chancelaria .ch-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.chancelaria .ch-links{display:flex;gap:6px;flex-wrap:wrap}
+.chancelaria .ch-body{line-height:1.6;max-width:85ch}
+.chancelaria .ch-body.small{font-size:14px}
+.chancelaria .ch-status{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px dashed var(--ch-sched);border-radius:8px;padding:8px 10px;font-size:13px}
+.chancelaria .ch-status.trash{border-color:var(--ch-wax)}
+.chancelaria .ch-thread{border-left:3px solid var(--campaign-gold);padding-left:14px;display:grid;gap:10px}
+.chancelaria .ch-thread h4{margin:0;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted-foreground)}
+.chancelaria .ch-reply{border:1px solid var(--border);border-radius:8px;padding:10px;display:grid;gap:6px}
+.chancelaria .ch-reply.mine{background:var(--campaign-light)}
+.chancelaria .ch-reply.new{border-color:var(--ch-wax)}
+.chancelaria .ch-reply-h{display:flex;gap:8px;align-items:center}
+.chancelaria .ch-form{display:grid;gap:8px;border-top:1px solid var(--border);padding-top:12px}
+.chancelaria .ch-form label{display:grid;gap:4px;font-size:13px;font-weight:600}
+.chancelaria .ch-form textarea{min-height:120px}
+.chancelaria .ch-readonly{font-size:13px;color:var(--muted-foreground);border-top:1px solid var(--border);padding-top:10px}
+.chancelaria .ch-empty{color:var(--muted-foreground);padding:20px 4px}
+.chancelaria .ch-back{display:none}
+.chancelaria .ch-modal{position:fixed;inset:0;background:rgb(0 0 0/.55);display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;z-index:60;overflow:auto}
+.chancelaria .ch-sheet{background:var(--background);color:var(--foreground);border:1px solid var(--campaign-gold);border-radius:10px;width:min(900px,100%)}
+.chancelaria .ch-sheet-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700}
+.chancelaria .ch-sheet-b{padding:4px 14px 14px}
+@media(max-width:999px){
+  .chancelaria .ch-ws{grid-template-columns:1fr}
+  .chancelaria .ch-reader{display:none}
+  .chancelaria.ch-reading .ch-reader{display:block}
+  .chancelaria.ch-reading .ch-list,.chancelaria.ch-reading .ch-queues,.chancelaria.ch-reading .ch-toolbar{display:none}
+  .chancelaria .ch-back{display:block}
+  .chancelaria .ch-list{max-height:none}
+}
