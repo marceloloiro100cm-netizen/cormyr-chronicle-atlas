@@ -817,3 +817,53 @@ test('Editor-Chefe reads and marks delivered mail but never writes',async()=>{
   asRole(f,'editor');
   await rejects(()=>f.service().markRead(sampleToken,{source:'firebase-cloud',letterId:toA.id}),'access_denied');
 });
+
+/* ---- Rascunhos, entrega programada, assinatura e vínculos ---- */
+test('drafts stay with the author until scheduled; scheduled letters deliver when the week opens',async()=>{
+  const f=fixture();
+  const d=await f.service().send(sampleToken,req({draft:true}));
+  assert.equal(d.state,'draft');assert.equal(d.deliveryRound,null);
+  const row=()=>f.records.get(letterPath(d.id));
+  assert.equal(row().deliveredAt,null);
+  // Rascunho pode ser editado com vínculos e descartado a qualquer momento.
+  await f.service().edit(sampleToken,{letterId:d.id,expectedVersion:1,subject:'Plano',content:'Texto',
+    courtMemberId:'court-1',courtAssignment:'executor',unitId:'unit-1'});
+  assert.equal(row().courtMemberId,'court-1');
+  const s=await f.service().schedule(sampleToken,{letterId:d.id,expectedVersion:2,deliveryRound:4});
+  assert.deepEqual(s,{state:'scheduled',deliveryRound:4,version:3});
+  // Destinatário ainda não pode responder nem marcar leitura.
+  await rejects(()=>f.service().schedule(sampleToken,{letterId:d.id,expectedVersion:3,deliveryRound:4}),'not_a_draft',409);
+  // Programada continua editável e cancelável pelo autor até a entrega.
+  await f.service().edit(sampleToken,{letterId:d.id,expectedVersion:3,subject:'Plano final',content:'Texto final'});
+  openRound(f,4);
+  // Entregue com a Semana 4 aberta: segue editável pela regra da semana aberta.
+  const after=await f.service().edit(sampleToken,{letterId:d.id,expectedVersion:4,subject:'Plano final',content:'Texto final!'});
+  assert.equal(after.edited,true);
+  openRound(f,5);
+  await rejects(()=>f.service().cancel(sampleToken,{letterId:d.id,expectedVersion:5}),'mail_week_closed',409);
+});
+
+test('players schedule at most one week ahead and never into the past; Narrator up to eight',async()=>{
+  const f=fixture();
+  await rejects(()=>f.service().send(sampleToken,req({deliveryRound:5})),'invalid_delivery_round',400);
+  await rejects(()=>f.service().send(sampleToken,req({deliveryRound:2,requestKey:'past-round-key'})),'invalid_delivery_round',400);
+  const next=await f.service().send(sampleToken,req({deliveryRound:4,requestKey:'next-round-key'}));
+  assert.equal(next.state,'scheduled');
+  asRole(f,'narrador');
+  const far=await f.service().send(sampleToken,req({originHouseId:null,deliveryRound:11,requestKey:'narrator-far-key'}));
+  assert.deepEqual([far.state,far.deliveryRound],['scheduled',11]);
+  const now=await f.service().send(sampleToken,req({originHouseId:null,deliveryRound:3,requestKey:'narrator-now-key',signedBy:'Vetrus, Intendente'}));
+  assert.equal(now.state,'delivered');
+  assert.equal(f.records.get(letterPath(now.id)).signedBy,'Vetrus, Intendente');
+});
+
+test('signature is Narrator-only; court and unit links are player-House-only',async()=>{
+  const f=fixture();
+  await rejects(()=>f.service().send(sampleToken,req({signedBy:'NPC'})),'signature_not_allowed',400);
+  const linked=await f.service().send(sampleToken,req({courtMemberId:'c1',courtAssignment:'order_recipient',unitId:'u1',requestKey:'linked-key-01'}));
+  const row=f.records.get(letterPath(linked.id));
+  assert.deepEqual([row.courtMemberId,row.courtAssignment,row.unitId],['c1','order_recipient','u1']);
+  asRole(f,'narrador');
+  await rejects(()=>f.service().send(sampleToken,req({originHouseId:null,unitId:'u1',requestKey:'narrator-link-key'})),'links_not_allowed',400);
+  await rejects(()=>f.service().send(sampleToken,req({originHouseId:null,courtMemberId:'c1',requestKey:'narrator-bad-key'})),'invalid_mail_request',400);
+});

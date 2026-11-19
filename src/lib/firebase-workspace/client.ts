@@ -18,18 +18,21 @@ export async function workspaceRequest(input:Record<string,unknown>):Promise<any
    r.status===501?'Esta modalidade ainda não está disponível no Firebase (por exemplo, múltiplos destinatários, rascunho, agendamento ou vínculos).':
    r.status===400?'Dados da operação inválidos. Confira os campos da missiva.':
    'Não foi possível acessar os dados operacionais do Firebase. Tente novamente após a homologação.';
-  throw Object.assign(Error(message),{code:'FIREBASE_'+r.status});
+  // Only a fixed lowercase server code (never provider text) is kept for diagnosis.
+  let serverCode:string|undefined;
+  try{const b=await r.json();if(typeof b?.error==='string'&&/^[a-z_]{3,60}$/.test(b.error))serverCode=b.error;}catch{/* sem corpo */}
+  throw Object.assign(Error(message),{code:'FIREBASE_'+r.status,...(serverCode?{serverCode}:{})});
  }
  const body=await r.json();
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a consulta.');
  return body.result;
 }
-const response=async(fn:()=>Promise<any>)=>{try{return {data:await fn(),error:null};}catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Firebase indisponível',code:(e as any)?.code}};}};
+const response=async(fn:()=>Promise<any>)=>{try{return {data:await fn(),error:null};}catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Firebase indisponível',code:(e as any)?.code,serverCode:(e as any)?.serverCode}};}};
 export function createWorkspaceClient(){
  const from=(table:string)=>{
   const steps:QueryStep[]=[];
   const builder:any=new Proxy({}, {get(_target,key){
-   if(key==='then')return (resolve:any,reject:any)=>workspaceRequest({kind:'query',table,steps}).catch(e=>({data:null,error:{message:e.message,code:e.code}})).then(resolve,reject);
+   if(key==='then')return (resolve:any,reject:any)=>workspaceRequest({kind:'query',table,steps}).catch(e=>({data:null,error:{message:e.message,code:e.code,serverCode:e.serverCode}})).then(resolve,reject);
    return (...args:any[])=>{steps.push({op:String(key),args:key==='abortSignal'?[]:args});return builder;};
   }});return builder;
  };

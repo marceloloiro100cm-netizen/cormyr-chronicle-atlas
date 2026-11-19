@@ -1,6 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],cloudVersions:[] as any[],ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn(),
+ runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],cloudVersions:[] as any[],cloudNotes:[] as any[],writes:[] as any[],schedule:vi.fn(),ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn(),
  unread:vi.fn(),cancel:vi.fn(),restore:vi.fn(),edit:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
@@ -12,12 +12,14 @@ vi.mock('../../../scripts/firebase/cloud-readonly-service.mjs',()=>({CloudAccess
 vi.mock('../../../scripts/firebase/cloud-mail-service.mjs',()=>({
  CloudMailError:class extends Error{constructor(public code:string,public status=403){super(code);}},
  createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch,reply:f.reply,
-  markUnread:f.unread,cancel:f.cancel,restore:f.restore,edit:f.edit}),
+  markUnread:f.unread,cancel:f.cancel,restore:f.restore,edit:f.edit,schedule:f.schedule}),
 }));
 import {createWorkspaceService} from './service';
 const access=[{userId:'a',playerId:'pa',profile:'jogador',admin:false,active:true,requirePasswordChange:false,memberHouseIds:['ashkar'],editHouseIds:['ashkar']},
  {userId:'gm',playerId:'pg',profile:'narrador',admin:true,active:true,requirePasswordChange:false,memberHouseIds:[],editHouseIds:[]}];
-const db:any={collection:(name:string)=>({doc:()=>({
+const db:any={runTransaction:async(work:any)=>work({get:async(ref:any)=>ref.get(),
+ set:(ref:any,v:any)=>f.writes.push({op:'set',v}),create:(ref:any,v:any)=>f.writes.push({op:'create',v})}),
+ collection:(name:string)=>({doc:()=>({
  get:async()=>({
   exists:f.runtimeReady&&['campaignCloudRuntime','campaignMailRuntime','migrationTimeEngineStage'].includes(name),
   data:()=>name==='campaignCloudRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceSnapshotReconciled:true,applicationEnabled:true,
@@ -27,14 +29,14 @@ const db:any={collection:(name:string)=>({doc:()=>({
  collection:(sub:string)=>({
   get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),
   doc:()=>({get:async()=>({exists:f.runtimeReady,data:()=>({year:1522,month:0,day:1,version:1})})}),
-  limit:()=>({get:async()=>({docs:(sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
+  limit:()=>({get:async()=>({docs:(sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:sub==='narratorMailNotes'?f.cloudNotes:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
   where:()=>({get:async()=>({docs:[]})}),
  })
 })})};
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.cloudVersions=[];f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.cloudVersions=[];f.cloudNotes=[];f.writes=[];f.schedule.mockReset();f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();
  f.unread.mockReset();f.cancel.mockReset();f.restore.mockReset();f.edit.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
@@ -348,5 +350,54 @@ describe('real Firebase workspace boundary',()=>{
   expect(rows).toEqual([{id:'v1',letter_id:own,version:1,snapshot:{subject:'Ordem',content:'Antigo'},created_at:'2026-11-19T16:30:00Z'}]);
   f.runtimeReady=false;
   expect((await run({kind:'query',table:'letter_versions',steps:[]})).data).toEqual([]);
+ });
+ it('access check never fails on historical duplicate rows of the same login',async()=>{
+  f.tables['campaign_players']!.push({id:'old-a',user_id:'a',roster_house_id:'ashkar'},{id:'old-gm',user_id:'gm'});
+  const own=await run({kind:'query',table:'campaign_players',steps:[{op:'select',args:['id']},{op:'eq',args:['user_id','a']},{op:'maybeSingle',args:[]}]});
+  expect(own.data).toMatchObject({id:'pa',active:true});
+  f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
+  const gm=await run({kind:'query',table:'campaign_players',steps:[{op:'eq',args:['user_id','gm']},{op:'maybeSingle',args:[]}]});
+  expect(gm.data.id).toBe('pg');
+  const all=await run({kind:'query',table:'campaign_players',steps:[]});
+  expect(all.data.find((p:any)=>p.id==='old-gm')).toMatchObject({user_id:null,active:false});
+  expect(all.data.some((p:any)=>p.id==='old-a')).toBe(true);
+ });
+ it('saves the private Registro do Mestre only for the Narrator under the approved runtime',async()=>{
+  vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  f.runtimeReady=true;
+  const note={id:'letter:mine',letter_id:'mine',reply_id:null,notes:{ordem_recebida:'Ordem',execucao:'',resultado:'',conhecimento:'',pendencia:''},updated_by:'x',updated_at:'y'};
+  await expect(run({kind:'query',table:'narrator_mail_notes',steps:[{op:'upsert',args:[note,{onConflict:'id'}]}]})).rejects.toThrow('access_denied');
+  f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
+  await run({kind:'query',table:'narrator_mail_notes',steps:[{op:'upsert',args:[note,{onConflict:'id'}]}]});
+  expect(f.writes.map((w:any)=>w.op)).toEqual(['set','create']);
+  expect(f.writes[0].v).toMatchObject({id:'letter:mine',letterId:'mine',updatedBy:'gm',notes:{ordem_recebida:'Ordem'}});
+  await expect(run({kind:'query',table:'narrator_mail_notes',steps:[{op:'upsert',args:[{...note,id:'letter:../x'}]}]})).rejects.toThrow('invalid_mail_note');
+  await expect(run({kind:'query',table:'narrator_mail_notes',steps:[{op:'upsert',args:[{...note,notes:{segredo:'x'}}]}]})).rejects.toThrow('invalid_mail_note');
+  await expect(run({kind:'query',table:'narrator_mail_notes',steps:[{op:'delete',args:[]}]})).rejects.toThrow('workspace_operation_not_implemented');
+  f.cloudNotes=[{id:'n',data:{id:'letter:mine',letterId:'mine',replyId:null,notes:{ordem_recebida:'Nuvem'},updatedBy:'gm',updatedAt:'z'}}];
+  f.tables['narrator_mail_notes']=[{id:'letter:mine',notes:{ordem_recebida:'Antigo'}},{id:'letter:secret',notes:{}}];
+  const rows=(await run({kind:'query',table:'narrator_mail_notes',steps:[{op:'eq',args:['id','letter:mine']},{op:'maybeSingle',args:[]}]})).data;
+  expect(rows.notes).toEqual({ordem_recebida:'Nuvem'});
+ });
+ it('schedules own Cloud drafts and validates court and unit links against the current sheet',async()=>{
+  vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  f.runtimeReady=true;
+  const id='e'.repeat(64);
+  f.cloudLetters=[{id,data:{source:'firebase-cloud',sourceSnapshotId:'a'.repeat(64),id,senderUid:'a',senderPlayerId:'pa',
+   senderName:'Jogador',originHouseId:'ashkar',recipientKind:'narrator',recipientHouseId:null,recipientPlayerId:null,
+   subject:'Rascunho',content:'Texto',createdAt:'2026-11-19T16:00:00Z',deliveredAt:null,
+   campaignDate:'1522-01-01',creationRound:2,deliveryRound:null,publicationState:'draft',deletedAt:null,version:1}}];
+  f.schedule.mockResolvedValue({state:'scheduled'});
+  await run({kind:'rpc',name:'schedule_letter_draft',args:{p_id:id,p_week:3}});
+  expect(f.schedule).toHaveBeenCalledWith('valid-token',{letterId:id,expectedVersion:1,deliveryRound:3});
+  f.tables['noble_house_sheets']=[{house_id:'ashkar',version:1,state:{court:[{id:'c1',name:'Arauto'}],units:[{id:'u1',name:'Guarda'},{id:'u2',destroyed:true}]}}];
+  f.send.mockResolvedValue({id:'x',duplicate:false,state:'delivered',deliveryRound:2});
+  const send=(extra:any)=>run({kind:'rpc',name:'dated_mail_action',args:{p_action:'send_linked_mail',p_date:'1522-01-01',p_args:{
+   p_key:'link-test-001',p_origin:'ashkar',p_targets:['narrator'],p_subject:'Ordem',p_content:'Texto',
+   p_draft:false,p_week:null,p_signed_by:null,p_court:null,p_unit:null,p_role:null,...extra}}});
+  await expect(send({p_court:'ghost',p_role:'executor'})).rejects.toThrow('court_member_unavailable');
+  await expect(send({p_unit:'u2'})).rejects.toThrow('unit_unavailable');
+  await send({p_court:'c1',p_role:'order_recipient',p_unit:'u1'});
+  expect(f.send).toHaveBeenCalledWith('valid-token',expect.objectContaining({courtMemberId:'c1',courtAssignment:'order_recipient',unitId:'u1'}));
  });
 });

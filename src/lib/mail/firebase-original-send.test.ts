@@ -21,12 +21,16 @@ describe('original composer -> one atomic Firebase Cloud delivery',()=>{
    recipientKind:'narrator',recipientHouseId:null,
   });
  });
- it('rejects unsupported multi-recipient and unsaved linked features',()=>{
-  for(const changes of [
-   {p_targets:['h:house-b','h:house-c']},{p_targets:[]},
-   {p_draft:true},{p_week:3},{p_court:'court-1'},
-   {p_unit:'unit-1'},{p_role:'executor'},{p_signed_by:'Um NPC'},
-  ])expect(()=>originalMailSend(form(changes),dt)).toThrow('mail_feature_not_yet_available');
+ it('rejects multi-recipient in the single path and carries drafts, weeks, signatures and links',()=>{
+  for(const changes of [{p_targets:['h:house-b','h:house-c']},{p_targets:[]}])
+   expect(()=>originalMailSend(form(changes),dt)).toThrow('mail_feature_not_yet_available');
+  expect(originalMailSend(form({p_draft:true,p_week:3,p_signed_by:' Um NPC ',
+   p_court:'court-1',p_role:'executor',p_unit:'unit-1'}),dt)).toMatchObject({
+   draft:true,deliveryRound:3,signedBy:'Um NPC',courtMemberId:'court-1',
+   courtAssignment:'executor',unitId:'unit-1'});
+  for(const changes of [{p_role:'executor'},{p_court:'court-1'},{p_court:'court-1',p_role:'chefe'},
+   {p_week:0},{p_week:'3'},{p_draft:'sim'},{p_unit:'../u'}])
+   expect(()=>originalMailSend(form(changes),dt)).toThrow('invalid_mail_request');
  });
  it('denies forged origin/destination and stale date instead of sending',()=>{
   expect(()=>originalMailSend(form(),'1522-01-02')).toThrow('campaign_date_changed');
@@ -48,8 +52,8 @@ describe('multi-target House routing is atomic',()=>{
   for(const targets of [
    ['h:house-a','h:house-a'],['h:house-a','narrator'],['narrator','h:house-b'],
   ])expect(()=>originalMailBatch(form({p_targets:targets}),dt)).toThrow();
-  expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_draft:true}),dt))
-    .toThrow('mail_feature_not_yet_available');
+  expect(originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_draft:true}),dt)
+    .every(x=>x.draft===true)).toBe(true);
   expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_key:undefined}),dt))
     .toThrow('invalid_mail_request');
   expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_key:'x'.repeat(126)}),dt))
@@ -71,5 +75,7 @@ describe('historically faithful Cloud reply routing',()=>{
   expect(()=>originalMailReply(reply,'1522-01-02')).toThrow('campaign_date_changed');
   expect(()=>originalMailReply({...reply,p_args:{...reply.p_args,p_reply:'another'}},dt))
    .toThrow('mail_feature_not_yet_available');
+  expect(originalMailReply({...reply,p_args:{...reply.p_args,p_draft:true,p_signed_by:'Vetrus'}},dt))
+   .toMatchObject({draft:true,signedBy:'Vetrus'});
  });
 });

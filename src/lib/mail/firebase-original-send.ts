@@ -1,7 +1,8 @@
 /**
- * Strict single-recipient adapter for the original campaign date/mail composer.
- * Multi-send, drafts, scheduled delivery, assets and linked orders require
- * their own transactional implementations. Never silently drop these fields.
+ * Strict adapter for the original campaign date/mail composer.
+ * Drafts, scheduled delivery, NPC signature and court/unit links are carried
+ * explicitly; the server decides who may use each one. Images still require
+ * their own private Storage implementation, so they are never dropped silently.
  */
 import type {CloudMailMessageRequest} from '../../../scripts/firebase/cloud-mail-service.mjs';
 const KEY=/^[a-zA-Z0-9_-]{8,128}$/;
@@ -27,10 +28,7 @@ export function originalMailSend(input:unknown,canonicalDate:string):
  if(typeof canonicalDate!=='string'||envelope['p_date']!==canonicalDate)
   throw new OriginalMailBridgeError('campaign_date_changed',409);
  if(Object.keys(args).some(k=>!fields.has(k)))return unsupported();
- if((args['p_draft']!==false&&!nullable(args['p_draft']))||
-    !nullable(args['p_week'])||!nullable(args['p_court'])||
-    !nullable(args['p_unit'])||!nullable(args['p_role'])||
-    !nullable(args['p_signed_by']))return unsupported();
+ const options=composerOptions(args);
  const key=args['p_key'],subject=args['p_subject'],content=args['p_content'];
  const origin=args['p_origin'],targets=args['p_targets'];
  if(typeof key!=='string'||!KEY.test(key)||
@@ -50,8 +48,39 @@ export function originalMailSend(input:unknown,canonicalDate:string):
   requestKey:key as string,originHouseId:nullable(origin)?null:origin as string,
   recipientKind:kind,recipientHouseId:house,
   subject:subject as string,content:content as string,
+  ...options,
   expectedCampaignDate:canonicalDate,
  };
+}
+
+/** Optional composer fields, present only when actually chosen. */
+export function composerOptions(args:Record<string,unknown>){
+ const out:{draft?:boolean;deliveryRound?:number;signedBy?:string;
+  courtMemberId?:string;courtAssignment?:'executor'|'order_recipient';unitId?:string}={};
+ const draft=args['p_draft'];
+ if(!nullable(draft)&&typeof draft!=='boolean')return invalid();
+ if(draft===true)out.draft=true;
+ const week=args['p_week'];
+ if(!nullable(week)){
+  if(typeof week!=='number'||!Number.isSafeInteger(week)||week<1)return invalid();
+  out.deliveryRound=week;
+ }
+ const signed=args['p_signed_by'];
+ if(!nullable(signed)){
+  if(typeof signed!=='string')return invalid();
+  if(signed.trim())out.signedBy=signed.trim();
+ }
+ const court=args['p_court'],role=args['p_role'],unit=args['p_unit'];
+ if(!nullable(court)){
+  if(typeof court!=='string'||!ID.test(court)||
+     (role!=='executor'&&role!=='order_recipient'))return invalid();
+  out.courtMemberId=court;out.courtAssignment=role;
+ }else if(!nullable(role))return invalid();
+ if(!nullable(unit)){
+  if(typeof unit!=='string'||!ID.test(unit))return invalid();
+  out.unitId=unit;
+ }
+ return out;
 }
 
 /**
@@ -84,6 +113,7 @@ export function originalMailBatch(input:unknown,canonicalDate:string):
  * are supported until historical reply-thread migration is reconciled. */
 export function originalMailReply(input:unknown,canonicalDate:string):{
   requestKey:string;letterId:string;content:string;expectedCampaignDate:string;
+  draft?:boolean;signedBy?:string;
 }{
  const envelope=isObj(input)?input:invalid();
  const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
@@ -93,13 +123,31 @@ export function originalMailReply(input:unknown,canonicalDate:string):{
    return invalid();
  if(envelope['p_date']!==canonicalDate)
    throw new OriginalMailBridgeError('campaign_date_changed',409);
- if(!nullable(args['p_reply'])||!nullable(args['p_signed_by'])||
-    args['p_draft']!==false)
-   return unsupported();
+ // Replying to a historical reply row is not part of Cloud threads.
+ if(!nullable(args['p_reply']))return unsupported();
+ if(typeof args['p_draft']!=='boolean')return invalid();
  const id=args['p_letter'],key=args['p_key'],content=args['p_content'];
  if(typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id)||
     typeof key!=='string'||!KEY.test(key)||
     typeof content!=='string'||!content.trim())
    return invalid();
- return {requestKey:key,letterId:id,content,expectedCampaignDate:canonicalDate};
+ const signed=args['p_signed_by'];
+ if(!nullable(signed)&&typeof signed!=='string')return invalid();
+ return {requestKey:key,letterId:id,content,expectedCampaignDate:canonicalDate,
+  ...(args['p_draft']?{draft:true}:{}),
+  ...(typeof signed==='string'&&signed.trim()?{signedBy:signed.trim()}:{})};
+}
+
+/** "Salvar rascunho" of the original reply form: a private Cloud draft reply. */
+export function originalReplyDraft(input:unknown,canonicalDate:string){
+ const envelope=isObj(input)?input:invalid();
+ const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
+ if(envelope['p_action']!=='save_weekly_reply_draft'||
+    Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k))||
+    Object.keys(args).some(k=>!['p_id','p_letter','p_reply','p_content','p_signed_by'].includes(k)))
+  return invalid();
+ return originalMailReply({p_action:'reply_weekly_message',p_date:envelope['p_date'],p_args:{
+  p_letter:args['p_letter'],p_reply:args['p_reply']??null,p_content:args['p_content'],
+  p_key:args['p_id'],p_draft:true,p_signed_by:args['p_signed_by']??null,
+ }},canonicalDate);
 }

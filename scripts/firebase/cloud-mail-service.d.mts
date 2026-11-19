@@ -11,6 +11,12 @@ export interface CloudMailMessageRequest {
   recipientHouseId:string|null;
   subject:string;
   content:string;
+  draft?:boolean;
+  deliveryRound?:number|null;
+  signedBy?:string|null;
+  courtMemberId?:string|null;
+  courtAssignment?:'executor'|'order_recipient'|null;
+  unitId?:string|null;
 }
 export interface CloudMailRuntime {
   status(idToken:string):Promise<{
@@ -24,6 +30,7 @@ export interface CloudMailRuntime {
   }>;
   reply(idToken:string,input:{
     requestKey:unknown;letterId:unknown;content:unknown;expectedCampaignDate?:unknown;
+    draft?:unknown;signedBy?:unknown;
   }):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
@@ -39,8 +46,12 @@ export interface CloudMailRuntime {
   restore(idToken:string,input:{letterId:unknown;expectedVersion:unknown}):Promise<{
     restored:true;alreadyActive:boolean;version:number;
   }>;
+  schedule(idToken:string,input:{letterId:unknown;expectedVersion:unknown;deliveryRound?:unknown}):Promise<{
+    state:string;deliveryRound:number;version:number;
+  }>;
   edit(idToken:string,input:{
     letterId:unknown;expectedVersion:unknown;subject:unknown;content:unknown;
+    courtMemberId?:unknown;courtAssignment?:unknown;unitId?:unknown;
   }):Promise<{edited:boolean;unchanged:boolean;version:number}>;
 }
 export function createFirebaseCloudMail(options:{

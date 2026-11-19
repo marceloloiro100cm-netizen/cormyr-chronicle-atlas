@@ -5,13 +5,14 @@ import {createFirebaseCloudMail,CloudMailError} from '../../../scripts/firebase/
 import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-runtime-approval.mjs';
 import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
 import {projectCloudLetters} from '../mail/firebase-operational-mail';
-import {originalMailSend,originalMailBatch,originalMailReply,OriginalMailBridgeError} from '../mail/firebase-original-send';
+import {originalMailSend,originalMailBatch,originalMailReply,originalReplyDraft,composerOptions,OriginalMailBridgeError} from '../mail/firebase-original-send';
 import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {CORE_CATALOG} from '../house/catalog';
 import {queryRows,type Row,type QueryStep} from './query';
+import {createHash} from 'node:crypto';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -62,7 +63,7 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     runtime.collection('mailReadReceipts').limit(2001).get()]);
    if(!Array.isArray(mailDocs.docs)||mailDocs.docs.length>500)
     throw new CloudAccessError('mailbox_requires_pagination',503);
-   const operational=projectCloudLetters(mailDocs.docs,snapshotId);
+   const operational=projectCloudLetters(mailDocs.docs,snapshotId,live.data().openRound as number);
    const all=[...letters,...operational];
    if(new Set(all.map(l=>l['id'])).size!==all.length)
     throw new CloudAccessError('mailbox_id_conflict',503);
@@ -157,6 +158,67 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    if(!Number.isSafeInteger(version))throw new CloudAccessError('invalid_mail_lifecycle_request',400);
    return {row,version:version as number};
   };
+  const notesCollection=()=>db.collection('campaignCloudRuntime').doc(snapshotId).collection('narratorMailNotes');
+  const runtimeApproved=async()=>{
+   const [live,gate,calendar]=await Promise.all([
+    db.collection('campaignCloudRuntime').doc(snapshotId).get(),
+    db.collection('campaignMailRuntime').doc(snapshotId).get(),
+    db.collection('migrationTimeEngineStage').doc(snapshotId).collection('calendar').doc('current').get()]);
+   return live.exists&&gate.exists&&calendar.exists&&
+    cloudMailRuntimeApproved(live.data(),gate.data(),calendar.data(),snapshotId);
+  };
+  const cloudNotes=async():Promise<Row[]>=>{
+   if(!admin||!await runtimeApproved())return [];
+   const snap=await notesCollection().limit(2001).get();
+   if(!Array.isArray(snap.docs)||snap.docs.length>2000)throw new CloudAccessError('mail_notes_too_large',503);
+   return snap.docs.map((d:any)=>d.data()).filter((v:any)=>typeof v?.id==='string').map((v:any)=>({
+    id:v.id,letter_id:v.letterId??null,reply_id:v.replyId??null,notes:v.notes,
+    updated_by:v.updatedBy,updated_at:v.updatedAt}));
+  };
+  const NOTE_FIELDS=['ordem_recebida','execucao','resultado','conhecimento','pendencia'];
+  /** "Registro do Mestre": Narrator-only, private, versioned and audited. */
+  const saveNarratorNote=async(row:unknown)=>{
+   if(!admin)denied();
+   mailFlag();
+   if(!await runtimeApproved())throw new CloudAccessError('mail_runtime_not_approved',503);
+   const r=row as Record<string,unknown>;
+   const id=r?.['id'],notes=r?.['notes'] as Record<string,unknown>|undefined;
+   if(!r||typeof r!=='object'||typeof id!=='string'||!/^(letter|reply):[^/\u0000-\u001f\u007f]{1,128}$/.test(id)||
+      !notes||typeof notes!=='object'||Array.isArray(notes)||
+      Object.keys(notes).some(k=>!NOTE_FIELDS.includes(k))||
+      Object.values(notes).some(v=>typeof v!=='string'||Buffer.byteLength(v,'utf8')>8000))
+    throw new CloudAccessError('invalid_mail_note',400);
+   const target=id.slice(id.indexOf(':')+1);
+   const ds=await mail();
+   const exists=id.startsWith('letter:')?ds.letters.some(l=>l.id===target):ds.replies.some(x=>x.id===target);
+   if(!exists)throw new CloudAccessError('access_denied',403);
+   const key=createHash('sha256').update('mail-note:'+id).digest('hex');
+   const ref=notesCollection().doc(key);
+   const audit=db.collection('campaignCloudRuntime').doc(snapshotId).collection('mailAudits');
+   await db.runTransaction(async(tx:any)=>{
+    const prev=await tx.get(ref);
+    const version=(prev.exists&&Number.isSafeInteger(prev.data()?.version)?prev.data().version:0)+1;
+    const at=new Date().toISOString();
+    tx.set(ref,{id,letterId:id.startsWith('letter:')?target:null,replyId:id.startsWith('reply:')?target:null,
+     notes:Object.fromEntries(NOTE_FIELDS.map(k=>[k,typeof notes[k]==='string'?notes[k]:''])),
+     updatedBy:scope.uid,updatedAt:at,version});
+    tx.create(audit.doc(createHash('sha256').update('mail-note:'+id+':'+version).digest('hex')),
+     {action:'narrator_note',actorUid:scope.uid,noteId:key,version,occurredAt:at});
+   });
+   return {data:null,error:null,count:null};
+  };
+  const checkLinks=async(origin:string|null,r:{courtMemberId?:string|null;unitId?:string|null})=>{
+   if(!r.courtMemberId&&!r.unitId)return;
+   if(!origin||!scope.editHouseIds.includes(origin))throw new CloudAccessError('links_not_allowed',400);
+   const sheet=(await rows('noble_house_sheets')).find(x=>x['house_id']===origin);
+   const state=sheet?.['state'];
+   const court=Array.isArray(state?.court)?state.court:[];
+   const units=Array.isArray(state?.units)?state.units:[];
+   if(r.courtMemberId&&!court.some((c:any)=>c?.id===r.courtMemberId))
+    throw new CloudAccessError('court_member_unavailable',400);
+   if(r.unitId&&!units.some((u:any)=>u?.id===r.unitId&&u.destroyed!==true&&u.destroyed!=='true'))
+    throw new CloudAccessError('unit_unavailable',400);
+  };
   const sheets=async()=> (await rows('noble_house_sheets')).filter(r=>houseAllowed(r['house_id']));
   const sheetFor=async(id:string)=>{
    checkHouse(id);
@@ -166,7 +228,18 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
   };
   const visible=async(name:string):Promise<Row[]>=>{
    if(name==='campaign_access_profiles')return (await accessDocs()).filter((a:any)=>admin||a.userId===scope.uid).map((a:any)=>({user_id:a.userId,profile:a.profile}));
-   if(name==='campaign_players')return (await players()).filter(p=>admin||p['user_id']===scope.uid);
+   // A conta pode ter linhas históricas (outra temporada ou outro jogador
+   // com o mesmo login). Para o próprio jogador só a identidade autorizada
+   // AGORA (scope.playerId) representa a conta; linhas antigas causavam
+   // "registro ambíguo" e bloqueavam a verificação de vínculos.
+   if(name==='campaign_players'){
+    const own=(p:Row)=>p['user_id']===scope.uid;
+    const current=(p:Row)=>p['id']===scope.playerId;
+    return (await players()).flatMap(p=>!own(p)||current(p)?(admin||own(p)?[p]:[])
+     // Linha histórica da própria conta: nunca para o jogador; para o
+     // Narrador fica na lista, porém sem o vínculo de login duplicado.
+     :admin?[{...p,user_id:null,active:false}]:[]);
+   }
    if(name==='house_memberships')return (await memberships()).filter((m:Row)=>admin||m['player_id']===scope.playerId);
    if(name==='campaign_houses')return (await rows(name)).filter(r=>r['active']===true).map(r=>{
     const {id,name,region,crest,castle,lord_name,season,active}=r;
@@ -197,6 +270,12 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
      return [...imported,...await cloudVersions(ds)];
     }
     if(!admin)return [];
+    if(name==='narrator_mail_notes'){
+     // Cloud notes supersede the imported record with the same id.
+     const cloud=await cloudNotes();
+     const ids=new Set(cloud.map(n=>n['id']));
+     return [...(await rows(name)).filter(r=>!ids.has(r['id'])),...cloud];
+    }
     return rows(name);
    }
    if(name==='campaign_newspapers')return (await rows(name)).filter(r=>editor||['published','archived'].includes(r['state']));
@@ -215,6 +294,27 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     if(scope.profile==='editor')denied();
     if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
      throw new CloudAccessError('workspace_operation_not_implemented',501);
+    if(args['p_action']==='edit_linked_mail_draft'){
+     const p=args['p_args'];
+     if(!p||typeof p!=='object'||Array.isArray(p)||
+        Object.keys(args).some(k=>!['p_action','p_args','p_date'].includes(k))||
+        Object.keys(p).some(k=>!['p_id','p_version','p_subject','p_content','p_origin','p_court','p_unit','p_role'].includes(k))||
+        typeof p['p_subject']!=='string'||typeof p['p_content']!=='string')
+      throw new CloudAccessError('invalid_mail_lifecycle_request',400);
+     const {row,version}=await lifecycleTarget(p['p_id'],{deleted:false});
+     if(row.publication_state!=='draft')throw new CloudAccessError('not_a_draft',409);
+     if(p['p_version']!==version)throw new CloudAccessError('letter_version_conflict',409);
+     // The origin House of a draft cannot be switched here.
+     if((p['p_origin']||null)!==row.origin_house_id)throw new CloudAccessError('workspace_operation_not_implemented',501);
+     let links;
+     try{links=composerOptions({p_court:p['p_court'],p_role:p['p_role'],p_unit:p['p_unit']});}
+     catch(e){if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);throw e;}
+     await checkLinks(row.origin_house_id,links);
+     return asAccess(()=>cloudMail().edit(token,{letterId:row.id,expectedVersion:version,
+      subject:p['p_subject'],content:p['p_content'],
+      ...(row.origin_house_id?{courtMemberId:links.courtMemberId??null,
+       courtAssignment:links.courtAssignment??null,unitId:links.unitId??null}:{})}));
+    }
     if(args['p_action']==='edit_campaign_letter'){
      // Author edit during the open week. The campaign date is not editable
      // here: the original form must submit the letter's own date unchanged.
@@ -245,6 +345,8 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     try{
      if(args['p_action']==='reply_weekly_message')
       reply=originalMailReply(args,key);
+     else if(args['p_action']==='save_weekly_reply_draft')
+      reply=originalReplyDraft(args,key);
      else{
      const targets=args['p_args']?.['p_targets'];
      if(Array.isArray(targets)&&targets.length>1)
@@ -255,6 +357,9 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
      if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);
      throw e;
     }
+    // Court member and unit must exist in the CURRENT sheet of the origin
+    // House the caller may edit; the browser never chooses foreign links.
+    for(const r of [request,...(batch??[])])if(r)await checkLinks(r.originHouseId,r);
     try{
      const mailService=createFirebaseCloudMail({
       db,auth,snapshotId,projectId:'cormyr',enabled:true,
@@ -304,6 +409,18 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     const source=match['source']==='firebase-cloud'?'firebase-cloud':'imported';
     return asAccess(()=>cloudMail().markUnread(token,{source,letterId:id}));
    }
+   if(name==='schedule_letter_draft'){
+    if(scope.profile==='editor')denied();
+    if(Object.keys(args).some(k=>!['p_id','p_week'].includes(k)))
+     throw new CloudAccessError('invalid_mail_lifecycle_request',400);
+    mailFlag();
+    const week=args['p_week'];
+    if(week!==null&&week!==undefined&&(!Number.isSafeInteger(week)||(week as number)<1))
+     throw new CloudAccessError('invalid_mail_lifecycle_request',400);
+    const {row,version}=await lifecycleTarget(args['p_id'],{deleted:false});
+    return asAccess(()=>cloudMail().schedule(token,{letterId:row.id,expectedVersion:version,
+     deliveryRound:(week??null) as number|null}));
+   }
    if(name==='delete_campaign_letter'||name==='restore_campaign_letter'){
     if(scope.profile==='editor')denied();
     if(Object.keys(args).length!==1)throw new CloudAccessError('invalid_mail_lifecycle_request',400);
@@ -336,6 +453,8 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     }
    }
    if(name==='is_campaign_admin')return admin;
+   // workspaceScope already proved an active, password-cleared account.
+   if(name==='campaign_access_active')return true;
    if(name==='current_campaign_profile')return scope.profile;
    if(name==='in_campaign_house')return args['edit_required']?admin||scope.editHouseIds.includes(args['h']):houseAllowed(args['h']);
    if(name==='get_public_campaign_time'||name==='get_campaign_calendar')return cloud.workspaceCalendar(token);
@@ -407,8 +526,10 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    const steps=input.steps as QueryStep[];
    if(!Array.isArray(steps)||steps.length>40)throw new CloudAccessError('invalid_query',400);
    const mutations=steps.some(s=>['insert','update','delete','upsert'].includes(s.op));
-   if(mutations)throw new CloudAccessError('workspace_operation_not_implemented',501);
-   result=queryRows(await visible(String(input.table)),steps);
+   if(mutations&&input.table==='narrator_mail_notes'&&steps.length===1&&steps[0]?.op==='upsert')
+    result=await saveNarratorNote(steps[0].args?.[0]);
+   else if(mutations)throw new CloudAccessError('workspace_operation_not_implemented',501);
+   else result=queryRows(await visible(String(input.table)),steps);
   }
   else if(input?.kind==='rpc')result=await rpc(String(input.name),input.args??{});
   else if(input?.kind==='house'){
