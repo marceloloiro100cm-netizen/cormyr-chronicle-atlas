@@ -1,0 +1,45 @@
+name: Firebase workspace imported relationships audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/workspace-link-audit-cli.mjs'
+      - '.github/workflows/firebase-workspace-link-audit.yml'
+permissions:
+  contents: read
+concurrency:
+  group: cormyr-workspace-links-readonly
+  cancel-in-progress: false
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test scripts/firebase/workspace-audit.test.mjs scripts/firebase/workspace-link-audit.test.mjs
+  audit:
+    needs: contracts
+    environment: firebase-auth-test-activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GOOGLE_CLOUD_PROJECT: cormyr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+          project_id: cormyr
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify private import reference counts without modifying data
+        run: node scripts/firebase/workspace-link-audit-cli.mjs
