@@ -69,7 +69,7 @@ async function handle(request:Request):Promise<Response>{
       'listOriginalMail','listOriginalRecords','getOriginalRecord',
       'listOriginalRecordVersions','listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles',
-      'listOriginalNewspapers','getOriginalNewspaper',
+      'listOriginalSpies','listOriginalNewspapers','getOriginalNewspaper',
       'listOriginalNewspaperRevisions','getOriginalNewspaperRevision'
     ].includes(String(payload.action)))
       return error(400,'invalid_action');
@@ -116,6 +116,9 @@ async function handle(request:Request):Promise<Response>{
           {filters:payload.filters,page:payload.page,size:payload.size});
         break;
       case 'listNewspaper':result=await service.listNewspaper(token);break;
+      case 'listOriginalSpies':
+        result=await service.listOriginalSpies(token,
+          payload.houseId===undefined?{}:{houseId:payload.houseId});break;
       case 'listOriginalNewspapers':
         result=await service.listOriginalNewspapers(token);break;
       case 'getOriginalNewspaper':

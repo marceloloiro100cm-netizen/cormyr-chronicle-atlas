@@ -393,6 +393,14 @@ test('original mail workspace scope is checked against live Auth and House stage
  await rejects(()=>noPlayer.service().workspaceMailScope(token),'access_denied',403);
 });
 
+test('editor never reads original spies or missions regardless of memberships',async()=>{
+ const editor=fixture('editor');
+ await rejects(()=>editor.service().listOriginalSpies(token,{}),'access_denied',403);
+ const player=fixture('jogador');
+ await rejects(()=>player.service().listOriginalSpies(token,{houseId:'house-b'}),
+   'access_denied',403);
+});
+
 test('editorial revision snapshots are unavailable to any player before private reads',async()=>{
  const player=fixture('jogador');
  await rejects(()=>player.service().listOriginalNewspaperRevisions(token,'e1',{}),

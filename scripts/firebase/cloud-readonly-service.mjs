@@ -6,6 +6,7 @@ import {listWorkspaceRecords,getWorkspaceRecord,listWorkspaceRecordVersions,
 import {listWorkspaceNewspapers,getWorkspaceNewspaper,
   listWorkspaceNewspaperRevisions,getWorkspaceNewspaperRevision,
   WorkspaceNewspaperError} from './workspace-newspaper.mjs';
+import {readWorkspaceSpies,WorkspaceSpyError} from './workspace-spies.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -126,6 +127,16 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
+    },
+    /** Imported spy assets and missions; authenticated House-only visibility. */
+    async listOriginalSpies(idToken,input){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='editor')deny('access_denied',403);
+      try{return await readWorkspaceSpies(db,snapshotId,viewer,input);}
+      catch(error){
+        if(error instanceof WorkspaceSpyError)deny(error.code,error.status);
+        throw error;
+      }
     },
     /** Editorial archive and revision history, never published by this read. */
     async listOriginalNewspapers(idToken){
