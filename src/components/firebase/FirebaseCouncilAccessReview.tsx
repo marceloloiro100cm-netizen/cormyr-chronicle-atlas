@@ -2,6 +2,7 @@ import {FirebasePendingAccessReview,
   type PendingAccessReview,type PendingDecisionProposal,type PendingDecisionPreview}
   from '@/components/firebase/FirebasePendingAccessReview';
 import {councilCloudRequest} from '@/lib/firebase-workspace/council-tools';
+import {FirebaseAccountManager} from './FirebaseAccountManager';
 
 type House={id:string;name:string;season?:number|null};
 
@@ -18,6 +19,7 @@ export function FirebaseCouncilAccessReview({
       uma prévia, sem criar, ativar ou alterar contas. A gestão de contas
       será implementada na próxima etapa do plano.
     </p>
+    <FirebaseAccountManager houses={houses}/>
     <FirebasePendingAccessReview
       inspect={()=>councilCloudRequest<PendingAccessReview>(
         '/api/firebase-cloud-read',{action:'listAccessRemediation'})}
