@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
 /**
  * Firebase-only, strictly gated House construction purchases.
  * The historical migration stages are READ ONLY. An operator must
@@ -209,7 +210,7 @@ export function createFirebaseCloudConstruction({
         allowedActor(docs[4]?.data(),uid,req.houseId);
         if(!docs.slice(0,4).every(d=>d.exists&&rootReady(d.data())))
           return fail('migration_stage_not_ready',503);
-        const calendar=campaignCalendar(docs[5]?.data());
+        const calendar=campaignCalendar(effectiveCloudCalendar(docs[5]?.data(),docs[6]?.data(),snapshotId));
         if(!runtimeReady(docs[6]?.data(),snapshotId,calendar.version))
           return fail('construction_runtime_not_approved',503);
         const house=docs[7]?.data();
@@ -331,3 +332,4 @@ export function createFirebaseCloudConstruction({
     },
   };
 }
+

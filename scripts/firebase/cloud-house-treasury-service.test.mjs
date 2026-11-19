@@ -341,3 +341,14 @@ test('Read summary is fail-closed until source is reconciled and owner account a
   await denied(()=>f.service().summary(token,'house-a'),
     'authentication_required',401);
 });
+
+test('Treasury audit uses the explicitly published operational calendar',async()=>{
+  const f=fixture();
+  f.records.set(f.runtime,{...f.records.get(f.runtime),calendarSource:'operational',
+    calendarVersion:6,calendar:{year:1522,month:1,day:20,festival:null,version:6}});
+  await f.service().adjust(token,req());
+  const audit=[...f.records].find(([p])=>p.includes('/houseTreasuryAudits/'))[1];
+  assert.equal(audit.campaignDate,'1522-02-20');
+  assert.equal(f.records.get(f.calendar).version,5);
+});
+

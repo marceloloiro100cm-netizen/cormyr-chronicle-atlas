@@ -111,3 +111,24 @@ env:
     availability:
       - RUNTIME
 
+
+  - variable: CORMYR_FIREBASE_HOUSE_ACTIVATION_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
+  - variable: CORMYR_FIREBASE_CLOUD_CONSTRUCTION_READ_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
+  - variable: CORMYR_FIREBASE_CLOUD_TREASURY_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
+  - variable: CORMYR_FIREBASE_CLOUD_TREASURY_READ_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+

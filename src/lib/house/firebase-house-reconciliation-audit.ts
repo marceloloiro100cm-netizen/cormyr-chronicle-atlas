@@ -1,3 +1,4 @@
+import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
 /**
  * Narrator-only diagnostic of operational House-state reconciliation.
  * READ ONLY: no seed, approval, Firestore Rules or cutover changes.
@@ -187,7 +188,7 @@ export function createFirebaseHouseReconciliationAudit({
            sheet['state']['houseId']!==selectedHouseId)
           return report('sheet_unavailable');
         const sourceVersion=sheet['version'];
-        const calendar=officialMonth(docs[7]?.data());
+        const calendar=officialMonth(effectiveCloudCalendar(docs[7]?.data(),docs[8]?.data(),snapshotId));
         if(!calendar)return report('calendar_unavailable',sourceVersion);
         if(!sourceValid(sheet['state'],selectedHouseId))
           return report('source_invalid',sourceVersion);
