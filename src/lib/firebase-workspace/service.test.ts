@@ -27,9 +27,9 @@ const db:any={runTransaction:async(work:any)=>work({get:async(ref:any)=>ref.get(
    :name==='campaignMailRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceLiveReconciled:true,applicationEnabled:true,mailEnabled:true,openRound:f.liveRound,calendarVersion:1}:undefined,
  }),
  collection:(sub:string)=>({
-  get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),
+  get:async()=>({docs:sub==='access'?access.map(v=>({id:v.userId,data:()=>v})):[]}),
   doc:()=>({get:async()=>({exists:f.runtimeReady,data:()=>({year:1522,month:0,day:1,version:1})})}),
-  limit:()=>({get:async()=>({docs:(sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:sub==='narratorMailNotes'?f.cloudNotes:sub==='calendarAudit'?f.hubAudit:sub==='scheduleEvents'?f.events:sub==='houseEconomies'?f.economies:sub==='letterConsequences'?[]:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
+  limit:()=>({get:async()=>({docs:(sub==='accountAccess'?[]:sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:sub==='narratorMailNotes'?f.cloudNotes:sub==='calendarAudit'?f.hubAudit:sub==='scheduleEvents'?f.events:sub==='houseEconomies'?f.economies:sub==='letterConsequences'?[]:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
   where:()=>({get:async()=>({docs:[]})}),
  })
 })})};
