@@ -80,9 +80,13 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     rows('campaign_letters'),rows('letter_replies'),rows('letter_receipts'),players(),memberships(),rows('campaign_houses'),rows('letter_rounds')]);
    if(scope.profile==='editor')denied();
    const mergedReceipts=await addOperationalReceipts(letters,receipts);
-   return projectWorkspaceMailTables({campaign_letters:letters,letter_replies:replies,letter_receipts:mergedReceipts,
+   const dataset=projectWorkspaceMailTables({campaign_letters:letters,letter_replies:replies,letter_receipts:mergedReceipts,
     campaign_players:p,house_memberships:m,campaign_houses:h,letter_rounds:rounds} as WorkspaceMailTables,
     {...scope,profile:scope.profile as 'narrador'|'jogador'});
+   // A foreign letter may have a valid receipt identity, but it must never
+   // reveal its existence through the original table/RPC compatibility API.
+   const visibleLetterIds=new Set(dataset.letters.filter(l=>canReadLetterAs(dataset,l,scope.uid)).map(l=>l.id));
+   return {...dataset,receipts:dataset.receipts.filter(r=>visibleLetterIds.has(r.letter_id))};
   })();
   const sheets=async()=> (await rows('noble_house_sheets')).filter(r=>houseAllowed(r['house_id']));
   const sheetFor=async(id:string)=>{
