@@ -5,6 +5,8 @@ import {FirebaseOfficialFrame,FirebaseOfficialHome,type FirebaseOfficialModule}
 import '../firebase-official.css';
 import {createFileRoute,useNavigate} from '@tanstack/react-router';
 import {CouncilOpening} from '@/components/firebase/CouncilOpening';
+import {FirebaseFirstAccessPassword} from '@/components/firebase/FirebaseFirstAccessPassword';
+import {firebaseAccountRequest} from '@/lib/firebase-workspace/account-client';
 import {Button} from '@/components/ui/button';
 import {hasStoredFirebaseSession,handOffLoginMessage} from '@/lib/auth/firebase-login-handoff';
 import {lazy,Suspense,useEffect,useRef,useState,type FormEvent} from 'react';
@@ -240,6 +242,7 @@ function FirebaseAccess(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [view,setView]=useState<SessionView|null>(null);
+  const [passwordPending,setPasswordPending]=useState(false);
   const [activeModule,setActiveModule]=useState<FirebaseOfficialModule>('inicio');
   const selectedRole=useRef<SessionView['profile']|null>(null);
   const loadGeneration=useRef(0);
@@ -292,7 +295,25 @@ function FirebaseAccess(){
     if(!expectedUid)throw Error('Firebase session unavailable');
     // Only the server-side Firebase "session" result can authorize a profile.
     // Independent read-only modules are optional and never grant permissions.
-    const profile=await readCloud<SessionView>('session');
+    let profile:SessionView;
+    try{
+      profile=await readCloud<SessionView>('session');
+    }catch(error){
+      // Só a verificação de acesso restrito libera a tela de troca de senha.
+      // Nenhuma leitura da campanha acontece antes de concluir a rotação.
+      const status=(error as {status?:unknown}|null)?.status;
+      if(status===403){
+        const account=await firebaseAccountRequest<{
+          profile:string;active:boolean;requirePasswordChange:boolean;
+        }>('status');
+        if(account.active&&account.requirePasswordChange&&
+           ['jogador','editor'].includes(account.profile)){
+          setView(null);setPasswordPending(true);return;
+        }
+      }
+      throw error;
+    }
+    setPasswordPending(false);
     if(profile?.authenticated!==true||
        !['jogador','narrador','editor'].includes(profile.profile))
       throw Error('Firebase session not authorized');
@@ -584,6 +605,7 @@ function FirebaseAccess(){
     firebaseAuth()?.signOut();
     selectedRole.current=null;
     setActiveModule('inicio');
+    setPasswordPending(false);
     setView(null);setHouse(null);setHouseReconciliation(null);setRoleCheck(null);
     setNarratorLibraryOpen(false);
     setHouseCatalogAvailable(true);
@@ -621,6 +643,9 @@ function FirebaseAccess(){
       profile={view.profile} memberHouseIds={view.memberHouseIds} onSignOut={()=>signOut()}/>
   </Suspense>:null;
   if(council)return council;
+  if(passwordPending)return <FirebaseFirstAccessPassword
+    onDone={()=>signOut('Senha alterada. Entre novamente com a nova senha.')}
+    onSignOut={()=>signOut()}/>;
   // Enquanto a sessão é conferida: a mesma tela de abertura, nunca um
   // segundo formulário de login (Portões de Cormyr foi unificado em /auth).
   if(!view)return <CouncilOpening publicTime>
