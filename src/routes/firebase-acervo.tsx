@@ -20,6 +20,18 @@ type LinkAudit={status:string;sourceRelationshipsChecked?:boolean;
 type RecordItem={id:string;title:string;kind:string;visibility:string;
   house_id:string|null;version:number;updated_at:string|null};
 type RecordList={readOnly:true;total:number;items:RecordItem[]};
+type HouseUnit={id:string;name:string;types:string[];
+  training:string|null;domainId:string|null;status:string|null;
+  strength:number|null;casualties:number|null;health:number|null;
+  xp:number|null;destroyed:boolean};
+type HouseHolding={id:string;name:string;catalogItem:string|null;
+  status:string|null;domainId:string|null};
+type HouseSheetRow={houseId:string;version:number;phase:string|null;
+  units:HouseUnit[];holdings:HouseHolding[];unitCount:number;
+  holdingCount:number;projectCount:number|null;courtCount:number|null;
+  domainCount:number|null};
+type HouseSheets={readOnly:true;total:number;units:number;holdings:number;
+  items:HouseSheetRow[]};
 type RecordDetail={record:RecordItem&{content:string}};
 type RecordVersion={version:number;created_at:string|null;snapshot:unknown};
 type VersionList={total:number;versions:RecordVersion[]};
@@ -90,6 +102,8 @@ function FirebaseOriginalArchive(){
   const [session,setSession]=useState<Session|null>(null);
   const [houses,setHouses]=useState<House[]>([]);
   const [houseId,setHouseId]=useState('');
+  const [sheetHouseId,setSheetHouseId]=useState('');
+  const [sheets,setSheets]=useState<HouseSheets|null>(null);
   const [audit,setAudit]=useState<Audit|null>(null);
   const [links,setLinks]=useState<LinkAudit|null>(null);
   const [records,setRecords]=useState<RecordList|null>(null);
@@ -146,6 +160,7 @@ function FirebaseOriginalArchive(){
     }catch(e){
       if(generation.current===current){
         setRecords(null);setRecord(null);setVersions(null);
+        setSheets(null);
         setMail(null);setAudit(null);setLinks(null);
         setNewspapers(null);setNewspaper(null);
         setPaperRevisions(null);setPaperRevision(null);
@@ -161,6 +176,14 @@ function FirebaseOriginalArchive(){
     ]);
     if(m.status!=='complete'||l.status!=='complete')throw Error('Importação ainda não conferida.');
     setAudit(m);setLinks(l);
+  });
+  const loadHouseSheets=()=>void run(async()=>{
+    const result=await readFirebaseArchive<HouseSheets>('listOriginalHouseSheets',
+      sheetHouseId?{houseId:sheetHouseId}:{});
+    if(result.readOnly!==true||!Array.isArray(result.items)||
+       !Number.isSafeInteger(result.units)||!Number.isSafeInteger(result.holdings))
+      throw Error('Acervo das fichas nobres inconsistente.');
+    setSheets(result);
   });
   const loadRecords=()=>void run(async()=>{
     setRecord(null);setVersions(null);
@@ -372,6 +395,71 @@ function FirebaseOriginalArchive(){
           </details>}
         </>}
       </article>}
+    </section>}
+    {canView&&<section className="space-y-3 rounded border p-4">
+      <h2 className="text-lg font-semibold">Fichas nobres, exércitos e construções</h2>
+      <p className="text-sm">Unidades e posses originais das fichas importadas.
+        São os valores históricos registrados, sem recalcular recursos,
+        alterar baixas ou gerar tropas de demonstração.</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">Casa
+          <select className="ml-2 rounded border p-2" value={sheetHouseId}
+            onChange={e=>{setSheetHouseId(e.target.value);setSheets(null);}}>
+            <option value="">Todas as Casas autorizadas</option>
+            {houses.filter(h=>session?.profile==='narrador'||
+              session?.memberHouseIds.includes(h.id)).map(h=>
+              <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+        </label>
+        <button type="button" className="rounded border px-3 py-2 text-sm"
+          disabled={busy} onClick={loadHouseSheets}>
+          Consultar fichas e unidades reais
+        </button>
+      </div>
+      {sheets&&<div className="space-y-4">
+        <p className="text-sm">Fichas: <strong>{sheets.total}</strong>.
+          Unidades militares: <strong>{sheets.units}</strong>.
+          Posses e construções: <strong>{sheets.holdings}</strong>.</p>
+        {sheets.items.map(row=><article key={row.houseId}
+          className="space-y-2 border-t py-3">
+          <h3 className="font-semibold">
+            {houses.find(h=>h.id===row.houseId)?.name??row.houseId}
+            {' '}· Ficha v{row.version}
+          </h3>
+          <p className="text-xs">
+            Domínios: {row.domainCount??'—'} · Membros da corte:
+            {' '}{row.courtCount??'—'} · Projetos: {row.projectCount??'—'}
+          </p>
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">
+              Exército ({row.unitCount} unidades)
+            </summary>
+            {row.units.map(u=><div key={u.id} className="border-t py-2 text-sm">
+              <strong>{u.name}</strong>
+              <p>{u.types.join(', ')||'Tipo não informado'} ·
+                {' '}Treinamento: {u.training??'—'} ·
+                {' '}Situação: {u.status??'—'}</p>
+              <p>Força: {u.strength??'—'} · Baixas: {u.casualties??'—'} ·
+                {' '}Saúde: {u.health??'—'} · XP: {u.xp??'—'}
+                {u.destroyed?' · Destruída':''}</p>
+            </div>)}
+            {row.units.length===0&&<p className="text-sm">
+              Nenhuma unidade registrada nesta ficha histórica.</p>}
+          </details>
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">
+              Posses, construções e propriedades ({row.holdingCount})
+            </summary>
+            {row.holdings.map(h=><div key={h.id} className="border-t py-2 text-sm">
+              <strong>{h.name}</strong>
+              <p>Estado: {h.status??'—'} · Catálogo: {h.catalogItem??'—'}
+                {' '}· Domínio: {h.domainId??'—'}</p>
+            </div>)}
+            {row.holdings.length===0&&<p className="text-sm">
+              Nenhuma posse registrada nesta ficha histórica.</p>}
+          </details>
+        </article>)}
+      </div>}
     </section>}
     {canView&&<section className="space-y-3 rounded border p-4">
       <h2 className="text-lg font-semibold">Registros e fichas históricos</h2>
