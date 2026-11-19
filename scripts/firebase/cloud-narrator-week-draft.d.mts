@@ -30,6 +30,8 @@ export interface NarratorWeekDraftView {
   editable:boolean;
   calendarPublished:boolean;
   mailEnabled:boolean;
+  operationalCalendar?:NarratorWeekDate&{version:number}|null;
+  openRound?:number|null;
   saved?:boolean;
 }
 export function planNarratorWeekDraft(input:{
