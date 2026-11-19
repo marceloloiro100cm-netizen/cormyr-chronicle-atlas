@@ -63,12 +63,15 @@ async function handle(request:Request):Promise<Response>{
   try{
     const payload=await boundedJson(request) as {action?:unknown;houseId?:unknown;editionId?:unknown;
       targetUid?:unknown;proposal?:unknown;filters?:unknown;page?:unknown;size?:unknown;
-      recordId?:unknown;kind?:unknown};
+      recordId?:unknown;kind?:unknown;revisionId?:unknown};
     if(!['session','inspectWorkspaceImport','inspectWorkspaceLinks','listAccessRemediation','previewAccessRemediation','listHouses',
       'getHouse','getCalendar',
       'listOriginalMail','listOriginalRecords','getOriginalRecord',
       'listOriginalRecordVersions','listMailbox','listNewspaper','getNewspaper','listSpyAgents',
-      'listSpyDossiers','listHouseBattles'].includes(String(payload.action)))
+      'listSpyDossiers','listHouseBattles',
+      'listOriginalNewspapers','getOriginalNewspaper',
+      'listOriginalNewspaperRevisions','getOriginalNewspaperRevision'
+    ].includes(String(payload.action)))
       return error(400,'invalid_action');
     // Firebase Admin uses the App Hosting service account, not a JSON key in source.
     const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([
@@ -113,6 +116,16 @@ async function handle(request:Request):Promise<Response>{
           {filters:payload.filters,page:payload.page,size:payload.size});
         break;
       case 'listNewspaper':result=await service.listNewspaper(token);break;
+      case 'listOriginalNewspapers':
+        result=await service.listOriginalNewspapers(token);break;
+      case 'getOriginalNewspaper':
+        result=await service.getOriginalNewspaper(token,payload.editionId);break;
+      case 'listOriginalNewspaperRevisions':
+        result=await service.listOriginalNewspaperRevisions(token,payload.editionId,
+          {page:payload.page,size:payload.size});break;
+      case 'getOriginalNewspaperRevision':
+        result=await service.getOriginalNewspaperRevision(
+          token,payload.editionId,payload.revisionId);break;
       case 'getNewspaper':result=await service.getNewspaper(token,payload.editionId);break;
       case 'listSpyAgents':result=await service.listSpyAgents(token,payload.houseId);break;
       case 'listSpyDossiers':result=await service.listSpyDossiers(token,payload.houseId);break;

@@ -393,6 +393,14 @@ test('original mail workspace scope is checked against live Auth and House stage
  await rejects(()=>noPlayer.service().workspaceMailScope(token),'access_denied',403);
 });
 
+test('editorial revision snapshots are unavailable to any player before private reads',async()=>{
+ const player=fixture('jogador');
+ await rejects(()=>player.service().listOriginalNewspaperRevisions(token,'e1',{}),
+   'access_denied',403);
+ await rejects(()=>player.service().getOriginalNewspaperRevision(token,'e1',1),
+   'access_denied',403);
+});
+
 test('original record archive endpoints enforce viewer roles before private IO',async()=>{
  const f=fixture('editor');
  await rejects(()=>f.service().listOriginalRecords(token,{}),'access_denied',403);

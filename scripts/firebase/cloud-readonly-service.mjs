@@ -3,6 +3,9 @@ import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
 import {inspectWorkspaceLinks} from './workspace-link-audit.mjs';
 import {listWorkspaceRecords,getWorkspaceRecord,listWorkspaceRecordVersions,
   WorkspaceRecordError} from './workspace-records.mjs';
+import {listWorkspaceNewspapers,getWorkspaceNewspaper,
+  listWorkspaceNewspaperRevisions,getWorkspaceNewspaperRevision,
+  WorkspaceNewspaperError} from './workspace-newspaper.mjs';
 /**
  * Cormyr: Firebase Cloud-only, read-only campaign access.
  *
@@ -123,6 +126,41 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const {profile,memberHouseIds}=await scopeFor(idToken);
       return {authenticated:true,profile,memberHouseIds,readOnly:true,
         snapshotReconciliationPending:true};
+    },
+    /** Editorial archive and revision history, never published by this read. */
+    async listOriginalNewspapers(idToken){
+      const viewer=await scopeFor(idToken);
+      try{return await listWorkspaceNewspapers(db,snapshotId,viewer);}
+      catch(error){
+        if(error instanceof WorkspaceNewspaperError)deny(error.code,error.status);
+        throw error;
+      }
+    },
+    async getOriginalNewspaper(idToken,editionId){
+      const viewer=await scopeFor(idToken);
+      try{return await getWorkspaceNewspaper(db,snapshotId,viewer,editionId);}
+      catch(error){
+        if(error instanceof WorkspaceNewspaperError)deny(error.code,error.status);
+        throw error;
+      }
+    },
+    async listOriginalNewspaperRevisions(idToken,editionId,query){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='jogador')deny('access_denied',403);
+      try{return await listWorkspaceNewspaperRevisions(db,snapshotId,viewer,editionId,query);}
+      catch(error){
+        if(error instanceof WorkspaceNewspaperError)deny(error.code,error.status);
+        throw error;
+      }
+    },
+    async getOriginalNewspaperRevision(idToken,editionId,revisionId){
+      const viewer=await scopeFor(idToken);
+      if(viewer.profile==='jogador')deny('access_denied',403);
+      try{return await getWorkspaceNewspaperRevision(db,snapshotId,viewer,editionId,revisionId);}
+      catch(error){
+        if(error instanceof WorkspaceNewspaperError)deny(error.code,error.status);
+        throw error;
+      }
     },
     /** Original archived records; never changes the operational Firestore data. */
     async listOriginalRecords(idToken,input){

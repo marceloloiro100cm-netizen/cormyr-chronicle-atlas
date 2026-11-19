@@ -31,6 +31,10 @@ export interface FirebaseCloudReadonly {
   getOriginalRecord(idToken:string,recordId:unknown):Promise<unknown>;
   listOriginalRecordVersions(idToken:string,recordId:unknown):Promise<unknown>;
   listNewspaper(idToken:string):Promise<unknown>;
+  listOriginalNewspapers(idToken:string):Promise<unknown>;
+  getOriginalNewspaper(idToken:string,editionId:unknown):Promise<unknown>;
+  listOriginalNewspaperRevisions(idToken:string,editionId:unknown,query:unknown):Promise<unknown>;
+  getOriginalNewspaperRevision(idToken:string,editionId:unknown,revisionId:unknown):Promise<unknown>;
   getNewspaper(idToken:string,editionId:unknown):Promise<unknown>;
   listSpyAgents(idToken:string,houseId:unknown):Promise<unknown>;
   listSpyDossiers(idToken:string,houseId:unknown):Promise<unknown>;
