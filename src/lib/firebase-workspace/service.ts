@@ -210,8 +210,9 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    }
    if(name==='reply_delivery_week'){
     if(scope.profile==='editor')denied();
+    if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')return null;
     if(Object.keys(args).length!==1||typeof args['p_recipient']!=='string'||
-       !/^[^/\\u0000-\\u001f\\u007f]{1,128}$/.test(args['p_recipient']))
+       !/^[^/\u0000-\u001f\u007f]{1,128}$/.test(args['p_recipient']))
      throw new CloudAccessError('invalid_week_request',400);
     const root=db.collection('campaignCloudRuntime').doc(snapshotId);
     const [live,mailGate,calendar]=await Promise.all([
