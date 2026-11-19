@@ -15,6 +15,9 @@ on:
       - 'scripts/firebase/workspace-records.mjs'
       - 'scripts/firebase/workspace-newspaper.mjs'
       - 'scripts/firebase/workspace-spies.mjs'
+      - 'scripts/firebase/workspace-house-source.mjs'
+      - 'scripts/firebase/workspace-house-source.test.mjs'
+      - 'scripts/firebase/workspace-house-sheets.mjs'
       - 'src/lib/mail/firebase-workspace-mail.ts'
       - '.github/workflows/firebase-workspace-link-audit.yml'
 permissions:

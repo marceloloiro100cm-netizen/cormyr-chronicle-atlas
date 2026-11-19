@@ -6,6 +6,8 @@
 import {filterWorkspaceRecords} from './workspace-records.mjs';
 import {projectWorkspaceNewspapers} from './workspace-newspaper.mjs';
 import {projectWorkspaceSpies} from './workspace-spies.mjs';
+import {listImportedHouseSheets,getImportedHouseSheet}
+  from './workspace-house-source.mjs';
 
 export const MODULE_TABLES=[
   'campaign_records','record_versions','campaign_newspapers',
@@ -13,6 +15,7 @@ export const MODULE_TABLES=[
   'spy_mission_timeline','spy_agent_history','spy_agent_removals',
   'campaign_letters','letter_replies','letter_receipts','letter_rounds',
   'campaign_players','house_memberships','campaign_houses',
+  'noble_house_sheets','noble_house_ledger',
 ];
 export const MAIL_TABLES=[
   'campaign_letters','letter_replies','letter_receipts','letter_rounds',
@@ -36,6 +39,21 @@ export function inspectModuleSourceContracts(tables,runMailPage){
       !Number.isSafeInteger(row.version)||row.version<1||
       !row.snapshot||typeof row.snapshot!=='object'||Array.isArray(row.snapshot)))
       blocked();
+    step='houses';
+    const houses=listImportedHouseSheets(tables,narrator);
+    const backed=houses.items.filter(h=>h.available);
+    if(backed.length!==tables.noble_house_sheets.length)blocked();
+    const units=backed.reduce((n,h)=>n+h.units,0);
+    const holdings=backed.reduce((n,h)=>n+h.holdings,0);
+    const projects=backed.reduce((n,h)=>n+h.projects,0);
+    const ledger=backed.reduce((n,h)=>n+h.ledgerEntries,0);
+    if(ledger!==tables.noble_house_ledger.length)blocked();
+    for(const summary of backed){
+      const detail=getImportedHouseSheet(tables,narrator,summary.houseId);
+      if(detail.units.length!==summary.units||
+         detail.holdings.length!==summary.holdings||
+         detail.projects.length!==summary.projects)blocked();
+    }
     step='newspaper';
     const newspaper=projectWorkspaceNewspapers(tables.campaign_newspapers,
       tables.campaign_newspaper_revisions,{uid:narrator.uid,profile:'editor'});
@@ -83,7 +101,9 @@ export function inspectModuleSourceContracts(tables,runMailPage){
       playerProjection='source_shape_valid';
     }
     return {status:'source_projection_consistent',readOnly:true,
-      moduleCount:4,sourceRowsChecked:total,
+      moduleCount:5,sourceRowsChecked:total,
+      casas:{houses:houses.items.length,sheets:backed.length,
+        units,holdings,projects,ledger},
       records:{items:records.length,versions:tables.record_versions.length},
       newspaper:{editions:newspaper.total,
         revisions:newspaper.revisionsAudited,
