@@ -102,7 +102,8 @@ describe('área interna Firebase com a interface original (prévia visual)', () 
   it('a rota Firebase carrega a área interna só após a sessão validada', () => {
     const route = readFileSync(resolve(process.cwd(), 'src/routes/firebase-access.tsx'), 'utf8');
     expect(route).toContain("lazy(()=>import('@/components/firebase/FirebaseCampaignWorkspace'))");
-    expect(route).toContain('if(view)return <Suspense');
+    expect(route).toContain('const council=view?<Suspense');
+    expect(route).toContain('if(council)return council;');
     expect(route).toContain('<h1>Portões de Cormyr</h1>');
   });
 });

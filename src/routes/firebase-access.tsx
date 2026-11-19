@@ -632,11 +632,12 @@ function FirebaseAccess(){
   // Após o login ("Portões de Cormyr"), a área interna é a interface original
   // da segunda temporada. Os módulos Firebase abaixo seguem disponíveis no código
   // para a ligação dos conectores.
-  if(view)return <Suspense fallback={<p role="status" className="firebase-official-module-note">
+  const council=view?<Suspense fallback={<p role="status" className="firebase-official-module-note">
     Abrindo o Conselho…</p>}>
     <FirebaseCampaignWorkspace key={view.profile+'|'+view.memberHouseIds.join(',')}
       profile={view.profile} memberHouseIds={view.memberHouseIds} onSignOut={signOut}/>
-  </Suspense>;
+  </Suspense>:null;
+  if(council)return council;
 
   return <FirebaseOfficialFrame profile={view?.profile??null}
     active={activeModule} onSelect={setActiveModule} onSignOut={signOut}>
