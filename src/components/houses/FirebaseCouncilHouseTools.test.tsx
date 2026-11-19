@@ -15,7 +15,7 @@ function fakeData(narrator:boolean){
     if(endpoint==='/api/firebase-operational-economy')
       throw Error('feature_off');
     if(endpoint==='/api/firebase-cloud-treasury')
-      return body.action==='status'
+      return body['action']==='status'
         ?{enabled:true,canAdjust:false,readOnly:true,balance:null,version:null}
         :{available:true,readOnly:true,balance:25,version:2};
     throw Error('unexpected endpoint');
