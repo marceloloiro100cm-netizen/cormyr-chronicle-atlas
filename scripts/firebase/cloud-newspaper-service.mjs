@@ -1,5 +1,6 @@
 import {validateEditorialContent} from './cloud-editorial-content.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
+import {currentAccountAccess,chooseCurrentAccountAccess} from './operational-account-access.mjs';
 /**
  * Firebase Cloud-only newspaper publishing. Preserves imported editions.
  *
@@ -106,14 +107,16 @@ export function createFirebaseCloudNewspaper({
   async function readApproval(uid,tx){
     const docs=await Promise.all([
       ...roots.map(ref=>tx.get(ref)),tx.get(calendar),
-      tx.get(domain.collection('access').doc(uid)),tx.get(runtime),
+      tx.get(domain.collection('access').doc(uid)),
+       tx.get(runtime.collection('accountAccess').doc(uid)),tx.get(runtime),
     ]);
     readyRoots(docs.slice(0,4));
-    const cal=effectiveCloudCalendar(docs[4]?.data(),docs[6]?.data(),snapshotId);
+    const cal=effectiveCloudCalendar(docs[4]?.data(),docs[7]?.data(),snapshotId);
     const date=calendarKey(cal);
-    authorized(uid,docs[5]?.data());
-    readyRuntime(docs[6]?.data(),snapshotId,cal);
-    return {calendarDate:date,config:docs[6].data()};
+    authorized(uid,chooseCurrentAccountAccess(uid,docs[5]?.data(),
+       docs[6].exists?docs[6].data():null,docs[7]?.data()));
+    readyRuntime(docs[7]?.data(),snapshotId,cal);
+    return {calendarDate:date,config:docs[7].data()};
   }
   const receiptId=(uid,editionId)=>digest('newspaper-read:'+uid+':'+editionId);
   function readerScope(uid,scope){
@@ -147,13 +150,15 @@ export function createFirebaseCloudNewspaper({
     const cloudId=id.startsWith('cloud-');
     const target=cloudId?editions.doc(id):
       roots[3].collection('editions').doc(id);
-    const [stageDocs,cal,scope,live,paper,receipt]=await Promise.all([
+    const [stageDocs,cal,scope,overlay,live,paper,receipt]=await Promise.all([
       Promise.all(roots.map(ref=>tx.get(ref))),tx.get(calendar),
-      tx.get(domain.collection('access').doc(uid)),tx.get(runtime),
+      tx.get(domain.collection('access').doc(uid)),
+      tx.get(runtime.collection('accountAccess').doc(uid)),tx.get(runtime),
       tx.get(target),tx.get(receiptRef),
     ]);
     readyRoots(stageDocs);
-    readerScope(uid,scope.data());
+    readerScope(uid,chooseCurrentAccountAccess(uid,scope.data(),
+       overlay.exists?overlay.data():null,live.data()));
     const effective=effectiveCloudCalendar(cal.data(),live.data(),snapshotId);
     calendarKey(effective);
     readyRuntime(live.data(),snapshotId,effective);
@@ -171,10 +176,10 @@ export function createFirebaseCloudNewspaper({
     async listReaderReceipts(token){
       const uid=await actorId(token);
       const [scope,...rootDocs]=await Promise.all([
-        domain.collection('access').doc(uid).get(),
+        currentAccountAccess(db,snapshotId,uid),
         ...roots.map(ref=>ref.get()),calendar.get(),runtime.get(),
       ]);
-      readerScope(uid,scope.data());
+      readerScope(uid,scope);
       readyRoots(rootDocs.slice(0,4));
       const effective=effectiveCloudCalendar(rootDocs[4].data(),
         rootDocs[5].data(),snapshotId);
@@ -305,10 +310,10 @@ export function createFirebaseCloudNewspaper({
       // Status is read-only. Do not leak private stage details, UID or
       // write approval settings to an unauthenticated caller.
       const [scope,...documents]=await Promise.all([
-        domain.collection('access').doc(uid).get(),
+        currentAccountAccess(db,snapshotId,uid),
         ...roots.map(ref=>ref.get()),calendar.get(),runtime.get(),
       ]);
-      authorized(uid,scope.data());
+      authorized(uid,scope);
       const rootsOk=documents.slice(0,4).every(d=>
         d.exists&&d.data()?.status==='complete'&&d.data()?.private===true);
       let available=false;

@@ -2,6 +2,7 @@ import {FirebasePendingAccessReview,
   type PendingAccessReview,type PendingDecisionProposal,type PendingDecisionPreview}
   from '@/components/firebase/FirebasePendingAccessReview';
 import {councilCloudRequest} from '@/lib/firebase-workspace/council-tools';
+import {FirebaseAccountManager} from './FirebaseAccountManager';
 
 type House={id:string;name:string;season?:number|null};
 
@@ -14,10 +15,11 @@ export function FirebaseCouncilAccessReview({
   return <section aria-label="Revisão de contas Firebase" className="space-y-3">
     <h2 className="text-xl font-semibold">Contas pendentes do Firebase</h2>
     <p className="text-sm">
-      Consulta reservada ao Narrador. A validação da proposta é somente
-      uma prévia, sem criar, ativar ou alterar contas. A gestão de contas
-      será implementada na próxima etapa do plano.
+      Consulta reservada ao Narrador. O diagnóstico histórico abaixo é
+      somente uma prévia e não altera contas. A gestão operacional é separada
+      e só fica disponível depois da homologação de segurança no Firebase.
     </p>
+    <FirebaseAccountManager houses={houses}/>
     <FirebasePendingAccessReview
       inspect={()=>councilCloudRequest<PendingAccessReview>(
         '/api/firebase-cloud-read',{action:'listAccessRemediation'})}

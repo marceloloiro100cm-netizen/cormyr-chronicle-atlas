@@ -23,6 +23,7 @@ import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 import {planNarratorAccessRemediation}
   from './cloud-access-remediation-plan.mjs';
 import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
+import {currentAccountAccess} from './operational-account-access.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -93,9 +94,8 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       deny('authentication_required',401);
     await stageReady('migrationDomainStage');
     await stageReady('migrationAuthStage');
-    const access=await get(db,'migrationDomainStage',snapshotId,'access',token.uid);
-    const v=access.data();
-    if(!access.exists||!v||v.userId!==token.uid||v.active!==true||
+    const v=await currentAccountAccess(db,snapshotId,token.uid);
+    if(!v||v.userId!==token.uid||v.active!==true||
        v.requirePasswordChange!==false)deny('access_denied',403);
     if(!['jogador','editor','narrador'].includes(v.profile))deny('access_denied',403);
     if(v.profile==='narrador'&&v.admin!==true)deny('access_denied',403);
@@ -337,16 +337,36 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         inventory=await auth.listUsers(1000);
       }catch{deny('access_inventory_unverified',503);}
       if(!Array.isArray(inventory?.users)||inventory.pageToken||
-         ![13,14].includes(inventory.users.length))
+         inventory.users.length>250||inventory.users.length<13)
         deny('access_inventory_unverified',503);
-      const liveByUid=new Map();
+      // Contas operacionais novas não integram as 14 identidades importadas.
+      const liveByUid=new Map(),checkedLive=new Set();
       for(const u of inventory.users){
         if(!u||typeof u.uid!=='string'||!SAFE_ID.test(u.uid)||
-           u.disabled!==false||!seen.has(u.uid)||liveByUid.has(u.uid))
+           checkedLive.has(u.uid))
           deny('access_inventory_unverified',503);
+        checkedLive.add(u.uid);
+        // Uma conta adicional só é legítima com vínculo operacional
+        // explicitamente autorizado, nunca por simples presença no Auth.
+        if(!seen.has(u.uid)){
+          const current=await currentAccountAccess(db,snapshotId,u.uid);
+          if(!current||current.profile==='narrador'||
+             current.active===true&&u.disabled===true||
+             current.active===false&&u.disabled===false)
+            deny('access_inventory_unverified',503);
+          continue;
+        }
+        // Desativação de conta histórica exige um overlay atual inativo.
+        if(u.disabled===true){
+          const current=await currentAccountAccess(db,snapshotId,u.uid);
+          const overlay=await db.collection('campaignCloudRuntime')
+            .doc(snapshotId).collection('accountAccess').doc(u.uid).get();
+          if(!overlay.exists||current?.active!==false)
+            deny('access_inventory_unverified',503);
+        }
         liveByUid.set(u.uid,u);
       }
-      if(liveByUid.size!==inventory.users.length||
+      if(![13,14].includes(liveByUid.size)||
          seen.size-liveByUid.size>1)
         deny('access_inventory_unverified',503);
       const archivedHistoricalAccess=seen.size-liveByUid.size;

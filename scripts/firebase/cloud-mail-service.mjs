@@ -19,6 +19,7 @@ import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
 import {effectiveCloudMail,deliveryOptions,deliveryPlan} from './cloud-mail-delivery-core.mjs';
+import {chooseCurrentAccountAccess,currentAccountAccess} from './operational-account-access.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -225,9 +226,10 @@ export function createFirebaseCloudMail({
     }))deny('access_denied',403);
   }
   async function readyTransaction(tx,uid){
-    const [domain,authRoot,temporal,scopeDoc,calendar,live,mailGate]=await Promise.all([
+    const [domain,authRoot,temporal,scopeDoc,overlayDoc,calendar,live,mailGate]=await Promise.all([
       tx.get(stage),tx.get(authStage),tx.get(timeStage),
       tx.get(access.doc(uid)),
+      tx.get(runtime.collection('accountAccess').doc(uid)),
       tx.get(timeStage.collection('calendar').doc('current')),tx.get(runtime),
       tx.get(mailRuntime),
     ]);
@@ -238,7 +240,8 @@ export function createFirebaseCloudMail({
     if(!calendar.exists||!Number.isInteger(calendar.data()?.version))
       deny('calendar_unavailable',503);
     const campaignDate=campaignDateOf(effectiveCloudCalendar(calendar.data(),live.data(),snapshotId));
-    const actor=accessOf(uid,scopeDoc.data());
+    const actor=accessOf(uid,chooseCurrentAccountAccess(uid,scopeDoc.data(),
+       overlayDoc.exists?overlayDoc.data():null,live.data()));
     // Every active player membership is verified against its exact House
     // document INSIDE the same transaction as mail authorization.
     await verifyMemberHouses(actor,ref=>tx.get(ref));
@@ -324,12 +327,12 @@ export function createFirebaseCloudMail({
   return {
     async status(idToken){
       const uid=await uidFromToken(idToken);
-      const [doc,domain,authRoot,temporal,cal,live,mailGate]=await Promise.all([
-        access.doc(uid).get(),stage.get(),authStage.get(),timeStage.get(),
+      const [effective,domain,authRoot,temporal,cal,live,mailGate]=await Promise.all([
+        currentAccountAccess(db,snapshotId,uid),stage.get(),authStage.get(),timeStage.get(),
         timeStage.collection('calendar').doc('current').get(),runtime.get(),
         mailRuntime.get(),
       ]);
-      const actor=accessOf(uid,doc.data());
+      const actor=accessOf(uid,effective);
       await verifyMemberHouses(actor,ref=>ref.get());
       // No snapshot metadata, UIDs or incomplete sources go to the caller.
       const rootsReady=[domain,authRoot,temporal].every(d=>

@@ -16,6 +16,7 @@ import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/
 import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
 import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
+import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -69,21 +70,36 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   const once=<T,>(key:string,read:()=>Promise<T>)=>cacheImportedTables?shared(db,key,read):read();
   const houseAllowed=(id:string)=>admin||scope.profile==='jogador'&&scope.memberHouseIds.includes(id);
   const checkHouse=(id:string)=>{if(typeof id!=='string'||!houseAllowed(id))denied();};
-  // All permission-bearing data come from CURRENT Cloud access, never historical memberships.
+  // Permissões atuais com overlay privado: jamais alterar ou autorizar pelo acervo.
   let accessPromise:Promise<any[]>|undefined;
-  const accessDocs=()=>accessPromise??=(async()=>{
-   const docs=await db.collection('migrationDomainStage').doc(snapshotId).collection('access').get();
-   return docs.docs.map((d:any)=>d['data']()).filter((a:any)=>a.active===true&&a.requirePasswordChange===false);
-  })();
+  const accessDocs=()=>accessPromise??=listCurrentAccountAccess(db,snapshotId);
   const players=async():Promise<Row[]>=>{
    const [original,access]=await Promise.all([rows('campaign_players'),accessDocs()]);
-   return original.map(p=>{
+   const mapped=original.map(p=>{
     const a=access.find((a:any)=>a.userId===p['user_id']&&a.playerId===p['id']);
-    return {...p,active:Boolean(a),require_password_change:false};
+    return {...p,
+      name:a?.name??p['name'],
+      roster_house_id:a?.rosterHouseId??p['roster_house_id'],
+      active:a?.active===true&&a?.requirePasswordChange===false,
+      require_password_change:a?.requirePasswordChange===true};
    });
+   const existing=new Set(original.map(p=>p['id']));
+   const added=access.filter((a:any)=>a.profile==='jogador'&&
+     typeof a.playerId==='string'&&!existing.has(a.playerId)&&
+     typeof a.name==='string'&&a.name.trim()).map((a:any)=>({
+       id:a.playerId,user_id:a.userId,name:a.name,
+       roster_house_id:a.rosterHouseId??a.memberHouseIds?.[0]??null,
+       folder_id:null,active:a.active===true&&a.requirePasswordChange===false,
+       require_password_change:a.requirePasswordChange===true,
+     }));
+   return [...mapped,...added];
   };
-  const memberships=async()=> (await accessDocs()).filter((a:any)=>a.profile==='jogador'&&a.playerId)
-   .flatMap((a:any)=>a.memberHouseIds.map((h:string)=>({player_id:a.playerId,house_id:h,can_edit:a.editHouseIds.includes(h),can_edit_attributes:a.attrHouseIds?.includes(h)??false})));
+  const memberships=async()=> (await accessDocs()).filter((a:any)=>
+    a.active===true&&a.requirePasswordChange===false&&a.profile==='jogador'&&a.playerId)
+   .flatMap((a:any)=>a.memberHouseIds.map((h:string)=>({
+     player_id:a.playerId,house_id:h,can_edit:a.editHouseIds.includes(h),
+     can_edit_attributes:a.attrHouseIds?.includes(h)??false,
+   })));
   // Operational read receipts live outside the immutable migration snapshot.
   // Reconcile them only under the independently approved live mail runtime.
   // Never use an unapproved or partially scanned receipt set for read indicators.
