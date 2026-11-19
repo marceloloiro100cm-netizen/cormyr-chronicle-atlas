@@ -2,7 +2,8 @@
  * Never persists a quote, allocates resources, advances time or rolls dice.
  * The caller must already have an authorized getHouse snapshot.
  */
-import {CORE_CATALOG,findItem} from './catalog';
+import {CORE_CATALOG} from './catalog';
+import type {CatalogItem} from './types';
 import {quote} from './engine';
 import {RESOURCE_KEYS,type HouseState} from './types';
 
@@ -76,11 +77,12 @@ function finiteResults(v:RecordLike):boolean{
 }
 export function previewHouseConstruction(
   state:unknown,input:unknown,houseName:string,version:number,
+  catalog:CatalogItem[]=CORE_CATALOG,
 ){
   const req=validate(input);
   if(!Number.isSafeInteger(version)||version<0||!stateReady(state,req.houseId))
     throw new ConstructionPreviewError('quote_source_unavailable',503);
-  const item=findItem(req.itemId);
+  const item=catalog.find(entry=>entry.id===req.itemId);
   if(!item)
     throw new ConstructionPreviewError('item_not_found',404);
   if(!state.domains.some(d=>d.id===req.domainId))
