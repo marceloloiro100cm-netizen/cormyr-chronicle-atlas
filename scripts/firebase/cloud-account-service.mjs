@@ -135,7 +135,17 @@ export function createFirebaseAccountService({
    if(already.data()?.actorUid!==actorUid||
       already.data()?.targetUid!==(input.targetUid??null))
     deny('request_key_conflict',409);
-   return {...already.data().result,duplicate:true};
+   const prior=already.data().result;
+   // Uma falha de rede após o commit não pode deixar uma conta criada
+   // desabilitada sem possibilidade de recuperação idempotente.
+   if(!prior||!ID.test(prior.uid))deny('request_key_conflict',409);
+   let user;
+   try{user=await auth.getUser(prior.uid);}catch{deny('account_recovery_pending',503);}
+   if(user.disabled===prior.active){
+     try{await auth.updateUser(prior.uid,{disabled:!prior.active});}
+     catch{deny('account_recovery_pending',503);}
+   }
+   return {...prior,duplicate:true};
   }
   const target=input.targetUid??null;
   const old=target?await currentAccountAccess(db,snapshotId,target):null;
