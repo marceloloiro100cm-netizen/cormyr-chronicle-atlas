@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- server validates rows against original source contracts. */
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs';
+import {createFirebaseCloudMail,CloudMailError} from '../../../scripts/firebase/cloud-mail-service.mjs';
+import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-runtime-approval.mjs';
+import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
@@ -39,12 +42,45 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
   };
   const memberships=async()=> (await accessDocs()).filter((a:any)=>a.profile==='jogador'&&a.playerId)
    .flatMap((a:any)=>a.memberHouseIds.map((h:string)=>({player_id:a.playerId,house_id:h,can_edit:a.editHouseIds.includes(h),can_edit_attributes:a.attrHouseIds?.includes(h)??false})));
+  // Operational read receipts live outside the immutable migration snapshot.
+  // Reconcile them only under the independently approved live mail runtime.
+  // Never use an unapproved or partially scanned receipt set for read indicators.
+  const addOperationalReceipts=async(letters:Row[],historical:Row[]):Promise<Row[]>=>{
+   const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
+   const [live,mailGate,calendar]=await Promise.all([
+    runtime.get(),db.collection('campaignMailRuntime').doc(snapshotId).get(),
+    db.collection('migrationTimeEngineStage').doc(snapshotId).collection('calendar').doc('current').get()]);
+   if(!live.exists||!mailGate.exists||!calendar.exists||
+      !cloudMailRuntimeApproved(live.data(),mailGate.data(),calendar.data(),snapshotId))
+    return historical;
+   const snapshot=await runtime.collection('mailReadReceipts').limit(2001).get();
+   if(!Array.isArray(snapshot.docs)||snapshot.docs.length>2000)
+    throw new CloudAccessError('mail_receipts_too_large',503);
+   const existing=new Map<string,Row>();
+   const key=(letterId:string,uid:string)=>letterId+'|'+uid;
+   for(const row of historical)existing.set(key(String(row['letter_id']),String(row['user_id'])),row);
+   const delivered=new Set(letters.filter(l=>l['publication_state']==='delivered'&&
+    l['deleted_at']==null).map(l=>l['id']));
+   const safe=/^[^/\\u0000-\\u001f\\u007f]{1,128}$/;
+   for(const doc of snapshot.docs){
+    const data=doc.data(),uid=data?.viewerUid,letterId=data?.letterId,at=data?.readAt;
+    if(data?.source!=='imported'||typeof uid!=='string'||!safe.test(uid)||
+       typeof letterId!=='string'||!safe.test(letterId)||!delivered.has(letterId)||
+       typeof at!=='string'||at.length>56||!Number.isFinite(Date.parse(at))||
+       doc.id!==mailReceiptId(uid,'imported',letterId))continue;
+    const k=key(letterId,uid),current=existing.get(k);
+    if(!current||String(current['read_at'])<at)
+      existing.set(k,{letter_id:letterId,user_id:uid,read_at:at});
+   }
+   return [...existing.values()];
+  };
   let mailPromise:Promise<MailDataset>|undefined;
   const mail=()=>mailPromise??=(async()=>{
    const [letters,replies,receipts,p,m,h,rounds]=await Promise.all([
     rows('campaign_letters'),rows('letter_replies'),rows('letter_receipts'),players(),memberships(),rows('campaign_houses'),rows('letter_rounds')]);
    if(scope.profile==='editor')denied();
-   return projectWorkspaceMailTables({campaign_letters:letters,letter_replies:replies,letter_receipts:receipts,
+   const mergedReceipts=await addOperationalReceipts(letters,receipts);
+   return projectWorkspaceMailTables({campaign_letters:letters,letter_replies:replies,letter_receipts:mergedReceipts,
     campaign_players:p,house_memberships:m,campaign_houses:h,letter_rounds:rounds} as WorkspaceMailTables,
     {...scope,profile:scope.profile as 'narrador'|'jogador'});
   })();
@@ -97,6 +133,22 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
   };
   const rpc=async(name:string,args:Row)=>{
    if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
+   if(name==='mark_letter_read'){
+    if(scope.profile==='editor')denied();
+    const id=args['p_id'],safe=/^[^/\\u0000-\\u001f\\u007f]{1,128}$/;
+    if(Object.keys(args).length!==1||typeof id!=='string'||!safe.test(id))
+     throw new CloudAccessError('invalid_receipt_request',400);
+    if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
+     throw new CloudAccessError('workspace_operation_not_implemented',501);
+    try{
+     return await createFirebaseCloudMail({
+      db,auth,snapshotId,projectId:'cormyr',enabled:true,
+     }).markRead(token,{source:'imported',letterId:id});
+    }catch(e){
+     if(e instanceof CloudMailError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
    if(name==='is_campaign_admin')return admin;
    if(name==='current_campaign_profile')return scope.profile;
    if(name==='in_campaign_house')return args['edit_required']?admin||scope.editHouseIds.includes(args['h']):houseAllowed(args['h']);

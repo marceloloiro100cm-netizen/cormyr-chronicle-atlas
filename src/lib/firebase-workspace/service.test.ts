@@ -1,5 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
-const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0}));
+const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
+ runtimeReady:false,cloudReceipts:[] as any[],ack:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -7,16 +8,32 @@ vi.mock('../../../scripts/firebase/cloud-readonly-service.mjs',()=>({CloudAccess
  workspaceScope:async()=>{f.calls++;return f.after&&f.calls>1?f.after:f.scope;},getCalendar:async()=>({year:1522,month:0,day:1,version:1}),
  getHouse:async(_t:string,h:string)=>({state:{houseId:h,units:[]},version:7}),
 })}));
+vi.mock('../../../scripts/firebase/cloud-mail-service.mjs',()=>({
+ CloudMailError:class extends Error{constructor(public code:string,public status=403){super(code);}},
+ createFirebaseCloudMail:()=>({markRead:f.ack}),
+}));
 import {createWorkspaceService} from './service';
 const access=[{userId:'a',playerId:'pa',profile:'jogador',admin:false,active:true,requirePasswordChange:false,memberHouseIds:['ashkar'],editHouseIds:['ashkar']},
  {userId:'gm',playerId:'pg',profile:'narrador',admin:true,active:true,requirePasswordChange:false,memberHouseIds:[],editHouseIds:[]}];
-const db:any={collection:(name:string)=>({doc:()=>({get:async()=>({exists:false,data:()=>undefined}),collection:(sub:string)=>({
- get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),where:()=>({get:async()=>({docs:[]})}),
-})})})};
+const db:any={collection:(name:string)=>({doc:()=>({
+ get:async()=>({
+  exists:f.runtimeReady&&['campaignCloudRuntime','campaignMailRuntime','migrationTimeEngineStage'].includes(name),
+  data:()=>name==='campaignCloudRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceSnapshotReconciled:true,applicationEnabled:true,
+   mailWriteApproved:true,openRound:2,calendarVersion:1}
+   :name==='campaignMailRuntime'?{status:'active',private:true,sourceSnapshotId:'a'.repeat(64),sourceLiveReconciled:true,applicationEnabled:true,mailEnabled:true,openRound:2,calendarVersion:1}:undefined,
+ }),
+ collection:(sub:string)=>({
+  get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),
+  doc:()=>({get:async()=>({exists:f.runtimeReady,data:()=>({year:1522,month:0,day:1,version:1})})}),
+  limit:()=>({get:async()=>({docs:f.cloudReceipts.map(v=>({id:v.id,data:()=>v.data}))})}),
+  where:()=>({get:async()=>({docs:[]})}),
+ })
+})})};
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
+ f.calls=0;f.after=null;f.runtimeReady=false;f.cloudReceipts=[];f.ack.mockReset();vi.unstubAllEnvs();
+ f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],
  letter_replies:[],letter_receipts:[],letter_rounds:[{number:2,status:'open'}],
@@ -93,6 +110,37 @@ describe('real Firebase workspace boundary',()=>{
   f.scope={...f.scope,uid:'gm',profile:'narrador',playerId:'pg'};
   const gm=await getHouses();
   expect(gm.data.find((h:any)=>h.id==='other').details).toBe('SEGREDO DA OUTRA CASA');
+ });
+ it('reconciles approved Cloud read receipts without changing imported letters',async()=>{
+  // A real receipt is stored under its source-bound SHA-256 document ID.
+  const {mailReceiptId}=await import('../../../scripts/firebase/cloud-mail-receipt-core.mjs');
+  f.runtimeReady=true;
+  f.cloudReceipts=[
+   {id:mailReceiptId('a','imported','mine'),data:{viewerUid:'a',source:'imported',letterId:'mine',readAt:'2026-11-19T11:00:00Z'}},
+   {id:'spoofed',data:{viewerUid:'a',source:'imported',letterId:'mine',readAt:'2026-11-19T12:00:00Z'}},
+   {id:mailReceiptId('a','imported','secret'),data:{viewerUid:'a',source:'imported',letterId:'secret',readAt:'2026-11-19T13:00:00Z'}},
+  ];
+  const receiptRows=await run({kind:'query',table:'letter_receipts',steps:[]});
+  expect(receiptRows.data).toEqual([{letter_id:'mine',user_id:'a',read_at:'2026-11-19T11:00:00Z'}]);
+  expect((await run({kind:'rpc',name:'mail_page',args:{p_filters:{read:'yes'}}})).letters.map((l:any)=>l.id)).toEqual(['mine']);
+  expect((await run({kind:'rpc',name:'mail_page',args:{p_filters:{read:'no'}}})).letters.map((l:any)=>l.id)).toEqual([]);
+  expect(f.tables['letter_receipts']).toEqual([]);
+ });
+ it('does not trust receipts from an unapproved Cloud runtime',async()=>{
+  const {mailReceiptId}=await import('../../../scripts/firebase/cloud-mail-receipt-core.mjs');
+  f.cloudReceipts=[{id:mailReceiptId('a','imported','mine'),data:{viewerUid:'a',source:'imported',letterId:'mine',readAt:'2026-11-19T11:00:00Z'}}];
+  expect((await run({kind:'query',table:'letter_receipts',steps:[]})).data).toEqual([]);
+ });
+ it('links original Mark as read to the guarded Firebase transaction only when enabled',async()=>{
+  await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).rejects.toThrow('workspace_operation_not_implemented');
+  vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  f.ack.mockResolvedValue({recorded:true,alreadyRecorded:false});
+  expect(await run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).toEqual({recorded:true,alreadyRecorded:false});
+  expect(f.ack).toHaveBeenCalledWith('valid-token',{source:'imported',letterId:'mine'});
+  await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine',userId:'other'}}))
+   .rejects.toThrow('invalid_receipt_request');
+  f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
+  await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).rejects.toThrow('access_denied');
  });
  it('unknown operations never fall back to Supabase or synthetic success',async()=>{
   await expect(run({kind:'rpc',name:'arbitrary_write',args:{}})).rejects.toThrow('workspace_operation_not_implemented');
