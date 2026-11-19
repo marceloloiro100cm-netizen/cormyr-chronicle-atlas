@@ -194,6 +194,30 @@ describe('real Firebase workspace boundary',()=>{
   f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
   await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).rejects.toThrow('access_denied');
  });
+ it('detects a Cloud receipt source on the trusted server, never from a caller-supplied field',async()=>{
+  vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  f.runtimeReady=true;
+  const id='f'.repeat(64);
+  f.cloudLetters=[{id,data:{
+   id,source:'firebase-cloud',sourceSnapshotId:'a'.repeat(64),
+   senderUid:'gm',senderPlayerId:null,senderName:'Narrador',originHouseId:null,
+   recipientKind:'house',recipientHouseId:'ashkar',recipientPlayerId:null,
+   subject:'Carta operacional',content:'Texto operacional',
+   createdAt:'2026-11-19T16:00:00Z',deliveredAt:'2026-11-19T16:00:00Z',
+   campaignDate:'1522-01-01',creationRound:2,deliveryRound:2,
+   publicationState:'delivered',deletedAt:null,
+  }}];
+  f.ack.mockResolvedValue({recorded:true,alreadyRecorded:false});
+  await run({kind:'rpc',name:'mark_letter_read',args:{p_id:id}});
+  expect(f.ack).toHaveBeenCalledWith('valid-token',{source:'firebase-cloud',letterId:id});
+  await expect(run({kind:'rpc',name:'mark_letter_read',args:{
+   p_id:id,source:'imported',
+  }})).rejects.toThrow('invalid_receipt_request');
+  f.ack.mockClear();
+  await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'secret'}}))
+   .rejects.toThrow('access_denied');
+  expect(f.ack).not.toHaveBeenCalled();
+ });
  it('unknown operations never fall back to Supabase or synthetic success',async()=>{
   await expect(run({kind:'rpc',name:'arbitrary_write',args:{}})).rejects.toThrow('workspace_operation_not_implemented');
  });

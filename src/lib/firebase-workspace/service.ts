@@ -185,10 +185,16 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
      throw new CloudAccessError('invalid_receipt_request',400);
     if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
      throw new CloudAccessError('workspace_operation_not_implemented',501);
+    // Derive the source from the verified, scoped inbox. A browser cannot
+    // relabel an imported letter as mutable Cloud mail or the reverse.
+    const ds=await mail();
+    const match=ds.letters.find(l=>l.id===id&&canReadLetterAs(ds,l,scope.uid));
+    if(!match)denied();
+    const source=match.source==='firebase-cloud'?'firebase-cloud':'imported';
     try{
      return await createFirebaseCloudMail({
       db,auth,snapshotId,projectId:'cormyr',enabled:true,
-     }).markRead(token,{source:'imported',letterId:id});
+     }).markRead(token,{source,letterId:id});
     }catch(e){
      if(e instanceof CloudMailError)throw new CloudAccessError(e.code,e.status);
      throw e;
