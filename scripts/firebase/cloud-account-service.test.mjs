@@ -145,8 +145,15 @@ test('troca obrigatória remove bloqueio só depois do Firebase Auth aceitar a s
  assert.equal(pending.requirePasswordChange,true);
  const result=await f.service.completePassword('token-new-account',{
   password:'NovaSenhaSegura12345',requestKey:'password-change-0001',
+  expectedVersion:pending.version,
  });
  assert.equal(result.loginRequired,true);
+ assert.equal(result.duplicate,false);
+ const repeated=await f.service.completePassword('token-new-account',{
+  password:'NovaSenhaSegura12345',requestKey:'password-change-0001',
+  expectedVersion:pending.version,
+ });
+ assert.equal(repeated.duplicate,true);
  const changed=await f.service.status('token-new-account');
  assert.equal(changed.requirePasswordChange,false);
  assert.equal(f.documents.has('migrationDomainStage/'+SNAP+'/access/new-account'),false);
