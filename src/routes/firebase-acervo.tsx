@@ -30,6 +30,15 @@ type MailReply={letter_id:string;content:string;author_name:string|null;created_
 type MailPage={total:number;letters:MailEntry[];replies:MailReply[];
   kpis?:{delivered:number;awaiting_house:number;awaiting_narrator:number;
     scheduled_replies_next:number;drafts:number}};
+type NewspaperItem={id:string;edition_no:number;title:string;subtitle:string;
+  campaign_date:string;state:string;version:number;revisions?:number;
+  versionGaps?:number;duplicateVersions?:number;versionsOutOfRange?:number};
+type NewspaperList={readOnly:true;total:number;revisionsAudited?:number;
+  items:NewspaperItem[]};
+type NewspaperDetail={edition:NewspaperItem&{blocks:unknown;pdf_path:string|null}};
+type NewspaperRevision={id:number;previous_version:number;changed_at:string|null};
+type NewspaperRevisions={total:number;revisions:NewspaperRevision[]};
+type NewspaperRevisionDetail={revision:NewspaperRevision&{snapshot:unknown}};
 const moduleLabels:Record<string,string>={
   casas:'Casas e fichas',registros:'Registros e versões',
   missivas:'Missivas e respostas',jornal:'Jornal e edições',espionagem:'Espionagem e missões',
@@ -73,6 +82,11 @@ function FirebaseOriginalArchive(){
   const [mailText,setMailText]=useState('');
   const [mailWeek,setMailWeek]=useState('');
   const [mailPage,setMailPage]=useState(0);
+  const [newspapers,setNewspapers]=useState<NewspaperList|null>(null);
+  const [newspaper,setNewspaper]=useState<NewspaperDetail|null>(null);
+  const [paperRevisions,setPaperRevisions]=useState<NewspaperRevisions|null>(null);
+  const [paperRevision,setPaperRevision]=useState<NewspaperRevisionDetail|null>(null);
+  const [paperPage,setPaperPage]=useState(0);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -113,6 +127,8 @@ function FirebaseOriginalArchive(){
       if(generation.current===current){
         setRecords(null);setRecord(null);setVersions(null);
         setMail(null);setAudit(null);setLinks(null);
+        setNewspapers(null);setNewspaper(null);
+        setPaperRevisions(null);setPaperRevision(null);
         setError(e instanceof Error?e.message:'Consulta indisponível.');
       }
     }finally{if(generation.current===current)setBusy(false);}
@@ -163,6 +179,40 @@ function FirebaseOriginalArchive(){
       throw Error('Consulta de missivas inconsistente.');
     setMailPage(page);setMail(result);
   });
+  const loadNewspapers=()=>void run(async()=>{
+    setNewspaper(null);setPaperRevisions(null);setPaperRevision(null);
+    const result=await readFirebaseArchive<NewspaperList>('listOriginalNewspapers');
+    if(result.readOnly!==true||!Array.isArray(result.items))
+      throw Error('Inventário editorial inconsistente.');
+    setNewspapers(result);
+  });
+  const openNewspaper=(editionId:string)=>void run(async()=>{
+    setNewspaper(null);setPaperRevisions(null);setPaperRevision(null);
+    const result=await readFirebaseArchive<NewspaperDetail>(
+      'getOriginalNewspaper',{editionId});
+    if(result.edition?.id!==editionId||!Array.isArray(result.edition.blocks))
+      throw Error('Edição indisponível.');
+    setNewspaper(result);
+  });
+  const loadPaperHistory=(page:number)=>void run(async()=>{
+    if(!newspaper)return;
+    setPaperRevision(null);
+    const result=await readFirebaseArchive<NewspaperRevisions>(
+      'listOriginalNewspaperRevisions',{
+        editionId:newspaper.edition.id,page,size:20,
+      });
+    if(!Array.isArray(result.revisions))throw Error('Histórico editorial inconsistente.');
+    setPaperPage(page);setPaperRevisions(result);
+  });
+  const openPaperRevision=(revisionId:number)=>void run(async()=>{
+    if(!newspaper)return;
+    const result=await readFirebaseArchive<NewspaperRevisionDetail>(
+      'getOriginalNewspaperRevision',{
+        editionId:newspaper.edition.id,revisionId,
+      });
+    if(result.revision?.id!==revisionId)throw Error('Versão não localizada.');
+    setPaperRevision(result);
+  });
   const canView=session?.profile==='narrador'||session?.profile==='jogador';
   return <main className="mx-auto max-w-5xl space-y-6 p-5 md:p-8">
     <header className="space-y-2 border-b pb-4">
@@ -207,9 +257,76 @@ function FirebaseOriginalArchive(){
       </>}
     </section>}
     {session?.profile==='editor'&&<section className="rounded border p-4 text-sm">
-      O perfil editorial não recebe permissão para ler missivas ou documentos
-      particulares de Casas. A homologação do acervo histórico do jornal será
-      disponibilizada separadamente.
+      O Editor-Chefe pode conferir o acervo integral do jornal abaixo,
+      mas não tem acesso a missivas ou documentos particulares das Casas.
+    </section>}
+    {session&&<section className="space-y-3 rounded border p-4">
+      <h2 className="text-lg font-semibold">A Folha Sem Selo · Acervo editorial real</h2>
+      <p className="text-sm">Edições preservadas no Firebase. Os 355 registros de
+        alterações são versões históricas, não novas edições.
+        Nenhum botão desta tela publica, edita ou apaga o jornal.</p>
+      <button type="button" disabled={busy} onClick={loadNewspapers}
+        className="rounded border px-3 py-2 text-sm">Consultar edições importadas</button>
+      {newspapers&&<div className="space-y-2">
+        <p className="text-sm">Edições visíveis: {newspapers.total}.
+          {newspapers.revisionsAudited!==undefined&&
+            <> Revisões editoriais preservadas: {newspapers.revisionsAudited}.</>}
+        </p>
+        {newspapers.items.map(item=><div key={item.id}
+          className="flex flex-wrap items-center justify-between gap-3 border-t py-3 text-sm">
+          <div>
+            <strong>Edição {item.edition_no} · {item.title}</strong>
+            <p>{item.campaign_date} · {item.state} · versão {item.version}</p>
+            {item.revisions!==undefined&&<p className="text-xs">
+              Revisões: {item.revisions} · lacunas: {item.versionGaps??0}
+              {' '}· repetidas: {item.duplicateVersions??0}
+              {' '}· fora da sequência: {item.versionsOutOfRange??0}
+            </p>}
+          </div>
+          <button type="button" disabled={busy} onClick={()=>openNewspaper(item.id)}
+            className="underline">Conferir edição</button>
+        </div>)}
+      </div>}
+      {newspaper&&<article className="space-y-3 rounded border p-3">
+        <h3 className="font-semibold">{newspaper.edition.title}
+          {' '}· Edição {newspaper.edition.edition_no}</h3>
+        <p className="text-sm">{newspaper.edition.subtitle}</p>
+        <p className="text-sm">Estado: {newspaper.edition.state}.
+          Conteúdo dos blocos preservado como no banco de origem.</p>
+        <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">
+          {JSON.stringify(newspaper.edition.blocks,null,2)}
+        </pre>
+        {session.profile!=='jogador'&&<>
+          <button type="button" disabled={busy} onClick={()=>loadPaperHistory(0)}
+            className="rounded border px-3 py-2 text-sm">Conferir histórico desta edição</button>
+          {paperRevisions&&<div className="space-y-2">
+            <p className="text-sm">Alterações desta edição: {paperRevisions.total}</p>
+            {paperRevisions.revisions.map(v=><div key={v.id}
+              className="flex flex-wrap justify-between gap-2 border-t py-2 text-sm">
+              <span>Versão anterior {v.previous_version}
+                {' '}· {v.changed_at??'sem data'}</span>
+              <button className="underline" type="button" disabled={busy}
+                onClick={()=>openPaperRevision(v.id)}>Comparar registro</button>
+            </div>)}
+            <div className="flex gap-4 text-sm">
+              <button className="underline" type="button"
+                disabled={busy||paperPage===0}
+                onClick={()=>loadPaperHistory(paperPage-1)}>Anterior</button>
+              <span>Página {paperPage+1}</span>
+              <button className="underline" type="button"
+                disabled={busy||(paperPage+1)*20>=paperRevisions.total}
+                onClick={()=>loadPaperHistory(paperPage+1)}>Próxima</button>
+            </div>
+          </div>}
+          {paperRevision&&<details open className="border-t pt-3">
+            <summary className="cursor-pointer font-medium">
+              Fotografia histórica v{paperRevision.revision.previous_version}</summary>
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">
+              {JSON.stringify(paperRevision.revision.snapshot,null,2)}
+            </pre>
+          </details>}
+        </>}
+      </article>}
     </section>}
     {canView&&<section className="space-y-3 rounded border p-4">
       <h2 className="text-lg font-semibold">Registros e fichas históricos</h2>
