@@ -28,6 +28,11 @@ export function canAcknowledgeMail(actor,record,source,id){
       record.recipientPlayerId.length>0;
     const house=typeof record.recipientHouseId==='string'&&
       record.recipientHouseId.length>0;
+    // A historical mail addressed explicitly to the Narrator has neither a
+    // player nor House recipient. Only the verified Narrator may acknowledge it.
+    if(record.recipientKind==='narrator'&&
+       record.recipientPlayerId===null&&record.recipientHouseId===null)
+      return actor.role==='narrador';
     if(direct===house||actor.role!=='jogador')return false;
     return direct
       ?record.recipientPlayerId===actor.playerId

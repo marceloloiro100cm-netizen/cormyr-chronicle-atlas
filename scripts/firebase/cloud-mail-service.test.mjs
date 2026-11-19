@@ -341,6 +341,32 @@ test('Imported delivered mail records an individual receipt without changing mig
   assert.deepEqual([...f.records].filter(([key])=>key.startsWith('migration')),before);
 });
 
+test('Only Narrator can mark an imported, explicitly narrator-addressed letter as read',async()=>{
+  const id='historical-to-narrator';
+  const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+  const row={
+    sourceId:id,recipientKind:'narrator',recipientHouseId:null,
+    recipientPlayerId:null,senderUid:'other-author',
+    publicationState:'delivered',deletedAt:null,
+    subject:'Carta reservada',content:'Ao Narrador',
+  };
+  const gm=fixture('narrador');
+  gm.records.set(path,row);
+  const reply=await gm.service().markRead(sampleToken,{source:'imported',letterId:id});
+  assert.equal(reply.recorded,true);
+  assert.equal(reply.alreadyRecorded,false);
+  assert.equal((await gm.service().markRead(sampleToken,{source:'imported',letterId:id})).alreadyRecorded,true);
+  const player=fixture();
+  player.records.set(path,row);
+  await rejects(()=>player.service().markRead(sampleToken,{source:'imported',letterId:id}),
+    'access_denied',403);
+  const invalid=fixture('narrador');
+  invalid.records.set(path,{...row,recipientKind:'house'});
+  await rejects(()=>invalid.service().markRead(sampleToken,{source:'imported',letterId:id}),
+    'access_denied',403);
+  assert.equal([...player.records].some(([k])=>k.includes('mailReadReceipts/')),false);
+});
+
 test('A player cannot mark unrelated, sent, deleted or draft letters as read',async()=>{
   const f=fixture();
   const root='migrationDomainStage/'+snapshot+'/letters/';
