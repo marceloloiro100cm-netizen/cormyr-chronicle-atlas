@@ -10,7 +10,8 @@ import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
-import {CORE_CATALOG} from '../house/catalog';
+import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
+import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
 import {constructionStateHash} from '../house/firebase-construction-transaction';
 import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/firebase-letter-consequences';
 import {queryRows,type Row,type QueryStep} from './query';
@@ -710,10 +711,18 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   else if(input?.kind==='rpc')result=await rpc(String(input.name),input.args??{});
   else if(input?.kind==='house'){
    const id=input.houseId;checkHouse(id);
-   const [sheet,ledger,houses,overrides]=await Promise.all([sheetFor(id),visible('noble_house_ledger'),visible('campaign_houses'),visible('noble_house_rule_overrides')]);
-   const definitions=overrides.map(r=>r['definition']);
-   result={state:(sheet as any).state,version:(sheet as any).version,catalog:[...CORE_CATALOG.filter(c=>!definitions.some(d=>d['id']===c.id)),...definitions],houses,
-    ledger:ledger.filter(r=>r['house_id']===id),admin,canEditAttributes:admin,syncState:'synced'};
+   const [sheet,ledger,houses,overrides,operational]=await Promise.all([
+    sheetFor(id),visible('noble_house_ledger'),
+    visible('campaign_houses'),visible('noble_house_rule_overrides'),
+    process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'
+      ?readOperationalHouseRules(db,snapshotId,id):Promise.resolve([]),
+   ]);
+   const definitions=overrides.map(r=>r['definition']) as any[];
+   const catalog=mergeHouseRuleCatalog(definitions,operational as any);
+   result={state:(sheet as any).state,version:(sheet as any).version,
+    catalog,houses,ledger:ledger.filter(r=>r['house_id']===id),
+    admin,canEditAttributes:admin,
+    syncState:'synced'};
   }else if(input?.kind==='record'){
    checkHouse(input.houseId);
    result=(await visible('campaign_records')).find(r=>r['id']===input.id&&r['house_id']===input.houseId);
