@@ -12,7 +12,8 @@ import {
 import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs';
 
 export type VerifiedWorkspaceMailScope={
-  uid:string;profile:'narrador'|'jogador';playerId:string|null;
+  /** 'editor' = Editor-Chefe: leitura de missivas entregues, sem Casa. */
+  uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;
   memberHouseIds:string[];
 };
 export type WorkspaceMailInput={page?:unknown;size?:unknown;filters?:unknown};
@@ -78,10 +79,12 @@ export function validateWorkspaceMailInput(input:WorkspaceMailInput){
 export function projectWorkspaceMailTables(
   rows:WorkspaceMailTables,viewer:VerifiedWorkspaceMailScope,
 ):MailDataset{
-  if(!viewer||!str(viewer.uid)||!['narrador','jogador'].includes(viewer.profile)||
+  if(!viewer||!str(viewer.uid)||!['narrador','jogador','editor'].includes(viewer.profile)||
      !Array.isArray(viewer.memberHouseIds)||
      viewer.memberHouseIds.some(id=>!str(id))||
-     viewer.profile==='jogador'&&!str(viewer.playerId))invalid();
+     viewer.profile==='jogador'&&!str(viewer.playerId)||
+     // O Editor-Chefe nunca carrega identidade de jogador nem Casa.
+     viewer.profile==='editor'&&(viewer.playerId!==null||viewer.memberHouseIds.length>0))invalid();
   for(const name of TABLES)
     if(!Array.isArray(rows[name])||rows[name].some(row=>!plain(row)))invalid();
 
@@ -158,7 +161,7 @@ export function projectWorkspaceMailTables(
   });
   return {letters,replies,receipts,players,memberships,houses,rounds,
     adminUserIds:new Set(viewer.profile==='narrador'?[viewer.uid]:[]),
-    editorUserIds:new Set()};
+    editorUserIds:new Set(viewer.profile==='editor'?[viewer.uid]:[])};
 }
 
 export function runWorkspaceMailPage(

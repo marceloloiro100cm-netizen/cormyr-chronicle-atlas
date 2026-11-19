@@ -45,8 +45,19 @@ describe('Approved operational letters preserve original Council filters',()=>{
    {recipientKind:'house',recipientHouseId:null},
    {recipientKind:'narrator',recipientHouseId:null,originHouseId:null},
    {senderUid:'../private'}, {publicationState:'draft'},
-   {deletedAt:'2026-11-19T14:00:00Z'}, {replyToId:'bad'},
+   {deletedAt:'2026-11-19T14:00:00Z'},{deletedAt:'ontem',removalKind:'cancelada'},
+   {deletedAt:'2026-11-19T14:00:00Z',removalKind:'apagada'},{version:0},{version:'2'},
+   {editedAt:'nunca'}, {replyToId:'bad'},
   ])expect(()=>projectCloudLetters([mk(id,change)],snapshot)).toThrow('firebase_operational_mail_integrity_failed');
   expect(()=>projectCloudLetters([mk(id),mk(id)],snapshot)).toThrow();
+ });
+ it('keeps withdrawn and edited letters for the Lixeira and author versioning',()=>{
+  const id='e'.repeat(64);
+  const [row]=projectCloudLetters([mk(id,{deletedAt:'2026-11-19T15:00:00.000Z',
+   removalKind:'cancelada',version:3,editedAt:'2026-11-19T14:30:00.000Z'})],snapshot);
+  expect(row).toMatchObject({deleted_at:'2026-11-19T15:00:00.000Z',
+   removal_kind:'cancelada',version:3,edited_at:'2026-11-19T14:30:00.000Z'});
+  const [active]=projectCloudLetters([mk(id)],snapshot);
+  expect(active).toMatchObject({deleted_at:null,removal_kind:null,version:1,edited_at:null});
  });
 });

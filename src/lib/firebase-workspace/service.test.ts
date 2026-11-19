@@ -1,6 +1,7 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn()}));
+ runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],cloudVersions:[] as any[],ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn(),
+ unread:vi.fn(),cancel:vi.fn(),restore:vi.fn(),edit:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -10,7 +11,8 @@ vi.mock('../../../scripts/firebase/cloud-readonly-service.mjs',()=>({CloudAccess
 })}));
 vi.mock('../../../scripts/firebase/cloud-mail-service.mjs',()=>({
  CloudMailError:class extends Error{constructor(public code:string,public status=403){super(code);}},
- createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch,reply:f.reply}),
+ createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch,reply:f.reply,
+  markUnread:f.unread,cancel:f.cancel,restore:f.restore,edit:f.edit}),
 }));
 import {createWorkspaceService} from './service';
 const access=[{userId:'a',playerId:'pa',profile:'jogador',admin:false,active:true,requirePasswordChange:false,memberHouseIds:['ashkar'],editHouseIds:['ashkar']},
@@ -25,14 +27,15 @@ const db:any={collection:(name:string)=>({doc:()=>({
  collection:(sub:string)=>({
   get:async()=>({docs:sub==='access'?access.map(v=>({data:()=>v})):[]}),
   doc:()=>({get:async()=>({exists:f.runtimeReady,data:()=>({year:1522,month:0,day:1,version:1})})}),
-  limit:()=>({get:async()=>({docs:(sub==='letters'?f.cloudLetters:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
+  limit:()=>({get:async()=>({docs:(sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
   where:()=>({get:async()=>({docs:[]})}),
  })
 })})};
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();vi.unstubAllEnvs();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.cloudVersions=[];f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();
+ f.unread.mockReset();f.cancel.mockReset();f.restore.mockReset();f.edit.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],
@@ -54,11 +57,17 @@ describe('real Firebase workspace boundary',()=>{
  it('a forged house query cannot grant access',async()=>{
   await expect(run({kind:'house',houseId:'other'})).rejects.toThrow('access_denied');
  });
- it('player sees published real newspapers only, editor sees drafts but no missives',async()=>{
+ it('player sees published real newspapers only, editor sees drafts and reads delivered missives only',async()=>{
   expect((await run({kind:'query',table:'campaign_newspapers',steps:[]})).data.map((x:any)=>x.id)).toEqual(['edition-real']);
   f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
   expect((await run({kind:'query',table:'campaign_newspapers',steps:[]})).data).toHaveLength(2);
-  expect((await run({kind:'query',table:'campaign_letters',steps:[]})).data).toEqual([]);
+  expect((await run({kind:'query',table:'campaign_letters',steps:[]})).data.map((x:any)=>x.id)).toEqual(['mine','secret']);
+  expect((await run({kind:'rpc',name:'mail_page',args:{}})).letters.map((x:any)=>x.id).sort()).toEqual(['mine','secret']);
+  for(const name of ['narrator_mail_notes','campaign_letter_consequences','letter_versions'])
+   expect((await run({kind:'query',table:name,steps:[]})).data).toEqual([]);
+  await expect(run({kind:'rpc',name:'mail_trash_page',args:{}})).rejects.toThrow('access_denied');
+  await expect(run({kind:'rpc',name:'mail_compose_options',args:{}})).rejects.toThrow('access_denied');
+  await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:'mine'}})).rejects.toThrow('access_denied');
  });
  it('fails closed when a source is missing or authorization changes during loading',async()=>{
   delete f.tables['campaign_newspapers'];
@@ -158,8 +167,10 @@ describe('real Firebase workspace boundary',()=>{
   const page=await run({kind:'rpc',name:'mail_page',args:{p_filters:{text:'Aviso operacional'}}});
   expect(page.letters.map((m:any)=>m.id)).toEqual([id]);
   expect(JSON.stringify(page)).not.toContain('SEGREDO');
+  // Editor-Chefe (19/11/2026): lê toda missiva entregue, nunca rascunho.
   f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
-  expect((await run({kind:'query',table:'campaign_letters',steps:[]})).data).toEqual([]);
+  expect((await run({kind:'query',table:'campaign_letters',steps:[]})).data.map((m:any)=>m.id))
+   .toEqual(['mine','secret',id,foreign]);
  });
  it('refuses a malformed approved Cloud message rather than returning a partial inbox',async()=>{
   f.runtimeReady=true;
@@ -247,8 +258,12 @@ describe('real Firebase workspace boundary',()=>{
   expect(f.ack).toHaveBeenCalledWith('valid-token',{source:'imported',letterId:'mine'});
   await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine',userId:'other'}}))
    .rejects.toThrow('invalid_receipt_request');
+  // Editor-Chefe registra só a própria leitura de missivas entregues.
   f.scope={...f.scope,uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
-  await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).rejects.toThrow('access_denied');
+  f.ack.mockClear();
+  await run({kind:'rpc',name:'mark_letter_read',args:{p_id:'secret'}});
+  expect(f.ack).toHaveBeenCalledWith('valid-token',{source:'imported',letterId:'secret'});
+  await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'draft'}})).rejects.toThrow('access_denied');
  });
  it('detects a Cloud receipt source on the trusted server, never from a caller-supplied field',async()=>{
   vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
@@ -276,5 +291,62 @@ describe('real Firebase workspace boundary',()=>{
  });
  it('unknown operations never fall back to Supabase or synthetic success',async()=>{
   await expect(run({kind:'rpc',name:'arbitrary_write',args:{}})).rejects.toThrow('workspace_operation_not_implemented');
+ });
+ it('routes unread, cancel, restore and edit of own Cloud letters with server-side versions',async()=>{
+  vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  f.runtimeReady=true;
+  const own='e'.repeat(64),gone='d'.repeat(64),inbound='f'.repeat(64);
+  const base={source:'firebase-cloud',sourceSnapshotId:'a'.repeat(64),senderPlayerId:'pa',senderName:'Jogador',
+   recipientPlayerId:null,createdAt:'2026-11-19T16:00:00Z',deliveredAt:'2026-11-19T16:00:00Z',
+   campaignDate:'1522-01-01',creationRound:2,deliveryRound:2,publicationState:'delivered'};
+  f.cloudLetters=[
+   {id:own,data:{...base,id:own,senderUid:'a',originHouseId:'ashkar',recipientKind:'narrator',recipientHouseId:null,
+    subject:'Minha ordem',content:'Texto',deletedAt:null,version:2}},
+   {id:gone,data:{...base,id:gone,senderUid:'a',originHouseId:'ashkar',recipientKind:'narrator',recipientHouseId:null,
+    subject:'Cancelada',content:'Texto',deletedAt:'2026-11-19T17:00:00Z',removalKind:'cancelada',version:3}},
+   {id:inbound,data:{...base,id:inbound,senderUid:'gm',senderPlayerId:null,originHouseId:null,recipientKind:'house',
+    recipientHouseId:'ashkar',subject:'Do Narrador',content:'Texto',deletedAt:null}},
+  ];
+  f.cancel.mockResolvedValue({removed:true});f.restore.mockResolvedValue({restored:true});
+  f.edit.mockResolvedValue({edited:true});f.unread.mockResolvedValue({recorded:false});
+  await run({kind:'rpc',name:'mark_letter_unread',args:{p_id:inbound}});
+  expect(f.unread).toHaveBeenCalledWith('valid-token',{source:'firebase-cloud',letterId:inbound});
+  await run({kind:'rpc',name:'mark_letter_unread',args:{p_id:'mine'}});
+  expect(f.unread).toHaveBeenLastCalledWith('valid-token',{source:'imported',letterId:'mine'});
+  await run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:own}});
+  expect(f.cancel).toHaveBeenCalledWith('valid-token',{letterId:own,expectedVersion:2});
+  await run({kind:'rpc',name:'restore_campaign_letter',args:{p_id:gone}});
+  expect(f.restore).toHaveBeenCalledWith('valid-token',{letterId:gone,expectedVersion:3});
+  await run({kind:'rpc',name:'dated_mail_action',args:{p_action:'edit_campaign_letter',p_date:'1522-01-01',
+   p_args:{p_id:own,p_version:2,p_subject:'Ordem revista',p_content:'Novo texto'}}});
+  expect(f.edit).toHaveBeenCalledWith('valid-token',{letterId:own,expectedVersion:2,subject:'Ordem revista',content:'Novo texto'});
+  // Versão antiga, data alterada, carta histórica e carta alheia não passam.
+  await expect(run({kind:'rpc',name:'dated_mail_action',args:{p_action:'edit_campaign_letter',p_date:'1522-01-01',
+   p_args:{p_id:own,p_version:1,p_subject:'x',p_content:'y'}}})).rejects.toThrow('letter_version_conflict');
+  await expect(run({kind:'rpc',name:'dated_mail_action',args:{p_action:'edit_campaign_letter',p_date:'1522-01-09',
+   p_args:{p_id:own,p_version:2,p_subject:'x',p_content:'y'}}})).rejects.toThrow('workspace_operation_not_implemented');
+  await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:'mine'}})).rejects.toThrow('workspace_operation_not_implemented');
+  await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:'secret'}})).rejects.toThrow('access_denied');
+  await expect(run({kind:'rpc',name:'restore_campaign_letter',args:{p_id:inbound}})).rejects.toThrow('access_denied');
+  await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:own,p_version:9}})).rejects.toThrow('invalid_mail_lifecycle_request');
+  // A cancelada fica fora da caixa do jogador e aparece na própria Lixeira.
+  const page=await run({kind:'rpc',name:'mail_page',args:{}});
+  expect(page.letters.map((l:any)=>l.id)).not.toContain(gone);
+  const trash=await run({kind:'rpc',name:'mail_trash_page',args:{}});
+  expect(trash.letters.map((l:any)=>l.id)).toEqual([gone]);
+ });
+ it('returns replaced Cloud versions only to their author under the approved runtime',async()=>{
+  f.runtimeReady=true;
+  const own='e'.repeat(64);
+  f.cloudLetters=[{id:own,data:{source:'firebase-cloud',sourceSnapshotId:'a'.repeat(64),id:own,senderUid:'a',senderPlayerId:'pa',
+   senderName:'Jogador',originHouseId:'ashkar',recipientKind:'narrator',recipientHouseId:null,recipientPlayerId:null,
+   subject:'Ordem',content:'Atual',createdAt:'2026-11-19T16:00:00Z',deliveredAt:'2026-11-19T16:00:00Z',
+   campaignDate:'1522-01-01',creationRound:2,deliveryRound:2,publicationState:'delivered',deletedAt:null,version:2}}];
+  f.cloudVersions=[{id:'v1',data:{letterId:own,version:1,subject:'Ordem',content:'Antigo',replacedAt:'2026-11-19T16:30:00Z'}},
+   {id:'vx',data:{letterId:'x'.repeat(64),version:1,subject:'Alheia',content:'NÃO EXPOR',replacedAt:'2026-11-19T16:30:00Z'}}];
+  const rows=(await run({kind:'query',table:'letter_versions',steps:[]})).data;
+  expect(rows).toEqual([{id:'v1',letter_id:own,version:1,snapshot:{subject:'Ordem',content:'Antigo'},created_at:'2026-11-19T16:30:00Z'}]);
+  f.runtimeReady=false;
+  expect((await run({kind:'query',table:'letter_versions',steps:[]})).data).toEqual([]);
  });
 });

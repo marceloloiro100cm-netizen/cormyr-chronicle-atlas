@@ -25,6 +25,18 @@ const REQUEST_KEY=/^[a-zA-Z0-9_-]{8,128}$/;
 const MAX_CONTENT_BYTES=20_000;
 const MAX_SUBJECT_BYTES=180;
 const MAX_MAIL_PER_ROUND=100;
+const LETTER_HASH=/^[a-f0-9]{64}$/;
+const writerOnly=actor=>{if(actor.role==='editor')deny('editor_read_only',403);};
+
+/** Edit, cancel and restore share one strict envelope: Cloud id + version. */
+function lifecycleInput(input,keys){
+  if(!input||typeof input!=='object'||Array.isArray(input)||
+     Object.keys(input).some(k=>!keys.includes(k))||
+     typeof input.letterId!=='string'||!LETTER_HASH.test(input.letterId)||
+     !Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<1)
+    deny('invalid_mail_lifecycle_request',400);
+  return input;
+}
 
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const validId=s=>typeof s==='string'&&SAFE_ID.test(s);
@@ -57,6 +69,14 @@ function accessOf(uid,v){
     deny('access_denied');
   if(v.profile==='narrador'&&v.admin===true)
     return {uid,role:'narrador',playerId:null,memberHouses:[],editHouses:[]};
+  // Editor-Chefe: leitura de missivas entregues e recibo da PRÓPRIA leitura.
+  // Nunca recebe Casa, nunca escreve, responde, edita ou cancela.
+  if(v.profile==='editor'){
+    const none=x=>x===undefined||x===null||Array.isArray(x)&&x.length===0;
+    if(v.admin!==false||!none(v.memberHouseIds)||!none(v.editHouseIds))
+      deny('access_denied');
+    return {uid,role:'editor',playerId:null,memberHouses:[],editHouses:[]};
+  }
   if(v.profile!=='jogador'||v.admin!==false||!validId(v.playerId)||
      !Array.isArray(v.memberHouseIds)||!Array.isArray(v.editHouseIds)||
      v.memberHouseIds.length>250||v.editHouseIds.length>250||
@@ -117,6 +137,39 @@ export function createFirebaseCloudMail({
   const audits=runtime.collection('mailAudits');
   const limits=runtime.collection('mailSenderRoundCounts');
   const readReceipts=runtime.collection('mailReadReceipts');
+  const versions=runtime.collection('letterVersions');
+
+  /** Only Cloud-authored, delivered runtime letters have a lifecycle. */
+  function cloudLetterOf(doc,letterId){
+    const v=doc.exists?doc.data():null;
+    if(!v||v.id!==letterId||v.source!=='firebase-cloud'||
+       v.sourceSnapshotId!==snapshotId||v.publicationState!=='delivered'||
+       !Number.isSafeInteger(v.version)||v.version<1||
+       !Number.isSafeInteger(v.deliveryRound))
+      deny('letter_not_found',404);
+    return v;
+  }
+  /**
+   * The author may change or withdraw a message only while its delivery week
+   * is still the open round, and only under CURRENT authority over the same
+   * origin (a House lost since sending is no longer an authorization).
+   */
+  function authorInOpenWeek(actor,uid,v,round){
+    if(v.senderUid!==uid)return false;
+    if(actor.role==='jogador'&&!actor.editHouses.includes(v.originHouseId))
+      return false;
+    if(actor.role==='narrador'&&v.originHouseId!==null)return false;
+    return v.deliveryRound>=round;
+  }
+  const checkVersion=(v,expected)=>{
+    if(v.version!==expected)deny('letter_version_conflict',409);
+  };
+  const serverTime=()=>{
+    const timestamp=clock();
+    if(typeof timestamp!=='string'||!Number.isFinite(Date.parse(timestamp)))
+      deny('invalid_server_clock',503);
+    return timestamp;
+  };
 
   async function uidFromToken(idToken){
     if(typeof idToken!=='string'||idToken.length<10||idToken.length>10000)
@@ -172,6 +225,7 @@ export function createFirebaseCloudMail({
     // the same transaction to prevent a clock rollover from misdating a letter.
     if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
       deny('campaign_date_changed',409);
+    writerOnly(actor);
     if(actor.role==='narrador'){
       if(req.originHouseId!==null||req.recipientKind!=='house')
         deny('recipient_not_allowed');
@@ -261,6 +315,131 @@ export function createFirebaseCloudMail({
         readOnly:!writable};
     },
 
+    /**
+     * Withdraw a delivered Cloud message. Author: only during the open week
+     * ("cancelada"). Narrator: moderation at any time ("excluida").
+     * Nothing is erased: the row keeps its text, gains deletedAt and an
+     * immutable audit entry, and appears in the Lixeira for restoration.
+     */
+    async cancel(idToken,input){
+      const uid=await uidFromToken(idToken);
+      const {letterId,expectedVersion}=lifecycleInput(input,['letterId','expectedVersion']);
+      const ref=letters.doc(letterId);
+      return db.runTransaction(async tx=>{
+        const {actor,round}=await readyTransaction(tx,uid);
+        writerOnly(actor);
+        const v=cloudLetterOf(await tx.get(ref),letterId);
+        if(v.deletedAt!==null)
+          return {removed:true,alreadyRemoved:true,version:v.version,
+            removalKind:v.removalKind??null};
+        checkVersion(v,expectedVersion);
+        const own=authorInOpenWeek(actor,uid,v,round);
+        if(!own&&actor.role!=='narrador')
+          deny(v.senderUid===uid?'mail_week_closed':'cancel_not_allowed',
+            v.senderUid===uid?409:403);
+        const removalKind=own?'cancelada':'excluida';
+        const at=serverTime(),version=v.version+1;
+        tx.update(ref,{deletedAt:at,deletedByUid:uid,removalKind,version,updatedAt:at});
+        tx.create(audits.doc(hash('mail-remove:'+letterId+':'+version)),{
+          action:own?'cancel':'remove',actorUid:uid,letterId,version,occurredAt:at});
+        return {removed:true,alreadyRemoved:false,version,removalKind};
+      });
+    },
+
+    /** Narrator restores anything; an author restores own cancellation
+     * while the delivery week is still open. */
+    async restore(idToken,input){
+      const uid=await uidFromToken(idToken);
+      const {letterId,expectedVersion}=lifecycleInput(input,['letterId','expectedVersion']);
+      const ref=letters.doc(letterId);
+      return db.runTransaction(async tx=>{
+        const {actor,round}=await readyTransaction(tx,uid);
+        writerOnly(actor);
+        const v=cloudLetterOf(await tx.get(ref),letterId);
+        if(v.deletedAt===null)
+          return {restored:true,alreadyActive:true,version:v.version};
+        checkVersion(v,expectedVersion);
+        const ownCancel=v.removalKind==='cancelada'&&v.deletedByUid===uid&&
+          authorInOpenWeek(actor,uid,v,round);
+        if(actor.role!=='narrador'&&!ownCancel){
+          const closedOwn=v.removalKind==='cancelada'&&v.deletedByUid===uid;
+          deny(closedOwn?'mail_week_closed':'restore_not_allowed',closedOwn?409:403);
+        }
+        const at=serverTime(),version=v.version+1;
+        tx.update(ref,{deletedAt:null,deletedByUid:null,removalKind:null,
+          restoredAt:at,restoredByUid:uid,version,updatedAt:at});
+        tx.create(audits.doc(hash('mail-restore:'+letterId+':'+version)),{
+          action:'restore',actorUid:uid,letterId,version,occurredAt:at});
+        return {restored:true,alreadyActive:false,version};
+      });
+    },
+
+    /**
+     * Author edits a delivered message during its open week. The replaced
+     * text is kept as an immutable version; optimistic version prevents
+     * overwriting a concurrent change. Reply subjects stay derived.
+     */
+    async edit(idToken,input){
+      const uid=await uidFromToken(idToken);
+      const req=lifecycleInput(input,['letterId','expectedVersion','subject','content']);
+      if(!validText(req.subject,MAX_SUBJECT_BYTES)||
+         !validText(req.content,MAX_CONTENT_BYTES))
+        deny('invalid_mail_lifecycle_request',400);
+      const subject=req.subject.trim();
+      const ref=letters.doc(req.letterId);
+      return db.runTransaction(async tx=>{
+        const {actor,round}=await readyTransaction(tx,uid);
+        writerOnly(actor);
+        const v=cloudLetterOf(await tx.get(ref),req.letterId);
+        if(v.deletedAt!==null)deny('letter_removed',409);
+        checkVersion(v,req.expectedVersion);
+        if(!authorInOpenWeek(actor,uid,v,round))
+          deny(v.senderUid===uid?'mail_week_closed':'edit_not_allowed',
+            v.senderUid===uid?409:403);
+        if(v.replyToId!==undefined&&subject!==v.subject)
+          deny('reply_subject_fixed',400);
+        if(subject===v.subject&&req.content===v.content)
+          return {edited:false,unchanged:true,version:v.version};
+        const at=serverTime(),version=v.version+1;
+        tx.create(versions.doc(hash('mail-version:'+req.letterId+':'+v.version)),{
+          letterId:req.letterId,version:v.version,subject:v.subject,
+          content:v.content,replacedAt:at,actorUid:uid,schemaVersion:1});
+        tx.update(ref,{subject,content:req.content,version,editedAt:at,updatedAt:at});
+        tx.create(audits.doc(hash('mail-edit:'+req.letterId+':'+version)),{
+          action:'edit',actorUid:uid,letterId:req.letterId,version,
+          contentFingerprint:hash(JSON.stringify({subject,content:req.content})),
+          occurredAt:at});
+        return {edited:true,unchanged:false,version};
+      });
+    },
+
+    /** Removes only the caller's own receipt: reading counts only when marked. */
+    async markUnread(idToken,input){
+      const uid=await uidFromToken(idToken);
+      const source=input?.source;
+      const letterId=input?.letterId;
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['source','letterId'].includes(k))||
+         !validMailIdentity(source,letterId))
+        deny('invalid_receipt_request',400);
+      const target=source==='imported'
+        ?stage.collection('letters').doc(hash('letter:'+letterId))
+        :letters.doc(letterId);
+      const receipt=readReceipts.doc(mailReceiptId(uid,source,letterId));
+      return db.runTransaction(async tx=>{
+        const {actor}=await readyTransaction(tx,uid);
+        const [mail,previous]=await Promise.all([tx.get(target),tx.get(receipt)]);
+        if(!mail.exists||!canAcknowledgeMail(actor,mail.data(),source,letterId))
+          deny('access_denied',403);
+        if(!previous.exists)return {recorded:false,alreadyUnread:true};
+        const row=previous.data();
+        if(row?.viewerUid!==uid||row?.source!==source||row?.letterId!==letterId)
+          deny('invalid_existing_receipt',409);
+        tx.delete(receipt);
+        return {recorded:false,alreadyUnread:false};
+      });
+    },
+
     async markRead(idToken,input){
       const uid=await uidFromToken(idToken);
       const source=input?.source;
@@ -323,6 +502,7 @@ export function createFirebaseCloudMail({
         if(first.expectedCampaignDate!==undefined&&
            first.expectedCampaignDate!==date)
           deny('campaign_date_changed',409);
+        writerOnly(actor);
         if(actor.role==='narrador'){
           if(first.originHouseId!==null||
              requests.some(req=>req.recipientKind!=='house'))
@@ -417,6 +597,7 @@ export function createFirebaseCloudMail({
         deny('invalid_reply_request',400);
       return db.runTransaction(async tx=>{
         const {actor,date,round}=await readyTransaction(tx,uid);
+        writerOnly(actor);
         if(input.expectedCampaignDate!==undefined&&
            input.expectedCampaignDate!==date)
           deny('campaign_date_changed',409);

@@ -20,6 +20,13 @@ export interface FirebaseCloudReadonly {
     playerId:string|null;
     memberHouseIds:string[];
   }>;
+  /** Mail-only read scope; also admits the Editor-Chefe (no Houses, no player). */
+  workspaceMailReadScope(idToken:string):Promise<{
+    uid:string;
+    profile:'jogador'|'narrador'|'editor';
+    playerId:string|null;
+    memberHouseIds:string[];
+  }>;
   /** Narrator-only, on-demand read of unresolved accounts. Never mutates. */
   listAccessRemediation(idToken:string):Promise<unknown>;
   /** Nonmutating preview with current server-verified profile and House data. */

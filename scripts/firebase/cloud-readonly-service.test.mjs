@@ -393,6 +393,18 @@ test('original mail workspace scope is checked against live Auth and House stage
  await rejects(()=>noPlayer.service().workspaceMailScope(token),'access_denied',403);
 });
 
+test('mail read scope admits the Editor-Chefe without Houses, never via the sheet scope',async()=>{
+ const editor=fixture('editor');
+ assert.deepEqual(await editor.service().workspaceMailReadScope(token),
+  {uid:'user-1',profile:'editor',playerId:null,memberHouseIds:[]});
+ await rejects(()=>editor.service().workspaceMailScope(token),'access_denied',403);
+ const player=fixture('jogador');
+ assert.deepEqual(await player.service().workspaceMailReadScope(token),
+  await player.service().workspaceMailScope(token));
+ const noPlayer=fixture('jogador',{playerId:null});
+ await rejects(()=>noPlayer.service().workspaceMailReadScope(token),'access_denied',403);
+});
+
 test('editor may not read historic military rosters and a player cannot query a foreign House',async()=>{
  const editor=fixture('editor');
  await rejects(()=>editor.service().listOriginalHouseSheets(token,{}),

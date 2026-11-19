@@ -11,6 +11,12 @@
  * (the route now only renders it) and changed exactly one import line
  * (useServerFn) in admin-panel.tsx and ficha-tab.tsx. Hashes re-captured after
  * that reviewed relocation; layout, controls and filters are unchanged.
+ * 2026-11-19 (Missivas v4, PR do proprietário): additive-only change to
+ * missivas-tab.tsx (Firebase-only "Marcar como não lida", author "Editar" and
+ * "Cancelar envio" while the delivery week is open, Lixeira restore of own
+ * cancellation) and players-workspace.tsx (Editor-Chefe read-only Missivas
+ * view beside the Jornal). Every original control, filter and RPC name below
+ * is retained; hashes re-captured after that reviewed change.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -23,9 +29,9 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'0f5f7461f4ef9960ad2ef69c08bff987cf3e0cd2',
+  'src/components/players/players-workspace.tsx':'6aa0e02c07b3dbe8089691dbebd2bfd86ffe4336',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
-  'src/components/players/missivas-tab.tsx':'a42c089594ea61cc8cae72c5f9aadebc4b957899',
+  'src/components/players/missivas-tab.tsx':'1249c28e3fc069fb0b86d6f28fe4cb8e7e2a0f5f',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'55117d8e466edee9ccfaa46356999505cf5268d2',
   'src/components/newspaper/NewspaperHub.tsx':'d92bceeabd4da3db23f4545f037b135afda28846',
   'src/components/newspaper/newspaper-editorial.css':'c203f7f932be078925d9835eb4161fc0d3d49318',

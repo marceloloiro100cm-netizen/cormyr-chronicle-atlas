@@ -69,9 +69,14 @@ describe('real workspace mail original filters + live scope',()=>{
   const revoked={...viewerA,memberHouseIds:[]};
   const page=runWorkspaceMailPage(data,revoked,{});
   expect(page.letters.map(l=>l.id)).toEqual(['to-gm']);
-  expect(()=>runWorkspaceMailPage(data,{
-   uid:'u-editor',profile:'editor' as never,playerId:null,memberHouseIds:[],
-  },{})).toThrow();
+  // Editor-Chefe lê o que foi entregue, sem rascunhos nem Lixeira.
+  const editor={uid:'u-editor',profile:'editor' as const,playerId:null,memberHouseIds:[]};
+  const editorPage=runWorkspaceMailPage(data,editor,{});
+  expect(editorPage.letters.every(l=>l.publication_state==='delivered'&&l.deleted_at===null)).toBe(true);
+  expect(editorPage.letters.some(l=>l.id==='draft')).toBe(false);
+  expect(()=>runWorkspaceMailPage(data,editor,{filters:{box:'lixeira'}})).toThrow();
+  expect(()=>runWorkspaceMailPage(data,{...editor,playerId:'p1'},{})).toThrow();
+  expect(()=>runWorkspaceMailPage(data,{...editor,memberHouseIds:['h1']},{})).toThrow();
   expect(()=>runWorkspaceMailPage(data,{...viewerA,playerId:'other'},{})).toThrow();
   expect(()=>validateWorkspaceMailInput({filters:{isAdmin:'true'}})).toThrow();
   expect(()=>validateWorkspaceMailInput({page:-1})).toThrow();

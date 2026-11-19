@@ -13,7 +13,9 @@ no App Hosting. Não habilitar usuários antes da homologação Cloud.
 - Usuários com perfil Jogador e `editHouseIds` enviam apenas da própria Casa;
   podem endereçar uma Casa ativa da temporada 2 ou o Narrador.
 - Narrador autorizado envia apenas para Casas ativas.
-- Editor-chefe não tem acesso a missivas.
+- Editor-Chefe lê missivas entregues (sem rascunhos, programadas ou Lixeira) e registra
+  só a própria leitura; nunca envia, responde, edita ou cancela (decisão de 19/11/2026,
+  ver `MISSIVAS-V4-2026-11-19.md`).
 - As novas cartas são gravadas em
   `campaignCloudRuntime/<hash>/letters/<id>`, não em `migration*`.
 - As operações são transações Firestore atômicas com chave idempotente,

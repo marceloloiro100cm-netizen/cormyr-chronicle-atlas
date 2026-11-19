@@ -10,6 +10,8 @@ const bad=():never=>{throw Error('firebase_operational_mail_integrity_failed');}
 
 /**
  * No synthetic fallback, no partial reads, and no edits to the archive.
+ * Withdrawn (cancelled/removed) runtime rows keep deleted_at so the original
+ * ACL hides them from players and shows them only in the Lixeira.
  * Replies are preserved as delivered correspondence with their parent
  * reference, pending full thread-aware editorial controls.
  */
@@ -27,7 +29,13 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
      !validDate(m['deliveredAt'])||typeof m['subject']!=='string'||
      !m['subject'].trim()||m['subject'].length>180||
      typeof m['content']!=='string'||m['content'].length>20000||
-     m['publicationState']!=='delivered'||m['deletedAt']!==null||
+     m['publicationState']!=='delivered'||
+     // Withdrawn messages stay in the Lixeira: deletedAt + a known kind.
+     !(m['deletedAt']===null||validDate(m['deletedAt'])&&
+       ['cancelada','excluida'].includes(String(m['removalKind'])))||
+     (m['version']!==undefined&&(!Number.isSafeInteger(m['version'])||
+       (m['version'] as number)<1))||
+     (m['editedAt']!==undefined&&m['editedAt']!==null&&!validDate(m['editedAt']))||
      !Number.isSafeInteger(m['deliveryRound'])||
      (m['deliveryRound'] as number)<1||!Number.isSafeInteger(m['creationRound'])||
      (m['creationRound'] as number)<1||
@@ -53,7 +61,10 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
    origin_house_id:m['originHouseId'],
    subject:m['subject'],content:m['content'],
    created_at:m['createdAt'],delivered_at:m['deliveredAt'],
-   deleted_at:null,publication_state:'delivered',
+   deleted_at:m['deletedAt'],publication_state:'delivered',
+   // Optimistic version for author edit/cancel during the open week.
+   version:m['version']??1,edited_at:m['editedAt']??null,
+   removal_kind:m['deletedAt']===null?null:m['removalKind'],
    creation_week:m['creationRound'],delivery_week:m['deliveryRound'],
    letter_number:null,letter_kind:'reservada',
    court_member_id:null,court_assignment:null,military_unit_id:null,
