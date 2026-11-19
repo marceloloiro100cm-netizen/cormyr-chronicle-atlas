@@ -15,10 +15,16 @@ const validOverlay=(uid,v)=>v&&v.userId===uid&&
  typeof v.active==='boolean'&&typeof v.requirePasswordChange==='boolean'&&
  (v.profile==='editor'?v.playerId===null:typeof v.playerId==='string'&&ID.test(v.playerId))&&
  Array.isArray(v.memberHouseIds)&&Array.isArray(v.editHouseIds)&&
+ Array.isArray(v.attrHouseIds)&&
  v.memberHouseIds.length<=250&&v.editHouseIds.length<=250&&
+ v.attrHouseIds.length<=250&&
  v.memberHouseIds.every(x=>typeof x==='string'&&ID.test(x))&&
- v.editHouseIds.every(x=>v.memberHouseIds.includes(x))&&
- (v.profile!=='editor'||v.memberHouseIds.length===0&&v.editHouseIds.length===0);
+ v.editHouseIds.every(x=>typeof x==='string'&&ID.test(x)&&v.memberHouseIds.includes(x))&&
+ v.attrHouseIds.every(x=>typeof x==='string'&&ID.test(x)&&v.editHouseIds.includes(x))&&
+ (v.rosterHouseId==null||
+   v.profile==='jogador'&&v.memberHouseIds.includes(v.rosterHouseId))&&
+ (v.profile!=='editor'||v.memberHouseIds.length===0&&
+   v.editHouseIds.length===0&&v.attrHouseIds.length===0);
 
 export function chooseCurrentAccountAccess(uid,archived,overlay,live){
  if(!overlay)return archived??null;
