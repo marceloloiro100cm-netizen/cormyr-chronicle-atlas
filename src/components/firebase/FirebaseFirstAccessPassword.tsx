@@ -15,8 +15,13 @@ export function FirebaseFirstAccessPassword({onDone,onSignOut}:{
   if(password!==confirmation){setMessage('As senhas não coincidem.');return;}
   setBusy(true);setMessage('');
   try{
+    const scope=await firebaseAccountRequest<{
+      active:boolean;requirePasswordChange:boolean;version:number;
+    }>('status');
+    if(!scope.active||!scope.requirePasswordChange)
+      throw Error('Este acesso não está pendente de troca de senha.');
     const result=await firebaseAccountRequest<{changed:boolean;loginRequired:boolean}>(
-      'completePassword',{password,requestKey:key});
+      'completePassword',{password,requestKey:key,expectedVersion:scope.version});
     setPassword('');setConfirmation('');
     if(!result.changed||!result.loginRequired)
       throw Error('Não foi possível confirmar a troca de senha.');
