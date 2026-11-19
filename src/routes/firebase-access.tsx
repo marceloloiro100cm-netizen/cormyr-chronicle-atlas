@@ -303,12 +303,17 @@ function FirebaseAccess(){
       // Nenhuma leitura da campanha acontece antes de concluir a rotação.
       const status=(error as {status?:unknown}|null)?.status;
       if(status===403){
-        const account=await firebaseAccountRequest<{
-          profile:string;active:boolean;requirePasswordChange:boolean;
-        }>('status');
-        if(account.active&&account.requirePasswordChange&&
-           ['jogador','editor'].includes(account.profile)){
-          setView(null);setPasswordPending(true);return;
+        try{
+          const account=await firebaseAccountRequest<{
+            profile:string;active:boolean;requirePasswordChange:boolean;
+          }>('status');
+          if(account.active&&account.requirePasswordChange&&
+             ['jogador','editor'].includes(account.profile)){
+            setView(null);setPasswordPending(true);return;
+          }
+        }catch{
+          // Conta sem acesso ou recurso desabilitado: preservar o bloqueio
+          // original da sessão, sem substituir por indisponibilidade.
         }
       }
       throw error;
