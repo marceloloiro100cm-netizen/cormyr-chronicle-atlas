@@ -58,7 +58,12 @@ describe('contrato mail_page (porta literal do SQL original)', () => {
     expect(ids(mailPage(ds, {uid: NARRATOR}))).toEqual(['l1', 'l2', 'l3', 'l4']);
     expect(ids(mailPage(ds, {uid: A}))).toEqual(['l1', 'l2', 'l3']);
     expect(ids(mailPage(ds, {uid: B}))).toEqual(['l3']);
-    expect(() => mailPage(ds, {uid: EDITOR})).toThrow('Jogador não autorizado');
+    // Editor-Chefe (19/11/2026): lê toda missiva entregue, nunca rascunho nem excluída.
+    const editorPage = mailPage(ds, {uid: EDITOR});
+    expect(ids(editorPage)).toEqual(['l1', 'l2', 'l3']);
+    expect(editorPage.replies.map(r => r.id).sort()).toEqual(['r1', 'r2']);
+    expect(editorPage.letters.every(l => l.recipient_read === false)).toBe(true);
+    expect(() => mailTrashPage(ds, {uid: EDITOR})).toThrow('Acesso não autorizado');
     expect(() => mailPage(ds, {uid: A}, {}, 0, 51)).toThrow('Página inválida');
   });
   it('filtra Caixa: recebidas, enviadas, rascunhos, programadas, histórico, cópias e excluídas', () => {

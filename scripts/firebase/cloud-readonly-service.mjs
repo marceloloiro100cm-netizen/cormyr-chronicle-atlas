@@ -222,6 +222,23 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       return {uid:scope.uid,profile:scope.profile,playerId:scope.playerId,
         memberHouseIds:scope.memberHouseIds};
     },
+    /**
+     * Mail-only read scope. Unlike workspaceMailScope (also used for House
+     * sheets), this one admits the Editor-Chefe, without Houses or player id,
+     * so the newspaper can be written from delivered letters. It is never
+     * an authorization for sheets, records or any write.
+     */
+    async workspaceMailReadScope(idToken){
+      const scope=await scopeFor(idToken);
+      if(scope.profile==='editor'){
+        if(scope.memberHouseIds.length||scope.editHouseIds.length)
+          deny('invalid_access_scope',403);
+        return {uid:scope.uid,profile:'editor',playerId:null,memberHouseIds:[]};
+      }
+      if(scope.profile==='jogador'&&!scope.playerId)deny('access_denied',403);
+      return {uid:scope.uid,profile:scope.profile,playerId:scope.playerId,
+        memberHouseIds:scope.memberHouseIds};
+    },
     /** Narrator-only private relationship audit. No row data is returned. */
     async inspectWorkspaceLinks(idToken){
       const viewer=await scopeFor(idToken);

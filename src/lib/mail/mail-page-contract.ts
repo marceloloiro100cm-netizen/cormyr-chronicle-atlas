@@ -69,7 +69,12 @@ export type MailDataset = {
   rounds: readonly MailRound[];
   /** Contas com papel de administrador (Narrador). */
   adminUserIds: ReadonlySet<string>;
-  /** Contas Editor-Chefe: nenhuma missiva, resposta ou recibo (0116). */
+  /**
+   * Contas Editor-Chefe. 0116 negava tudo; desde 19/11/2026 (decisão do
+   * proprietário) o Editor lê toda missiva e resposta ENTREGUE e não excluída,
+   * para escrever o Jornal. Nunca rascunhos, programadas, Lixeira, escrita ou
+   * recibos de outras pessoas.
+   */
   editorUserIds?: ReadonlySet<string>;
 };
 export type MailViewer = {uid: string};
@@ -105,12 +110,12 @@ function isEditor(ds: MailDataset, uid: string) {
 }
 /** campaign_access_active(): Narrador ou jogador ativo sem troca de senha pendente. */
 function accessActive(ds: MailDataset, uid: string) {
-  return isAdmin(ds, uid) || ds.players.some(p => p.user_id === uid && p.active && !p.require_password_change);
+  return isAdmin(ds, uid) || isEditor(ds, uid) || ds.players.some(p => p.user_id === uid && p.active && !p.require_password_change);
 }
 
-/** can_read_letter_as (0035) + restrição do Editor-Chefe (0116). */
+/** can_read_letter_as (0035) + leitura somente-entregue do Editor-Chefe. */
 export function canReadLetterAs(ds: MailDataset, l: MailLetter, viewer: string): boolean {
-  if (isEditor(ds, viewer)) return false;
+  if (isEditor(ds, viewer)) return l.deleted_at === null && l.publication_state === 'delivered';
   if (isAdmin(ds, viewer)) return true;
   if (l.deleted_at !== null) return false;
   return ds.players.some(p => p.user_id === viewer && p.active && !p.require_password_change && (
@@ -118,9 +123,13 @@ export function canReadLetterAs(ds: MailDataset, l: MailLetter, viewer: string):
       l.recipient_player_id === p.id || (l.recipient_player_id === null &&
         ds.memberships.some(m => m.player_id === p.id && m.house_id === l.recipient_house_id))))));
 }
-/** can_read_reply (0019) + restrição do Editor-Chefe (0116). */
+/** can_read_reply (0019) + leitura somente-entregue do Editor-Chefe. */
 export function canReadReply(ds: MailDataset, r: MailReply, viewer: string): boolean {
-  if (isEditor(ds, viewer)) return false;
+  if (isEditor(ds, viewer)) {
+    if (r.deleted_at !== null || r.publication_state !== 'delivered') return false;
+    const parent = ds.letters.find(l => l.id === r.letter_id);
+    return Boolean(parent && canReadLetterAs(ds, parent, viewer));
+  }
   if (isAdmin(ds, viewer)) return true;
   if (!accessActive(ds, viewer)) return false;
   if (r.author_user_id === viewer) return true;

@@ -30,6 +30,18 @@ export interface CloudMailRuntime {
   markRead(idToken:string,input:unknown):Promise<{
     recorded:boolean;alreadyRecorded:boolean;readAt:string;
   }>;
+  markUnread(idToken:string,input:unknown):Promise<{
+    recorded:false;alreadyUnread:boolean;
+  }>;
+  cancel(idToken:string,input:{letterId:unknown;expectedVersion:unknown}):Promise<{
+    removed:true;alreadyRemoved:boolean;version:number;removalKind:string|null;
+  }>;
+  restore(idToken:string,input:{letterId:unknown;expectedVersion:unknown}):Promise<{
+    restored:true;alreadyActive:boolean;version:number;
+  }>;
+  edit(idToken:string,input:{
+    letterId:unknown;expectedVersion:unknown;subject:unknown;content:unknown;
+  }):Promise<{edited:boolean;unchanged:boolean;version:number}>;
 }
 export function createFirebaseCloudMail(options:{
   db:{collection(name:string):any;runTransaction<T>(fn:(tx:any)=>Promise<T>):Promise<T>};

@@ -57,6 +57,7 @@ function fixture(role='jogador'){
         get:ref=>ref.get(),
         create(ref,value){writes.push({type:'create',path:ref.path,value});},
         update(ref,value){writes.push({type:'update',path:ref.path,value});},
+        delete(ref){writes.push({type:'delete',path:ref.path});},
       };
       const result=await work(tx);
       for(const w of writes){
@@ -66,6 +67,7 @@ function fixture(role='jogador'){
           throw Error('missing document');
       }
       for(const w of writes){
+        if(w.type==='delete'){records.delete(w.path);continue;}
         records.set(w.path,w.type==='create'?structuredClone(w.value):
           {...records.get(w.path),...structuredClone(w.value)});
       }
@@ -289,8 +291,9 @@ test('Narrator is authorized only for House recipients, not narrator-to-narrator
   await rejects(()=>f.service().send(sampleToken,
     req({recipientKind:'narrator',recipientHouseId:null,originHouseId:null,
       requestKey:'different-key-1'})),'invalid_origin_house',400);
+  // Editor-Chefe lê, mas nunca escreve (decisão de 19/11/2026).
   const editor=fixture('editor');
-  await rejects(()=>editor.service().send(sampleToken,req()),'access_denied');
+  await rejects(()=>editor.service().send(sampleToken,req()),'editor_read_only');
 });
 
 test('Players may address Narrator from their own authorized House',async()=>{
@@ -317,14 +320,16 @@ test('Inputs are bounded and sender per-round limit is enforced',async()=>{
   await rejects(()=>f.service().send(sampleToken,req()),'mail_round_limit',429);
 });
 
-test('Status reveals no private campaign data and is denied to the editor',async()=>{
+test('Status reveals no private campaign data and never lets the editor send',async()=>{
   const f=fixture();
   const status=await f.service().status(sampleToken);
   assert.equal(status.canSend,true);
   assert.deepEqual(status.originHouseIds,['house-a']);
   assert.ok(!JSON.stringify(status).includes('player-1'));
   const e=fixture('editor');
-  await rejects(()=>e.service().status(sampleToken),'access_denied');
+  const editorStatus=await e.service().status(sampleToken);
+  assert.equal(editorStatus.canSend,false);
+  assert.deepEqual(editorStatus.originHouseIds,[]);
   f.records.get('campaignCloudRuntime/'+snapshot).mailWriteApproved=false;
   assert.equal((await f.service().status(sampleToken)).canSend,false);
 });
@@ -466,11 +471,12 @@ test('Narrator may acknowledge narrator-addressed Cloud mail, not player-house m
   await rejects(()=>f.service().markRead(sampleToken,{
     source:'firebase-cloud',letterId:houseId,
   }),'access_denied',403);
+  // O Editor-Chefe lê toda missiva entregue e registra só a própria leitura.
   const editor=fixture('editor');
   editor.records.set(root+directId,f.records.get(root+directId));
-  await rejects(()=>editor.service().markRead(sampleToken,{
+  assert.equal((await editor.service().markRead(sampleToken,{
     source:'firebase-cloud',letterId:directId,
-  }),'access_denied',403);
+  })).recorded,true);
 });
 
 test('Revoked account and in-transaction membership change fail closed on read receipt',async()=>{
@@ -607,7 +613,7 @@ test('Reply refuses extra browser-selected destinations, bad IDs and missing edi
   editor.records.set(root+'letters/'+id,f.records.get(root+'letters/'+id));
   await rejects(()=>editor.service().reply(sampleToken,{
     requestKey:'reply-editor-1',letterId:id,content:'Okay',
-  }),'access_denied');
+  }),'editor_read_only');
 });
 
 test('Reply fails closed on runtime revocation and cannot bypass round limits',async()=>{
@@ -674,4 +680,140 @@ test('Invalid multi-send target fails before any recipient is written',async()=>
   await assert.rejects(()=>f.service().sendBatch(sampleToken,invalid));
   assert.equal([...f.records].filter(([k])=>k.includes('/letters/')).length,0);
  }
+});
+
+
+/* ---- Ciclo de vida v4: não lida, cancelar, restaurar, editar, Editor-Chefe ---- */
+const letterPath=id=>'campaignCloudRuntime/'+snapshot+'/letters/'+id;
+function asRole(f,role,extra={}){
+  const access='migrationDomainStage/'+snapshot+'/access/player-1';
+  f.records.set(access,{...f.records.get(access),profile:role,
+    admin:role==='narrador',playerId:role==='jogador'?'player-source-id':null,
+    memberHouseIds:role==='jogador'?['house-a']:[],
+    editHouseIds:role==='jogador'?['house-a']:[],...extra});
+}
+function openRound(f,round){
+  for(const path of ['campaignCloudRuntime/'+snapshot,'campaignMailRuntime/'+snapshot])
+    f.records.set(path,{...f.records.get(path),openRound:round});
+}
+
+test('author edits during the open week with versions, history and audit',async()=>{
+  const f=fixture();
+  const sent=await f.service().send(sampleToken,req());
+  const r=await f.service().edit(sampleToken,{letterId:sent.id,expectedVersion:1,
+    subject:'Convite revisto',content:'Texto corrigido'});
+  assert.deepEqual(r,{edited:true,unchanged:false,version:2});
+  const row=f.records.get(letterPath(sent.id));
+  assert.equal(row.subject,'Convite revisto');assert.equal(row.version,2);
+  const history=[...f.records.entries()].filter(([k])=>k.includes('/letterVersions/'));
+  assert.equal(history.length,1);
+  assert.equal(history[0][1].content,'Solicitamos audiência');
+  assert.equal(history[0][1].version,1);
+  await rejects(()=>f.service().edit(sampleToken,{letterId:sent.id,expectedVersion:1,
+    subject:'x',content:'y'}),'letter_version_conflict',409);
+  const same=await f.service().edit(sampleToken,{letterId:sent.id,expectedVersion:2,
+    subject:'Convite revisto',content:'Texto corrigido'});
+  assert.equal(same.unchanged,true);
+  const audits=[...f.records.entries()].filter(([k,v])=>k.includes('/mailAudits/')&&v.action==='edit');
+  assert.equal(audits.length,1);
+});
+
+test('closing the week blocks author edit, cancel and restore',async()=>{
+  const f=fixture();
+  const sent=await f.service().send(sampleToken,req());
+  openRound(f,4);
+  await rejects(()=>f.service().edit(sampleToken,{letterId:sent.id,expectedVersion:1,
+    subject:'a',content:'b'}),'mail_week_closed',409);
+  await rejects(()=>f.service().cancel(sampleToken,{letterId:sent.id,expectedVersion:1}),
+    'mail_week_closed',409);
+  assert.equal(f.records.get(letterPath(sent.id)).deletedAt,null);
+});
+
+test('author cancels at any moment of the open week and may restore it',async()=>{
+  const f=fixture();
+  const sent=await f.service().send(sampleToken,req());
+  const c=await f.service().cancel(sampleToken,{letterId:sent.id,expectedVersion:1});
+  assert.deepEqual(c,{removed:true,alreadyRemoved:false,version:2,removalKind:'cancelada'});
+  const row=f.records.get(letterPath(sent.id));
+  assert.equal(row.deletedAt,'2026-11-16T12:34:56.000Z');
+  assert.equal(row.content,'Solicitamos audiência','texto preservado para auditoria');
+  const again=await f.service().cancel(sampleToken,{letterId:sent.id,expectedVersion:1});
+  assert.equal(again.alreadyRemoved,true);
+  await rejects(()=>f.service().reply(sampleToken,{requestKey:'reply-key_1234',
+    letterId:sent.id,content:'x'}),'reply_not_authorized');
+  const r=await f.service().restore(sampleToken,{letterId:sent.id,expectedVersion:2});
+  assert.deepEqual(r,{restored:true,alreadyActive:false,version:3});
+  assert.equal(f.records.get(letterPath(sent.id)).deletedAt,null);
+});
+
+test('only the author or the Narrator can withdraw; Narrator removal is restorable only by Narrator',async()=>{
+  const f=fixture();
+  const sent=await f.service().send(sampleToken,req());
+  // Outro jogador (mesmo uid de teste com outra Casa de edição) não é o autor da origem.
+  asRole(f,'jogador',{memberHouseIds:['house-b'],editHouseIds:['house-b']});
+  await rejects(()=>f.service().cancel(sampleToken,{letterId:sent.id,expectedVersion:1}),
+    'mail_week_closed',409);
+  asRole(f,'narrador');
+  const removed=await f.service().cancel(sampleToken,{letterId:sent.id,expectedVersion:1});
+  assert.equal(removed.removalKind,'excluida');
+  asRole(f,'jogador');
+  await rejects(()=>f.service().restore(sampleToken,{letterId:sent.id,expectedVersion:2}),
+    'restore_not_allowed',403);
+  asRole(f,'narrador');
+  assert.equal((await f.service().restore(sampleToken,{letterId:sent.id,expectedVersion:2})).version,3);
+  const actions=[...f.records.entries()].filter(([k])=>k.includes('/mailAudits/')).map(([,v])=>v.action).sort();
+  assert.deepEqual(actions,['remove','restore','send']);
+});
+
+test('lifecycle rejects forged ids, imported letters and malformed envelopes',async()=>{
+  const f=fixture();
+  for(const bad of [{letterId:'historical-001',expectedVersion:1},
+    {letterId:'a'.repeat(64),expectedVersion:0},{letterId:'a'.repeat(64)},
+    {letterId:'a'.repeat(64),expectedVersion:1,senderUid:'x'}])
+    await rejects(()=>f.service().cancel(sampleToken,bad),'invalid_mail_lifecycle_request',400);
+  await rejects(()=>f.service().cancel(sampleToken,{letterId:'b'.repeat(64),expectedVersion:1}),
+    'letter_not_found',404);
+});
+
+test('reading only counts when marked: markUnread removes the own receipt',async()=>{
+  const f=fixture();
+  asRole(f,'narrador');
+  const toA=await f.service().send(sampleToken,req({originHouseId:null,recipientHouseId:'house-a'}));
+  // O destinatário é outro uid: simula a sessão do jogador da Casa A.
+  f.records.set(letterPath(toA.id),{...f.records.get(letterPath(toA.id)),senderUid:'gm-uid'});
+  asRole(f,'jogador');
+  await f.service().markRead(sampleToken,{source:'firebase-cloud',letterId:toA.id});
+  const receipts=()=>[...f.records.keys()].filter(k=>k.includes('/mailReadReceipts/'));
+  assert.equal(receipts().length,1);
+  assert.deepEqual(await f.service().markUnread(sampleToken,{source:'firebase-cloud',letterId:toA.id}),
+    {recorded:false,alreadyUnread:false});
+  assert.equal(receipts().length,0);
+  assert.equal((await f.service().markUnread(sampleToken,{source:'firebase-cloud',letterId:toA.id})).alreadyUnread,true);
+  await rejects(()=>f.service().markUnread(sampleToken,{source:'firebase-cloud',letterId:toA.id,uid:'x'}),
+    'invalid_receipt_request',400);
+});
+
+test('Editor-Chefe reads and marks delivered mail but never writes',async()=>{
+  const f=fixture();
+  asRole(f,'narrador');
+  const toA=await f.service().send(sampleToken,req({originHouseId:null,recipientHouseId:'house-a'}));
+  f.records.set(letterPath(toA.id),{...f.records.get(letterPath(toA.id)),senderUid:'gm-uid'});
+  asRole(f,'editor');
+  const status=await f.service().status(sampleToken);
+  assert.equal(status.canSend,false);
+  const read=await f.service().markRead(sampleToken,{source:'firebase-cloud',letterId:toA.id});
+  assert.equal(read.recorded,true);
+  assert.equal((await f.service().markUnread(sampleToken,{source:'firebase-cloud',letterId:toA.id})).alreadyUnread,false);
+  await rejects(()=>f.service().send(sampleToken,req({originHouseId:null})),'editor_read_only');
+  await rejects(()=>f.service().reply(sampleToken,{requestKey:'reply-key_1234',letterId:toA.id,content:'x'}),'editor_read_only');
+  await rejects(()=>f.service().cancel(sampleToken,{letterId:toA.id,expectedVersion:1}),'editor_read_only');
+  await rejects(()=>f.service().edit(sampleToken,{letterId:toA.id,expectedVersion:1,subject:'a',content:'b'}),'editor_read_only');
+  // Um Editor nunca pode carregar Casas.
+  asRole(f,'editor',{memberHouseIds:['house-a']});
+  await rejects(()=>f.service().markRead(sampleToken,{source:'firebase-cloud',letterId:toA.id}),'access_denied');
+  // Excluída deixa de ser legível também para o Editor.
+  asRole(f,'narrador');
+  await f.service().cancel(sampleToken,{letterId:toA.id,expectedVersion:1});
+  asRole(f,'editor');
+  await rejects(()=>f.service().markRead(sampleToken,{source:'firebase-cloud',letterId:toA.id}),'access_denied');
 });

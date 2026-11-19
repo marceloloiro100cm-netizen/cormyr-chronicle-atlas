@@ -115,16 +115,16 @@ async function handle(request:Request):Promise<Response>{
         result=await service.listOriginalRecordVersions(token,payload.recordId);break;
       case 'listOriginalMail':
         result=await loadWorkspaceMailPage(getFirestore(app),snapshotId,
-          await service.workspaceMailScope(token),
+          await service.workspaceMailReadScope(token),
           {filters:payload.filters,page:payload.page,size:payload.size});
         break;
       case 'listOriginalMailOptions':
         result=await loadWorkspaceMailOptions(getFirestore(app),snapshotId,
-          await service.workspaceMailScope(token));
+          await service.workspaceMailReadScope(token));
         break;
       case 'listOriginalMailContext':
         result=await loadWorkspaceMailContext(getFirestore(app),snapshotId,
-          await service.workspaceMailScope(token));
+          await service.workspaceMailReadScope(token));
         break;
       case 'listNewspaper':result=await service.listNewspaper(token);break;
       case 'listOriginalSpies':

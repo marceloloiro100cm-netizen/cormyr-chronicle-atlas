@@ -22,6 +22,17 @@ export function canAcknowledgeMail(actor,record,source,id){
      record.senderUid===actor.uid||
      typeof record.senderUid!=='string')return false;
 
+  // Editor-Chefe (decisão do proprietário, 19/11/2026): lê toda missiva
+  // ENTREGUE para escrever o Jornal, sem escrever, responder ou receber.
+  // Só registra a própria leitura; rascunhos, programadas e excluídas
+  // continuam fora do alcance pela checagem acima.
+  if(actor.role==='editor'){
+    if(source==='imported')
+      return record.sourceId===id&&record.source!=='firebase-cloud';
+    return record.source==='firebase-cloud'&&record.id===id&&
+      record.recipientPlayerId===null;
+  }
+
   if(source==='imported'){
     if(record.sourceId!==id||record.source==='firebase-cloud')return false;
     const direct=typeof record.recipientPlayerId==='string'&&

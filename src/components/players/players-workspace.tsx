@@ -25,6 +25,7 @@ import { FichaTab } from '@/components/players/ficha-tab';
 import {GalleryTab} from '@/components/players/gallery-tab';
 import { AdminPanel } from '@/components/players/admin-panel';
 import { MissivasTab } from '@/components/players/missivas-tab';
+import {EditorMailReader} from '@/components/players/editor-mail-reader';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
 import { HouseIdentity } from '@/components/players/house-identity';
 import {heraldicHouseKey,type HeraldicHouse} from '@/lib/house/heraldry';
@@ -142,8 +143,14 @@ export function PlayersArea({onSignOut,hideBattle=false}:PlayersAreaProps={}){
 }
 function EditorialWorkspace({expectedUserId,onSignOut}:{expectedUserId:string;onSignOut:PlayersAreaProps['onSignOut']}){
   const signout=useAreaSignout(onSignOut);
-  return <NewspaperHub userId={expectedUserId} editor editorial
-    onSignout={()=>{void signout();}}/>;
+  // Editor-Chefe lê as missivas entregues (somente leitura) para escrever o Jornal.
+  const [view,setView]=useState<'jornal'|'missivas'>('jornal');
+  return <>
+    <nav className="campaign-tabs" aria-label="Área do Editor-Chefe">{([['jornal','Redação do Jornal'],['missivas','Missivas (somente leitura)']] as const).map(([id,label])=>
+      <Button key={id} variant={view===id?'default':'outline'} aria-pressed={view===id} onClick={()=>setView(id)}>{label}</Button>)}</nav>
+    {view==='missivas'?<CampaignShell publicTime><EditorMailReader userId={expectedUserId}/></CampaignShell>
+      :<NewspaperHub userId={expectedUserId} editor editorial onSignout={()=>{void signout();}}/>}
+  </>;
 }
 function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:string;onSignOut:PlayersAreaProps['onSignOut'];hideBattle:boolean}){
   const qc=useQueryClient();

@@ -21,6 +21,11 @@ import {MailPeriodNotice} from './mail-period-notice';
 import {dateKey} from '@/lib/calendar/harptos';
 import {formatRoundHarptosReference} from '@/lib/calendar/chronology';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
+import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
+// Operações só existentes no servidor Firebase (sem função SQL legada).
+const cloudRpc=(name:string,args:Record<string,unknown>)=>
+  (supabase.rpc as unknown as (this:unknown,n:string,a:Record<string,unknown>)=>PromiseLike<{error:{message:string}|null}>)
+    .call(supabase,name,args);
 
 
 function ReplyForm({letterId,replyId,recipientId,roundRevision,onSave,label='Responder',isAdmin=false}:{letterId:string;replyId?:string|undefined;recipientId:string;roundRevision:string;onSave:()=>unknown;label?:string;isAdmin?:boolean}){
@@ -131,10 +136,20 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
       (p.id===letter.recipient_player_id||data.members.some(m=>m.player_id===p.id&&m.house_id===letter.recipient_house_id)));
     const replyTarget=letter.sender_user_id===data.user.id
       ?lastPlayerReply?.author_user_id??housePlayer?.user_id??null:letter.sender_user_id;
+    // Firebase Cloud (v4): o autor edita ou cancela o próprio envio a qualquer
+    // momento enquanto a semana de entrega estiver aberta; leitura só conta
+    // quando marcada. Cartas históricas importadas são imutáveis.
+    const cloudMode=firebaseWorkspaceClient()!==null;
+    const cloudMeta=letter as LetterRow&{source?:string;removal_kind?:string|null;edited_at?:string|null};
+    const cloudLetter=cloudMeta.source==='firebase-cloud';
+    const openWeekOwn=cloudLetter&&letter.sender_user_id===data.user.id&&open!==null&&(letter.delivery_week??0)>=open;
+    const canDeleteNow=canDelete&&(!cloudMode||(cloudLetter&&(data.admin||openWeekOwn)));
+    const canRestoreNow=canRestoreLetter&&(!cloudMode||(cloudLetter&&(data.admin||(openWeekOwn&&cloudMeta.removal_kind==='cancelada'))));
+    const withdrawLabel=cloudMode&&openWeekOwn?'Cancelar envio':'Excluir';
     return <article className={'campaign-letter'+(isOpen?'':' recolhida')} key={letter.id} id={'missiva-'+letter.id}>
       <button type="button" className="campaign-letter-toggle" aria-expanded={isOpen} onClick={()=>toggle(letter.id)}>
         <ChevronDown size={18} className={isOpen?'rotate-180 transition-transform':'transition-transform'}/>
-        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {narratorStage==='awaiting-house'?'Aguardando resposta da Casa · ':narratorStage==='awaiting-narrator'?'Aguardando resposta do Narrador · ':hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{readStatus}{data.admin&&pendingReply?' · Há resposta em rascunho/programada':''}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?' · Excluída':trashMode?' · Resposta excluída':''}</span>
+        <span className="campaign-eyebrow">{letter.letter_number?`Missiva ${letter.letter_number} · `:''}{letter.letter_kind==='geral'?'Geral':'Reservada'} · {narratorStage==='awaiting-house'?'Aguardando resposta da Casa · ':narratorStage==='awaiting-narrator'?'Aguardando resposta do Narrador · ':hasDeliveredAnswer(letter,answers)?'Respondida · ':''}{readStatus}{data.admin&&pendingReply?' · Há resposta em rascunho/programada':''}{letter.publication_state==='draft'?' · Rascunho':letter.publication_state==='scheduled'?` · Aguardando abertura da Semana ${letter.delivery_week}`:''}{letter.deleted_at?(cloudMeta.removal_kind==='cancelada'?' · Envio cancelado':' · Excluída'):trashMode?' · Resposta excluída':''}{cloudMeta.edited_at?' · Editada':''}</span>
         <strong className="campaign-letter-subject">{letter.subject}</strong>
         <span className="text-muted-foreground text-sm">De: {letter.sender_name}{fromHouse?` (${fromHouse})`:''} · Para: {to} · {letter.campaign_date?formatDate(letter.campaign_date):date(letter.created_at)}{letter.historical_source?' · Arquivo histórico':''} · {mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}{answers.length?` · ${answers.length} resposta(s)`:''}</span>
       </button>
@@ -142,6 +157,7 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
         <p>{formatDate(letter.campaign_date)}</p>
         {trashMode&&<p className="campaign-trash-notice" role="status">{letter.deleted_at?`Missiva excluída em ${date(letter.deleted_at)}. A conversa original foi preservada.`:'Uma ou mais respostas foram excluídas. A missiva original continua ativa.'}</p>}
         <p className="text-sm font-semibold" role="status">{mailWeekTimeline(letter.creation_week,letter.delivery_week,letter.publication_state)}</p>
+        {!readOnly&&!trashMode&&!letter.deleted_at&&openWeekOwn&&<p className="campaign-status-banner" role="status">Envio da semana aberta: você pode editar ou cancelar a qualquer momento até o Narrador fechar a Semana {open}.</p>}
         {letter.historical_source&&<p className="text-muted-foreground text-sm">Correspondência histórica importada de {letter.historical_source} · não representa um novo envio pelo site.</p>}
         {data.admin&&letter.historical_source&&<p className="text-muted-foreground text-sm">{letter.historical_recipient_name?.includes('(NPC, Narrador)')?'Recebida pelo Narrador na qualidade de gestor da casa NPC.':letter.recipient_house_id?'Entregue à casa jogadora. O Narrador pode acompanhar administrativamente, mas não recebeu cópia da missiva.':'Correspondência arquivada.'}</p>}
         <section className="campaign-letter-original" aria-label="Texto da missiva original">
@@ -196,15 +212,16 @@ export function MissivasTab({data,me,onSave,onError,onManage,groupHouseIds,filte
         {!trashMode&&threadLetters.length>0&&<div className="campaign-thread"><Button size="sm" variant="ghost" aria-expanded={threadOpen} onClick={()=>toggleThread(letter.id)}>{threadOpen?'Ocultar fio da conversa':`Ver relacionadas nesta página (${threadLetters.length} missiva(s) relacionada(s))`}</Button>{threadOpen&&threadLetters.map(other=>{const otherAnswers=viewReplies.filter(r=>r.letter_id===other.id);return <div key={other.id} className="campaign-thread-item"><span className="campaign-eyebrow">{other.letter_number?`Missiva ${other.letter_number} · `:''}{other.letter_kind==='geral'?'Geral':'Reservada'}</span><strong>{other.subject}</strong><small> · De: {other.sender_name} · {other.campaign_date?formatDate(other.campaign_date):date(other.created_at)}</small><CampaignContent content={other.content}/>{otherAnswers.map(a=><div key={a.id} className="campaign-replies"><span className="campaign-eyebrow">Resposta · {mailWeekTimeline(a.creation_week,a.delivery_week,a.publication_state)}</span><br/><strong>{a.author_name}</strong><small> · {date(a.created_at)}</small><CampaignContent content={a.content}/></div>)}</div>;})}</div>}
         {!trashMode&&!letter.deleted_at&&<div className="campaign-actions">
           {!read&&letter.publication_state==='delivered'&&(letter.sender_user_id!==data.user.id||incomingReplies.length>0)&&<Button variant="outline" onClick={async()=>{const {error}=await supabase.rpc('mark_letter_read',{p_id:letter.id});if(error&&error.code!=='23505')onError(error.message);else saved();}}>Marcar como lida</Button>}
+          {cloudMode&&read&&letter.publication_state==='delivered'&&(letter.sender_user_id!==data.user.id||incomingReplies.length>0)&&<Button variant="outline" onClick={async()=>{const {error}=await cloudRpc('mark_letter_unread',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Marcar como não lida</Button>}
           {!readOnly&&(open!==null||data.admin)&&<Button variant="outline" onClick={()=>{if(!replaceMailDraft(data.user.id))return;setCompose(true);setDraft({key:Date.now(),subject:'Enc: '+letter.subject,content:`— Missiva encaminhada —\nDe: ${letter.sender_name} · ${date(letter.created_at)}\nAssunto: ${letter.subject}\n\n${letter.content}`});document.getElementById('nova-missiva')?.scrollIntoView({behavior:'smooth'});}}>Encaminhar</Button>}
-          {canDelete&&<Button variant="outline" onClick={async()=>{if(!confirm('Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>Excluir</Button>}
+          {canDeleteNow&&<Button variant="outline" onClick={async()=>{if(!confirm(withdrawLabel==='Cancelar envio'?'Cancelar este envio? Ele sai da caixa de todos os destinatários. Enquanto a semana estiver aberta, você pode restaurá-lo pela Lixeira.':'Excluir esta missiva? Ela deixará de aparecer para os jogadores.'))return;const {error}=await supabase.rpc('delete_campaign_letter',{p_id:letter.id});if(error)onError(error.message);else saved();}}>{withdrawLabel}</Button>}
         </div>}
-        {!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!readOnly&&!trashMode&&!letter.deleted_at&&((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id))&&<LetterEdit letter={letter} onSave={saved}/>}
+        {!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state==='draft'&&letter.sender_user_id===data.user.id&&<Button variant="outline" disabled={!data.admin&&open===null} onClick={async()=>{const result=await supabase.rpc('schedule_letter_draft',{p_id:letter.id,p_week:letter.delivery_week??open??nextLetterNumber(data.letters)});if(result.error)onError(result.error.message);else saved();}}>Programar entrega</Button>}{!readOnly&&!trashMode&&!letter.deleted_at&&(cloudMode?openWeekOwn:((data.admin&&letter.publication_state!=='draft')||(letter.publication_state==='draft'&&letter.sender_user_id===data.user.id)))&&<LetterEdit letter={letter} onSave={saved}/>}
         {!readOnly&&!trashMode&&!letter.deleted_at&&letter.publication_state==='delivered'&&canAnswer&&replyTarget&&<ReplyForm
           letterId={letter.id} replyId={letter.sender_user_id===data.user.id?lastPlayerReply?.id:undefined}
           recipientId={replyTarget} roundRevision={roundRevision} onSave={saved} isAdmin={data.admin}
           label={letter.sender_user_id===data.user.id?(lastPlayerReply?'Responder à Casa':'Adicionar complemento'):'Responder'}/>}
-        {canRestoreLetter&&<div className="campaign-actions"><Button variant="outline" onClick={async()=>{if(!confirm('Restaurar esta missiva e seu fio original?'))return;const r=await supabase.rpc('restore_campaign_letter',{p_id:letter.id});if(r.error)onError(r.error.message);else saved();}}>Restaurar missiva</Button></div>}
+        {canRestoreNow&&<div className="campaign-actions"><Button variant="outline" onClick={async()=>{if(!confirm('Restaurar esta missiva e seu fio original?'))return;const r=await supabase.rpc('restore_campaign_letter',{p_id:letter.id});if(r.error)onError(r.error.message);else saved();}}>Restaurar missiva</Button></div>}
         <Button variant="ghost" size="sm" onClick={()=>{toggle(letter.id);document.getElementById('missiva-'+letter.id)?.scrollIntoView({block:'nearest'});}}>Recolher</Button>
       </div>}
     </article>;

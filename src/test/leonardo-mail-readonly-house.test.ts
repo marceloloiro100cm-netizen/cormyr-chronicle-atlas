@@ -51,8 +51,14 @@ describe('Leonardo: Casa criada para simulação',()=>{
  });
 });
 
-describe('Editor-Chefe: nenhuma Missiva, Ficha ou Casa',()=>{
- it('a interface de Leonardo é exclusivamente o Jornal',()=>{
+describe('Editor-Chefe: lê Missivas entregues, sem escrever; nenhuma Ficha ou Casa',()=>{
+ it('a interface de Leonardo é o Jornal mais a leitura de Missivas (19/11/2026)',()=>{
+  const reader=source('src/components/players/editor-mail-reader.tsx');
+  expect(source('src/components/players/players-workspace.tsx')).toContain('<EditorMailReader userId={expectedUserId}/>');
+  for(const write of ['dated_mail_action','reply_weekly_message','send_linked_mail','delete_campaign_letter',
+   'restore_campaign_letter','edit_campaign_letter','MailComposer','ReplyForm'])
+   expect(reader).not.toContain(write);
+  expect(reader).toContain("'mail_page'");
   const route=source('src/components/players/players-workspace.tsx');
   const editor=source('src/components/newspaper/NewspaperEditorialDesk.tsx');
   expect(route).toContain('<EditorialWorkspace key={approved}');
