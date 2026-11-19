@@ -10,7 +10,7 @@ import {projectTemporalNotice} from '@/lib/calendar/house-time-impact';
 import { legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import { useCallback, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useServerFn } from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { LayoutDashboard, Feather, Mountain, Castle, Coins, Swords, Eye, Users, CalendarDays, Dice5, ScrollText, Plus, Undo2, Download, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageViewer } from '@/components/image-viewer';

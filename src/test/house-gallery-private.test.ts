@@ -35,7 +35,7 @@ describe('Galeria da Casa · acervo privado separado por tópicos',()=>{
   expect(items).toHaveLength(1);
  });
  it('navegação contém a Galeria ao lado das fichas, com tópicos e filtro de missivas',()=>{
-  const route=file('src/routes/_authenticated/jogadores.tsx');
+  const route=file('src/components/players/players-workspace.tsx');
   expect(route).toContain("['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário']");
   expect(route).toContain("tab==='galeria'&&current");
   expect(route).toContain("records={data.records.filter(r=>r.house_id===current.id)}");

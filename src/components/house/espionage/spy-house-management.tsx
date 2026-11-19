@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {Eye,ShieldCheck,Pencil,Check,X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';

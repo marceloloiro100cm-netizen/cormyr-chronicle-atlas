@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { isNarrativeNpc, isArchivedCourtNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
 import {useQuery} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {loadHouseHub} from '@/lib/house/house.functions';
 import {balances,maxHouseStatus} from '@/lib/house/engine';
 import {ChronicleCharacterEditor} from '@/components/house/character-editor';

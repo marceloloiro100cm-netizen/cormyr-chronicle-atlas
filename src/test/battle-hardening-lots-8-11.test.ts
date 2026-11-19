@@ -23,7 +23,7 @@ describe('Batalha V2 — lote 11, segurança e conformidade',()=>{
   expect(saved).toContain("process.env['ENABLE_BATTLE_PERSISTENCE']");
   expect(saved).toContain('verifySources');
   expect(saved).toContain("db.from('noble_house_sheets')");
-  const route=file('src/routes/_authenticated/jogadores.tsx');
+  const route=file('src/components/players/players-workspace.tsx');
   expect(route).toContain('data.admin?<div');
   expect(route).toContain("section==='batalha'&&BATTLE_MODULE_ENABLED?");
  });

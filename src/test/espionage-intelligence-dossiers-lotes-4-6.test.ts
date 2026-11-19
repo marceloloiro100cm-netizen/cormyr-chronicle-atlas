@@ -54,7 +54,7 @@ describe('Dossiês de espionagem · lotes 4, 5 e 6',()=>{
  });
  it('coloca o gerenciador do narrador abaixo do Hub Temporal com filtros e auditoria',()=>{
   const menu=read('src/components/players/narrator-missives-hub.tsx');
-  const page=read('src/routes/_authenticated/jogadores.tsx');
+  const page=read('src/components/players/players-workspace.tsx');
   const panel=read('src/components/house/espionage/spy-dossier-panel.tsx');
   expect(menu.indexOf("['dossies','Dossiês de Espionagem']"))
    .toBeGreaterThan(menu.indexOf("['calendario','Hub Temporal']"));

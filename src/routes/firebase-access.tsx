@@ -3,7 +3,7 @@ import {FirebaseOfficialFrame,FirebaseOfficialHome,type FirebaseOfficialModule}
   from '@/components/firebase/FirebaseOfficialFrame';
 import '../firebase-official.css';
 import {createFileRoute} from '@tanstack/react-router';
-import {useEffect,useRef,useState,type FormEvent} from 'react';
+import {lazy,Suspense,useEffect,useRef,useState,type FormEvent} from 'react';
 import {runFirebaseRoleSelfAcceptance}
   from '@/lib/auth/firebase-role-self-acceptance';
 import {firebasePilotAuth as firebaseAuth} from '@/lib/auth/firebase-pilot-session';
@@ -35,6 +35,9 @@ import {FirebasePendingAccessReview,type PendingAccessReview,
   type PendingDecisionProposal,type PendingDecisionPreview}
   from '@/components/firebase/FirebasePendingAccessReview';
 import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
+
+// Área interna original (Conselho), carregada só após a sessão Firebase validada.
+const FirebaseCampaignWorkspace=lazy(()=>import('@/components/firebase/FirebaseCampaignWorkspace'));
 
 /**
  * Firebase campaign workspace. Server-side role checks protect each operation;
@@ -625,6 +628,16 @@ function FirebaseAccess(){
     houseLoaded:house!==null,calendarLoaded:calendar!==null,
     mailboxLoaded:inbox!==null,mailCanSend:mailStatus?.canSend===true,
   }):null;
+
+  // Após o login ("Portões de Cormyr"), a área interna é a interface original
+  // da segunda temporada. Os módulos Firebase abaixo seguem disponíveis no código
+  // para a ligação dos conectores.
+  const council=view?<Suspense fallback={<p role="status" className="firebase-official-module-note">
+    Abrindo o Conselho…</p>}>
+    <FirebaseCampaignWorkspace key={view.profile+'|'+view.memberHouseIds.join(',')}
+      profile={view.profile} memberHouseIds={view.memberHouseIds} onSignOut={signOut}/>
+  </Suspense>:null;
+  if(council)return council;
 
   return <FirebaseOfficialFrame profile={view?.profile??null}
     active={activeModule} onSelect={setActiveModule} onSignOut={signOut}>

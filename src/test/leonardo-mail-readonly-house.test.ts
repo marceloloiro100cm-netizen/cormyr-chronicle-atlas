@@ -53,7 +53,7 @@ describe('Leonardo: Casa criada para simulação',()=>{
 
 describe('Editor-Chefe: nenhuma Missiva, Ficha ou Casa',()=>{
  it('a interface de Leonardo é exclusivamente o Jornal',()=>{
-  const route=source('src/routes/_authenticated/jogadores.tsx');
+  const route=source('src/components/players/players-workspace.tsx');
   const editor=source('src/components/newspaper/NewspaperEditorialDesk.tsx');
   expect(route).toContain('<EditorialWorkspace key={approved}');
   expect(route).not.toContain('specialMailReadOnly');

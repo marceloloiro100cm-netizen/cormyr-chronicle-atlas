@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {REGIONS,regionId} from '@/lib/house/regions';
 import {loadNarratorSpyHouseDefense} from '@/lib/espionage/spy-narrator-house-defense.functions';
 import type {SpyTargetHouse} from '@/lib/espionage/spy-target-stages';

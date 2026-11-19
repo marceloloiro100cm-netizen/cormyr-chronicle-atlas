@@ -52,7 +52,7 @@ describe('Notícias contratadas: interface',()=>{
   expect(pilot).toContain("view.profile==='editor'");
  });
  it('o jogador contrata na aba Jornal e o Editor-Chefe recebe em Anúncios',()=>{
-  expect(read('src/routes/_authenticated/jogadores.tsx')).toContain('houseId:current.id');
+  expect(read('src/components/players/players-workspace.tsx')).toContain('houseId:current.id');
   const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
   expect(desk).toContain('CommissionInbox');
   expect(desk).toContain('Notícias contratadas pelas Casas');
@@ -76,7 +76,7 @@ describe('Seis facilidades extras',()=>{
   expect(hub).toContain('salvo automaticamente');
   expect(hub).toContain('getNewspaperRevisions');
   expect(read('src/components/newspaper/NewspaperEditorialDesk.tsx')).toContain('Acervo de gravuras do Reino');
-  expect(read('src/routes/_authenticated/jogadores.tsx')).toContain('useUnseenCommissionAnswers');
+  expect(read('src/components/players/players-workspace.tsx')).toContain('useUnseenCommissionAnswers');
  });
 });
 

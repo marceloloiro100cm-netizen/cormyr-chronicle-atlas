@@ -1,7 +1,7 @@
 import { reconciliationPreview, type ReconciliationRecord } from '@/lib/house/reconciliation';
 import { RESOURCE_KEYS, RESOURCE_NAMES } from '@/lib/house/types';
 import { useState } from 'react';
-import { useServerFn } from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveHouseSource } from '@/lib/house/source-link.functions';

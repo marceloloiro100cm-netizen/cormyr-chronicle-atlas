@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
-import {useServerFn} from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {Button} from '@/components/ui/button';
 import {allSpyRegionalBaselines} from '@/lib/espionage/public-strategy';
 import {approveSpyRegionLink} from '@/lib/espionage/region-review.functions';

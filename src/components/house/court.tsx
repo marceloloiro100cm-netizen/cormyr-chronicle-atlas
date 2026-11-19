@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useServerFn } from '@tanstack/react-start';
+import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { UserRound, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog,DialogContent,DialogTitle } from '@/components/ui/dialog';

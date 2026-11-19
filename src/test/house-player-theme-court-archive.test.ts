@@ -7,7 +7,7 @@ const source=(file:string)=>readFileSync(join(process.cwd(),file),'utf8');
 
 describe('heráldica de ponta a ponta na área segura do jogador',()=>{
  it('aplica cores e brasão somente à Casa ativa, sem afetar o Narrador',()=>{
-  const route=source('src/routes/_authenticated/jogadores.tsx');
+  const route=source('src/components/players/players-workspace.tsx');
   const shell=source('src/components/campaign-shell.tsx');
   expect(route).toContain('heraldry={!data.admin&&current?heraldicHouseKey(current.name):null}');
   expect(shell).toContain('data-house-theme={heraldry??undefined}');

@@ -36,7 +36,7 @@ describe('Lote 34 · bloqueio global após revogação do Narrador',()=>{
   })).toBe(true);
  });
  it('a rota observa o bloqueio antes de montar qualquer workspace privado',()=>{
-  const source=readFileSync(resolve(process.cwd(),'src/routes/_authenticated/jogadores.tsx'),'utf8');
+  const source=readFileSync(resolve(process.cwd(),'src/components/players/players-workspace.tsx'),'utf8');
   const lock=source.indexOf('if(revoked.data)return <section role="alert">');
   const workspace=source.indexOf('return <PlayersWorkspace key={approved}');
   expect(source).toContain('queryKey:NARRATOR_ACCESS_REVOKED_KEY');
