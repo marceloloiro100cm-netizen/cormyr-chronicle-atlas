@@ -218,6 +218,8 @@ test('narrator confirmation reads actual published Harptos date and both mail ga
     calendar:{year:1522,month:0,day:99,festival:null,version:5}});
   const invalidClock=await service.get('valid-token');
   assert.equal(invalidClock.calendarPublished,false);
+  assert.equal(invalidClock.editable,false);
+  assert.equal(invalidClock.requiresReconciliation,true);
   assert.equal(invalidClock.mailEnabled,false);
   assert.equal(invalidClock.operationalCalendar,null);
   assert.equal(invalidClock.openRound,null);
