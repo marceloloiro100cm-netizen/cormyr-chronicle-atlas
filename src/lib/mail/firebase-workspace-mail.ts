@@ -239,3 +239,101 @@ export async function loadWorkspaceMailOptions(db:unknown,snapshotId:string,
   const rows=Object.fromEntries(TABLES.map((name,i)=>[name,results[i]])) as WorkspaceMailTables;
   return projectWorkspaceMailOptions(rows,viewer);
 }
+
+/**
+ * Read-only source headers for the ORIGINAL, immutable Council presentation.
+ * Live Firebase Auth/House scope must be checked BEFORE this function is called.
+ * Mail bodies and cross-House user IDs are never returned in this bootstrap.
+ */
+export function projectWorkspaceMailContext(
+  rows:WorkspaceMailTables,viewer:VerifiedWorkspaceMailScope,
+){
+  const data=projectWorkspaceMailTables(rows,viewer);
+  const letters=data.letters.filter(letter=>
+    canReadLetterAs(data,letter,viewer.uid));
+  const visible=new Set(letters.map(letter=>letter.id));
+  const nonempty=(v:unknown,max=200):v is string=>
+    typeof v==='string'&&v.length>0&&v.length<=max;
+  const nullable=(v:unknown)=>nonempty(v)?v:null;
+  const currentPlayer=rows.campaign_players.find(p=>p.id===viewer.playerId&&
+    p.user_id===viewer.uid);
+  const name=nonempty(currentPlayer?.name)?currentPlayer.name:
+    viewer.profile==='narrador'?'Narrador':'Jogador';
+  const houses=rows.campaign_houses.map(h=>{
+    const privileged=viewer.profile==='narrador'||
+      viewer.memberHouseIds.includes(String(h.id));
+    return {
+      id:h.id,name:h.name,active:h.active===true,
+      season:h.season??null,region:nonempty(h.region)?h.region:'',
+      details:privileged&&typeof h.details==='string'?h.details:'',
+      castle:nullable(h.castle),crest:nullable(h.crest),
+      lord_name:privileged?nullable(h.lord_name):null,
+    };
+  });
+  const players=rows.campaign_players.map(p=>{
+    const own=p.id===viewer.playerId&&p.user_id===viewer.uid;
+    return {
+      id:p.id,
+      user_id:viewer.profile==='narrador'?nullable(p.user_id):
+        own?viewer.uid:null,
+      name:own&&nonempty(p.name)?p.name:
+        viewer.profile==='narrador'&&nonempty(p.name)?p.name:
+        'Jogador da campanha',
+      roster_house_id:nullable(p.roster_house_id),
+      active:viewer.profile==='narrador'?p.active===true:own,
+      require_password_change:viewer.profile==='narrador'
+        ?p.require_password_change===true:!own,
+    };
+  });
+  const members=rows.house_memberships.filter(m=>
+    viewer.profile==='narrador'||
+      m.player_id===viewer.playerId&&
+      viewer.memberHouseIds.includes(String(m.house_id)))
+    .map(m=>({player_id:m.player_id,house_id:m.house_id,
+      // The archived member's old edit permission is NEVER a Cloud grant.
+      can_edit:false,can_edit_attributes:false}));
+  return {
+    readOnly:true,verifiedViewerScope:true,
+    viewer:{uid:viewer.uid,profile:viewer.profile,
+      playerId:viewer.playerId,name},
+    houses,players,members,
+    // Minimal original headers: no arbitrary source columns or body text.
+    letters:letters.map(l=>({
+      id:l.id,sender_user_id:l.sender_user_id,
+      sender_player_id:l.sender_player_id,sender_name:l.sender_name,
+      recipient_house_id:l.recipient_house_id,
+      recipient_player_id:l.recipient_player_id,
+      origin_house_id:l.origin_house_id,
+      subject:l.subject,content:'',created_at:l.created_at,
+      delivered_at:l.delivered_at,deleted_at:l.deleted_at,
+      creation_week:l.creation_week,delivery_week:l.delivery_week,
+      letter_number:l.letter_number,letter_kind:l.letter_kind,
+      court_member_id:l.court_member_id,court_assignment:l.court_assignment,
+      military_unit_id:l.military_unit_id,batch_key:l.batch_key,
+      publication_state:l.publication_state,
+    })),
+    replies:data.replies.filter(reply=>visible.has(reply.letter_id)&&
+      canReadReply(data,reply,viewer.uid)).map(r=>({
+      id:r.id,letter_id:r.letter_id,author_user_id:r.author_user_id,
+      author_name:r.author_name,recipient_user_id:r.recipient_user_id,
+      content:'',publication_state:r.publication_state,
+      created_at:r.created_at,delivered_at:r.delivered_at,
+      deleted_at:r.deleted_at,delivery_week:r.delivery_week,
+      creation_week:r.creation_week,
+    })),
+    receipts:data.receipts.filter(rr=>
+      visible.has(rr.letter_id)&&
+      (viewer.profile==='narrador'||rr.user_id===viewer.uid)),
+    rounds:data.rounds,
+    catalog:houses.map(h=>({id:h.id,name:h.name})),
+  };
+}
+export async function loadWorkspaceMailContext(db:unknown,snapshotId:string,
+  viewer:VerifiedWorkspaceMailScope){
+  if(!/^[a-f0-9]{64}$/.test(snapshotId))invalid();
+  const results=await Promise.all(TABLES.map(name=>
+    readWorkspaceTable(db,snapshotId,name)));
+  const rows=Object.fromEntries(TABLES.map((name,i)=>
+    [name,results[i]])) as WorkspaceMailTables;
+  return projectWorkspaceMailContext(rows,viewer);
+}
