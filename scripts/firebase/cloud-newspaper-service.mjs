@@ -152,7 +152,8 @@ export function createFirebaseCloudNewspaper({
       roots[3].collection('editions').doc(id);
     const [stageDocs,cal,scope,overlay,live,paper,receipt]=await Promise.all([
       Promise.all(roots.map(ref=>tx.get(ref))),tx.get(calendar),
-      tx.get(domain.collection('access').doc(uid)),tx.get(runtime),
+      tx.get(domain.collection('access').doc(uid)),
+      tx.get(runtime.collection('accountAccess').doc(uid)),tx.get(runtime),
       tx.get(target),tx.get(receiptRef),
     ]);
     readyRoots(stageDocs);
@@ -309,7 +310,7 @@ export function createFirebaseCloudNewspaper({
       // Status is read-only. Do not leak private stage details, UID or
       // write approval settings to an unauthenticated caller.
       const [scope,...documents]=await Promise.all([
-        domain.collection('access').doc(uid).get(),
+        currentAccountAccess(db,snapshotId,uid),
         ...roots.map(ref=>ref.get()),calendar.get(),runtime.get(),
       ]);
       authorized(uid,scope);
