@@ -61,7 +61,7 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    for(const row of historical)existing.set(key(String(row['letter_id']),String(row['user_id'])),row);
    const delivered=new Set(letters.filter(l=>l['publication_state']==='delivered'&&
     l['deleted_at']==null).map(l=>l['id']));
-   const safe=/^[^/\\u0000-\\u001f\\u007f]{1,128}$/;
+   const safe=/^[^/\u0000-\u001f\u007f]{1,128}$/;
    for(const doc of snapshot.docs){
     const data=doc.data(),uid=data?.viewerUid,letterId=data?.letterId,at=data?.readAt;
     if(data?.source!=='imported'||typeof uid!=='string'||!safe.test(uid)||
@@ -135,7 +135,7 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
    if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
    if(name==='mark_letter_read'){
     if(scope.profile==='editor')denied();
-    const id=args['p_id'],safe=/^[^/\\u0000-\\u001f\\u007f]{1,128}$/;
+    const id=args['p_id'],safe=/^[^/\u0000-\u001f\u007f]{1,128}$/;
     if(Object.keys(args).length!==1||typeof id!=='string'||!safe.test(id))
      throw new CloudAccessError('invalid_receipt_request',400);
     if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
