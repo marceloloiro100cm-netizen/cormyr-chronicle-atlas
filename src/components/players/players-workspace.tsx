@@ -27,6 +27,7 @@ import { AdminPanel } from '@/components/players/admin-panel';
 import { MissivasTab } from '@/components/players/missivas-tab';
 import {EditorMailReader} from '@/components/players/editor-mail-reader';
 import {MissivasArea} from '@/components/players/chancelaria/MissivasArea';
+import {CouncilOpening} from '@/components/firebase/CouncilOpening';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
 import { HouseIdentity } from '@/components/players/house-identity';
@@ -59,6 +60,8 @@ function useAreaSignout(onSignOut:PlayersAreaProps['onSignOut']){
   };
 }
 
+/** Negativas do servidor (nunca repetidas): sessão, perfil ou vínculo recusados. */
+const ACCESS_DENIAL=/access_denied|authentication_required|invalid_access_scope|não autorizad|Identidade alterada|divergentes|expirada/i;
 /** Access can be revoked without any Supabase auth event. The live route
  * must first prove the CURRENT memberships before showing cached private data.
  * Refetch on focus/reconnect, plus a 15s fallback for missed RLS Realtime.
@@ -72,7 +75,10 @@ export function PlayersArea({onSignOut,hideBattle=false}:PlayersAreaProps={}){
     refetchInterval:CAMPAIGN_ACCESS_SCOPE_POLL_MS,
     refetchOnWindowFocus:'always',
     refetchOnReconnect:'always',
-    retry:false,
+    // Uma oscilação de rede não pode derrubar o Conselho e apagar o que está
+    // sendo escrito. Negativas de acesso continuam bloqueando na hora.
+    retry:(failures,error)=>failures<2&&!ACCESS_DENIAL.test(error instanceof Error?error.message:''),
+    retryDelay:1500,
     staleTime:0,
   });
   // An administrative RPC denial locks the ENTIRE workspace immediately, not
@@ -122,14 +128,14 @@ export function PlayersArea({onSignOut,hideBattle=false}:PlayersAreaProps={}){
     O acesso administrativo foi bloqueado após revogação. Aguardando uma nova confirmação das permissões.
     <Button onClick={()=>void scope.refetch()}>Verificar permissões novamente</Button>
   </section>;
-  if(scope.isError)return <section role="alert">
+  if(scope.isError)return <CouncilOpening><section role="alert">
     Não foi possível confirmar seus vínculos e permissões. O acervo reservado está bloqueado.
     {scope.error instanceof Error&&<small className="block text-xs opacity-80">Detalhe técnico: {scope.error.message}</small>}
-    <Button onClick={()=>void scope.refetch()}>Verificar novamente</Button>
-  </section>;
-  if(!scope.data||approved!==scope.data.fingerprint)return <p role="status">
-    Verificando permissões atuais da campanha…
-  </p>;
+    <div className="campaign-actions"><Button onClick={()=>void scope.refetch()}>Verificar novamente</Button>
+    <Button variant="outline" onClick={()=>void signout()}>Sair</Button></div>
+  </section></CouncilOpening>;
+  // Mesma tela de abertura do login até o acervo carregar (uma única tela).
+  if(!scope.data||approved!==scope.data.fingerprint)return <CouncilOpening/>;
   // Mandatory first-login password change precedes all private campaign reads.
   // A freshly provisioned player cannot rely on loadPanel(), since its RLS
   // queries may be restricted until the credential is rotated.
@@ -184,7 +190,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       }).subscribe();
     return()=>{if(debounce)clearTimeout(debounce);void supabase.removeChannel(channel);};
   },[qc]);
-  if(isPending)return <CampaignShell><h1>Conselho dos jogadores</h1><p role="status">Consultando seu acervo…</p></CampaignShell>;
+  if(isPending)return <CouncilOpening/>;
   if(data&&data.user.id!==expectedUserId)return <p role="status">Revalidando a identidade do acervo…</p>;
   if(error||!data)return <CampaignShell><h1>Não foi possível consultar seu acervo</h1><p role="alert">{error?.message}</p><Button onClick={()=>refresh()}>Tentar novamente</Button></CampaignShell>;
   const me=data.players.find(p=>p.user_id===data.user.id);

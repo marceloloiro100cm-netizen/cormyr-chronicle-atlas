@@ -205,11 +205,17 @@ function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode
   onBack:()=>void;onRead:()=>void;onUnread:()=>void;onForward:()=>void;onDone:()=>void;onError:(m:string)=>void;
 }){
   const unread=conversationUnread(c,ctx);
-  const [reply,setReply]=useState('');const [signed,setSigned]=useState('');
+  // Rascunho da resposta guardado por conversa nesta aba: trocar de carta,
+  // atualizar a lista ou uma falha de envio não apagam o texto.
+  const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
+  const readDraft=()=>{try{return sessionStorage.getItem(draftKey)??'';}catch{return '';}};
+  const [reply,setReplyState]=useState(readDraft);const [signed,setSigned]=useState('');
+  const setReply=(value:string)=>{setReplyState(value);
+    try{if(value)sessionStorage.setItem(draftKey,value);else sessionStorage.removeItem(draftKey);}catch{/* só em memória */}};
   const [busy,setBusy]=useState(false);const [key,setKey]=useState(()=>crypto.randomUUID());
   const [editing,setEditing]=useState<MailRow|null>(null);const [editText,setEditText]=useState('');const [editSubject,setEditSubject]=useState('');
   const [confirmCancel,setConfirmCancel]=useState<string|null>(null);
-  useEffect(()=>{setReply('');setEditing(null);setConfirmCancel(null);setKey(crypto.randomUUID());},[c.root.id]);
+  useEffect(()=>{setReplyState(readDraft());setEditing(null);setConfirmCancel(null);setKey(crypto.randomUUID());},[c.root.id]);// eslint-disable-line react-hooks/exhaustive-deps
   const consequences=useQuery({queryKey:['letter-consequences',uid,c.root.id],enabled:!trashMode,queryFn:async()=>{
     const r=await supabase.from('campaign_letter_consequences').select('id,letter_id,house_id,changes,active,created_at').eq('letter_id',c.root.id);
     if(r.error)throw r.error;return (r.data??[]) as LetterConsequenceRow[];
@@ -218,16 +224,18 @@ function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode
   const own=(m:MailRow)=>m.sender_user_id===uid&&m['source']==='firebase-cloud';
   const pending=(m:MailRow)=>m.publication_state==='draft'||m.publication_state==='scheduled';
   const editable=(m:MailRow)=>own(m)&&!m.deleted_at&&(pending(m)||(openRound!==null&&(m.delivery_week??0)>=openRound));
-  const act=async(work:()=>PromiseLike<{error:{message:string}|null}>)=>{
+  const act=async(work:()=>PromiseLike<{error:{message:string}|null}>):Promise<boolean>=>{
     setBusy(true);const r=await work();setBusy(false);
-    if(r.error)onError(r.error.message);else onDone();
+    if(r.error){onError(r.error.message);return false;}
+    onDone();return true;
   };
   const sendReply=async(draft:boolean)=>{
     if(!target||!reply.trim())return;
     if(!today){onError('Data oficial da campanha indisponível.');return;}
-    await act(()=>draft
+    const ok=await act(()=>draft
       ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:null,p_content:reply,p_signed_by:admin?signed.trim()||null:null},today)
       :datedMail('reply_weekly_message',{p_letter:target,p_reply:null,p_content:reply,p_key:key,p_draft:false,p_signed_by:admin?signed.trim()||null:null},today));
+    if(!ok)return;
     setReply('');setKey(crypto.randomUUID());
   };
   const statusBar=(m:MailRow)=>{
@@ -257,8 +265,8 @@ function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode
     return parts.length?<div className="ch-status">{parts}</div>:null;
   };
   const editForm=(m:MailRow)=><form className="ch-form" onSubmit={e=>{e.preventDefault();
-    void act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:editText},(m['campaign_date'] as string|null|undefined)||today))
-      .then(()=>setEditing(null));}}>
+    void act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:editText},(m['campaign_date'] as string|null|undefined)??''))
+      .then(ok=>{if(ok)setEditing(null);});}}>
     <b>✏️ Editando o envio</b><span className="ch-muted">Quem já leu verá "Editada"; a versão anterior fica no histórico.</span>
     {!m['conversation_id']||m['conversation_id']===m.id?<label>Assunto<input value={editSubject} onChange={e=>setEditSubject(e.target.value)} required/></label>:null}
     <label>Texto<textarea rows={8} value={editText} onChange={e=>setEditText(e.target.value)} required/></label>
