@@ -23,6 +23,7 @@ import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 import {planNarratorAccessRemediation}
   from './cloud-access-remediation-plan.mjs';
 import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
+import {currentAccountAccess} from './operational-account-access.mjs';
 
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
@@ -93,9 +94,8 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       deny('authentication_required',401);
     await stageReady('migrationDomainStage');
     await stageReady('migrationAuthStage');
-    const access=await get(db,'migrationDomainStage',snapshotId,'access',token.uid);
-    const v=access.data();
-    if(!access.exists||!v||v.userId!==token.uid||v.active!==true||
+    const v=await currentAccountAccess(db,snapshotId,token.uid);
+    if(!v||v.userId!==token.uid||v.active!==true||
        v.requirePasswordChange!==false)deny('access_denied',403);
     if(!['jogador','editor','narrador'].includes(v.profile))deny('access_denied',403);
     if(v.profile==='narrador'&&v.admin!==true)deny('access_denied',403);
