@@ -25,6 +25,11 @@
  * 2026-11-19 (HUB Temporal): players-workspace.tsx adds, only inside the
  * Firebase workspace, a notice above the Narrator calendar pointing to the
  * Firebase HUB that opens weeks. Re-captured after review.
+ * 2026-11-19 (Chancelaria v4): players-workspace.tsx wraps, only inside the
+ * Firebase workspace, the player Missivas tab and the Narrator Missivas section
+ * in MissivasArea, which opens the Chancelaria (protótipo v4) and keeps the
+ * original MissivasTab/NarratorMissivasHub one click away ("Visão clássica").
+ * Outside Firebase the originals render unchanged. Re-captured after review.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -37,7 +42,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'0a977a47affdda5ec9247580477261358ae6f615',
+  'src/components/players/players-workspace.tsx':'8cc5b2ed2b67b25be23aa7af644e9247708ab35d',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'55117d8e466edee9ccfaa46356999505cf5268d2',
