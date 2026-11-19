@@ -102,17 +102,7 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
  }
  // Public reader and editor both see editions published by the Cloud runtime.
  // The archive source already carries historical (non-cloud) editions.
- let published:{items:PublishedSummary[]};
- try{
-  published=await publishedRequest<{items:PublishedSummary[]}>('listNewspaper');
- }catch(error){
-  // The workspace already authorized and filtered the imported archive.
-  // A temporarily disabled Cloud reader must not hide these existing editions;
-  // never mask 401/403, malformed responses, or failures without an archive.
-  if((error as {status?:number})?.status===503&&imported.length>0)
-   return [...imported].sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
-  throw error;
- }
+ const published=await publishedRequest<{items:PublishedSummary[]}>('listNewspaper');
  if(!Array.isArray(published.items)||published.items.length>100)
   throw Error('Acervo publicado acima do limite de segurança.');
  const ids=new Set(cloud.map(e=>e.id));
@@ -122,7 +112,13 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
   if(v.id!==item.id)throw Error('Edição publicada inconsistente.');
   return v;
  }));
- const combined=[...imported,...[...cloud,...complete].map(originalNewspaperEdition)];
+ // The approved reader stage is the authoritative allowlist for players.
+ // Staged import rows alone must not expose an unreviewed newspaper edition.
+ const reviewedHistoricIds=new Set(published.items.filter(item=>
+  item&&typeof item.id==='string'&&!CLOUD.test(item.id)).map(item=>item.id));
+ const history=editorial?imported:imported.filter(item=>
+  reviewedHistoricIds.has(item.id)&&['published','archived'].includes(item.state));
+ const combined=[...history,...[...cloud,...complete].map(originalNewspaperEdition)];
  if(new Set(combined.map(x=>x.id)).size!==combined.length)
   throw Error('Identificador de edição duplicado no acervo.');
  return combined.sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
