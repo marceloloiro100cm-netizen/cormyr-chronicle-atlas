@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'scripts/firebase/workspace-link-audit-cli.mjs'
+      - 'scripts/firebase/workspace-link-audit.mjs'
+      - 'scripts/firebase/workspace-link-audit.test.mjs'
+      - 'scripts/firebase/workspace-audit.mjs'
+      - 'scripts/firebase/workspace-audit.test.mjs'
       - '.github/workflows/firebase-workspace-link-audit.yml'
 permissions:
   contents: read
