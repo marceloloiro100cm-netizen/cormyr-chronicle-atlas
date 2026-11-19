@@ -273,9 +273,14 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     // Historic roster entries are never an access grant.
     const activePlayers=directory.filter(p=>p['active']===true&&p['require_password_change']!==true&&
       typeof p['user_id']==='string'&&p['user_id'].length>0);
+    // Only officially active Season 2 Houses belong in recipient filters.
+    // An outdated imported membership must never be offered as a live route.
+    const activeRecipientHouses=new Set(allHouses.filter(h=>
+      h['active']===true&&h['season']===2).map(h=>h['id']));
     const playersOut=activePlayers.map(p=>({
      id:p['id'],name:typeof p['name']==='string'?p['name']:'Jogador',
-     houses:links.filter((m:Row)=>m['player_id']===p['id']).map((m:Row)=>m['house_id']),
+     houses:links.filter((m:Row)=>m['player_id']===p['id']&&
+       activeRecipientHouses.has(m['house_id'])).map((m:Row)=>m['house_id']),
     })).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
     // Original SQL LEFT JOIN: a season-two House without a sheet is still
     // addressable and simply has no court, units or version yet.
