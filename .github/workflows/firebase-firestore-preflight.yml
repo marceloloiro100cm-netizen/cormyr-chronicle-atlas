@@ -1,0 +1,23 @@
+name: Firebase Firestore data preflight
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/audit-firestore-backup*.mjs'
+      - 'scripts/firebase/compare-backup-snapshots*.mjs'
+      - 'docs/firebase/FIRESTORE-DATA-PREFLIGHT.md'
+      - '.github/workflows/firebase-firestore-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check scripts/firebase/audit-firestore-backup.mjs
+      - run: node --check scripts/firebase/compare-backup-snapshots.mjs
+      - run: node --test scripts/firebase/audit-firestore-backup.test.mjs scripts/firebase/compare-backup-snapshots.test.mjs
+      - run: node scripts/verify-public-repo.mjs
