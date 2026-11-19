@@ -264,10 +264,10 @@ export function projectWorkspaceMailContext(
       viewer.memberHouseIds.includes(String(h.id));
     return {
       id:h.id,name:h.name,active:h.active===true,
-      season:h.season??null,region:nonempty(h.region)?h.region:'',
-      details:privileged&&typeof h.details==='string'?h.details:'',
-      castle:nullable(h.castle),crest:nullable(h.crest),
-      lord_name:privileged?nullable(h.lord_name):null,
+      season:h['season']??null,region:nonempty(h['region'])?h['region']:'',
+      details:privileged&&typeof h['details']==='string'?h['details']:'',
+      castle:nullable(h['castle']),crest:nullable(h['crest']),
+      lord_name:privileged?nullable(h['lord_name']):null,
     };
   });
   const players=rows.campaign_players.map(p=>{
