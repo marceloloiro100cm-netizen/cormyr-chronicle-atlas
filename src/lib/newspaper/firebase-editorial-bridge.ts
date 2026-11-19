@@ -102,7 +102,17 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
  }
  // Public reader and editor both see editions published by the Cloud runtime.
  // The archive source already carries historical (non-cloud) editions.
- const published=await publishedRequest<{items:PublishedSummary[]}>('listNewspaper');
+ let published:{items:PublishedSummary[]};
+ try{
+  published=await publishedRequest<{items:PublishedSummary[]}>('listNewspaper');
+ }catch(error){
+  // The workspace already authorized and filtered the imported archive.
+  // A temporarily disabled Cloud reader must not hide these existing editions;
+  // never mask 401/403, malformed responses, or failures without an archive.
+  if((error as {status?:number})?.status===503&&imported.length>0)
+   return [...imported].sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
+  throw error;
+ }
  if(!Array.isArray(published.items)||published.items.length>100)
   throw Error('Acervo publicado acima do limite de segurança.');
  const ids=new Set(cloud.map(e=>e.id));
