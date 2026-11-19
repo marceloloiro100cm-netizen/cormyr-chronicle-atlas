@@ -63,13 +63,17 @@ function FirebaseRealEditorialRoute(){
   useEffect(()=>{
     void verify();
     const auth=firebasePilotAuth();
+    let observedUid=auth?.current()?.uid??null;
     const unsubscribe=auth?.subscribe(next=>{
-      if(!next){generation.current++;setAvailable(false);setAllowed(false);
-        setMessage('Sessão encerrada. Faça login novamente.');}
+      if(!next||(observedUid!==null&&next.uid!==observedUid)){
+        generation.current++;setAvailable(false);setAllowed(false);
+        setMessage('A identidade Firebase mudou. Verifique seu acesso novamente.');
+      }
+      observedUid=next?.uid??null;
     });
-    const onFocus=()=>{void verify();};
-    window.addEventListener('focus',onFocus);
-    return()=>{generation.current++;unsubscribe?.();window.removeEventListener('focus',onFocus);};
+    // No automatic form unmount on focus: every write is reauthorized by
+    // the server and the editor must not lose unsaved newspaper content.
+    return()=>{generation.current++;unsubscribe?.();};
   },[verify]);
   return <CampaignShell>
     <header className="campaign-heading">

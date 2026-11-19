@@ -52,17 +52,17 @@ function FirebaseNarratorHubRoute(){
   useEffect(()=>{
     void verify();
     const auth=firebasePilotAuth();
+    let observedUid=auth?.current()?.uid??null;
     const unsubscribe=auth?.subscribe(next=>{
-      if(!next){sequence.current++;setApproved(false);
-        setMessage('Sessão encerrada. Entre novamente para administrar o HUB.');}
+      if(!next||(observedUid!==null&&next.uid!==observedUid)){
+        sequence.current++;setApproved(false);
+        setMessage('A identidade Firebase mudou. Verifique o acesso ao HUB novamente.');
+      }
+      observedUid=next?.uid??null;
     });
-    const onFocus=()=>{void verify();};
-    window.addEventListener('focus',onFocus);
-    return()=>{
-      sequence.current++;
-      unsubscribe?.();
-      window.removeEventListener('focus',onFocus);
-    };
+    // Preserve unsaved calendar/round fields when returning to the tab.
+    // Server-side Firebase Auth and optimistic versions still guard every write.
+    return()=>{sequence.current++;unsubscribe?.();};
   },[verify]);
   return <CampaignShell>
     <header className="campaign-heading">

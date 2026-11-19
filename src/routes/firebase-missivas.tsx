@@ -54,13 +54,17 @@ function FirebaseOriginalMailRoute(){
   useEffect(()=>{
     void verify();
     const auth=firebasePilotAuth();
+    let observedUid=auth?.current()?.uid??null;
     const stop=auth?.subscribe(next=>{
-      if(!next){generation.current++;setRole(null);
-        setMessage('Sessão encerrada. Entre novamente pelo portal Firebase.');}
+      if(!next||(observedUid!==null&&next.uid!==observedUid)){
+        generation.current++;setRole(null);
+        setMessage('A sessão Firebase mudou. Verifique seu acesso novamente.');
+      }
+      observedUid=next?.uid??null;
     });
-    const onFocus=()=>{if(document.visibilityState==='visible')void verify();};
-    window.addEventListener('focus',onFocus);
-    return()=>{generation.current++;stop?.();window.removeEventListener('focus',onFocus);};
+    // Original mail queries independently recheck the live Firebase scope
+    // on focus. Do not destroy filter state simply by changing tabs.
+    return()=>{generation.current++;stop?.();};
   },[verify]);
   return <CampaignShell>
     <header className="campaign-heading">
