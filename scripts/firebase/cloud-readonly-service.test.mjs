@@ -381,6 +381,27 @@ test('Mailbox includes delivered own correspondence and excludes other-house, dr
   await rejects(()=>editor.service().listMailbox(token),'access_denied',403);
 });
 
+test('Imported narrator letters are private to Narrator and their actual sender',async()=>{
+  const path='migrationDomainStage/'+snapshot+'/letters/'+hash('letter:to-narrator');
+  const original={
+    sourceId:'to-narrator',recipientKind:'narrator',
+    recipientPlayerId:null,recipientHouseId:null,senderUid:'user-other',
+    subject:'Original narrator letter',content:'Private historical content',
+    createdAt:'2026-11-15T13:00:00Z',deletedAt:null,publicationState:'delivered',
+  };
+  const gm=fixture('narrador');
+  gm.docs.set(path,original);
+  assert.equal((await gm.service().listMailbox(token)).items.some(x=>x.id==='to-narrator'),true);
+  const player=fixture('jogador');
+  player.docs.set(path,original);
+  assert.equal((await player.service().listMailbox(token)).items.some(x=>x.id==='to-narrator'),false);
+  player.docs.set(path,{...original,senderUid:'user-1'});
+  assert.equal((await player.service().listMailbox(token)).items.some(x=>x.id==='to-narrator'),true);
+  const editor=fixture('editor');
+  editor.docs.set(path,original);
+  await rejects(()=>editor.service().listMailbox(token),'access_denied',403);
+});
+
 test('Newspaper reveals published contents but never drafts or revisions',async()=>{
   const f=fixture('jogador');
   const summary=await f.service().listNewspaper(token);

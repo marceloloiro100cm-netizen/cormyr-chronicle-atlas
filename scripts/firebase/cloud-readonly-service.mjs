@@ -351,8 +351,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
              typeof (v.sourceId??v.id)!=='string'||
              typeof v.subject!=='string'||typeof v.content!=='string'||
              typeof v.createdAt!=='string')return false;
-          const narratorAddressed=v.source==='firebase-cloud'&&
-            v.recipientKind==='narrator'&&
+          const narratorAddressed=v.recipientKind==='narrator'&&
             v.recipientPlayerId===null&&v.recipientHouseId===null;
           if(!narratorAddressed&&
              Boolean(v.recipientPlayerId)===Boolean(v.recipientHouseId))

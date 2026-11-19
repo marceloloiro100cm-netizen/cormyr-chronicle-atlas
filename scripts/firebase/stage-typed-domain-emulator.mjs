@@ -206,14 +206,18 @@ export function buildTypedDomainPlan(tables,snapshotId){
     if(!authIds.has(senderUid)){
       orphan('letterSenderMissingAuth');continue;
     }
-    const invalidShape=Boolean(toPlayer)===Boolean(toHouse);
+    // The original mail contract defines two null recipients as "Narrador".
+    // Only two non-null recipients represent an ambiguous address.
+    const narratorAddressed=!toPlayer&&!toHouse;
+    if(narratorAddressed)recipientShapes.missingBoth++;
+    const invalidShape=Boolean(toPlayer)&&Boolean(toHouse);
     // An ambiguous address must NEVER grant sender/house/recipient access.
     // Preserve the entire raw PostgreSQL COPY row in a separate collection
     // denied to ALL client SDKs, including the narrator.
     // This is not a semantic reinterpretation or silent dropping of a letter.
     if(invalidShape){
-      const shape=toPlayer?'bothPresent':'missingBoth';
-      recipientShapes[shape]++;
+      const shape='bothPresent';
+      recipientShapes.bothPresent++;
       if(!Array.isArray(letterColumns)||!letterColumns.length||
          !letterColumns.every(column=>Object.hasOwn(row,column) &&
            (row[column]===null||typeof row[column]==='string'))){
@@ -270,6 +274,19 @@ export function buildTypedDomainPlan(tables,snapshotId){
       metadataWarnings.originHouse++;
     if(row.delivered_at!=null&&row.delivered_at!==''&&!deliveredAt)
       metadataWarnings.deliveryTimestamp++;
+    // Retain source links needed by the unchanged original mail filters.
+    const mailLinks={
+      courtMemberId:row.court_member_id??null,
+      courtAssignment:row.court_assignment??null,
+      militaryUnitId:row.military_unit_id??null,
+      conversationId:row.conversation_id??null,
+      batchKey:row.batch_key??null,
+      historicalRecipientName:row.historical_recipient_name??null,
+      historicalSource:row.historical_source??null,
+    };
+    if(Object.values(mailLinks).some(v=>v!==null&&typeof v!=='string')){
+      issues.invalidValues++;continue;
+    }
     letters.push({id:idOf('letter',row.id),payload:{
       sourceId:row.id,
       senderUid,
@@ -277,6 +294,8 @@ export function buildTypedDomainPlan(tables,snapshotId){
       senderName:typeof row.sender_name==='string'?row.sender_name:null,
       recipientPlayerId:toPlayer,
       recipientHouseId:toHouse,
+      recipientKind:narratorAddressed?'narrator':toPlayer?'player':'house',
+      ...mailLinks,
       subject:row.subject,
       content:row.content,
       createdAt,
@@ -322,7 +341,7 @@ export function buildTypedDomainPlan(tables,snapshotId){
     planValid:count===0&&missingRequired.length===0&&letterCoverageComplete,
     firebaseCloudWrites:0,
     readyForCloudImport:false,
-    securityNotes:'Unaddressed or ambiguous letters are stored losslessly in a deny-all quarantine. No client mutations or automatic role assignment.',
+    securityNotes:'Narrator-addressed originals are retained explicitly; double-addressed ambiguous letters remain in deny-all quarantine. No client mutations or automatic role assignment.',
   };
   return {snapshotId,docs,summary};
 }

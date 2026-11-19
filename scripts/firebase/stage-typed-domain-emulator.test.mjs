@@ -120,13 +120,13 @@ test('invalid source flags and oversized content fail closed',()=>{
 });
 
 
-test('both null and both populated recipients are preserved in private quarantine',()=>{
+test('narrator-addressed originals are retained; ambiguous doubles remain quarantined',()=>{
   const a=syntheticDomainTables();
   const table=a.find(t=>t.table==='public.campaign_letters');
   table.rows.push({
-    id:'unaddressed-legacy',sender_user_id:'player-a-uid',sender_player_id:'player-a',
+    id:'to-narrator',sender_user_id:'player-a-uid',sender_player_id:'player-a',
     recipient_player_id:null,recipient_house_id:null,
-    subject:'private to narrator?',content:'secret unaddressed',
+    subject:'private to narrator',content:'secret narrator message',
     publication_state:'delivered',created_at:'2026-11-12 14:00:00+00',
   });
   table.rows.push({
@@ -137,32 +137,23 @@ test('both null and both populated recipients are preserved in private quarantin
   });
   const plan=buildTypedDomainPlan(a,hash);
   assert.equal(plan.summary.planValid,true);
-  assert.equal(plan.summary.typedCollections.letters,4);
-  assert.equal(plan.summary.typedCollections.lettersQuarantine,2);
+  assert.equal(plan.summary.typedCollections.letters,5);
+  assert.equal(plan.summary.typedCollections.lettersQuarantine,1);
   assert.deepEqual(plan.summary.recipientShapes,{missingBoth:1,bothPresent:1});
-  assert.deepEqual(plan.summary.letterCoverage,{
-    source:6,addressed:4,quarantined:2,complete:true,
-  });
-  assert.equal(plan.summary.issues.orphanLinks,0);
-  assert.equal(plan.summary.accountsWithoutProfile,1);
-  assert.equal(plan.summary.firebaseCloudWrites,0);
-
-  const privateCopies=plan.docs.lettersQuarantine;
-  assert.ok(privateCopies.every(item=>item.payload.sourceTable==='public.campaign_letters'));
-  const sourceTable=a.find(t=>t.table==='public.campaign_letters');
-  for(const original of sourceTable.rows.slice(-2)){
-    const item=privateCopies.find(entry=>entry.id===plan.docs.lettersQuarantine
-      .find(candidate=>candidate.payload.rawValues[
-        candidate.payload.columns.indexOf('id')]===original.id)?.id);
-    assert.ok(item);
-    const reconstructed=Object.fromEntries(item.payload.columns.map((key,i)=>
-      [key,item.payload.rawValues[i]]));
-    assert.deepEqual(reconstructed,original);
-    assert.ok(!plan.docs.letters.some(letter=>letter.payload.sourceId===original.id));
-  }
-  const output=JSON.stringify(plan.summary);
-  assert.ok(!output.includes('private ambiguous'));
-  assert.ok(!output.includes('secret unaddressed'));
+  assert.deepEqual(plan.summary.letterCoverage,{source:6,addressed:5,quarantined:1,complete:true});
+  const gm=plan.docs.letters.find(x=>x.payload.sourceId==='to-narrator').payload;
+  assert.equal(gm.recipientKind,'narrator');
+  assert.equal(gm.recipientHouseId,null);
+  assert.equal(gm.recipientPlayerId,null);
+  assert.equal(plan.docs.letters.find(x=>x.payload.sourceId==='letter-ab').payload.recipientKind,'player');
+  assert.equal(plan.docs.letters.find(x=>x.payload.sourceId==='letter-to-a').payload.recipientKind,'house');
+  const quarantined=plan.docs.lettersQuarantine[0].payload;
+  assert.equal(quarantined.recipientShape,'bothPresent');
+  assert.deepEqual(Object.fromEntries(quarantined.columns.map((key,i)=>
+    [key,quarantined.rawValues[i]])),table.rows.at(-1));
+  assert.ok(!plan.docs.letters.some(x=>x.payload.sourceId==='double-legacy'));
+  assert.ok(!JSON.stringify(plan.summary).includes('secret narrator message'));
+  assert.ok(!JSON.stringify(plan.summary).includes('secret ambiguous'));
 });
 
 test('quarantine does not bypass missing sender, oversize, invalid rows or duplicate IDs',()=>{
@@ -258,6 +249,9 @@ test('retains validated Harptos and weekly metadata without inventing invalid hi
     creation_week:'3',delivery_week:'4',
     letter_number:'4',letter_kind:'reservada',origin_house_id:'house-a',
     version:'7',delivered_at:'2026-11-12 10:05:00+00',
+    court_member_id:'court-a',court_assignment:'Marshal',
+    military_unit_id:'unit-a',conversation_id:'conversation-a',batch_key:'batch-a',
+    historical_recipient_name:'Legacy Court',historical_source:'legacy',
   });
   Object.assign(rows[1],{
     campaign_date:'1522-F-shieldmeet',
@@ -275,6 +269,13 @@ test('retains validated Harptos and weekly metadata without inventing invalid hi
   assert.equal(first.originHouseId,'house-a');
   assert.equal(first.version,7);
   assert.equal(first.deliveredAt,'2026-11-12T10:05:00.000Z');
+  assert.equal(first.courtMemberId,'court-a');
+  assert.equal(first.courtAssignment,'Marshal');
+  assert.equal(first.militaryUnitId,'unit-a');
+  assert.equal(first.conversationId,'conversation-a');
+  assert.equal(first.batchKey,'batch-a');
+  assert.equal(first.historicalRecipientName,'Legacy Court');
+  assert.equal(first.historicalSource,'legacy');
   const second=plan.docs.letters.find(x=>x.payload.sourceId==='letter-to-a').payload;
   assert.equal(second.campaignDate,null);
   assert.equal(second.creationRound,null);
