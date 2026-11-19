@@ -1,6 +1,6 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 
-const session=vi.hoisted(()=>({uid:'editor-a',profile:'jogador',token:'verified-token'}));
+const session=vi.hoisted(()=>({uid:'user-a',profile:'jogador',token:'verified-token'}));
 vi.mock('../firebase-workspace/state',()=>({
  firebaseWorkspaceClient:()=>({}),
 }));
@@ -29,38 +29,46 @@ const history={...originalNewspaperEdition(cloud),id:'historical-edition',editio
 const unavailable=(status:number)=>({ok:false,status} as Response);
 const success=(result:unknown)=>({ok:true,json:async()=>({result})} as Response);
 beforeEach(()=>{
- session.uid='editor-a';session.profile='jogador';session.token='verified-token';
+ session.uid='user-a';session.profile='jogador';session.token='verified-token';
  vi.stubGlobal('fetch',vi.fn());
 });
 afterEach(()=>vi.unstubAllGlobals());
 
-describe('Jornal archive remains available when Cloud publication is pending',()=>{
- it('returns only the already-authorized historic editions on Cloud read HTTP 503',async()=>{
+describe('Historical Jornal is gated by the approved Cloud reader stage',()=>{
+ it('never bypasses unapproved migration stages when Cloud returns 503',async()=>{
   vi.mocked(fetch).mockResolvedValue(unavailable(503));
-  expect(await loadFirebaseNewspaperEditions([history])).toEqual([history]);
-  expect(fetch).toHaveBeenCalledTimes(1);
+  await expect(loadFirebaseNewspaperEditions([history]))
+   .rejects.toThrow('Acervo publicado indisponível');
   expect(fetch).toHaveBeenCalledWith('/api/firebase-cloud-read',
    expect.objectContaining({credentials:'omit',redirect:'error',
     headers:expect.objectContaining({Authorization:'Bearer verified-token'})}));
  });
- it('preserves the editor archive even when both editorial status and published reader are disabled',async()=>{
+ it('preserves the editor archive when editorial writes are pending but Cloud reader is approved',async()=>{
   session.profile='editor';
-  vi.mocked(fetch).mockResolvedValue(unavailable(503));
+  vi.mocked(fetch).mockResolvedValueOnce(unavailable(503))
+   .mockResolvedValueOnce(success({items:[]}));
   expect(await loadFirebaseNewspaperEditions([history])).toEqual([history]);
   expect(fetch).toHaveBeenCalledTimes(2);
  });
- it('never treats unauthorized Cloud access as an archive fallback',async()=>{
+ it('never treats a 403 rejection as archive approval',async()=>{
   vi.mocked(fetch).mockResolvedValue(unavailable(403));
   await expect(loadFirebaseNewspaperEditions([history]))
    .rejects.toThrow('Acervo publicado indisponível');
  });
- it('does not fabricate an empty archive when Cloud is down',async()=>{
+ it('does not fabricate archive availability when Cloud is down',async()=>{
   vi.mocked(fetch).mockResolvedValue(unavailable(503));
   await expect(loadFirebaseNewspaperEditions([]))
    .rejects.toThrow('Acervo publicado indisponível');
  });
- it('keeps reading published Cloud editions when that endpoint is healthy',async()=>{
-  vi.mocked(fetch).mockResolvedValueOnce(success({items:[{id:cloudId,editionNo:12}]}))
+ it('excludes unreviewed imported editions from player-facing Jornal',async()=>{
+  vi.mocked(fetch).mockResolvedValue(success({items:[]}));
+  expect(await loadFirebaseNewspaperEditions([history])).toEqual([]);
+ });
+ it('merges only reviewed history and genuine published Cloud editions for players',async()=>{
+  vi.mocked(fetch)
+   .mockResolvedValueOnce(success({items:[
+    {id:'historical-edition',editionNo:5},{id:cloudId,editionNo:12},
+   ]}))
    .mockResolvedValueOnce(success(cloud));
   const result=await loadFirebaseNewspaperEditions([history]);
   expect(result.map(x=>x.id)).toEqual([cloudId,'historical-edition']);
