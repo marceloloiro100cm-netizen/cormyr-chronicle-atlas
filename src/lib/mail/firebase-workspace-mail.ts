@@ -57,8 +57,9 @@ export function validateWorkspaceMailInput(input:WorkspaceMailInput){
   const page=input.page===undefined?0:input.page;
   const size=input.size===undefined?20:input.size;
   if(!integer(page,0,100000)||!integer(size,1,50))invalid();
-  const source=input.filters===undefined?{}:input.filters;
-  if(!plain(source))invalid();
+  const rawFilters=input.filters;
+  const source:Record<string,unknown>=rawFilters===undefined?{}:
+    plain(rawFilters)?rawFilters:invalid();
   if(Object.keys(source).some(k=>!FILTER_KEYS.has(k)))invalid();
   const filters:MailFilters={};
   for(const [key,value] of Object.entries(source)){
