@@ -64,11 +64,16 @@ jobs:
               run?.head_branch!=='main'||
               run?.head_repository?.full_name!==owner+'/'+repo
             ))throw new Error('Untrusted workflow source');
-            if(!/^[a-f0-9]{40}$/.test(sha)||context.sha!==sha)
-              throw new Error('Workflow revision differs from current main');
+            if(!/^[a-f0-9]{40}$/.test(sha))
+              throw new Error('Invalid source commit hash');
+            // Workflow_run's github.sha is the default-branch revision at
+            // trigger time, not necessarily the completed run's own SHA.
+            // A superseded check is informational: no protected job is run.
             const branch=await github.rest.repos.getBranch({owner,repo,branch:'main'});
-            if(branch.data.commit.sha!==sha)
-              throw new Error('Superseded main commit: no release requested');
+            if(branch.data.commit.sha!==sha){
+              core.notice('Superseded CI revision. Skipping release without Cloud writes.');
+              return;
+            }
             for(const workflow_id of ['validate.yml','build-check.yml']){
               const response=await github.rest.actions.listWorkflowRuns({
                 owner,repo,workflow_id,branch:'main',per_page:100,
@@ -83,7 +88,7 @@ jobs:
 
   rollout:
     needs: verify
-    if: needs.verify.result == 'success'
+    if: needs.verify.result == 'success' && needs.verify.outputs.verified_sha != ''
     environment: firebase-auth-test-activation
     runs-on: ubuntu-latest
     timeout-minutes: 20
