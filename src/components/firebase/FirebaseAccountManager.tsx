@@ -4,7 +4,7 @@ import {firebaseAccountRequest} from '@/lib/firebase-workspace/account-client';
 type House={id:string;name:string;season?:number|null};
 type Account={
  uid:string;playerId:string|null;name:string|null;email:string|null;
- profile:'jogador'|'editor';active:boolean;memberHouseIds:string[];
+ profile:'jogador'|'editor'|null;active:boolean;memberHouseIds:string[];
  editHouseIds:string[];attrHouseIds:string[];version:number;
  requirePasswordChange:boolean;
 };
@@ -42,7 +42,7 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
  useEffect(()=>{
   const a=items.find(x=>x.uid===selected);
   setName(a?.name??'');setEmail(a?.email??'');
-  setRole(a?.profile??'jogador');
+  setRole(a?.profile==='editor'?'editor':'jogador');
   setMembers(a?.memberHouseIds??[]);
   setEdits(a?.editHouseIds??[]);
   setAttrs(a?.attrHouseIds??[]);
@@ -114,7 +114,7 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
        maxLength={128} required={!selected} value={password} disabled={busy}
        onChange={e=>{dirty();setPassword(e.target.value);}}/>
     </label>
-    <label>Perfil<select value={role} disabled={busy||Boolean(selected)}
+    <label>Perfil<select value={role} disabled={busy||Boolean(record?.profile)}
       onChange={e=>{dirty();setRole(e.target.value as 'jogador'|'editor');
         setMembers([]);setEdits([]);setAttrs([]);}}>
       <option value="jogador">Jogador</option>
