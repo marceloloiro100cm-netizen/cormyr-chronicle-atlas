@@ -82,8 +82,10 @@ export function activateFirebaseWorkspace(){
    passwordChangeRequired:item?.requirePasswordChange===true};
  });
  registerWorkspaceFunction(completePasswordChange,async input=>{
+  const current=await firebaseAccountRequest<{version:number}>('status');
   await firebaseAccountRequest('completePassword',{
     password:input?.data?.password,requestKey:requestKey(),
+    expectedVersion:current.version,
   });
   firebasePilotAuth()?.signOut();
   if(typeof window!=='undefined')window.location.replace('/auth');
