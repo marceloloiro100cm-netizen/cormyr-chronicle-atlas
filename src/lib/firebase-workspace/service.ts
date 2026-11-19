@@ -122,7 +122,7 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
       typeof p['user_id']==='string'&&p['user_id'].length>0);
     const playersOut=activePlayers.map(p=>({
      id:p['id'],name:typeof p['name']==='string'?p['name']:'Jogador',
-     houses:links.filter(m=>m['player_id']===p['id']).map(m=>m['house_id']),
+     houses:links.filter((m:Row)=>m['player_id']===p['id']).map((m:Row)=>m['house_id']),
     })).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
     // Original SQL LEFT JOIN: a season-two House without a sheet is still
     // addressable and simply has no court, units or version yet.
@@ -138,7 +138,7 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
          if(typeof c?.id!=='string'||!c.id)return [];
          const npcId=typeof c.npcId==='string'?c.npcId:'';
          const npc=npcId?records.find(r=>r['id']===npcId&&r['house_id']===h['id']&&
-          r['kind']==='character'&&!/^ficha\\b/i.test(String(r['title']??''))):null;
+          r['kind']==='character'&&!/^ficha\b/i.test(String(r['title']??''))):null;
          if(npcId&&!npc)return [];
          return [{id:c.id,name:typeof npc?.['title']==='string'?npc['title']:
            typeof c.name==='string'&&c.name?c.name:'Integrante sem identificação',

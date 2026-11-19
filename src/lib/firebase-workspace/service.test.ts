@@ -51,11 +51,11 @@ describe('real Firebase workspace boundary',()=>{
  });
  it('rebuilds the real mail recipient directory and tolerates a House without a sheet',async()=>{
   f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
-  f.tables.campaign_players[0].name='Jogadora Ashkar';
-  f.tables.campaign_players.push({id:'revoked',user_id:'revoked',name:'Pessoa revogada',roster_house_id:'ashkar'});
-  f.tables.campaign_houses[0].season=2;
-  f.tables.campaign_houses.push({id:'no-sheet',name:'Casa sem ficha',active:true,season:2});
-  f.tables.noble_house_sheets=[{house_id:'ashkar',version:12,state:{
+  f.tables['campaign_players']![0]!.name='Jogadora Ashkar';
+  f.tables['campaign_players']!.push({id:'revoked',user_id:'revoked',name:'Pessoa revogada',roster_house_id:'ashkar'});
+  f.tables['campaign_houses']![0]!.season=2;
+  f.tables['campaign_houses']!.push({id:'no-sheet',name:'Casa sem ficha',active:true,season:2});
+  f.tables['noble_house_sheets']=[{house_id:'ashkar',version:12,state:{
    court:[{id:'visible',name:'Arauto',role:'Mensageiro',private_notes:'NÃO EXPOR'},
     {id:'unresolved',npcId:'missing',name:'NÃO EXPOR'}],
    units:[{id:'u1',name:'Guardas',destroyed:false,internal:'NÃO EXPOR'},
@@ -73,9 +73,9 @@ describe('real Firebase workspace boundary',()=>{
   expect(JSON.stringify(data)).not.toContain('NÃO EXPOR');
  });
  it('players only receive compose links from their currently authorized Houses',async()=>{
-  f.tables.campaign_houses[0].season=2;
-  f.tables.campaign_houses.push({id:'other',name:'Outra Casa',active:true,season:2});
-  f.tables.noble_house_sheets=[];
+  f.tables['campaign_houses']![0]!.season=2;
+  f.tables['campaign_houses']!.push({id:'other',name:'Outra Casa',active:true,season:2});
+  f.tables['noble_house_sheets']=[];
   const data=await run({kind:'rpc',name:'mail_compose_options'});
   expect(data.houses.map((h:any)=>h.id)).toEqual(['ashkar']);
   expect(data.players.find((p:any)=>p.id==='pa').houses).toEqual(['ashkar']);
