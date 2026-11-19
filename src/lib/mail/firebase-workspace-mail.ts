@@ -5,7 +5,7 @@
  * trusted Firebase server has checked the live Auth and House scope.
  */
 import {
-  mailPage,mailTrashPage,
+  mailPage,mailTrashPage,canReadLetterAs,canReadReply,
   type MailDataset,type MailFilters,type MailLetter,type MailReply,
   type MailPlayer,type MailMembership,type MailHouse,type MailRound,
 } from './mail-page-contract';
@@ -180,4 +180,62 @@ export async function loadWorkspaceMailPage(db:unknown,snapshotId:string,
     readWorkspaceTable(db,snapshotId,name)));
   const tables=Object.fromEntries(TABLES.map((name,i)=>[name,results[i]])) as WorkspaceMailTables;
   return runWorkspaceMailPage(tables,viewer,input);
+}
+
+
+/**
+ * Original, viewer-authorized filter metadata for the real Council.
+ * Source of every option is the SAME immutable archive and server-side ACL
+ * as mail_page. Never include private text or another House's hidden letters.
+ */
+export function projectWorkspaceMailOptions(
+  rows:WorkspaceMailTables,viewer:VerifiedWorkspaceMailScope,
+){
+  const data=projectWorkspaceMailTables(rows,viewer);
+  const visible=data.letters.filter(l=>canReadLetterAs(data,l,viewer.uid));
+  const visibleIds=new Set(visible.map(l=>l.id));
+  const replies=data.replies.filter(r=>visibleIds.has(r.letter_id)&&
+    canReadReply(data,r,viewer.uid));
+  const houseNames=new Map(data.houses.map(h=>[h.id,h.name]));
+  const named=(houseId:string|null,partId:string|null)=>
+    houseId&&partId?houseId+':'+partId:null;
+  const courts=new Map<string,string>(),units=new Map<string,string>(),weeks=new Set<number>();
+  const idsSafe=(value:string)=>value.length<=128&&
+    !/[\\/\u0000-\u001f]/.test(value);
+  for(const letter of visible){
+    for(const n of [letter.letter_number,letter.delivery_week]){
+      if(typeof n==='number'&&Number.isSafeInteger(n)&&n>=0)weeks.add(n);
+    }
+    for(const [key,map] of [
+      [named(letter.origin_house_id,letter.court_member_id),courts],
+      [named(letter.origin_house_id,letter.military_unit_id),units],
+    ] as const){
+      if(!key||!idsSafe(key))continue;
+      const [houseId,id]=key.split(':',2);
+      map.set(key,(houseNames.get(houseId??'')??'Casa histórica')+
+        ' · vínculo '+String(id??'').slice(-8));
+    }
+  }
+  for(const reply of replies)for(const n of [reply.delivery_week,reply.creation_week]){
+    if(typeof n==='number'&&Number.isSafeInteger(n)&&n>=0)weeks.add(n);
+  }
+  const pairs=(items:Map<string,string>)=>[...items].sort((a,b)=>
+    a[1].localeCompare(b[1],'pt-BR')).map(([id,label])=>({id,label}));
+  return {readOnly:true,verifiedViewerScope:true,
+    houses:data.houses.filter(h=>idsSafe(h.id)&&h.name.length<=256)
+      .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
+      .map(h=>({id:h.id,label:h.name})),
+    weeks:[...weeks].sort((a,b)=>b-a),
+    courts:pairs(courts),units:pairs(units),
+    rounds:data.rounds.filter(r=>Number.isSafeInteger(r.number))
+      .map(r=>({number:r.number,status:r.status})),
+  };
+}
+export async function loadWorkspaceMailOptions(db:unknown,snapshotId:string,
+  viewer:VerifiedWorkspaceMailScope){
+  if(!/^[a-f0-9]{64}$/.test(snapshotId))invalid();
+  const results=await Promise.all(TABLES.map(name=>
+    readWorkspaceTable(db,snapshotId,name)));
+  const rows=Object.fromEntries(TABLES.map((name,i)=>[name,results[i]])) as WorkspaceMailTables;
+  return projectWorkspaceMailOptions(rows,viewer);
 }

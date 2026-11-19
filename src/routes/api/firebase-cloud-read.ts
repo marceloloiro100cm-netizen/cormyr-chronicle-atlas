@@ -1,6 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
-import {loadWorkspaceMailPage} from '@/lib/mail/firebase-workspace-mail';
+import {loadWorkspaceMailPage,loadWorkspaceMailOptions} from '@/lib/mail/firebase-workspace-mail';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 import {cloudReadFailureCategory} from '@/lib/server/cloud-read-error-category';
 
@@ -66,7 +66,8 @@ async function handle(request:Request):Promise<Response>{
       recordId?:unknown;kind?:unknown;revisionId?:unknown};
     if(!['session','inspectWorkspaceImport','inspectWorkspaceLinks','listAccessRemediation','previewAccessRemediation','listHouses',
       'getHouse','getCalendar',
-      'listOriginalMail','listOriginalRecords','getOriginalRecord',
+      'listOriginalMail','listOriginalMailOptions',
+      'listOriginalRecords','getOriginalRecord',
       'listOriginalRecordVersions','listMailbox','listNewspaper','getNewspaper','listSpyAgents',
       'listSpyDossiers','listHouseBattles',
       'listOriginalSpies','listOriginalNewspapers','getOriginalNewspaper',
@@ -114,6 +115,10 @@ async function handle(request:Request):Promise<Response>{
         result=await loadWorkspaceMailPage(getFirestore(app),snapshotId,
           await service.workspaceMailScope(token),
           {filters:payload.filters,page:payload.page,size:payload.size});
+        break;
+      case 'listOriginalMailOptions':
+        result=await loadWorkspaceMailOptions(getFirestore(app),snapshotId,
+          await service.workspaceMailScope(token));
         break;
       case 'listNewspaper':result=await service.listNewspaper(token);break;
       case 'listOriginalSpies':
