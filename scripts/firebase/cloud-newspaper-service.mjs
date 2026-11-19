@@ -12,6 +12,7 @@ import {validateHarptosDate,harptosKey} from './stage-temporal-emulator.mjs';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f]{1,128}$/;
 const KEY=/^[a-zA-Z0-9_-]{8,128}$/;
+const validId=value=>typeof value==='string'&&ID.test(value);
 const digest=s=>createHash('sha256').update(s).digest('hex');
 const deny=(code,status=403)=>{throw new CloudNewspaperError(code,status);};
 const number=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
@@ -122,10 +123,10 @@ export function createFirebaseCloudNewspaper({
        scope.admin!==(scope.profile==='narrador')||
        !Array.isArray(scope.memberHouseIds)||
        !Array.isArray(scope.editHouseIds)||
-       scope.memberHouseIds.some(x=>!ID.test(x))||
-       scope.editHouseIds.some(x=>!ID.test(x))||
+       scope.memberHouseIds.some(x=>!validId(x))||
+       scope.editHouseIds.some(x=>!validId(x))||
        (scope.profile==='jogador'&&
-        (!ID.test(scope.playerId)||scope.memberHouseIds.length===0))||
+        (!validId(scope.playerId)||scope.memberHouseIds.length===0))||
        (scope.profile==='editor'&&
         (scope.memberHouseIds.length!==0||scope.editHouseIds.length!==0)))
       deny('reader_not_authorized',403);
