@@ -138,9 +138,14 @@ export function createFirebaseAccountService({
       already.data()?.targetUid!==(input.targetUid??null))
     deny('request_key_conflict',409);
    const prior=already.data().result;
-   // Uma falha de rede após o commit não pode deixar uma conta criada
-   // desabilitada sem possibilidade de recuperação idempotente.
-   if(!prior||!ID.test(prior.uid))deny('request_key_conflict',409);
+   // Recuperar apenas se a versão atual ainda for a mesma da operação:
+   // uma repetição antiga jamais pode reativar conta desativada depois.
+   if(!prior||typeof prior.uid!=='string'||!ID.test(prior.uid))
+     deny('request_key_conflict',409);
+   const current=await currentAccountAccess(db,snapshotId,prior.uid);
+   if(!current||current.version!==prior.version||
+      current.active!==prior.active)
+     deny('request_superseded',409);
    let user;
    try{user=await auth.getUser(prior.uid);}catch{deny('account_recovery_pending',503);}
    if(user.disabled===prior.active){
@@ -180,7 +185,9 @@ export function createFirebaseAccountService({
   const f=digestInput(account);
   const key=hash('account-event:'+uid+':'+input.requestKey);
   try{
-   if(!created&&next.active===false&&person.disabled!==true)
+   // Bloquear a identidade durante a troca de escopo e/ou credencial.
+   // Se o Firestore falhar, nenhum leitor antigo recebe uma sessão válida.
+   if(!created&&person.disabled!==true)
      await auth.updateUser(uid,{disabled:true});
    if(!created&&input.password)
      await auth.updateUser(uid,{password:input.password,displayName:next.name});
