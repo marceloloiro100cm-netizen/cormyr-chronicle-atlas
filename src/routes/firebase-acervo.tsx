@@ -77,9 +77,11 @@ const moduleLabels:Record<string,string>={
 async function readFirebaseArchive<T>(action:string,extra:Record<string,unknown>={}):Promise<T>{
   const auth=firebasePilotAuth();
   const token=await auth?.getToken();
-  if(!token)throw Error('Sessão Firebase ausente. Entre novamente pelo portal.');
+  const callerUid=auth?.current()?.uid;
+  if(!token||!callerUid)
+    throw Error('Sessão Firebase ausente. Entre novamente pelo portal.');
   const response=await fetch('/api/firebase-cloud-read',{
-    method:'POST',credentials:'omit',cache:'no-store',
+    method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
     headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
     body:JSON.stringify({action,...extra}),
   });
@@ -89,6 +91,8 @@ async function readFirebaseArchive<T>(action:string,extra:Record<string,unknown>
     :response.status===401?'A sessão expirou. Entre novamente.'
     :'O acervo real ainda não está disponível para esta consulta.');
   const data:unknown=await response.json();
+  if(auth?.current()?.uid!==callerUid)
+    throw Error('A identidade Firebase mudou. Entre novamente.');
   if(!data||typeof data!=='object'||!('result' in data))
     throw Error('Resposta incompleta do Firebase.');
   return (data as {result:T}).result;
@@ -145,17 +149,44 @@ function FirebaseOriginalArchive(){
           'Não foi possível confirmar o Firebase.');
       }finally{if(generation.current===current)setLoading(false);}
     })();
-    return()=>{generation.current++;};
+    const auth=firebasePilotAuth();
+    let observedUid=auth?.current()?.uid??null;
+    const unsubscribe=auth?.subscribe(next=>{
+      const nextUid=next?.uid??null;
+      if(observedUid!==null&&observedUid!==nextUid){
+        // Revocation/sign-out or an account switch must discard every
+        // previously fetched private letter, House, unit and edition.
+        generation.current++;
+        setSession(null);setHouses([]);setRecords(null);
+        setRecord(null);setVersions(null);setSheets(null);
+        setMail(null);setAudit(null);setLinks(null);
+        setNewspapers(null);setNewspaper(null);
+        setPaperRevisions(null);setPaperRevision(null);
+        setSpies(null);setBusy(false);setLoading(false);
+        setError('A identidade Firebase mudou. Entre novamente.');
+      }
+      observedUid=nextUid;
+    });
+    return()=>{generation.current++;unsubscribe?.();};
   },[]);
   const run=useCallback(async(work:()=>Promise<void>)=>{
     if(busy)return;
     const current=++generation.current;
+    const callerUid=firebasePilotAuth()?.current()?.uid;
     setBusy(true);setError('');
     try{
+      if(!callerUid||!session)throw Error('Sessão Firebase não confirmada.');
       await work();
-      // A revoked token cannot keep an old private result on screen.
+      // Recheck identity, role AND authorized House list before publishing
+      // a new private result in the same browser tab.
       const confirm=await readFirebaseArchive<Session>('session');
-      if(!confirm.authenticated||confirm.profile!==session?.profile)
+      const originalHouses=[...session.memberHouseIds].sort().join('|');
+      const currentHouses=Array.isArray(confirm.memberHouseIds)
+        ?[...confirm.memberHouseIds].sort().join('|'):'';
+      if(generation.current!==current||
+         firebasePilotAuth()?.current()?.uid!==callerUid||
+         !confirm.authenticated||confirm.profile!==session.profile||
+         originalHouses!==currentHouses)
         throw Error('Permissões alteradas. Entre novamente.');
     }catch(e){
       if(generation.current===current){
@@ -168,7 +199,7 @@ function FirebaseOriginalArchive(){
         setError(e instanceof Error?e.message:'Consulta indisponível.');
       }
     }finally{if(generation.current===current)setBusy(false);}
-  },[busy,session?.profile]);
+  },[busy,session]);
   const inspect=()=>void run(async()=>{
     const [m,l]=await Promise.all([
       readFirebaseArchive<Audit>('inspectWorkspaceImport'),
