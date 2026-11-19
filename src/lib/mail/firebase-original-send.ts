@@ -75,3 +75,27 @@ export function originalMailBatch(input:unknown,canonicalDate:string):
  });
  return requests;
 }
+
+/** Original reply form remains unchanged; only direct Cloud mail replies
+ * are supported until historical reply-thread migration is reconciled. */
+export function originalMailReply(input:unknown,canonicalDate:string):{
+  requestKey:string;letterId:string;content:string;expectedCampaignDate:string;
+}{
+ const envelope=isObj(input)?input:invalid();
+ const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
+ if(envelope['p_action']!=='reply_weekly_message'||
+    Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k))||
+    Object.keys(args).some(k=>!['p_letter','p_reply','p_content','p_key','p_draft','p_signed_by'].includes(k)))
+   return invalid();
+ if(envelope['p_date']!==canonicalDate)
+   throw new OriginalMailBridgeError('campaign_date_changed',409);
+ if(!nullable(args['p_reply'])||!nullable(args['p_signed_by'])||
+    args['p_draft']!==false)
+   return unsupported();
+ const id=args['p_letter'],key=args['p_key'],content=args['p_content'];
+ if(typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id)||
+    typeof key!=='string'||!KEY.test(key)||
+    typeof content!=='string'||!content.trim())
+   return invalid();
+ return {requestKey:key,letterId:id,content,expectedCampaignDate:canonicalDate};
+}

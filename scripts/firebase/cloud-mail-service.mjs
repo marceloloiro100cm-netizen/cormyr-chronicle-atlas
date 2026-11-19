@@ -407,13 +407,19 @@ export function createFirebaseCloudMail({
     async reply(idToken,input){
       const uid=await uidFromToken(idToken);
       if(!input||typeof input!=='object'||Array.isArray(input)||
-         Object.keys(input).some(k=>!['requestKey','letterId','content'].includes(k))||
+         Object.keys(input).some(k=>!['requestKey','letterId','content','expectedCampaignDate'].includes(k))||
+         (input.expectedCampaignDate!==undefined&&
+          (typeof input.expectedCampaignDate!=='string'||
+           !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
          typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
          typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
          !validText(input.content,MAX_CONTENT_BYTES))
         deny('invalid_reply_request',400);
       return db.runTransaction(async tx=>{
         const {actor,date,round}=await readyTransaction(tx,uid);
+        if(input.expectedCampaignDate!==undefined&&
+           input.expectedCampaignDate!==date)
+          deny('campaign_date_changed',409);
         const original=await tx.get(letters.doc(input.letterId));
         const route=original.exists
           ?cloudReplyRoute(actor,original.data(),snapshotId):null;
@@ -428,6 +434,8 @@ export function createFirebaseCloudMail({
         const req=validateRequest({
           requestKey:input.requestKey,...route,
           subject:prefix+chars.join(''),content:input.content,
+          ...(input.expectedCampaignDate!==undefined?
+            {expectedCampaignDate:input.expectedCampaignDate}:{}),
         });
         return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId});
       });

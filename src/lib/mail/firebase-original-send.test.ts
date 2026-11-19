@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {originalMailSend,originalMailBatch,OriginalMailBridgeError} from './firebase-original-send';
+import {originalMailSend,originalMailBatch,originalMailReply,OriginalMailBridgeError} from './firebase-original-send';
 const dt='1522-01-01';
 const form=(changes:Record<string,unknown>={})=>({
  p_action:'send_linked_mail',p_date:dt,p_args:{
@@ -50,5 +50,22 @@ describe('multi-target House routing is atomic',()=>{
   ])expect(()=>originalMailBatch(form({p_targets:targets}),dt)).toThrow();
   expect(()=>originalMailBatch(form({p_targets:['h:house-a','h:house-b'],p_draft:true}),dt))
     .toThrow('mail_feature_not_yet_available');
+ });
+});
+
+describe('historically faithful Cloud reply routing',()=>{
+ it('translates a reply to an approved Cloud letter, preserving its date',()=>{
+  const id='a'.repeat(64);
+  const reply={p_action:'reply_weekly_message',p_date:dt,p_args:{
+   p_letter:id,p_reply:null,p_content:'Retorno',p_key:'reply-key-1234',
+   p_draft:false,p_signed_by:null,
+  }};
+  expect(originalMailReply(reply,dt)).toEqual({
+   letterId:id,requestKey:'reply-key-1234',
+   content:'Retorno',expectedCampaignDate:dt,
+  });
+  expect(()=>originalMailReply(reply,'1522-01-02')).toThrow('campaign_date_changed');
+  expect(()=>originalMailReply({...reply,p_args:{...reply.p_args,p_reply:'another'}},dt))
+   .toThrow('mail_feature_not_yet_available');
  });
 });

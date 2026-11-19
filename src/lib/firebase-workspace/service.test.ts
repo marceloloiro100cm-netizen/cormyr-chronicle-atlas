@@ -1,6 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn(),batch:vi.fn()}));
+ runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -10,7 +10,7 @@ vi.mock('../../../scripts/firebase/cloud-readonly-service.mjs',()=>({CloudAccess
 })}));
 vi.mock('../../../scripts/firebase/cloud-mail-service.mjs',()=>({
  CloudMailError:class extends Error{constructor(public code:string,public status=403){super(code);}},
- createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch}),
+ createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch,reply:f.reply}),
 }));
 import {createWorkspaceService} from './service';
 const access=[{userId:'a',playerId:'pa',profile:'jogador',admin:false,active:true,requirePasswordChange:false,memberHouseIds:['ashkar'],editHouseIds:['ashkar']},
@@ -32,7 +32,7 @@ const db:any={collection:(name:string)=>({doc:()=>({
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();f.batch.mockReset();vi.unstubAllEnvs();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],
@@ -207,6 +207,24 @@ describe('real Firebase workspace boundary',()=>{
   expect(f.batch).toHaveBeenCalledTimes(1);expect(f.send).not.toHaveBeenCalled();
   const sent=f.batch.mock.calls[0][1];
   expect(sent.map((x:any)=>x.requestKey)).toEqual(['batch-abc123_0','batch-abc123_1']);
+ });
+ it('connects original reply and week detection to approved Firebase mail',async()=>{
+  f.runtimeReady=true;vi.stubEnv('CORMYR_FIREBASE_CLOUD_MAIL_ENABLED','true');
+  expect((await run({kind:'rpc',name:'reply_delivery_week',
+   args:{p_recipient:'gm'}})).toEqual(2);
+  f.reply.mockResolvedValue({id:'f'.repeat(64),duplicate:false,state:'delivered',deliveryRound:2});
+  const args={p_action:'reply_weekly_message',p_date:'1522-01-01',p_args:{
+   p_letter:'b'.repeat(64),p_reply:null,p_content:'Resposta',
+   p_key:'safe-reply-1234',p_draft:false,p_signed_by:null,
+  }};
+  const result=await run({kind:'rpc',name:'dated_mail_action',args});
+  expect(result).toMatchObject({ids:['f'.repeat(64)],week:2,state:'delivered'});
+  expect(f.reply).toHaveBeenCalledWith('valid-token',expect.objectContaining({
+   expectedCampaignDate:'1522-01-01',letterId:'b'.repeat(64),
+  }));
+  f.runtimeReady=false;
+  expect(await run({kind:'rpc',name:'reply_delivery_week',
+   args:{p_recipient:'gm'}})).toBeNull();
  });
  it('links original Mark as read to the guarded Firebase transaction only when enabled',async()=>{
   await expect(run({kind:'rpc',name:'mark_letter_read',args:{p_id:'mine'}})).rejects.toThrow('workspace_operation_not_implemented');

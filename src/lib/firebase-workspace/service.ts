@@ -5,7 +5,7 @@ import {createFirebaseCloudMail,CloudMailError} from '../../../scripts/firebase/
 import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-runtime-approval.mjs';
 import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
 import {projectCloudLetters} from '../mail/firebase-operational-mail';
-import {originalMailSend,originalMailBatch,OriginalMailBridgeError} from '../mail/firebase-original-send';
+import {originalMailSend,originalMailBatch,originalMailReply,OriginalMailBridgeError} from '../mail/firebase-original-send';
 import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
@@ -172,11 +172,16 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
      throw new CloudAccessError('calendar_unavailable',503);
     let request;
     let batch;
+    let reply;
     try{
+     if(args['p_action']==='reply_weekly_message')
+      reply=originalMailReply(args,key);
+     else{
      const targets=args['p_args']?.['p_targets'];
      if(Array.isArray(targets)&&targets.length>1)
       batch=originalMailBatch(args,key);
      else request=originalMailSend(args,key);
+     }
     }catch(e){
      if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);
      throw e;
@@ -185,6 +190,11 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
      const mailService=createFirebaseCloudMail({
       db,auth,snapshotId,projectId:'cormyr',enabled:true,
      });
+     if(reply){
+      const sent=await mailService.reply(token,reply);
+      return {ids:[sent.id],duplicate:sent.duplicate,state:sent.state,
+       week:sent.deliveryRound};
+     }
      if(batch){
       const sent=await mailService.sendBatch(token,batch);
       return {ids:sent.ids,duplicate:sent.duplicate,state:sent.state,
@@ -197,6 +207,21 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
      if(e instanceof CloudMailError)throw new CloudAccessError(e.code,e.status);
      throw e;
     }
+   }
+   if(name==='reply_delivery_week'){
+    if(scope.profile==='editor')denied();
+    if(Object.keys(args).length!==1||typeof args['p_recipient']!=='string'||
+       !/^[^/\\u0000-\\u001f\\u007f]{1,128}$/.test(args['p_recipient']))
+     throw new CloudAccessError('invalid_week_request',400);
+    const root=db.collection('campaignCloudRuntime').doc(snapshotId);
+    const [live,mailGate,calendar]=await Promise.all([
+     root.get(),db.collection('campaignMailRuntime').doc(snapshotId).get(),
+     db.collection('migrationTimeEngineStage').doc(snapshotId)
+      .collection('calendar').doc('current').get()]);
+    if(!live.exists||!mailGate.exists||!calendar.exists||
+       !cloudMailRuntimeApproved(live.data(),mailGate.data(),calendar.data(),snapshotId))
+     return null;
+    return live.data().openRound;
    }
    if(name==='mark_letter_read'){
     if(scope.profile==='editor')denied();

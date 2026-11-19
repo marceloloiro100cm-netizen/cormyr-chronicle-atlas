@@ -209,6 +209,21 @@ test('One private gate or stale calendar stops every write',async()=>{
     'migration_stage_not_ready',503);
 });
 
+test('Cloud replies reject stale explicit dates without altering the original letter',async()=>{
+ const f=fixture();
+ const id='e'.repeat(64);
+ f.records.set('campaignCloudRuntime/'+snapshot+'/letters/'+id,{
+  id,source:'firebase-cloud',sourceSnapshotId:snapshot,
+  senderUid:'another',senderPlayerId:null,originHouseId:null,
+  recipientKind:'house',recipientHouseId:'house-a',recipientPlayerId:null,
+  subject:'Conversa',content:'Pergunta',publicationState:'delivered',deletedAt:null,
+ });
+ await rejects(()=>f.service().reply(sampleToken,{
+  requestKey:'reply-test-123',letterId:id,content:'Resposta',
+  expectedCampaignDate:'1522-01-09',
+ }),'campaign_date_changed',409);
+ assert.equal([...f.records].filter(([path])=>path.includes('/letters/')).length,1);
+});
 test('Independent mail runtime must be approved for sends, replies and receipts',async()=>{
   const f=fixture();
   const path='campaignMailRuntime/'+snapshot;

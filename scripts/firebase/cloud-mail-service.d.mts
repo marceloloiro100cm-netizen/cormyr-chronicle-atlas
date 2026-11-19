@@ -23,7 +23,7 @@ export interface CloudMailRuntime {
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
   reply(idToken:string,input:{
-    requestKey:unknown;letterId:unknown;content:unknown;
+    requestKey:unknown;letterId:unknown;content:unknown;expectedCampaignDate?:unknown;
   }):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
