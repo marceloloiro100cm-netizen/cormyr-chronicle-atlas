@@ -8,6 +8,7 @@ import { PlayerRepresentation } from '@/components/player-representation';
 import { ChangePassword, ChangePasswordButton } from '@/components/change-password';
 import { NpcHub, CollapsibleText } from '@/components/npc-hub';
 import { NarratorCalendar } from '@/components/calendar/narrator-calendar';
+import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
 import { CampaignContent } from '@/components/campaign-content';
@@ -228,6 +229,6 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       Contas pendentes Firebase
     </button>}</aside>{section==='missivas'&&<div className="narrator-mail-filter-slot" id="narrator-mail-filter-slot" ref={setMailFilterHost}/>}</div><div>{section==='acessos-firebase'&&firebaseWorkspaceClient()!==null?
       <FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/>:
-      section==='missivas'?<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}} classic={<NarratorMissivasHub filterHost={mailFilterHost} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}}/>}/>:section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?<>{firebaseWorkspaceClient()!==null&&<p className="campaign-status-banner" role="status">No Firebase, a abertura das semanas fica no <a className="underline" href="/firebase-hub">HUB Temporal Firebase</a>: ele fecha a semana atual, abre a próxima e entrega as missivas programadas.</p>}<NarratorCalendar/></>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
+      section==='missivas'?<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}} classic={<NarratorMissivasHub filterHost={mailFilterHost} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}}/>}/>:section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
   </CampaignShell>;
 }

@@ -39,6 +39,10 @@
  * no menu do Narrador e de uma aba de economia Firebase na Ficha.
  * Nenhuma guia, filtro ou ação preexistente foi removida ou modificada.
  * A mudança reaproveita componentes e rotas Firebase já existentes.
+ * 2026-11-19 (item 2, calendário): no Conselho Firebase a seção
+ * Calendário usa FirebaseNarratorWeekDraft. Fora do Firebase a tela
+ * NarratorCalendar original permanece intacta; nenhuma RPC legada
+ * é montada na área do Narrador autenticada pelo Firebase.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -51,7 +55,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'bb10d86cb31a67416204b225303e6a3adf1e8fc7',
+  'src/components/players/players-workspace.tsx':'1ce27508146cc3662db21427022cbfb314a38cd1',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'55117d8e466edee9ccfaa46356999505cf5268d2',
