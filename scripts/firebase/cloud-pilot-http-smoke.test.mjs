@@ -18,6 +18,7 @@ function fake(pageStatus=200,gatewayStatus=503,gatewayCode='firebase_cloud_read_
       return Response.json({error:'firebase_cloud_mail_disabled'},{
         status:503,headers:{'Cache-Control':'private, no-store'},
       });
+    if(url===ORIGIN+PATHS[3])return Response.json({error:'authentication_required'},{status:401,headers:{'Cache-Control':'no-store'}});
     throw Error('unapproved_destination');
   };
   return {calls,fetcher};
@@ -28,8 +29,8 @@ test('new Firebase Cloud pilot and disabled gateway give safe public readiness',
   const result=await probeCloudPilot(fetcher);
   assert.equal(result.verified,true);
   assert.equal(result.readyForCutover,false);
-  assert.deepEqual(result.checks.map(x=>x.status),[200,503,503]);
-  assert.deepEqual(calls.map(x=>x.method),['GET','POST','POST']);
+  assert.deepEqual(result.checks.map(x=>x.status),[200,503,503,401]);
+  assert.deepEqual(calls.map(x=>x.method),['GET','POST','POST','POST']);
   assert.ok(calls.every(x=>x.credentials==='omit'));
   assert.ok(calls.every(x=>x.url.startsWith(ORIGIN+'/')));
   assert.equal(calls[1].body,JSON.stringify({action:'session'}));
@@ -59,7 +60,7 @@ test('pilot redirect or missing page fails public acceptance',async()=>{
 test('HTTP transport errors are inconclusive, not success',async()=>{
   const result=await probeCloudPilot(async()=>{throw Error('no_network');});
   assert.equal(result.verified,false);
-  assert.deepEqual(result.checks.map(x=>x.status),[null,null,null]);
+  assert.deepEqual(result.checks.map(x=>x.status),[null,null,null,null]);
 });
 
 test('Cloud mail cannot pass the public smoke with anonymous HTTP 200',async()=>{
@@ -73,4 +74,14 @@ test('Cloud mail cannot pass the public smoke with anonymous HTTP 200',async()=>
   const report=await probeCloudPilot(broken);
   assert.equal(report.verified,false);
   assert.equal(report.checks[2].passed,false);
+});
+
+
+test('official council cannot pass while the legacy pause intercepts its API',async()=>{
+ const {fetcher}=fake();
+ const result=await probeCloudPilot((url,opts)=>url===ORIGIN+PATHS[3]
+  ?Promise.resolve(Response.json({error:'legacy_backend_paused'},{status:503,headers:{'Cache-Control':'no-store'}}))
+  :fetcher(url,opts));
+ assert.equal(result.verified,false);
+ assert.equal(result.checks[3].passed,false);
 });

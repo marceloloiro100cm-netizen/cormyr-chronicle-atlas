@@ -7,7 +7,7 @@
 import {pathToFileURL} from 'node:url';
 
 export const ORIGIN='https://atlas.cormyr.com.br';
-export const PATHS=Object.freeze(['/firebase-access','/api/firebase-cloud-read','/api/firebase-cloud-mail']);
+export const PATHS=Object.freeze(['/firebase-access','/api/firebase-cloud-read','/api/firebase-cloud-mail','/api/firebase-workspace']);
 const SAFE_CODES=new Set(['firebase_cloud_read_disabled','authentication_required']);
 function output(name,status,passed){return {name,status,passed};}
 
@@ -55,6 +55,17 @@ export async function probeCloudPilot(fetcher=fetch){
     results.push(output('unauthenticatedCloudMailDenied',res.status,
       Boolean(accepted&&(res.headers.get('cache-control')||'').includes('no-store'))));
   }catch{results.push(output('unauthenticatedCloudMailDenied',null,false));}
+  try{
+    const res=await fetcher(ORIGIN+PATHS[3],{
+      method:'POST',redirect:'manual',credentials:'omit',cache:'no-store',
+      headers:{Accept:'application/json','Content-Type':'application/json'},
+      body:JSON.stringify({kind:'auth'}),signal:AbortSignal.timeout(12000),
+    });
+    const parsed=await res.json().catch(()=>null);
+    results.push(output('unauthenticatedWorkspaceDenied',res.status,
+      res.status===401&&parsed?.error==='authentication_required'&&
+      (res.headers.get('cache-control')||'').includes('no-store')));
+  }catch{results.push(output('unauthenticatedWorkspaceDenied',null,false));}
   return {
     scope:'FIREBASE_CLOUD_PUBLIC_ANONYMOUS_SMOKE',
     origin:ORIGIN,verified:results.every(x=>x.passed),
