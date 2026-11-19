@@ -4,6 +4,10 @@ import {createFirebaseCloudReadonly,CloudAccessError}
 import {ConstructionPreviewError,previewHouseConstruction}
   from '../../lib/house/firebase-construction-quote';
 import {crossOriginRejected} from '@/lib/server/request-origin';
+import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs';
+import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
+import {mergeHouseRuleCatalog} from '@/lib/house/firebase-house-rules-core';
+import {catalogSchema} from '@/lib/house/schemas';
 
 /** Read-only building quote from a permission-scoped House snapshot.
  * No direct browser Firestore access, no economic mutations, no Cloud Shell.
@@ -72,19 +76,31 @@ async function handle(request:Request):Promise<Response>{
     const app=getApps().find(x=>x.name===name)??initializeApp({
       projectId:'cormyr',credential:applicationDefault(),
     },name);
+    const db=getFirestore(app);
     const service=createFirebaseCloudReadonly({
-      auth:getAuth(app),db:getFirestore(app),snapshotId,
+      auth:getAuth(app),db,snapshotId,
       projectId:'cormyr',enabled:true,
     });
     const token=bearer.slice(7);
     const house=await service.getHouse(token,requestBody['houseId']) as {
       id:string;name:string;version:number;state:unknown;
     };
+    let catalog;
+    if(process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'){
+      const ruleRows=await readWorkspaceTable(db,snapshotId,
+        'noble_house_rule_overrides') as {definition:unknown}[];
+      const archived=ruleRows.map(row=>catalogSchema.parse(row.definition));
+      const operational=await readOperationalHouseRules(db,snapshotId,
+        requestBody['houseId'] as string);
+      catalog=mergeHouseRuleCatalog(archived,operational.map(row=>({
+        definition:catalogSchema.parse(row.definition),version:row.version,
+      })));
+    }
     const result=previewHouseConstruction(house.state,{
       houseId:requestBody['houseId'],itemId:requestBody['itemId'],
       domainId:requestBody['domainId'],parentId:requestBody['parentId'],
       supportId:requestBody['supportId'],replaceId:requestBody['replaceId'],
-    },house.name,house.version);
+    },house.name,house.version,catalog);
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof ConstructionPreviewError||e instanceof CloudAccessError)
