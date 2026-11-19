@@ -198,8 +198,8 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
     // relabel an imported letter as mutable Cloud mail or the reverse.
     const ds=await mail();
     const match=ds.letters.find(l=>l.id===id&&canReadLetterAs(ds,l,scope.uid));
-    if(!match)denied();
-    const source=match.source==='firebase-cloud'?'firebase-cloud':'imported';
+    if(!match)throw new CloudAccessError('access_denied',403);
+    const source=match['source']==='firebase-cloud'?'firebase-cloud':'imported';
     try{
      return await createFirebaseCloudMail({
       db,auth,snapshotId,projectId:'cormyr',enabled:true,
