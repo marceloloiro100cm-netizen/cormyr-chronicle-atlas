@@ -7,6 +7,15 @@ export class CloudAccessError extends Error {
 
 export interface FirebaseCloudReadonly {
   session(idToken:string):Promise<unknown>;
+  /** Aggregate workspace import counts, restricted to authenticated Narrator. */
+  inspectWorkspaceImport(idToken:string):Promise<unknown>;
+  /** Internal server authorization for the original mail filter projection. */
+  workspaceMailScope(idToken:string):Promise<{
+    uid:string;
+    profile:'jogador'|'narrador';
+    playerId:string|null;
+    memberHouseIds:string[];
+  }>;
   /** Narrator-only, on-demand read of unresolved accounts. Never mutates. */
   listAccessRemediation(idToken:string):Promise<unknown>;
   /** Nonmutating preview with current server-verified profile and House data. */
