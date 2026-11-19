@@ -17,6 +17,16 @@ describe('Firebase identity boundary',()=>{
   vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>{session.uid='b';return {result:'private'};}} as Response);
   await expect(workspaceRequest({kind:'auth'})).rejects.toThrow('Sessão alterada');
  });
+ it('explains stale campaign date and unsupported advanced sending without echoing server text',async()=>{
+  vi.mocked(fetch).mockResolvedValueOnce({ok:false,status:409,
+   json:async()=>({error:'private-user-uid'})} as Response);
+  await expect(workspaceRequest({kind:'rpc',name:'dated_mail_action'}))
+   .rejects.toThrow('A data ou o registro mudou');
+  vi.mocked(fetch).mockResolvedValueOnce({ok:false,status:501,
+   json:async()=>({error:'secret-house-name'})} as Response);
+  await expect(workspaceRequest({kind:'rpc',name:'dated_mail_action'}))
+   .rejects.toThrow('múltiplos destinatários');
+ });
  it('reports unsupported writes without synthetic success',async()=>{
   vi.mocked(fetch).mockResolvedValue({ok:false,status:501} as Response);
   await expect(workspaceRequest({kind:'rpc',name:'write'})).rejects.toThrow('ainda não está disponível');

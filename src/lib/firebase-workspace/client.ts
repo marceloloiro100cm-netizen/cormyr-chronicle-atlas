@@ -10,9 +10,14 @@ export async function workspaceRequest(input:Record<string,unknown>):Promise<any
   headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(input)});
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a consulta.');
  if(!r.ok){
-  const message=r.status===401?'Sessão Firebase expirada.':r.status===403?'Acesso não autorizado.':
-   r.status===501?'Esta operação ainda não está disponível no Firebase.':
-   'Não foi possível ler o acervo real. A importação precisa estar concluída e validada.';
+  // Fixed, reviewed wording only; never expose an untrusted provider body.
+  const message=r.status===401?'Sessão Firebase expirada.':
+   r.status===403?'Acesso não autorizado.':
+   r.status===409?'A data ou o registro mudou. Atualize a página e confira a semana do HUB antes de repetir.':
+   r.status===429?'Limite de missivas desta semana atingido.':
+   r.status===501?'Esta modalidade ainda não está disponível no Firebase (por exemplo, múltiplos destinatários, rascunho, agendamento ou vínculos).':
+   r.status===400?'Dados da operação inválidos. Confira os campos da missiva.':
+   'Não foi possível acessar os dados operacionais do Firebase. Tente novamente após a homologação.';
   throw Object.assign(Error(message),{code:'FIREBASE_'+r.status});
  }
  const body=await r.json();
