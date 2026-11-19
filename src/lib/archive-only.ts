@@ -30,6 +30,9 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
   // This separate Firebase Cloud endpoint enforces Admin Auth, per-house scope
   // and a server-only feature flag. All legacy and emulator APIs remain blocked.
   if ((pathname === '/api/firebase-cloud-read' ||
+       // Original council adapter: verifies Firebase ID token and current
+       // House/profile scope on every request, including operational writes.
+       pathname === '/api/firebase-workspace' ||
        pathname === '/api/firebase-cloud-mail' ||
        // Firebase narrator-only pending week proposal; never a calendar publish.
        pathname === '/api/firebase-narrator-week' ||
