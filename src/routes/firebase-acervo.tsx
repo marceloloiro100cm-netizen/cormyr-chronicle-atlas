@@ -251,7 +251,12 @@ function FirebaseOriginalArchive(){
       <p className="text-sm">Consulta privada dos dados reais importados. Somente leitura:
         nenhuma ação aqui altera missivas, fichas, versões, espiões ou o jornal.
         O Conselho e suas telas originais permanecem separados.</p>
-      <a className="underline text-sm" href="/firebase-access">Voltar ao Conselho</a>
+      <div className="flex flex-wrap gap-4">
+        <a className="underline text-sm" href="/firebase-access">Voltar ao Conselho</a>
+        <a className="underline text-sm" href="/firebase-missivas">
+          Abrir missivas com todos os filtros originais
+        </a>
+      </div>
     </header>
     {loading&&<p role="status">Validando a sessão no Firebase…</p>}
     {error&&<p role="alert" className="rounded border p-3 text-sm">{error}</p>}

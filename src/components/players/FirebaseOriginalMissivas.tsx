@@ -76,7 +76,8 @@ const dateText=(value:string|null|undefined)=>{
 };
 
 /**
- * The ORIGINAL Council mail destination now reads imported Firebase data.
+ * A separate Firebase-only route reads the original imported mail without
+ * changing immutable historic Council components.
  * All original filter names and the historic visual class names are retained.
  * No demo letters, no fallback to Supabase, no write RPCs.
  */
