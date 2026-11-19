@@ -83,8 +83,14 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
  const editorial=identity?.profile==='editor'||identity?.profile==='narrador';
  let cloud:CloudEdition[]=[];
  if(editorial){
-  const status=await request<{canPublish:boolean}>({action:'status'});
-  if(status.canPublish){
+  // Cloud editorial writes can remain safely unapproved while the immutable
+  // published archive is available. Preserve historic reading in that phase.
+  let status:{canPublish:boolean}|null=null;
+  try{status=await request<{canPublish:boolean}>({action:'status'});}
+  catch(error){
+   if((error as {status?:number})?.status!==503)throw error;
+  }
+  if(status?.canPublish){
    const list=await request<EditorialList>({action:'listEditorial'});
    if(!Array.isArray(list.items)||list.items.length>100)
     throw Error('Histórico editorial maior que o limite de segurança.');
