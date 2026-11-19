@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {preflightReviewedPublicStage,publishReviewedPublicStage}
+import {preflightReviewedPublicStage,publishReviewedPublicStage,
+  preflightReviewedPublicCatalogStage,publishReviewedPublicCatalogStage}
   from './public-content-cloud-stage.mjs';
 
 const SNAP='a'.repeat(64);
@@ -189,4 +190,82 @@ test('publication requires ten reviewed Houses and nonempty en/es/de review',asy
   }
   assert.equal(f.calls.length,0);
   assert.equal(f.entries.length,0);
+});
+
+const portugueseCatalogSource=()=>{
+  const {translationsVersion,translationsByLocale,...catalog}=source();
+  return catalog;
+};
+const catalogInputs=(fixture,review=portugueseCatalogSource())=>({
+  db:fixture.db,source:review,expectedSnapshotId:SNAP,projectId:'cormyr',
+  env:{},approvalDigest:preflightReviewedPublicCatalogStage(review).approvalDigest,
+  explicitApproval:true,
+});
+
+test('Portuguese-only reviewed catalog creates exactly two documents and no translation release',async()=>{
+  const f=fakeDb(),plan=portugueseCatalogSource();
+  const preflight=preflightReviewedPublicCatalogStage(plan);
+  assert.equal(preflight.summary.reviewedHouses,10);
+  assert.match(preflight.approvalDigest,/^[a-f0-9]{64}$/);
+  assert.notEqual(preflight.approvalDigest,preflightReviewedPublicStage(source()).approvalDigest);
+  const report=await publishReviewedPublicCatalogStage(catalogInputs(f,plan));
+  assert.equal(report.stageCreated,true);
+  assert.equal(report.documentsCreated,2);
+  assert.equal(report.translationsDeferred,true);
+  assert.equal(report.publicRoutesEnabled,false);
+  assert.equal(report.cloudRuntimeModified,false);
+  assert.equal(report.readyForPlayers,false);
+  assert.deepEqual(f.entries.map(e=>e.path),[
+    'migrationPublicContentStage/'+SNAP,
+    'migrationPublicContentStage/'+SNAP+'/catalog/published',
+  ]);
+  assert.equal(f.entries[0].value.reviewScope,'catalog-only');
+  assert.equal(f.entries[0].value.translationsDeferred,true);
+  assert.equal(Object.hasOwn(f.entries[0].value,'translationsVersion'),false);
+  assert.equal(JSON.stringify(f.entries).includes('DO_NOT_LOG'),false);
+});
+
+test('catalog-only import rejects translation payloads, wrong digest and absent explicit approval',async()=>{
+  const f=fakeDb(),catalog=portugueseCatalogSource();
+  assert.throws(()=>preflightReviewedPublicCatalogStage(source()),
+    /reviewed_public_stage_catalog_only_scope_invalid/);
+  const ok=catalogInputs(f,catalog);
+  for(const changes of [
+    {explicitApproval:false},
+    {approvalDigest:preflightReviewedPublicStage(source()).approvalDigest},
+    {source:source()},
+    {source:{...catalog,houses:catalog.houses.slice(0,9)}},
+    {source:{...catalog,houses:[
+      {...catalog.houses[0],publicReviewed:false},...catalog.houses.slice(1)]}},
+  ]){
+    await assert.rejects(()=>publishReviewedPublicCatalogStage({...ok,...changes}),
+      /reviewed_public_stage_/);
+  }
+  assert.equal(f.calls.length,0);
+  assert.equal(f.entries.length,0);
+});
+
+test('catalog-only aborts atomically when source, Storage or target is not verified',async()=>{
+  for(const problem of [
+    {targetExists:true},{sourceVerified:false},{storageVerified:false},
+    {sourceSnapshotMismatch:true},{houseRows:[{sourceId:'house_a',
+      name:'House A',active:true,season:2}]},
+  ]){
+    const f=fakeDb(problem);
+    await assert.rejects(()=>publishReviewedPublicCatalogStage(catalogInputs(f)),
+      /reviewed_public_stage_/);
+    assert.equal(f.entries.length,0);
+  }
+});
+
+test('catalog-only digest changes with reviewed text and ignores private source fields',()=>{
+  const s=portugueseCatalogSource(),a=preflightReviewedPublicCatalogStage(s);
+  const second=portugueseCatalogSource();
+  second.houses[0].narrative_text='Revised public history';
+  assert.notEqual(a.approvalDigest,
+    preflightReviewedPublicCatalogStage(second).approvalDigest);
+  second.houses[0].narrative_text=s.houses[0].narrative_text;
+  second.houses[0].privateBank=123;
+  assert.equal(a.approvalDigest,
+    preflightReviewedPublicCatalogStage(second).approvalDigest);
 });
