@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 import {PUBLIC_SUPABASE_URL,PUBLIC_SUPABASE_PUBLISHABLE_KEY} from './public-config';
+import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {visualPreviewSupabase} from '@/lib/visual-preview/state';
 
 function isNewSupabaseApiKey(value: string): boolean {
@@ -86,7 +87,7 @@ let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
     // Prévia visual da área interna Firebase: nenhuma leitura chega ao Supabase legado.
-    const preview = visualPreviewSupabase();
+    const preview = firebaseWorkspaceClient() ?? visualPreviewSupabase();
     if (preview) return Reflect.get(preview, prop, preview);
     if (!_supabase) _supabase = createSupabaseClient();
     return Reflect.get(_supabase, prop, receiver);

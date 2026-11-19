@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {PlayersArea} from '@/components/players/players-workspace';
-import {activateVisualPreview, deactivateVisualPreviewSoon} from '@/lib/visual-preview/activate';
+import {activateFirebaseWorkspace, deactivateFirebaseWorkspaceSoon} from '@/lib/firebase-workspace/activate';
 import type {VisualPreviewProfile} from '@/lib/visual-preview/state';
 
 /**
@@ -9,9 +9,8 @@ import type {VisualPreviewProfile} from '@/lib/visual-preview/state';
  * original da segunda temporada (Conselho, Ficha, Espionagem, Hub Temporal,
  * Missivas, Galeria, Jornal e visão dos jogadores), sem o módulo de batalha.
  *
- * Enquanto os conectores Firebase não forem ligados, as telas usam a prévia
- * visual (dados de demonstração locais). O perfil exibido vem da sessão
- * Firebase já validada pelo servidor; a prévia não concede permissão alguma.
+ * As telas consultam o acervo importado Firebase em modo de leitura.
+ * A autorização é conferida no servidor a cada consulta, sem demonstrações.
  */
 export default function FirebaseCampaignWorkspace({profile, memberHouseIds, onSignOut}: {
   profile: VisualPreviewProfile;
@@ -20,13 +19,13 @@ export default function FirebaseCampaignWorkspace({profile, memberHouseIds, onSi
 }) {
   const qc = useQueryClient();
   // Ativada durante a primeira renderização, antes de qualquer consulta dos filhos.
-  useState(() => { activateVisualPreview(profile, memberHouseIds); return true; });
+  useState(() => { activateFirebaseWorkspace(); return true; });
   const houseKey = memberHouseIds.join(',');
   useEffect(() => {
-    activateVisualPreview(profile, houseKey ? houseKey.split(',') : []);
+    activateFirebaseWorkspace();
     return () => {
       qc.clear();
-      deactivateVisualPreviewSoon();
+      deactivateFirebaseWorkspaceSoon();
     };
   }, [profile, houseKey, qc]);
   return <PlayersArea onSignOut={onSignOut} hideBattle/>;
