@@ -565,8 +565,12 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         deny('edition_unavailable',404);
       if(!Array.isArray(v.blocks)||typeof v.title!=='string')
         deny('edition_unavailable',503);
+      if(cloudId&&(!Number.isSafeInteger(v.version)||v.version<1))
+        deny('edition_unavailable',503);
       const result={id:v.id,title:v.title,subtitle:v.subtitle??'',
         editionNo:v.editionNo,state:v.state,blocks:v.blocks,
+        version:v.version??null,template:v.template??'classico',
+        font_style:v.font_style??'classico',
         publishedAt:v.publishedAt,campaignDate:v.campaignDate??null,
         readOnly:true,snapshotReconciliationPending:true};
       if(Buffer.byteLength(JSON.stringify(result),'utf8')>700_000)
