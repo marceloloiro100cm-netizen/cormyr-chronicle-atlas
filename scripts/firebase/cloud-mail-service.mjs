@@ -75,7 +75,9 @@ function validateRequest(v){
      (v.originHouseId!==null&&!validId(v.originHouseId))||
      !['house','narrator'].includes(v.recipientKind)||
      (v.recipientKind==='house'&&!validId(v.recipientHouseId))||
-     (v.recipientKind==='narrator'&&v.recipientHouseId!==null))
+     (v.recipientKind==='narrator'&&v.recipientHouseId!==null)||
+     (v.expectedCampaignDate!==undefined&&
+       (typeof v.expectedCampaignDate!=='string'||!/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(v.expectedCampaignDate))))
     deny('invalid_mail_request',400);
   return {
     requestKey:v.requestKey,
@@ -84,6 +86,8 @@ function validateRequest(v){
     recipientHouseId:v.recipientHouseId,
     subject:v.subject.trim(),
     content:v.content,
+    ...(v.expectedCampaignDate!==undefined?
+      {expectedCampaignDate:v.expectedCampaignDate}:{}),
   };
 }
 
@@ -164,6 +168,10 @@ export function createFirebaseCloudMail({
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
   async function persist(tx,{uid,actor,date,round,req,replyToId=null}){
+    // Original composer submits an explicit campaign date. Compare it inside
+    // the same transaction to prevent a clock rollover from misdating a letter.
+    if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
+      deny('campaign_date_changed',409);
     if(actor.role==='narrador'){
       if(req.originHouseId!==null||req.recipientKind!=='house')
         deny('recipient_not_allowed');

@@ -178,6 +178,19 @@ test('The enabled owner can send once; retries do not double-send or double-coun
   assert.deepEqual([...records].filter(([k])=>k.startsWith('migration')),before);
 });
 
+test('Original composer explicit date is checked inside the write transaction',async()=>{
+  const f=fixture();
+  const sent=await f.service().send(sampleToken,req({expectedCampaignDate:'1522-01-10'}));
+  assert.equal(sent.state,'delivered');
+  await rejects(()=>f.service().send(sampleToken,req({
+   requestKey:'fresh-date-key-1',expectedCampaignDate:'1522-01-09',
+  })),'campaign_date_changed',409);
+  await rejects(()=>f.service().send(sampleToken,req({
+   requestKey:'fresh-date-key-2',expectedCampaignDate:'../tampered',
+  })),'invalid_mail_request',400);
+  assert.equal([...f.records].filter(([k])=>k.includes('/letters/')).length,1);
+});
+
 test('One private gate or stale calendar stops every write',async()=>{
   const f=fixture();
   const key='campaignCloudRuntime/'+snapshot;

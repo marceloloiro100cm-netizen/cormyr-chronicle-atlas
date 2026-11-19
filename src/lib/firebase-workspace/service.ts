@@ -5,6 +5,8 @@ import {createFirebaseCloudMail,CloudMailError} from '../../../scripts/firebase/
 import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-runtime-approval.mjs';
 import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
 import {projectCloudLetters} from '../mail/firebase-operational-mail';
+import {originalMailSend,OriginalMailBridgeError} from '../mail/firebase-original-send';
+import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
@@ -147,6 +149,35 @@ export function createWorkspaceService({db,auth,snapshotId}: {db:any;auth:any;sn
   };
   const rpc=async(name:string,args:Row)=>{
    if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
+   if(name==='dated_mail_action'){
+    if(scope.profile==='editor')denied();
+    if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
+     throw new CloudAccessError('workspace_operation_not_implemented',501);
+    const clock=await cloud.workspaceCalendar(token);
+    if(!clock||typeof clock!=='object'||Array.isArray(clock))
+     throw new CloudAccessError('calendar_unavailable',503);
+    const t=clock as {year:number;month:number;day:number;festival:string|null};
+    const key=dateKey(t),parsed=parseDate(key);
+    if(!parsed||parsed.year!==t.year||parsed.month!==t.month||
+       parsed.day!==t.day||parsed.festival!==t.festival)
+     throw new CloudAccessError('calendar_unavailable',503);
+    let request;
+    try{request=originalMailSend(args,key);}
+    catch(e){
+     if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+    try{
+     const sent=await createFirebaseCloudMail({
+      db,auth,snapshotId,projectId:'cormyr',enabled:true,
+     }).send(token,request);
+     return {ids:[sent.id],duplicate:sent.duplicate,state:sent.state,
+      week:sent.deliveryRound};
+    }catch(e){
+     if(e instanceof CloudMailError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
    if(name==='mark_letter_read'){
     if(scope.profile==='editor')denied();
     const id=args['p_id'],safe=/^[^/\u0000-\u001f\u007f]{1,128}$/;
