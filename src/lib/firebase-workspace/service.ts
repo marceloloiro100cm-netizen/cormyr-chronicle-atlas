@@ -721,7 +721,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const catalog=mergeHouseRuleCatalog(definitions,operational as any);
    result={state:(sheet as any).state,version:(sheet as any).version,
     catalog,houses,ledger:ledger.filter(r=>r['house_id']===id),
-    admin,canEditAttributes:admin||scope.editHouseIds.includes(id),
+    admin,canEditAttributes:admin,
     syncState:'synced'};
   }else if(input?.kind==='record'){
    checkHouse(input.houseId);
