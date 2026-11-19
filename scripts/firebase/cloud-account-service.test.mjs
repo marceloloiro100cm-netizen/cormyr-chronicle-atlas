@@ -127,6 +127,9 @@ test('somente Narrador cria contas, com escopo canônico e sem alterar históric
  assert.equal(repeated.duplicate,true);
  assert.equal(repeated.uid,saved.uid);
  assert.equal(f.created(),1);
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+   ...input,name:'Outro jogador',
+ }),x=>x.code==='request_key_conflict');
 });
 test('seleção de Casa sem fonte canônica recusa antes de criar Auth',async()=>{
  const f=fixture();
