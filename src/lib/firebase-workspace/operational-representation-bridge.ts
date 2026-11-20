@@ -127,10 +127,14 @@ export function createRepresentationBridge(deps:Dependencies){
      });
      return {id:result.id};
     }
-    only(payload,['subject','content','house','key']);
-    if(identity.scope.editHouseIds.length!==1)
-     throw new CloudAccessError('representation_origin_ambiguous',409);
-    const origin=identity.scope.editHouseIds[0];
+    only(payload,['subject','content','house','key','origin']);
+    const requestedOrigin=payload['origin'];
+    if(requestedOrigin!==undefined&&requestedOrigin!==null&&
+       typeof requestedOrigin!=='string')invalid();
+    const origin=requestedOrigin||
+      (identity.scope.editHouseIds.length===1?identity.scope.editHouseIds[0]:null);
+    if(!origin||!identity.scope.editHouseIds.includes(origin))
+     throw new CloudAccessError('representation_origin_not_authorized',403);
     if(typeof payload['house']!=='string')invalid();
     const dest=payload['house'].trim();
     if(dest===origin)invalid();
