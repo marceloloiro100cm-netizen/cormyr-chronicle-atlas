@@ -29,6 +29,14 @@ export function cloudReplyRoute(actor,letter,snapshotId,{recipientPersonHouseId=
   return null;
  }
  if(actor.role!=='jogador'||!Array.isArray(actor.editHouses))return null;
+ // The historic narrator broadcast contains no individual destination.
+ // A reply may originate ONLY from the caller's single verified edit House.
+ if(letter.source==='imported'&&letter.letterKind==='geral'&&
+    origin===null&&recipient===null&&
+    letter.recipientKind==='narrator'&&actor.editHouses.length===1&&
+    validId(actor.editHouses[0]))
+   return {originHouseId:actor.editHouses[0],recipientKind:'narrator',
+     recipientHouseId:null};
  if(!validId(recipient)||!actor.editHouses.includes(recipient)||
     origin===recipient)return null;
  return {originHouseId:recipient,
