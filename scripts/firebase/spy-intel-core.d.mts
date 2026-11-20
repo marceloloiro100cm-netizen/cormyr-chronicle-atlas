@@ -5,3 +5,4 @@ export function knownCount(input:any):any;
 export function sourceItems(input:any):any;
 export function operationStatus(input:any):any;
 export function adminOptions(input:any):any;
+export function readDossiers(input:any):any;
