@@ -28,6 +28,17 @@ export interface CloudMailRuntime {
   send(idToken:string,input:unknown):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
+  /** Delegação validada contra a sessão do Narrador em cada transação. */
+  sendRepresented(idToken:string,input:unknown):Promise<{
+    id:string;duplicate:boolean;state:string;deliveryRound:number;
+  }>;
+  replyRepresented(idToken:string,input:{
+    requestKey:unknown;letterId:unknown;content:unknown;
+    expectedCampaignDate?:unknown;draft?:unknown;
+  }):Promise<{id:string;duplicate:boolean;state:string;deliveryRound:number}>;
+  cancelRepresented(idToken:string,input:{
+    letterId:unknown;expectedVersion:unknown;
+  }):Promise<{removed:true;alreadyRemoved:boolean;version:number;removalKind:string|null}>;
   reply(idToken:string,input:{
     requestKey:unknown;letterId:unknown;content:unknown;expectedCampaignDate?:unknown;
     draft?:unknown;signedBy?:unknown;
