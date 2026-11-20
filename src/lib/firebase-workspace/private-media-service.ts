@@ -146,10 +146,10 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    });
    // A resposta idempotente nunca mascara perda ou corrupção do objeto.
    const verifyStored=async()=>{
-    let persisted:Buffer;
+    let persisted:Buffer|undefined;
     try{[persisted]=await file.download();}
     catch{privateMediaFail('private_media_integrity_failed',503);}
-    if(persisted.length!==data.length||
+    if(!persisted||persisted.length!==data.length||
        privateMediaHash(persisted.toString('base64'))!==digest)
      privateMediaFail('private_media_integrity_failed',503);
    };
