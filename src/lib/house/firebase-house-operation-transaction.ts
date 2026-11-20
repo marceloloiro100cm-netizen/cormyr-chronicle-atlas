@@ -111,7 +111,7 @@ export function createFirebaseHouseOperation({
    if(typeof crestPath!=='string'||crestPath.length>400)
     fail('house_crest_path_invalid',400);
    try{
-    const matched=validatePrivateMediaSource(crestPath,snapshotId,uid);
+    const matched=validatePrivateMediaSource(crestPath!,snapshotId,uid);
     if(!['png','jpg','webp'].includes(matched[4]?.toLowerCase()??''))
      fail('house_crest_path_invalid',400);
    }catch{fail('house_crest_path_invalid',400);}
