@@ -8,7 +8,8 @@ import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema} from './schemas';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
- applyHouseEconomicOperation,HOUSE_ECONOMIC_ACTIONS,
+ applyHouseEconomicOperation,applyHouseMilitaryOperation,HOUSE_ECONOMIC_ACTIONS,
+ HOUSE_MILITARY_ACTIONS,type HouseMilitaryAction,
  HOUSE_NON_ECONOMIC_ACTIONS,requireHouseOperationRole,requireHouseOperationPhase,
  needsHouseOperationCalendar,type HouseNonEconomicAction,
  type HouseEconomicAction} from './operation-core';
@@ -24,8 +25,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const ECONOMICS=new Set<string>(HOUSE_ECONOMIC_ACTIONS);
-const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS]);
+const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS]);
+const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS]);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -185,8 +186,11 @@ export function createFirebaseHouseOperation({
     candidate=DOMAINS.has(action)
      ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
      :ECONOMICS.has(action)
-      ?applyHouseEconomicOperation(state,action as HouseEconomicAction,args,
-        {admin:narrator,key,explanation})
+      ?HOUSE_MILITARY_ACTIONS.includes(action as HouseMilitaryAction)
+       ?applyHouseMilitaryOperation(state,action as HouseMilitaryAction,args,
+         {admin:narrator,key,explanation})
+       :applyHouseEconomicOperation(state,action as HouseEconomicAction,args,
+         {admin:narrator,key,explanation})
       :applyHouseNonEconomicOperation(state,action as HouseNonEconomicAction,
         args,explanation);
    }catch{throw new HouseOperationError('house_rule_rejected',409);}
