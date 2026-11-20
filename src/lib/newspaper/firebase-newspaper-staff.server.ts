@@ -75,7 +75,7 @@ export function parseStaffOperation(name:string,args:Row):StaffOperation{
 }
 
 /** Aplica a operação sobre a lista atual (pura, testável). */
-export function applyStaffOperation(current:Row[],op:StaffOperation,now:string,newId=randomUUID):Row[]{
+export function applyStaffOperation(current:Row[],op:StaffOperation,now:string,newId:()=>string=()=>randomUUID()):Row[]{
  const list=normalize(current);
  if(op.action==='reorder'){
   const ids=new Set(list.map(r=>r['id']));

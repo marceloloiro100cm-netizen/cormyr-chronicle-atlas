@@ -125,6 +125,6 @@ export async function readPublicNewspaperReadCounts(db:any,snapshotId:string):Pr
  const snap=await db.collection('campaignCloudRuntime').doc(snapshotId)
   .collection('newspaperPublicReads').limit(501).get();
  if(snap.docs.length>500)fail('public_reads_too_large',503);
- return snap.docs.map((d:any)=>d.data()).filter((v:Row)=>typeof v?.editionId==='string'&&
-  Number.isSafeInteger(v?.count)&&v.count>=0).map((v:Row)=>({editionId:v['editionId'],count:v['count']}));
+ return snap.docs.map((d:any)=>d.data()).filter((v:Row)=>typeof v?.['editionId']==='string'&&
+  Number.isSafeInteger(v?.['count'])&&v['count']>=0).map((v:Row)=>({editionId:v['editionId'],count:v['count']}));
 }
