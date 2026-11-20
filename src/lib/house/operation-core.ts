@@ -585,7 +585,7 @@ export function applyHouseDiceOperation(
    throw Error('Rolagens já registradas, importadas ou criação encerrada.');
   if(!ctx.admin&&!(state.method==='roll'||(state.method==='budget'&&
     state.budget===null&&RESOURCE_KEYS.every(r=>state.base[r]===0)&&
-    !state.holdings.length&&!state.units.length))
+    !state.holdings.length&&!state.units.length)))
    throw Error('Método por orçamento autorizado; somente o Narrador pode alterá-lo.');
   next.method='roll';next.budget=null;
   next.rolls=RESOURCE_KEYS.map(()=>Array.from({length:7},die));
