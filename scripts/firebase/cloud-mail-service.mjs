@@ -340,6 +340,10 @@ export function createFirebaseCloudMail({
     if(env.CORMYR_FIREBASE_REPRESENTATION_ENABLED!=='true')
       deny('representation_disabled',501);
     const actual=await readyTransaction(tx,realUid);
+    const root=await tx.get(runtime);
+    if(root.data()?.representationReadApproved!==true||
+       root.data()?.representationWriteApproved!==true)
+      deny('representation_write_not_approved',503);
     if(actual.actor.role!=='narrador')deny('representation_denied',403);
     const ref=runtime.collection('representationSessions').doc(realUid);
     const doc=await tx.get(ref),session=doc.data();
