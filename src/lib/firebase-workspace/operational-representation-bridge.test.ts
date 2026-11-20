@@ -106,7 +106,11 @@ describe('item 8, ponte de representação',()=>{
    editHouseIds:['h1','h2']}});
   await expect(bridge().action('draft',{subject:'Teste',content:'Texto',
    house:'h2',key:'req-key-1234'},'1522-01-01'))
-   .rejects.toMatchObject({code:'representation_origin_ambiguous'});
+   .rejects.toMatchObject({code:'representation_origin_not_authorized'});
   expect(f.send).not.toHaveBeenCalled();
+  await bridge().action('send',{subject:'Teste',content:'Texto',
+   origin:'h2',house:'h1',key:'req-key-5678'},'1522-01-01');
+  expect(f.send).toHaveBeenCalledWith('narrator-firebase-token',
+   expect.objectContaining({originHouseId:'h2',recipientHouseId:'h1'}));
  });
 });
