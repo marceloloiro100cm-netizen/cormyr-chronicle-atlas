@@ -31,7 +31,7 @@ export async function representationRpc(input:Input){
  const {db,snapshotId,actor,token,name,args,players,rows}=input;
  if(actor.profile!=='narrador')fail('access_denied',403);
  if(!args||typeof args!=='object'||Array.isArray(args))
-  fail('invalid_representation_action');
+  return fail('invalid_representation_action');
  const context={db,snapshotId,actor,players:await players()};
  try{
   if(name==='start_campaign_representation'){
