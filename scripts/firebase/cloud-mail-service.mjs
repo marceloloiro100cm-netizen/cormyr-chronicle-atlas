@@ -253,7 +253,38 @@ export function createFirebaseCloudMail({
 
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
-  async function persist(tx,{uid,actor,date,round,req,replyToId=null}){
+  /** Revalida Narrador, conta representada e sessão na transação da missiva. */
+  async function readyRepresented(tx,actorUid){
+    if(process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED!=='true')
+      deny('representation_disabled',501);
+    const gm=await readyTransaction(tx,actorUid);
+    if(gm.actor.role!=='narrador')deny('representation_access_denied',403);
+    const sessionRef=runtime.collection('representationSessions').doc(actorUid);
+    const [sessionDoc,rootDoc]=await Promise.all([tx.get(sessionRef),tx.get(runtime)]);
+    const session=sessionDoc.exists?sessionDoc.data():null,rt=rootDoc.data();
+    if(!session||session.actor!==actorUid||
+       session.sourceSnapshotId!==snapshotId||
+       !validId(session.sessionId)||!validId(session.representedUid)||
+       typeof session.expiresAt!=='string'||
+       !Number.isFinite(Date.parse(session.expiresAt))||
+       Date.parse(session.expiresAt)<=Date.now()||
+       rt?.representationReadApproved!==true||
+       rt?.representationWriteApproved!==true)
+      deny('representation_session_invalid',403);
+    const playerUid=session.representedUid;
+    const user=await auth.getUser(playerUid).catch(()=>null);
+    if(user?.uid!==playerUid||user.disabled===true)
+      deny('representation_player_inactive',403);
+    const represented=await readyTransaction(tx,playerUid);
+    if(represented.actor.role!=='jogador'||
+       represented.actor.playerId!==session.playerId)
+      deny('representation_access_changed',403);
+    return {...represented,uid:playerUid,administrativeActorUid:actorUid,
+      representationSessionId:session.sessionId};
+  }
+
+  async function persist(tx,{uid,actor,date,round,req,replyToId=null,
+    administrativeActorUid=null,representationSessionId=null}){
     // Original composer submits an explicit campaign date. Compare it inside
     // the same transaction to prevent a clock rollover from misdating a letter.
     if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
@@ -288,7 +319,8 @@ export function createFirebaseCloudMail({
         ]);
         if(previous.exists){
           if(previous.data()?.senderUid!==uid||
-             previous.data()?.requestFingerprint!==fingerprint)
+             previous.data()?.requestFingerprint!==fingerprint||
+             (previous.data()?.administrativeActorUid??null)!==administrativeActorUid)
             deny('request_key_conflict',409);
           return {id,duplicate:true,state:previous.data().publicationState,
             deliveryRound:previous.data().deliveryRound};
@@ -303,6 +335,8 @@ export function createFirebaseCloudMail({
           id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
           requestKey:req.requestKey,requestFingerprint:fingerprint,
           senderUid:uid,senderPlayerId:actor.playerId,
+          ...(administrativeActorUid?{administrativeActorUid,
+            representationSessionId}:{}),
           senderName:actor.role==='narrador'?'Narrador':'Jogador',
           originHouseId:req.originHouseId,
           recipientKind:req.recipientKind,
@@ -315,9 +349,20 @@ export function createFirebaseCloudMail({
           campaignDate:date,creationRound:round,deliveryRound:plan.deliveryRound,
           publicationState:plan.state,deletedAt:null,version:1,
         });
-        tx.create(audit,{action:replyToId?'reply':'send',actorUid:uid,letterId:id,
-          ...(replyToId?{replyToId}:{}),
+        tx.create(audit,{action:replyToId?'reply':'send',
+          actorUid:administrativeActorUid??uid,
+          ...(administrativeActorUid?{representedUid:uid,representationSessionId}:{}),
+          letterId:id,...(replyToId?{replyToId}:{}),
           requestFingerprint:fingerprint,occurredAt:timestamp});
+        if(administrativeActorUid)
+          tx.create(runtime.collection('representationAudits')
+           .doc(hash('representation-mail:'+id)),{
+            actorUid:administrativeActorUid,representedUid:uid,
+            playerId:actor.playerId,sessionId:representationSessionId,
+            action:replyToId?'representation_reply':
+             req.draft?'representation_draft':'representation_send',
+            entity:id,at:timestamp,sourceSnapshotId:snapshotId,
+           });
         if(counter.exists)tx.update(limitRef,{count:n+1});
         else tx.create(limitRef,{count:1,round,actorUid:uid});
         return {id,duplicate:false,state:plan.state,deliveryRound:plan.deliveryRound};
