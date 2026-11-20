@@ -92,8 +92,8 @@ export async function commitSpyMission({
    if(!target)spyFail('spy_target_not_reviewed',404);
    const previous=d.operations.find((o:any)=>
     o.ownerHouseId===houseId&&o.operationKey===key)??null;
-   const loc=agent&&d.locations.find((l:any)=>
-    l.id===agent.currentLocationId)??null;
+   const loc=agent?(d.locations.find((l:any)=>
+    l.id===agent.currentLocationId)??null):null;
    try{
     r=startMission({
      actor,houseId,agent,target,destination:args['p_destination'],
