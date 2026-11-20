@@ -112,7 +112,9 @@ export function createFirebaseHouseOperation({
    try{access=chooseCurrentAccountAccess(uid,docs[5].data(),
      docs[6].exists?docs[6].data():null,cfg);}
    catch{fail('invalid_access_scope',403);}
-   const narrator=access?.profile==='narrador'&&access?.admin===true;
+   const narrator=access?.profile==='narrador'&&access?.admin===true&&
+     Array.isArray(access.memberHouseIds)&&access.memberHouseIds.length===0&&
+     Array.isArray(access.editHouseIds)&&access.editHouseIds.length===0;
    const player=access?.profile==='jogador'&&access?.admin===false&&
      valid(access.playerId)&&Array.isArray(access.memberHouseIds)&&
      Array.isArray(access.editHouseIds)&&
