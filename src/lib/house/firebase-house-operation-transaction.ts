@@ -7,6 +7,7 @@ import {createHash,randomInt} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema,catalogSchema} from './schemas';
+import {applyHouseImportOperation,type HouseImportArchive} from './operation-import-core';
 import {CORE_CATALOG} from './catalog';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
  applyHouseEconomicOperation,applyHouseMilitaryOperation,
@@ -33,8 +34,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo']);
-const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo']);
+const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
+const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -95,7 +96,8 @@ export function createFirebaseHouseOperation({
   const {houseId,version,key,action,args,explanation}=parsed.data;
   if(!OPERATIONS.has(action))
     fail('house_operation_not_implemented',501);
-  if(Buffer.byteLength(JSON.stringify(args),'utf8')>14000)
+  if(Buffer.byteLength(JSON.stringify(args),'utf8')>
+      (action==='import'?520_000:14_000))
     fail('house_operation_too_large',413);
   // Gerado uma única vez por tentativa, fora do callback que o Firestore pode repetir.
   const trustedDice=(HOUSE_DICE_ACTIONS.includes(action as HouseDiceAction)||
@@ -319,9 +321,12 @@ export function createFirebaseHouseOperation({
     undoPreviousEventId=typeof previousLink==='string'?previousLink:null;
     undoSnapshot=prior;
    }
-   let candidate:{state:typeof state;rule:string;explanation?:string};
+   let candidate:{state:typeof state;rule:string;explanation?:string;
+    archive?:HouseImportArchive};
    try{
-    candidate=action==='undo'
+    candidate=action==='import'
+     ?applyHouseImportOperation(state,args,String(docs[7].data()?.['name']??''))
+     :action==='undo'
      ?{state:structuredClone(undoSnapshot!) as typeof state,
        rule:'Cormyr · desfazer em pilha de rascunhos, histórico preservado'}
      :DOMAINS.has(action)
@@ -384,6 +389,9 @@ export function createFirebaseHouseOperation({
    const updatedAt=clock();
    if(!Number.isFinite(Date.parse(updatedAt)))fail('invalid_server_clock',503);
    const nextVersion=economy.version+1;
+   if(candidate.archive&&
+      Buffer.byteLength(JSON.stringify(candidate.archive),'utf8')>540_000)
+    fail('house_import_archive_too_large',413);
    const beforeBytes=Buffer.byteLength(JSON.stringify(state),'utf8');
    if(beforeBytes>650_000)fail('house_undo_snapshot_too_large',413);
    if(action==='undo'&&Object.values(after.balances.available).some(x=>x<0))
@@ -414,6 +422,13 @@ export function createFirebaseHouseOperation({
      previousVersion:economy.version,nextVersion,
      beforeStateHash:economy.stateHash,afterStateHash:constructionStateHash(next),
      requestFingerprint,sourceSnapshotId:snapshotId,createdAt:updatedAt});
+   if(candidate.archive)
+    tx.create(root.collection('houseOperationImports').doc(eventId),{
+     eventId,actorUid:uid,houseId,version:nextVersion,
+     sourceSnapshotId:snapshotId,createdAt:updatedAt,
+     requestKeyDigest:hash(key),...candidate.archive,
+     archiveHash:constructionStateHash(candidate.archive),
+    });
    tx.create(eventRef,{actorUid:uid,houseId,action,version:nextVersion,
      requestFingerprint,ledgerId,createdAt:updatedAt});
    return output;

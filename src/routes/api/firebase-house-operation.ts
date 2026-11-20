@@ -30,12 +30,15 @@ async function handle(request:Request):Promise<Response>{
    const {done,value}=await stream.read();
    if(done)break;
    bytes+=value.length;
-   if(bytes>16000){await stream.cancel();return error(413,'body_too_large');}
+   if(bytes>580_000){await stream.cancel();return error(413,'body_too_large');}
    chunks.push(value);
   }
   let data:unknown;
   try{data=JSON.parse(Buffer.concat(chunks).toString('utf8'));}
   catch{return error(400,'invalid_json');}
+  if(bytes>16000&&(!data||typeof data!=='object'||
+      !('action' in data)||data.action!=='import'))
+   return error(413,'body_too_large');
   const [{getApps,initializeApp,applicationDefault},{getAuth},{getFirestore}]=
    await Promise.all([import('firebase-admin/app'),
     import('firebase-admin/auth'),import('firebase-admin/firestore')]);
