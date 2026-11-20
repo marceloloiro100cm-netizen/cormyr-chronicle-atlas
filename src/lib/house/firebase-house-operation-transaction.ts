@@ -195,12 +195,12 @@ export function createFirebaseHouseOperation({
       ?HOUSE_DICE_ACTIONS.includes(action as HouseDiceAction)
        ?applyHouseDiceOperation(state,action as HouseDiceAction,args,{
           admin:narrator,key,dice:trustedDice,
-          playerId:player&&valid(access?.playerId)?access.playerId:null,
+          playerId:player&&valid(access?.['playerId'])?access.playerId:null,
         })
        :HOUSE_CREATION_ACTIONS.includes(action as HouseCreationAction)
         ?applyHouseCreationOperation(state,action as HouseCreationAction,args,
           {admin:narrator,mayBuyAttributes:narrator||
-           Array.isArray(access?.attrHouseIds)&&access.attrHouseIds.includes(houseId),
+           Array.isArray(access?.['attrHouseIds'])&&access['attrHouseIds'].includes(houseId),
            explanation})
        :HOUSE_MILITARY_ACTIONS.includes(action as HouseMilitaryAction)
         ?applyHouseMilitaryOperation(state,action as HouseMilitaryAction,args,
