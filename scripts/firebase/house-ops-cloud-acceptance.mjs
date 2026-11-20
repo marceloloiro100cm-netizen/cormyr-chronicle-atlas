@@ -201,5 +201,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const report=await auditHouseOpsCloud();
  const msg=summarize(report);
  if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,msg+'\n');
- else process.stdout.write(msg+'\n');
+ // O resumo contém somente contagens, códigos fixos e booleanos públicos;
+ // imprimi-lo também no log permite auditoria sem abrir dados privados.
+ process.stdout.write(msg+'\n');
 }
