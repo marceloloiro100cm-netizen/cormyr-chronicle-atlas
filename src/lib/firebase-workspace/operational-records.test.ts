@@ -23,22 +23,22 @@ describe('item 6, acervo e versões operacionais',()=>{
   const copy=structuredClone(imported);
   const rows=projectOperationalRecords(user,imported,[edit]);
   expect(rows).toHaveLength(1);
-  expect(rows[0]?.content).toBe('novo');
+  expect(rows[0]?.['content']).toBe('novo');
   expect(imported).toEqual(copy);
  });
  it('o Narrador vê tudo, mas um jogador não vê gm',()=>{
   const narrator:Scope={...user,profile:'narrador',playerId:null,
    memberHouseIds:[],editHouseIds:[]};
   expect(projectOperationalRecords(narrator,imported,[edit])).toHaveLength(3);
-  expect(projectOperationalRecords(user,imported,[edit]).map(r=>r.id))
+  expect(projectOperationalRecords(user,imported,[edit]).map(r=>r['id']))
    .toEqual(['r1']);
  });
  it('confere histórico e mantém versão anterior',()=>{
   const visible=projectOperationalRecords(user,imported,[edit]);
   const versions=projectOperationalVersions(user,visible,[],[edit]);
-  expect(versions.map(x=>x.version)).toEqual([1,2]);
-  expect((versions[0]?.snapshot as {content:string}).content).toBe('antigo');
-  expect((versions[1]?.snapshot as {content:string}).content).toBe('novo');
+  expect(versions.map(x=>x['version'])).toEqual([1,2]);
+  expect((versions[0]?.['snapshot'] as {content:string}).content).toBe('antigo');
+  expect((versions[1]?.['snapshot'] as {content:string}).content).toBe('novo');
  });
  it('rejeita alteração de visibilidade, Casa ou versão de origem',()=>{
   expect(()=>projectOperationalRecords(user,imported,[{
@@ -56,6 +56,6 @@ describe('item 6, acervo e versões operacionais',()=>{
   const other:OperationalRecord={...one,id:'r5',record:{
    ...one.record,id:'r5',house_id:'house-b'}};
   const rows=projectOperationalRecords(user,imported,[one,other]);
-  expect(rows.map(r=>r.id)).toEqual(['r1','r4']);
+  expect(rows.map(r=>r['id'])).toEqual(['r1','r4']);
  });
 });
