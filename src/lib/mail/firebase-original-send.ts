@@ -109,11 +109,11 @@ export function originalMailBatch(input:unknown,canonicalDate:string):
  return requests;
 }
 
-/** Original reply form remains unchanged; only direct Cloud mail replies
- * are supported until historical reply-thread migration is reconciled. */
+/** Resolve an original or legacy reply by its immutable identifiers.
+ * Destination and sender House are intentionally not part of the envelope. */
 export function originalMailReply(input:unknown,canonicalDate:string):{
   requestKey:string;letterId:string;content:string;expectedCampaignDate:string;
-  draft?:boolean;signedBy?:string;
+  replyId?:string;draft?:boolean;signedBy?:string;
 }{
  const envelope=isObj(input)?input:invalid();
  const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
@@ -123,17 +123,19 @@ export function originalMailReply(input:unknown,canonicalDate:string):{
    return invalid();
  if(envelope['p_date']!==canonicalDate)
    throw new OriginalMailBridgeError('campaign_date_changed',409);
- // Replying to a historical reply row is not part of Cloud threads.
- if(!nullable(args['p_reply']))return unsupported();
+ const replyId=args['p_reply'];
+ if(!nullable(replyId)&&(typeof replyId!=='string'||!ID.test(replyId)))
+  return invalid();
  if(typeof args['p_draft']!=='boolean')return invalid();
  const id=args['p_letter'],key=args['p_key'],content=args['p_content'];
- if(typeof id!=='string'||!/^[a-f0-9]{64}$/.test(id)||
+ if(typeof id!=='string'||!ID.test(id)||
     typeof key!=='string'||!KEY.test(key)||
     typeof content!=='string'||!content.trim())
    return invalid();
  const signed=args['p_signed_by'];
  if(!nullable(signed)&&typeof signed!=='string')return invalid();
  return {requestKey:key,letterId:id,content,expectedCampaignDate:canonicalDate,
+  ...(!nullable(replyId)?{replyId:replyId as string}:{}),
   ...(args['p_draft']?{draft:true}:{}),
   ...(typeof signed==='string'&&signed.trim()?{signedBy:signed.trim()}:{})};
 }

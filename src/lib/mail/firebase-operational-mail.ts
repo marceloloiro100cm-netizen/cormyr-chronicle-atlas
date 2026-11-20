@@ -5,6 +5,7 @@ import {effectiveCloudMail} from '../../../scripts/firebase/cloud-mail-delivery-
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const validId=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
+const validThreadId=(v:unknown):v is string=>validId(v)&&(SHA.test(v)||v.length>=8);
 const validDate=(v:unknown):v is string=>typeof v==='string'&&
  v.length<=48&&Number.isFinite(Date.parse(v));
 const bad=():never=>{throw Error('firebase_operational_mail_integrity_failed');};
@@ -55,7 +56,8 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
      (m['recipientKind']==='house'&&!validId(m['recipientHouseId']))||
      (m['recipientPlayerId']!==null)||
      (m['senderPlayerId']!==null&&!validId(m['senderPlayerId']))||
-     (m['replyToId']!==undefined&&!SHA.test(String(m['replyToId'])))||
+     (m['replyToId']!==undefined&&!validThreadId(m['replyToId']))||
+     (m['threadRootId']!==undefined&&!validThreadId(m['threadRootId']))||
      (m['batchKey']!==undefined&&
        (typeof m['batchKey']!=='string'||m['batchKey'].length>128||
         !/^[a-zA-Z0-9_-]+$/.test(m['batchKey']))))
@@ -66,6 +68,7 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
    sender_player_id:m['senderPlayerId'],
    // A NPC signature is how the Narrator speaks in the story.
    sender_name:typeof m['signedBy']==='string'?m['signedBy']:
+    m['senderName']==='Narrador'?'Narrador':
     typeof m['senderName']==='string'?m['senderName']:'Jogador',
    signed_by:m['signedBy']??null,
    recipient_player_id:null,
@@ -85,7 +88,8 @@ export function projectCloudLetters(docs:readonly {id:string;data:()=>unknown}[]
    batch_key:m['batchKey']??null,campaign_date:typeof m['campaignDate']==='string'
      ?m['campaignDate']:null,
    // Original letter and its Cloud response share the parent conversation.
-   conversation_id:m['replyToId']??doc.id,source:'firebase-cloud',
+   conversation_id:m['threadRootId']??m['replyToId']??doc.id,
+   reply_to_id:m['replyToId']??null,source:'firebase-cloud',
   };
  });
 }

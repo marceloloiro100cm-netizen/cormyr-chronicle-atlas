@@ -30,6 +30,18 @@ describe('Approved operational letters preserve original Council filters',()=>{
    recipient_house_id:null,origin_house_id:'house-b'});
   expect(JSON.stringify(letters)).not.toContain('sourceSnapshotId');
  });
+ it('attaches a Cloud answer to its immutable imported root, with campaign date',()=>{
+  const id='b2'.padEnd(64,'2'),legacy='legacy-letter-id-1';
+  const [row]=projectCloudLetters([mk(id,{
+   replyToId:'old-reply-1',threadRootId:legacy,
+   originHouseId:'house-b',recipientHouseId:null,recipientKind:'narrator',
+   senderName:'Narrador',senderUid:'narrator',senderPlayerId:null,
+  })],snapshot);
+  expect(row).toMatchObject({
+   source:'firebase-cloud',conversation_id:legacy,reply_to_id:'old-reply-1',
+   campaign_date:'1522-01-01',sender_name:'Narrador',
+  });
+ });
  it('preserves approved batch grouping without exposing runtime secrets',()=>{
   const id='f'.repeat(64);
   const result=projectCloudLetters([mk(id,{batchKey:'safe-send-001'})],snapshot);

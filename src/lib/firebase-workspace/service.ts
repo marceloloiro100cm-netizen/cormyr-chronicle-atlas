@@ -134,13 +134,38 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       !cloudMailRuntimeApproved(live.data(),mailGate.data(),calendar.data(),snapshotId))
     return {letters,receipts:historical,openRound:null};
    // Read the whole bounded approved runtime before exposing any new row.
-   const [mailDocs,snapshot]=await Promise.all([
+   const [mailDocs,snapshot,moderation]=await Promise.all([
     once(snapshotId+'|letters',()=>runtime.collection('letters').limit(501).get()),
-    once(snapshotId+'|receipts',()=>runtime.collection('mailReadReceipts').limit(2001).get())]) as [any,any];
+    once(snapshotId+'|receipts',()=>runtime.collection('mailReadReceipts').limit(2001).get()),
+    once(snapshotId+'|legacy-moderation',()=>runtime.collection('legacyMailModeration').limit(501).get()),
+   ]) as [any,any,any];
    if(!Array.isArray(mailDocs.docs)||mailDocs.docs.length>500)
     throw new CloudAccessError('mailbox_requires_pagination',503);
+   if(!Array.isArray(moderation.docs)||moderation.docs.length>500)
+    throw new CloudAccessError('mail_moderation_too_large',503);
+   const markers=new Map<string,Record<string,unknown>>();
+   for(const d of moderation.docs){
+    const m=d.data();
+    if(!m||typeof m.letterId!=='string'||
+       d.id!==createHash('sha256').update('legacy-mail:'+m.letterId).digest('hex')||
+       m.sourceSnapshotId!==snapshotId||
+       !Number.isSafeInteger(m['version'])||Number(m['version'])<1||
+       !(m['deletedAt']===null||typeof m['deletedAt']==='string'&&
+         Number.isFinite(Date.parse(m['deletedAt'])))||
+       (m['deletedAt']!==null&&m['removalKind']!=='excluida')||
+       markers.has(m.letterId))
+      throw new CloudAccessError('mail_moderation_integrity_failed',503);
+    markers.set(m.letterId,m);
+   }
+   const archived:Row[]=letters.map(l=>{
+    const mark=markers.get(String(l['id']));
+    return {...l,source:'imported',historical_source:true,
+      ...(mark?{deleted_at:mark['deletedAt'],
+       removal_kind:mark['removalKind'],version:mark['version']}:{}),
+    };
+   });
    const operational=projectCloudLetters(mailDocs.docs,snapshotId,live.data().openRound as number);
-   const all=[...letters,...operational];
+   const all=[...archived,...operational];
    if(new Set(all.map(l=>l['id'])).size!==all.length)
     throw new CloudAccessError('mailbox_id_conflict',503);
    if(!Array.isArray(snapshot.docs)||snapshot.docs.length>2000)
@@ -173,7 +198,15 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     rows('campaign_letters'),rows('letter_replies'),rows('letter_receipts'),players(),memberships(),rows('campaign_houses'),rows('letter_rounds')]);
    // Editor-Chefe: projected with editorUserIds, so the original contract
    // returns only delivered, non-deleted correspondence (read-only).
-   const merged=await addOperationalMail(letters,receipts);
+   const personHouse=new Map(p.map(row=>[row['id'],row['roster_house_id']]));
+   const personAddressed=letters.map(l=>{
+    const pId=l['recipient_player_id'];
+    const h=typeof pId==='string'?personHouse.get(pId):null;
+    return typeof h==='string'&&h.length>0&&l['recipient_house_id']==null
+      ?{...l,recipient_house_id:h,recipient_player_id:null,
+        legacy_person_recipient_id:pId}:l;
+   });
+   const merged=await addOperationalMail(personAddressed,receipts);
    // Historical rounds remain immutable. Once independently reconciled,
    // the operational round supersedes stale "open" archive flags in the UI.
    const currentRounds=merged.openRound===null?rounds:[
@@ -228,8 +261,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     ?row.deleted_at!==null&&(admin||row.sender_user_id===scope.uid)
     :canReadLetterAs(ds,row,scope.uid));
    if(!row||!visibleRow)throw new CloudAccessError('access_denied',403);
-   if(row['source']!=='firebase-cloud')
-    throw new CloudAccessError('workspace_operation_not_implemented',501);
+   if(row['source']!=='firebase-cloud'){
+    if(!admin)throw new CloudAccessError('access_denied',403);
+    return {row,version:0};
+   }
    const version=row['version'];
    if(!Number.isSafeInteger(version))throw new CloudAccessError('invalid_mail_lifecycle_request',400);
    return {row,version:version as number};
@@ -804,6 +839,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     mailFlag();
     const restore=name==='restore_campaign_letter';
     const {row,version}=await lifecycleTarget(args['p_id'],{deleted:restore});
+    if(row['source']!=='firebase-cloud')
+     return asAccess(()=>cloudMail().moderateImported(token,{
+      letterId:row.id,action:restore?'restore':'remove',
+     }));
     if(restore)return asAccess(()=>cloudMail().restore(token,{letterId:row.id,expectedVersion:version}));
     return asAccess(()=>cloudMail().cancel(token,{letterId:row.id,expectedVersion:version}));
    }

@@ -159,6 +159,8 @@ export function createFirebaseCloudMail({
   const limits=runtime.collection('mailSenderRoundCounts');
   const readReceipts=runtime.collection('mailReadReceipts');
   const versions=runtime.collection('letterVersions');
+  const importedModeration=runtime.collection('legacyMailModeration');
+  const importedReplies=db.collection('migrationMailHistoryStage').doc(snapshotId);
 
   /** Only Cloud-authored, delivered runtime letters have a lifecycle. */
   function cloudLetterOf(doc,letterId,round){
@@ -175,8 +177,9 @@ export function createFirebaseCloudMail({
   }
   /** Draft or still-scheduled: the author (under current authority) may
    * change it at any time, because nobody has received it yet. */
-  function authorOfPending(actor,uid,v){
-    if(v.senderUid!==uid||!['draft','scheduled'].includes(v.publicationState))return false;
+  function authorOfPending(actor,uid,v,round){
+    if(v.senderUid!==uid||v.creationRound!==round||
+       !['draft','scheduled'].includes(v.publicationState))return false;
     if(actor.role==='jogador')return actor.editHouses.includes(v.originHouseId);
     return actor.role==='narrador'&&v.originHouseId===null;
   }
@@ -186,12 +189,12 @@ export function createFirebaseCloudMail({
    * origin (a House lost since sending is no longer an authorization).
    */
   function authorInOpenWeek(actor,uid,v,round){
-    if(authorOfPending(actor,uid,v))return true;
+    if(authorOfPending(actor,uid,v,round))return true;
     if(v.senderUid!==uid||v.publicationState!=='delivered')return false;
     if(actor.role==='jogador'&&!actor.editHouses.includes(v.originHouseId))
       return false;
     if(actor.role==='narrador'&&v.originHouseId!==null)return false;
-    return v.deliveryRound>=round;
+    return v.deliveryRound===round;
   }
   const checkVersion=(v,expected)=>{
     if(v.version!==expected)deny('letter_version_conflict',409);
@@ -252,9 +255,90 @@ export function createFirebaseCloudMail({
   }
 
 
+  /** Resolves the immutable imported root inside the SAME transaction used
+   * to authorize the Cloud reply. No destination is taken from the browser.
+   * A historical reply ID must belong to the root and target this actor.
+   */
+  async function resolveReply(tx,actor,input,round){
+    if(LETTER_HASH.test(input.letterId)){
+      const existing=await tx.get(letters.doc(input.letterId));
+      if(existing.exists){
+        if(existing.data()?.source!=='firebase-cloud'||
+           existing.data()?.sourceSnapshotId!==snapshotId)
+          deny('reply_not_authorized',403);
+        if(input.replyId!==undefined)deny('invalid_reply_request',400);
+        const parent=effectiveCloudMail(existing.data(),round);
+        const route=cloudReplyRoute(actor,parent,snapshotId);
+        if(!route||parent.id!==input.letterId)deny('reply_not_authorized',403);
+        return {parent,route,replyToId:parent.id,
+          threadRootId:parent.threadRootId??parent.replyToId??parent.id};
+      }
+    }
+    const [source,moderated]=await Promise.all([
+      tx.get(stage.collection('letters').doc(hash('letter:'+input.letterId))),
+      tx.get(importedModeration.doc(hash('legacy-mail:'+input.letterId))),
+    ]);
+    const root=source.exists?source.data():null;
+    if(!root||root.sourceId!==input.letterId||
+       root.publicationState!=='delivered'||root.deletedAt!==null||
+       moderated.exists&&moderated.data()?.deletedAt!==null)
+      deny('reply_not_authorized',403);
+    let recipientPersonHouseId=null;
+    if(root.recipientKind==='player'){
+      if(!validId(root.recipientPlayerId))deny('reply_not_authorized',403);
+      const person=await tx.get(stage.collection('players')
+        .doc(hash('player:'+root.recipientPlayerId)));
+      if(!person.exists||person.data()?.id!==root.recipientPlayerId||
+         !validId(person.data()?.rosterHouseId))
+        deny('reply_not_authorized',403);
+      recipientPersonHouseId=person.data().rosterHouseId;
+    }
+    let parent={
+      ...root,id:input.letterId,source:'imported',
+    };
+    let replyToId=input.letterId;
+    if(input.replyId!==undefined){
+      const historyRoot=await tx.get(importedReplies);
+      if(!historyRoot.exists||historyRoot.data()?.status!=='complete'||
+         historyRoot.data()?.private!==true)
+        deny('mail_history_not_ready',503);
+      const response=await tx.get(importedReplies.collection('replies')
+        .doc(hash('reply:'+input.replyId)));
+      const old=response.exists?response.data():null;
+      if(!old||old.sourceId!==input.replyId||
+         old.letterId!==hash('letter:'+input.letterId)||
+         old.publicationState!=='delivered'||old.deletedAt!==null||
+         !validId(old.authorUid)||old.authorUid===actor.uid||
+         old.recipientUid!==actor.uid||typeof old.content!=='string')
+        deny('reply_not_authorized',403);
+      const fromOriginal=old.authorUid===root.senderUid;
+      const receivingHouse=root.recipientKind==='player'
+        ?recipientPersonHouseId:root.recipientHouseId;
+      if(!fromOriginal&&
+         (root.recipientKind!=='narrator'&&!validId(receivingHouse)||
+          root.originHouseId!==null&&!validId(root.originHouseId)))
+        deny('reply_not_authorized',403);
+      parent={
+        ...parent,senderUid:old.authorUid,
+        originHouseId:fromOriginal?root.originHouseId:receivingHouse,
+        recipientKind:fromOriginal?root.recipientKind:
+          root.originHouseId===null?'narrator':'house',
+        recipientHouseId:fromOriginal?root.recipientHouseId:root.originHouseId,
+        recipientPlayerId:fromOriginal?root.recipientPlayerId:null,
+        subject:root.subject,content:old.content,
+      };
+      if(!fromOriginal)recipientPersonHouseId=null;
+      replyToId=input.replyId;
+    }
+    const route=cloudReplyRoute(actor,parent,snapshotId,{recipientPersonHouseId});
+    if(!route)deny('reply_not_authorized',403);
+    return {parent,route,replyToId,threadRootId:input.letterId};
+  }
+
+
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
-  async function persist(tx,{uid,actor,date,round,req,replyToId=null,realActorUid=null,sessionNonce=null}){
+  async function persist(tx,{uid,actor,date,round,req,replyToId=null,threadRootId=null,realActorUid=null,sessionNonce=null}){
     // Original composer submits an explicit campaign date. Compare it inside
     // the same transaction to prevent a clock rollover from misdating a letter.
     if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
@@ -269,7 +353,7 @@ export function createFirebaseCloudMail({
     checkRoleOptions(actor,req);
     const plan=deliveryPlan(actor.role,req,round);
     if(plan.error)deny(plan.error,400);
-    const fingerprint=hash(JSON.stringify(replyToId?{...req,replyToId}:req));
+    const fingerprint=hash(JSON.stringify(replyToId?{...req,replyToId,threadRootId}:req));
     const id=hash('cloud-mail:'+uid+':'+req.requestKey);
     const ref=letters.doc(id);
     const audit=audits.doc(id);
@@ -314,7 +398,7 @@ export function createFirebaseCloudMail({
           recipientKind:req.recipientKind,
           recipientHouseId:req.recipientKind==='house'?req.recipientHouseId:null,
           recipientPlayerId:null,
-          ...(replyToId?{replyToId,threadRootId:replyToId}:{}),
+          ...(replyToId?{replyToId,threadRootId:threadRootId??replyToId}:{}),
           ...storedOptions(req),
           subject:req.subject,content:req.content,
           createdAt:timestamp,deliveredAt:plan.state==='delivered'?timestamp:null,
@@ -368,11 +452,12 @@ export function createFirebaseCloudMail({
 
   function validateRepresentedReply(input){
     if(!input||typeof input!=='object'||Array.isArray(input)||
-      Object.keys(input).some(k=>!['requestKey','letterId','content','expectedCampaignDate','draft'].includes(k))||
+      Object.keys(input).some(k=>!['requestKey','letterId','replyId','content','expectedCampaignDate','draft'].includes(k))||
       (input.expectedCampaignDate!==undefined&&
        (typeof input.expectedCampaignDate!=='string'||
         !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
-      typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+      !validId(input.letterId)||
+      (input.replyId!==undefined&&!validId(input.replyId))||
       typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
       !validText(input.content,MAX_CONTENT_BYTES)||
       (input.draft!==undefined&&typeof input.draft!=='boolean'))
@@ -398,11 +483,8 @@ export function createFirebaseCloudMail({
         const {actor,uid,date,round,realActorUid,sessionNonce}=await represented(tx,realUid);
         if(input.expectedCampaignDate!==undefined&&input.expectedCampaignDate!==date)
           deny('campaign_date_changed',409);
-        const original=await tx.get(letters.doc(input.letterId));
-        const parent=original.exists?effectiveCloudMail(original.data(),round):null;
-        const route=parent?cloudReplyRoute(actor,parent,snapshotId):null;
-        if(!route||parent.id!==input.letterId)
-          deny('reply_not_authorized',403);
+        const {parent,route,replyToId,threadRootId}=
+          await resolveReply(tx,actor,input,round);
         const prefix=/^Re:\s/i.test(parent.subject)?'':'Re: ';
         const chars=Array.from(parent.subject);
         while(chars.length&&Buffer.byteLength(prefix+chars.join(''),'utf8')>
@@ -414,7 +496,7 @@ export function createFirebaseCloudMail({
           ...(input.expectedCampaignDate!==undefined?
             {expectedCampaignDate:input.expectedCampaignDate}:{}),
         });
-        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId,
+        return persist(tx,{uid,actor,date,round,req,replyToId,threadRootId,
           realActorUid,sessionNonce});
       });
     },
@@ -503,6 +585,54 @@ export function createFirebaseCloudMail({
         tx.create(audits.doc(hash('mail-remove:'+letterId+':'+version)),{
           action:own?'cancel':'remove',actorUid:uid,letterId,version,occurredAt:at});
         return {removed:true,alreadyRemoved:false,version,removalKind};
+      });
+    },
+
+
+    /**
+     * Narrator's separate operational removal marker for delivered legacy
+     * mail. Archive bytes and immutable migration snapshots never change.
+     * A restore changes only the marker and records an audit.
+     */
+    async moderateImported(idToken,input){
+      const uid=await uidFromToken(idToken);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['letterId','action'].includes(k))||
+         !validId(input.letterId)||!['remove','restore'].includes(input.action))
+        deny('invalid_mail_lifecycle_request',400);
+      return db.runTransaction(async tx=>{
+        const {actor}=await readyTransaction(tx,uid);
+        if(actor.role!=='narrador')deny('moderation_not_allowed',403);
+        const original=await tx.get(stage.collection('letters')
+          .doc(hash('letter:'+input.letterId)));
+        const source=original.exists?original.data():null;
+        if(!source||source.sourceId!==input.letterId||
+           source.publicationState!=='delivered'||source.deletedAt!==null)
+          deny('letter_not_found',404);
+        const ref=importedModeration.doc(hash('legacy-mail:'+input.letterId));
+        const existing=await tx.get(ref),marker=existing.exists?existing.data():null;
+        if(marker&&(marker.letterId!==input.letterId||
+          marker.sourceSnapshotId!==snapshotId||
+          !Number.isSafeInteger(marker.version)||marker.version<1))
+          deny('invalid_legacy_moderation',409);
+        if(input.action==='remove'&&marker?.deletedAt)
+          return {removed:true,alreadyRemoved:true,version:marker.version};
+        if(input.action==='restore'&&!marker?.deletedAt)
+          return {restored:true,alreadyActive:true,version:marker?.version??0};
+        const version=(marker?.version??0)+1,at=serverTime();
+        const next={letterId:input.letterId,sourceSnapshotId:snapshotId,
+          version,deletedAt:input.action==='remove'?at:null,
+          removalKind:input.action==='remove'?'excluida':null,
+          changedAt:at,actorUid:uid};
+        if(existing.exists)tx.update(ref,next);
+        else tx.create(ref,next);
+        tx.create(audits.doc(hash('legacy-mail-'+input.action+':'+input.letterId+':'+version)),{
+          action:input.action==='remove'?'legacy_remove':'legacy_restore',
+          actorUid:uid,source:'imported',letterId:input.letterId,
+          version,occurredAt:at});
+        return input.action==='remove'
+          ?{removed:true,alreadyRemoved:false,version,removalKind:'excluida'}
+          :{restored:true,alreadyActive:false,version};
       });
     },
 
@@ -603,7 +733,7 @@ export function createFirebaseCloudMail({
         if(v.deletedAt!==null)deny('letter_removed',409);
         if(v.publicationState!=='draft')deny('not_a_draft',409);
         checkVersion(v,req.expectedVersion);
-        if(!authorOfPending(actor,uid,v))deny('schedule_not_allowed',403);
+        if(!authorOfPending(actor,uid,v,round))deny('schedule_not_allowed',403);
         const plan=deliveryPlan(actor.role,{deliveryRound:req.deliveryRound??v.deliveryRound??null},round);
         if(plan.error)deny(plan.error,400);
         const at=serverTime(),version=v.version+1;
@@ -802,11 +932,12 @@ export function createFirebaseCloudMail({
     async reply(idToken,input){
       const uid=await uidFromToken(idToken);
       if(!input||typeof input!=='object'||Array.isArray(input)||
-         Object.keys(input).some(k=>!['requestKey','letterId','content','expectedCampaignDate','draft','signedBy'].includes(k))||
+         Object.keys(input).some(k=>!['requestKey','letterId','replyId','content','expectedCampaignDate','draft','signedBy'].includes(k))||
          (input.expectedCampaignDate!==undefined&&
           (typeof input.expectedCampaignDate!=='string'||
            !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
-         typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+         !validId(input.letterId)||
+      (input.replyId!==undefined&&!validId(input.replyId))||
          typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
          !validText(input.content,MAX_CONTENT_BYTES))
         deny('invalid_reply_request',400);
@@ -816,11 +947,8 @@ export function createFirebaseCloudMail({
         if(input.expectedCampaignDate!==undefined&&
            input.expectedCampaignDate!==date)
           deny('campaign_date_changed',409);
-        const original=await tx.get(letters.doc(input.letterId));
-        const parent=original.exists?effectiveCloudMail(original.data(),round):null;
-        const route=parent?cloudReplyRoute(actor,parent,snapshotId):null;
-        if(!route||parent.id!==input.letterId)
-          deny('reply_not_authorized',403);
+        const {parent,route,replyToId,threadRootId}=
+          await resolveReply(tx,actor,input,round);
         // Subject and delivery address come solely from the original letter.
         const base=parent.subject;
         const prefix=/^Re:\s/i.test(base)?'':'Re: ';
@@ -835,7 +963,7 @@ export function createFirebaseCloudMail({
           ...(input.expectedCampaignDate!==undefined?
             {expectedCampaignDate:input.expectedCampaignDate}:{}),
         });
-        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId});
+        return persist(tx,{uid,actor,date,round,req,replyToId,threadRootId});
       });
     },
   };

@@ -55,6 +55,29 @@ describe('Chancelaria: modelo de filas e fios',()=>{
     expect(queueMembers('scheduled',list,player).map(c=>c.root.id)).toEqual([h('d')]);
     expect(queueMembers('attention',list,narrator).map(c=>c.root.id).sort()).toEqual([h('a'),h('c')]);
   });
+  it('conversa importada recebe resposta Cloud na mesma raiz e fica em Sua vez',()=>{
+    const legacy={...root,id:'letter-imported-1',source:'imported',
+      conversation_id:'letter-imported-1'};
+    const cloud={...answer,conversation_id:legacy.id};
+    const [c]=buildConversations([legacy,cloud],[]);
+    expect(c?.items.map(i=>i.id)).toEqual([answer.id]);
+    expect(c?.replyTarget(N,true,new Set())).toBe(answer.id);
+    expect(queueMembers('yourturn',[c!],{
+      uid:N,admin:true,receipts:[],openRound:5,editHouses:new Set(),
+    })).toHaveLength(1);
+    expect(c?.replyTarget(P,false,edit)).toBe(legacy.id);
+  });
+  it('permite resposta ao reply importado somente ao destinatário no fio',()=>{
+    const old={...root,id:'legacy-root-1',source:'imported'};
+    const legacyReply:ReplyRow={id:'legacy-reply-1',letter_id:old.id,
+      author_user_id:P,author_name:'Casa Fewmerry',recipient_user_id:N,
+      content:'Carta recebida',created_at:'2026-11-15T12:00:00Z',
+      delivered_at:'2026-11-15T12:00:00Z',publication_state:'delivered'};
+    const [c]=buildConversations([old],[legacyReply]);
+    expect(c?.replyTarget(N,true,new Set())).toBe(old.id);
+    expect(c?.replyToHistoricalId(N,true,new Set())).toBe(legacyReply.id);
+    expect(c?.replyTarget('intruso',false,new Set())).toBeNull();
+  });
   it('envios em lote do Narrador não se fundem num só fio',()=>{
     const a={...root,batch_key:'lote'},b={...root,id:h('e'),recipient_house_id:'goldfin',batch_key:'lote'};
     expect(buildConversations([a,b],[])).toHaveLength(2);
