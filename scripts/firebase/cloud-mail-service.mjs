@@ -159,6 +159,8 @@ export function createFirebaseCloudMail({
   const limits=runtime.collection('mailSenderRoundCounts');
   const readReceipts=runtime.collection('mailReadReceipts');
   const versions=runtime.collection('letterVersions');
+  const importedModeration=runtime.collection('legacyMailModeration');
+  const importedReplies=db.collection('migrationMailHistoryStage').doc(snapshotId);
 
   /** Only Cloud-authored, delivered runtime letters have a lifecycle. */
   function cloudLetterOf(doc,letterId,round){
@@ -191,7 +193,7 @@ export function createFirebaseCloudMail({
     if(actor.role==='jogador'&&!actor.editHouses.includes(v.originHouseId))
       return false;
     if(actor.role==='narrador'&&v.originHouseId!==null)return false;
-    return v.deliveryRound>=round;
+    return v.deliveryRound===round;
   }
   const checkVersion=(v,expected)=>{
     if(v.version!==expected)deny('letter_version_conflict',409);
@@ -254,7 +256,7 @@ export function createFirebaseCloudMail({
 
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
-  async function persist(tx,{uid,actor,date,round,req,replyToId=null,realActorUid=null,sessionNonce=null}){
+  async function persist(tx,{uid,actor,date,round,req,replyToId=null,threadRootId=null,realActorUid=null,sessionNonce=null}){
     // Original composer submits an explicit campaign date. Compare it inside
     // the same transaction to prevent a clock rollover from misdating a letter.
     if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
@@ -269,7 +271,7 @@ export function createFirebaseCloudMail({
     checkRoleOptions(actor,req);
     const plan=deliveryPlan(actor.role,req,round);
     if(plan.error)deny(plan.error,400);
-    const fingerprint=hash(JSON.stringify(replyToId?{...req,replyToId}:req));
+    const fingerprint=hash(JSON.stringify(replyToId?{...req,replyToId,threadRootId}:req));
     const id=hash('cloud-mail:'+uid+':'+req.requestKey);
     const ref=letters.doc(id);
     const audit=audits.doc(id);
@@ -314,7 +316,7 @@ export function createFirebaseCloudMail({
           recipientKind:req.recipientKind,
           recipientHouseId:req.recipientKind==='house'?req.recipientHouseId:null,
           recipientPlayerId:null,
-          ...(replyToId?{replyToId,threadRootId:replyToId}:{}),
+          ...(replyToId?{replyToId,threadRootId:threadRootId??replyToId}:{}),
           ...storedOptions(req),
           subject:req.subject,content:req.content,
           createdAt:timestamp,deliveredAt:plan.state==='delivered'?timestamp:null,
@@ -368,11 +370,12 @@ export function createFirebaseCloudMail({
 
   function validateRepresentedReply(input){
     if(!input||typeof input!=='object'||Array.isArray(input)||
-      Object.keys(input).some(k=>!['requestKey','letterId','content','expectedCampaignDate','draft'].includes(k))||
+      Object.keys(input).some(k=>!['requestKey','letterId','replyId','content','expectedCampaignDate','draft'].includes(k))||
       (input.expectedCampaignDate!==undefined&&
        (typeof input.expectedCampaignDate!=='string'||
         !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
-      typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+      !validId(input.letterId)||
+      (input.replyId!==undefined&&!validId(input.replyId))||
       typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
       !validText(input.content,MAX_CONTENT_BYTES)||
       (input.draft!==undefined&&typeof input.draft!=='boolean'))
@@ -802,11 +805,12 @@ export function createFirebaseCloudMail({
     async reply(idToken,input){
       const uid=await uidFromToken(idToken);
       if(!input||typeof input!=='object'||Array.isArray(input)||
-         Object.keys(input).some(k=>!['requestKey','letterId','content','expectedCampaignDate','draft','signedBy'].includes(k))||
+         Object.keys(input).some(k=>!['requestKey','letterId','replyId','content','expectedCampaignDate','draft','signedBy'].includes(k))||
          (input.expectedCampaignDate!==undefined&&
           (typeof input.expectedCampaignDate!=='string'||
            !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
-         typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+         !validId(input.letterId)||
+      (input.replyId!==undefined&&!validId(input.replyId))||
          typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
          !validText(input.content,MAX_CONTENT_BYTES))
         deny('invalid_reply_request',400);
