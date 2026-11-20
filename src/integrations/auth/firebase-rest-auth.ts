@@ -61,12 +61,12 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
       const parsed: unknown = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') return null;
       const s = parsed as Record<string, unknown>;
-      if (typeof s.uid !== 'string' || !s.uid ||
-          typeof s.idToken !== 'string' || !s.idToken ||
-          typeof s.expiresAt !== 'number' || !Number.isFinite(s.expiresAt) ||
-          s.expiresAt - now() <= skew || s.expiresAt - now() > 3_600_000)
+      if (typeof s['uid'] !== 'string' || !s['uid'] ||
+          typeof s['idToken'] !== 'string' || !s['idToken'] ||
+          typeof s['expiresAt'] !== 'number' || !Number.isFinite(s['expiresAt']) ||
+          s['expiresAt'] - now() <= skew || s['expiresAt'] - now() > 3_600_000)
         return null;
-      return {uid:s.uid,idToken:s.idToken,expiresAt:s.expiresAt};
+      return {uid:s['uid'],idToken:s['idToken'],expiresAt:s['expiresAt']};
     } catch { return null; }
   };
   let session: FirebaseSession | null = restore();
