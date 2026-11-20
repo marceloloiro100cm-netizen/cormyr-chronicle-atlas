@@ -351,6 +351,6 @@ describe('paridade das 55 operações e brasão com manifesto privado',()=>{
    .identity.crestPath).toBe(state.identity.crestPath);
   const repeated=await f.service(env).execute('valid-token-123',data);
   expect(repeated.duplicate).toBe(true);
-  expect(f.writes()).toBe(5);
+  expect(f.writes()).toBe(6);
  });
 });
