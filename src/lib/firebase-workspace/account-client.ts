@@ -4,8 +4,9 @@ type AccountAction='status'|'list'|'submit'|'completePassword';
 export async function firebaseAccountRequest<T>(
  action:AccountAction,input:Record<string,unknown>={},
 ):Promise<T>{
- const auth=firebasePilotAuth(),uid=auth?.current()?.uid;
+ const auth=firebasePilotAuth();
  const token=await auth?.getToken();
+ const uid=auth?.current()?.uid;
  if(!token||!uid||auth?.current()?.uid!==uid)
    throw Error('Entre novamente com sua conta Firebase.');
  const response=await fetch('/api/firebase-accounts',{
