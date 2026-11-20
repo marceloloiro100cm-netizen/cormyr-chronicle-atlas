@@ -91,3 +91,22 @@ test('bloqueia Casa inexistente e runtime sem autorização explícita',async()=
  await assert.rejects(()=>service.save('token-narrator-123',request),
   e=>e.code==='house_rules_not_approved');
 });
+
+test('regra com origem ou autoria divergente nunca altera o catálogo exibido',async()=>{
+ const {db,service,data}=fixture();
+ await service.save('token-narrator-123',request);
+ const rule=root+'/houseRuleSets/'+h('house:house-a')+
+  '/rules/'+h('rule:rule-a');
+ const before=structuredClone(data.get(rule));
+ data.set(rule,{...before,sourceSnapshotId:'b'.repeat(64)});
+ await assert.rejects(()=>readOperationalHouseRules(db,SNAP,'house-a'),
+  e=>e.code==='house_rules_integrity_failed');
+ data.set(rule,{...before,updatedBy:''});
+ await assert.rejects(()=>readOperationalHouseRules(db,SNAP,'house-a'),
+  e=>e.code==='house_rules_integrity_failed');
+ data.set(rule,{...before,definition:{...before.definition,name:''}});
+ await assert.rejects(()=>readOperationalHouseRules(db,SNAP,'house-a'),
+  e=>e.code==='house_rules_integrity_failed');
+ data.set(rule,before);
+ assert.equal((await readOperationalHouseRules(db,SNAP,'house-a'))[0].version,1);
+});
