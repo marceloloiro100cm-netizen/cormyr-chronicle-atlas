@@ -1024,9 +1024,9 @@ test('Narrator can answer a historical reply, preserving its archived parent and
  const f=fixture('narrador'),id='legacy-archive-root',replyId='legacy-reply-01';
  const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
  f.records.set(path,{sourceId:id,senderUid:'player-1',
-  recipientKind:'narrator',recipientHouseId:null,recipientPlayerId:null,
-  originHouseId:'house-a',publicationState:'delivered',deletedAt:null,
-  subject:'Carta ao Narrador',content:'Raiz'});
+  recipientKind:'house',recipientHouseId:'house-a',recipientPlayerId:null,
+  originHouseId:null,publicationState:'delivered',deletedAt:null,
+  subject:'Carta geral da Mesa',content:'Raiz'});
  const hist='migrationMailHistoryStage/'+snapshot;
  f.records.set(hist,{status:'complete',private:true});
  f.records.set(hist+'/replies/'+h('reply:'+replyId),{
