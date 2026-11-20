@@ -1,5 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
 import type {SupabaseClient} from '@supabase/supabase-js';
+import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
+import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 
 export type CampaignProfile='jogador'|'editor'|'narrador';
 
@@ -40,7 +42,49 @@ function serverCode(error:unknown):string{
  return typeof code==='string'&&/^[a-z_]{3,60}$/.test(code)?' Código: '+code+'.':'';
 }
 /** Contract: no public roster, other people's IDs, names or correspondence. */
+/**
+ * Firebase: as cinco leituras do escopo saem juntas num único pedido ao
+ * servidor, que confere o token e o escopo no início e no fim do lote.
+ * Assim a abertura do Conselho não espera seis idas e voltas em sequência.
+ */
+async function loadFirebaseAccessScope():Promise<CampaignAccessScope>{
+ const uid=firebasePilotAuth()?.current()?.uid;
+ if(!uid)throw new Error('Sessão não autorizada.');
+ const db=supabase as unknown as SupabaseClient;
+ const [userResult,adminResult,profileResultRaw,playerResult,memberResult]=await Promise.all([
+  supabase.auth.getUser(),
+  supabase.rpc('is_campaign_admin'),
+  db.rpc('current_campaign_profile'),
+  db.from('campaign_players').select('id,active,require_password_change').eq('user_id',uid).maybeSingle(),
+  db.from('house_memberships').select('house_id,can_edit,can_edit_attributes,player_id'),
+ ]);
+ const user=userResult.data.user;
+ if(userResult.error||!user||user.id!==uid)throw new Error('Sessão não autorizada.'+serverCode(userResult.error));
+ const admin=adminResult.data;
+ if(adminResult.error||typeof admin!=='boolean')throw new Error('Permissões do Narrador indisponíveis.'+serverCode(adminResult.error));
+ if(profileResultRaw.error)throw new Error('Perfil de acesso da campanha indisponível.'+serverCode(profileResultRaw.error));
+ const raw=profileResultRaw.data;
+ const profile:CampaignProfile|null=raw==='jogador'||raw==='editor'||raw==='narrador'?raw:null;
+ if((admin&&profile!=='narrador')||(!admin&&profile==='narrador'))
+  throw new Error('Perfil e autorização administrativa divergentes.');
+ if(playerResult.error)throw new Error('Permissões de jogador indisponíveis.'+serverCode(playerResult.error));
+ if(memberResult.error)throw new Error('Vínculos com Casas indisponíveis.'+serverCode(memberResult.error));
+ const player=playerResult.data as {id:string;active:boolean;require_password_change:boolean}|null;
+ const members=profile==='jogador'&&player?((memberResult.data??[]) as {house_id:string;can_edit:boolean;
+  can_edit_attributes:boolean;player_id:string}[]).filter(m=>m.player_id===player.id):[];
+ if(firebasePilotAuth()?.current()?.uid!==uid)throw new Error('Identidade alterada durante a verificação dos vínculos.');
+ const scope={
+  userId:user.id,admin,profile,
+  playerId:player?.id??null,
+  active:player?.active??false,
+  passwordChangeRequired:player?.require_password_change??false,
+  memberships:members.map(m=>({house_id:m.house_id,can_edit:m.can_edit,can_edit_attributes:m.can_edit_attributes})),
+ };
+ return {...scope,fingerprint:accessScopeFingerprint(scope)};
+}
+
 export async function loadCampaignAccessScope():Promise<CampaignAccessScope>{
+ if(firebaseWorkspaceClient())return loadFirebaseAccessScope();
  const {data:{user},error:userError}=await supabase.auth.getUser();
  if(userError||!user)throw new Error('Sessão não autorizada.'+serverCode(userError));
  const {data:admin,error:roleError}=await supabase.rpc('is_campaign_admin');

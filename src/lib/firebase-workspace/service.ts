@@ -49,6 +49,22 @@ import {readAgeRegistry,projectAgeDashboard,projectHouseAges,listAgeTransitions,
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
+/** Categoria fixa do erro de um item do lote (mesma regra da rota, sem texto do provedor). */
+const KNOWN_WORKSPACE_ERRORS:Record<string,string>={
+ workspace_import_pending:'workspace_import_pending',
+ workspace_source_table_missing:'workspace_source_table_missing',
+ workspace_table_not_supported:'workspace_table_not_supported',
+ 'Registro não encontrado ou ambíguo.':'workspace_ambiguous_record',
+ 'Consulta não suportada pelo Firebase.':'workspace_query_not_supported',
+ firebase_operational_mail_integrity_failed:'operational_mail_integrity_failed',
+ workspace_mail_contract_invalid:'workspace_mail_contract_invalid',
+ workspace_archive_integrity_failed:'workspace_archive_integrity_failed',
+};
+export function workspaceErrorCategory(e:unknown):{status:number;code:string}{
+ if(e instanceof CloudAccessError)return {status:e.status,code:e.code};
+ const m=e instanceof Error?e.message:'';
+ return {status:503,code:Object.hasOwn(KNOWN_WORKSPACE_ERRORS,m)?KNOWN_WORKSPACE_ERRORS[m]!:'workspace_unavailable'};
+}
 export const recordVisible=(s:Scope,r:Row)=>s.profile==='narrador'||s.profile==='jogador'&&
  (r['visibility']==='player'&&s.playerId!==null&&r['player_id']===s.playerId||r['visibility']==='house'&&s.memberHouseIds.includes(r['house_id']));
 /**
@@ -567,6 +583,26 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      throw e;
     }
    }
+   // Ficha importada da vassala (planilha privada migrada para o Firebase).
+   // Mesmo contrato do servidor original: membro da suserana (ou Narrador),
+   // vínculo aprovado na Ficha e leitura só no servidor.
+   if(name==='vassal_workbook'){
+    const parent=args['parentHouseId'],vassal=args['vassalHouseId'];
+    const pairs=[['ashkar','qazir'],['everlost','everet']];
+    if(typeof parent!=='string'||typeof vassal!=='string'||!pairs.some(([p,v])=>p===parent&&v===vassal))
+     throw new CloudAccessError('invalid_vassal_request',400);
+    checkHouse(parent);
+    const sheet=await sheetFor(parent) as {state:{vassals?:{houseId?:string;status?:string}[]}};
+    if(!Array.isArray(sheet.state?.vassals)||!sheet.state.vassals.some(v=>v.houseId===vassal&&v.status==='approved'))
+     throw new CloudAccessError('vassal_link_not_approved',403);
+    const stage=db.collection('migrationPrivateGmStage').doc(snapshotId);
+    const doc=await stage.collection('vassal').doc(
+     createHash('sha256').update('vassal:'+parent+':'+vassal).digest('hex')).get();
+    const data=doc.exists?doc.data():null;
+    if(!data||data.parentHouseId!==parent||data.vassalHouseId!==vassal||!data.payload||typeof data.payload!=='object')
+     throw new CloudAccessError('vassal_workbook_unavailable',404);
+    return data.payload;
+   }
    // Aprovações do runtime: só o Narrador lê e liga (Contas > Aprovações).
    if(name==='runtime_approvals'||name==='runtime_approvals_set'){
     if(!admin)denied();
@@ -1078,6 +1114,9 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    throw new CloudAccessError('workspace_operation_not_implemented',501);
   };
+  // Uma consulta isolada ou um lote de consultas da mesma tela, com um só
+  // escopo verificado no início e no fim (abertura do Conselho mais rápida).
+  const dispatch=async(input:any):Promise<any>=>{
   let result:any;
   if(input?.kind==='auth')result={user:{id:scope.uid},profile:scope.profile};
   else if(input?.kind==='query'){
@@ -1150,6 +1189,16 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    result=(await visible('campaign_records')).find(r=>r['id']===input.id&&r['house_id']===input.houseId);
    if(!result)denied();
   }else throw new CloudAccessError('invalid_workspace_request',400);
+  return result;
+  };
+  let result:any;
+  if(input?.kind==='batch'){
+   const items=input.items;
+   if(!Array.isArray(items)||items.length<1||items.length>40||items.some((i:any)=>i?.kind==='batch'))
+    throw new CloudAccessError('invalid_batch',400);
+   const settled=await Promise.allSettled(items.map((item:any)=>dispatch(item)));
+   result=settled.map(r=>r.status==='fulfilled'?{ok:true,result:r.value}:{ok:false,...workspaceErrorCategory(r.reason)});
+  }else result=await dispatch(input);
   const after=await cloud.workspaceScope(token);
   if(JSON.stringify(after)!==JSON.stringify(scope))denied();
   return result;

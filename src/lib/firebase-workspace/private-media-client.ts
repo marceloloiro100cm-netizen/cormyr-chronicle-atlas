@@ -71,8 +71,11 @@ export async function uploadFirebasePrivateImage(id:string,contentType:string,da
   throw Error('Referência privada inválida.');
  return {path:response['path'],duplicate:response['duplicate']===true};
 }
+/** Caminho histórico do acervo (galeria, Corte, missivas), servido da cópia migrada. */
+const LEGACY=/^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/;
 export async function downloadFirebasePrivateImage(path:string):Promise<Blob>{
- if(!PATH.test(path))throw Error('Referência privada inválida.');
+ const legacy=!path.startsWith('private/');
+ if(legacy?(!LEGACY.test(path)||path.includes('..')):!PATH.test(path))throw Error('Referência privada inválida.');
  const {session,uid,token}=await currentAuth();
  const response=await fetch('/api/firebase-private-media',{
   method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
@@ -84,7 +87,7 @@ export async function downloadFirebasePrivateImage(path:string):Promise<Blob>{
  const type=response.headers.get('content-type')||'';
  if(!accepted.has(type))throw Error('Tipo de imagem não autorizado.');
  const blob=await response.blob();
- if(blob.size>5*1024*1024||blob.size<1)
+ if(blob.size>(legacy?20:5)*1024*1024||blob.size<1)
   throw Error('Imagem privada inválida.');
  return blob;
 }

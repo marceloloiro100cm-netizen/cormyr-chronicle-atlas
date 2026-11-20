@@ -124,3 +124,17 @@
 .spy-agent-last-mission strong{font-size:14px}
 .spy-agent-last-mission span{line-height:1.45}
 .spy-agent-last-mission small{color:var(--muted-foreground);font-size:12px}
+
+/* 20/11/2026: Enviar imagem e Alterar nome lado a lado, mesmo tamanho;
+   etapas da missão sem quebrar palavras no meio. */
+.spy-agent-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
+.spy-agent-actions .custom-image-upload{display:flex;gap:4px;min-width:0;flex-wrap:wrap;align-content:flex-start}
+.spy-agent-actions .custom-image-upload>small{flex-basis:100%}
+.spy-agent-actions button,.spy-agent-actions .spy-agent-rename{min-height:40px;width:100%;justify-content:center;white-space:nowrap;align-self:stretch;padding:0 8px;font-size:13px}
+.spy-agent-actions .custom-image-upload>button:first-of-type{flex:1 1 auto;min-width:0}
+.spy-agent-actions .custom-image-upload>button+button{flex:0 0 40px;width:40px;padding:0}
+.spy-mission-stages{display:flex!important;flex-wrap:wrap;gap:5px}
+.spy-mission-stages li{flex:1 1 0;min-width:max-content;white-space:nowrap;overflow-wrap:normal;word-break:normal;padding:6px 6px;font-size:11px}
+.spy-agent-identity-text h4{word-break:normal;overflow-wrap:break-word;hyphens:manual}
+.spy-agent-portrait{width:88px}
+@media(max-width:440px){.spy-agent-actions{grid-template-columns:minmax(0,1fr)}}

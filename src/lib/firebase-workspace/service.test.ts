@@ -56,6 +56,18 @@ describe('real Firebase workspace boundary',()=>{
   const r=await run({kind:'query',table:'campaign_records',steps:[{op:'select',args:['*']}]});
   expect(r.data.map((x:any)=>x.id)).toEqual(['own']);
  });
+ it('executa um lote com um só escopo e isola o erro de cada item',async()=>{
+  const r=await run({kind:'batch',items:[
+   {kind:'query',table:'campaign_records',steps:[{op:'select',args:['*']}]},
+   {kind:'house',houseId:'other'},
+   {kind:'auth'},
+  ]});
+  expect(r[0]).toMatchObject({ok:true});
+  expect(r[0].result.data.map((x:any)=>x.id)).toEqual(['own']);
+  expect(r[1]).toEqual({ok:false,status:403,code:'access_denied'});
+  expect(r[2]).toMatchObject({ok:true,result:{user:{id:'a'}}});
+  await expect(run({kind:'batch',items:[{kind:'batch',items:[]}]})).rejects.toThrow('invalid_batch');
+ });
  it('a forged house query cannot grant access',async()=>{
   await expect(run({kind:'house',houseId:'other'})).rejects.toThrow('access_denied');
  });

@@ -19,6 +19,7 @@ import {SpyRemoveAgentButton} from './spy-remove-agent-button';
 import {SpyCancelMissionButton} from './spy-cancel-mission-button';
 import './spy-agent-cards.css';
 import {isCustomImageDataUrl} from '@/lib/house/custom-images';
+import {CustomImageUpload} from '../custom-image-upload';
 const customPortrait=(images:Record<string,string>|undefined,id:string):string|null=>{
  const value=images?.[id];return isCustomImageDataUrl(value)?value:null;
 };
@@ -182,8 +183,7 @@ function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,ho
  return <article className="house-card spy-agent-card">
   <header className="spy-agent-card-heading">
    <SpyAgentPortraitControl houseId={houseId} agent={agent}
-    portraits={portraits} canEdit={canEdit} customUrl={customImage}
-    {...(onCustomImage?{onCustomImage:(image:string)=>onCustomImage(agent.id,image)}:{})}/>
+    portraits={portraits} canEdit={canEdit} customUrl={customImage}/>
    <div className="spy-agent-identity-text">
     <div className="spy-agent-kicker">
      <p className="campaign-eyebrow">AGENTE DE ESPIONAGEM</p>
@@ -194,10 +194,14 @@ function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,ho
      'Localização não confirmada'}</small>
    </div>
   </header>
-  {canEdit&&!editing&&<Button type="button" size="sm" variant="outline"
-   className="spy-agent-rename" onClick={()=>{setName(agent.codename);setEditing(true);}}>
-   <Pencil size={14}/> Alterar nome
-  </Button>}
+  {canEdit&&!editing&&<div className="spy-agent-actions">
+   {onCustomImage&&agent.status!=='dead'&&<CustomImageUpload label={'o espião '+agent.codename}
+    hasImage={Boolean(customImage)} onSave={image=>onCustomImage(agent.id,image)}/>}
+   <Button type="button" size="sm" variant="outline"
+    className="spy-agent-rename" onClick={()=>{setName(agent.codename);setEditing(true);}}>
+    <Pencil size={14}/> Alterar nome
+   </Button>
+  </div>}
   {canEdit&&editing&&<form className="spy-agent-name-form" onSubmit={e=>void save(e)}>
    <label>Codinome do agente<input value={name} onChange={e=>setName(e.target.value)}
     autoFocus required minLength={2} maxLength={80}/></label>

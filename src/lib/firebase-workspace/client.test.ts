@@ -31,4 +31,14 @@ describe('Firebase identity boundary',()=>{
   vi.mocked(fetch).mockResolvedValue({ok:false,status:501} as Response);
   await expect(workspaceRequest({kind:'rpc',name:'write'})).rejects.toThrow('ainda não está disponível');
  });
+ it('agrupa consultas simultâneas num único pedido e entrega cada resultado ou erro',async()=>{
+  vi.mocked(fetch).mockResolvedValue({ok:true,json:async()=>({result:[
+   {ok:true,result:'um'},{ok:false,status:403,code:'access_denied'}]})} as Response);
+  const [a,b]=await Promise.allSettled([workspaceRequest({kind:'auth'}),workspaceRequest({kind:'rpc',name:'x'})]);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  const body=JSON.parse(String(vi.mocked(fetch).mock.calls[0]![1]!.body));
+  expect(body.kind).toBe('batch');expect(body.items).toHaveLength(2);
+  expect(a).toEqual({status:'fulfilled',value:'um'});
+  expect(b.status).toBe('rejected');
+ });
 });

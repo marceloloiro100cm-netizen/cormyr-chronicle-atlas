@@ -36,11 +36,9 @@ export function PrivateImage({ path, caption, thumbnail = false, zoomable = fals
   const { data, error } = useQuery({
     queryKey: ["private-image", Boolean(firebaseWorkspaceClient()), path],
     queryFn: async () => {
-      if(firebaseWorkspaceClient()){
-        if(!path.startsWith('private/'))
-          throw Error('Imagem histórica ainda não conciliada no Firebase.');
-        return downloadFirebasePrivateImage(path);
-      }
+      // No Firebase, imagens novas (private/...) e históricas do acervo
+      // passam pela mesma ponte autenticada; o servidor confere a leitura.
+      if(firebaseWorkspaceClient())return downloadFirebasePrivateImage(path);
       const result = await supabase.storage.from("campaign-images").download(path);
       if (result.error) throw result.error;
       return result.data;
