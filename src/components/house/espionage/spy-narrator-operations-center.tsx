@@ -4,7 +4,7 @@ import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {ClipboardList,RefreshCw} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {formatDate,parseDate} from '@/lib/calendar/harptos';
-import {readSpyNarratorOperationsBrowser,type SpyNarratorOperation}
+import {readSpyNarratorOperationsBrowser,advanceSpyActiveMissionsBrowser,type SpyNarratorOperation}
  from '@/lib/espionage/spy-operations-browser';
 import {readSpyHouseManagementBrowser} from '@/lib/espionage/spy-browser-client';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
@@ -84,12 +84,29 @@ export function SpyNarratorOperationsCenter(){
  }|null>(null);
  const [recentResolution,setRecentResolution]=useState('');
  const [retryingDossier,setRetryingDossier]=useState<string|null>(null);
+ const [advancing,setAdvancing]=useState(false);
  useEffect(()=>{
   if(!selectedReview)return;
   reviewRef.current?.focus({preventScroll:true});
   reviewRef.current?.scrollIntoView({block:'start',behavior:'smooth'});
  },[selectedReview]);
  const qc=useQueryClient();
+ const advanceCalendar=async()=>{
+  if(advancing)return;
+  setAdvancing(true);setRecentResolution('');
+  try{
+   const result=await advanceSpyActiveMissionsBrowser();
+   setRecentResolution(result.advanced===0
+    ?'Nenhuma missão precisou de atualização pela data atual do HUB.'
+    :result.advanced+' missão(ões) avançada(s) conforme a data do HUB.');
+   await Promise.allSettled([
+    qc.invalidateQueries({queryKey:['spy-narrator-operations']}),
+    qc.invalidateQueries({queryKey:['spy-house-management']}),
+   ]);
+  }catch{
+   setRecentResolution('Não foi possível sincronizar as missões com o HUB. Nenhuma alteração foi confirmada.');
+  }finally{setAdvancing(false);}
+ };
  const retryDossier=useServerFn(retrySpyIntelligence);
  const finishDossier=async(operationId:string)=>{
   if(retryingDossier)return;
@@ -136,9 +153,15 @@ export function SpyNarratorOperationsCenter(){
     <h3><ClipboardList size={18} aria-hidden="true"/> Central de operações</h3>
     <p className="house-caption">Julgue missões e confirme descobertas no mesmo lugar.</p>
    </div>
-   <Button type="button" variant="outline" disabled={query.isFetching}
-    onClick={()=>void query.refetch()}><RefreshCw size={16}/>
-    Atualizar</Button>
+   <div className="flex flex-wrap gap-2">
+    <Button type="button" variant="outline" disabled={advancing}
+     onClick={()=>void advanceCalendar()}>
+     {advancing?'Sincronizando…':'Avançar missões pelo HUB'}
+    </Button>
+    <Button type="button" variant="outline" disabled={query.isFetching}
+     onClick={()=>void query.refetch()}><RefreshCw size={16}/>
+     Atualizar</Button>
+   </div>
   </header>
   {query.isPending&&<p role="status">Consultando operações da campanha…</p>}
   {query.isError&&<p role="alert">{query.data
