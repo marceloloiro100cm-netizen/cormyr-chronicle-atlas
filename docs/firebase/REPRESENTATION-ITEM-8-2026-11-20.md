@@ -23,3 +23,13 @@ A sessão de representação preserva o login Firebase do Narrador. Não emite J
 5. Após aceite, modificar apenas o `apphosting.yaml` pelo GitHub e confirmar o commit servido no Firebase App Hosting. Nunca usar Vercel ou tokens Lovable.
 
 **Situação:** a flag de representação permanece `false` até o aceite; nenhum dado de produção foi alterado pela implantação de código.
+
+## Correção de sessão expirada
+
+Uma sessão ainda válida só pode ser reutilizada para o mesmo jogador e UID
+representado. Não é possível trocar de alvo durante os 30 minutos.
+Uma sessão expirada pode ser substituída transacionalmente, mesmo que
+o Narrador queira representar outro jogador, sem pedir intervenção no Firestore.
+O recibo de início e o UID real continuam auditados. Sessão com metadados
+inconsistentes falha fechada, sem tentar reutilização automática.
+Testes de regressão cobrem os três casos.
