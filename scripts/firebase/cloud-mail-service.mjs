@@ -478,11 +478,8 @@ export function createFirebaseCloudMail({
         const {actor,uid,date,round,realActorUid,sessionNonce}=await represented(tx,realUid);
         if(input.expectedCampaignDate!==undefined&&input.expectedCampaignDate!==date)
           deny('campaign_date_changed',409);
-        const original=await tx.get(letters.doc(input.letterId));
-        const parent=original.exists?effectiveCloudMail(original.data(),round):null;
-        const route=parent?cloudReplyRoute(actor,parent,snapshotId):null;
-        if(!route||parent.id!==input.letterId)
-          deny('reply_not_authorized',403);
+        const {parent,route,replyToId,threadRootId}=
+          await resolveReply(tx,actor,input,round);
         const prefix=/^Re:\s/i.test(parent.subject)?'':'Re: ';
         const chars=Array.from(parent.subject);
         while(chars.length&&Buffer.byteLength(prefix+chars.join(''),'utf8')>
@@ -494,7 +491,7 @@ export function createFirebaseCloudMail({
           ...(input.expectedCampaignDate!==undefined?
             {expectedCampaignDate:input.expectedCampaignDate}:{}),
         });
-        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId,
+        return persist(tx,{uid,actor,date,round,req,replyToId,threadRootId,
           realActorUid,sessionNonce});
       });
     },
@@ -897,11 +894,8 @@ export function createFirebaseCloudMail({
         if(input.expectedCampaignDate!==undefined&&
            input.expectedCampaignDate!==date)
           deny('campaign_date_changed',409);
-        const original=await tx.get(letters.doc(input.letterId));
-        const parent=original.exists?effectiveCloudMail(original.data(),round):null;
-        const route=parent?cloudReplyRoute(actor,parent,snapshotId):null;
-        if(!route||parent.id!==input.letterId)
-          deny('reply_not_authorized',403);
+        const {parent,route,replyToId,threadRootId}=
+          await resolveReply(tx,actor,input,round);
         // Subject and delivery address come solely from the original letter.
         const base=parent.subject;
         const prefix=/^Re:\s/i.test(base)?'':'Re: ';
@@ -916,7 +910,7 @@ export function createFirebaseCloudMail({
           ...(input.expectedCampaignDate!==undefined?
             {expectedCampaignDate:input.expectedCampaignDate}:{}),
         });
-        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId});
+        return persist(tx,{uid,actor,date,round,req,replyToId,threadRootId});
       });
     },
   };
