@@ -1,4 +1,5 @@
 import {validateEditorialContent} from './cloud-editorial-content.mjs';
+import {commissionIdsOf} from './newspaper-core.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {currentAccountAccess,chooseCurrentAccountAccess} from './operational-account-access.mjs';
 /**
@@ -272,7 +273,19 @@ export function createFirebaseCloudNewspaper({
       const fingerprint=digest(JSON.stringify({...input,content}));
       return db.runTransaction(async tx=>{
         const {calendarDate,config}=await readApproval(uid,tx);
-        const [oldDoc,auditDoc]=await Promise.all([tx.get(ref),tx.get(audit)]);
+        const commissionIds=commissionIdsOf(content.blocks);
+        if(commissionIds.length>20)deny('edition_commissions_too_many',400);
+        if(commissionIds.length&&(
+           env.CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED!=='true'||
+           config.newspaperCommissionsReadApproved!==true||
+           config.newspaperCommissionsWriteApproved!==true))
+          deny('edition_commissions_not_approved',503);
+        const commissionRefs=commissionIds.map(cid=>
+          runtime.collection('newspaperCommissions').doc(cid));
+        const [oldDoc,auditDoc,commissionDocs]=await Promise.all([
+         tx.get(ref),tx.get(audit),
+         Promise.all(commissionRefs.map(doc=>tx.get(doc))),
+        ]);
         if(auditDoc.exists){
           const prior=auditDoc.data();
           if(prior.actorUid!==uid||prior.requestFingerprint!==fingerprint)
@@ -280,6 +293,17 @@ export function createFirebaseCloudNewspaper({
           return {...editorialView(prior.after),duplicate:true};
         }
         const old=oldDoc.data();
+        const previousIds=commissionIdsOf(old?.blocks);
+        if(old?.publishedAt&&previousIds.some(cid=>!commissionIds.includes(cid)))
+          deny('published_commission_immutable',409);
+        for(let i=0;i<commissionDocs.length;i++){
+          const item=commissionDocs[i].data();
+          if(!commissionDocs[i].exists||!item||
+             item.id!==commissionIds[i]||item.sourceSnapshotId!==snapshotId||
+             !['pending','published'].includes(item.state)||
+             item.state==='published'&&item.newspaperId!==id)
+            deny('edition_commission_invalid',409);
+        }
         if((oldDoc.exists&&(old?.source!=='firebase-cloud'||
              old.sourceSnapshotId!==snapshotId||old.id!==id))||
            (oldDoc.exists?old.version:0)!==input.expectedVersion||
@@ -298,6 +322,20 @@ export function createFirebaseCloudNewspaper({
           publishedAt:published?old?.publishedAt??now:old?.publishedAt??null,
           cancelledAt:input.state==='cancelled'?now:null,
           createdBy:old?.createdBy??uid,updatedBy:uid,updatedAt:now};
+        // A encomenda é liquidada SOMENTE quando a edição publicada contém
+        // a matéria ligada, em transação idempotente com o próprio Jornal.
+        if(published)for(let i=0;i<commissionDocs.length;i++){
+          const item=commissionDocs[i].data();
+          if(item.state!=='pending')continue;
+          tx.update(commissionRefs[i],{state:'published',newspaperId:id,
+            publishedAt:now,seenAt:null});
+          tx.create(runtime.collection('newspaperCommissionAudits')
+            .doc(digest('published:'+id+':'+item.id)),{
+             action:'newspaper_commission_published',
+             commissionId:item.id,houseId:item.houseId,editionId:id,
+             actorUid:uid,occurredAt:now,sourceSnapshotId:snapshotId,
+            });
+        }
         if(oldDoc.exists)tx.update(ref,next);else tx.create(ref,next);
         tx.create(audit,{action:'save_edition',actorUid:uid,occurredAt:now,
           editionId:id,requestFingerprint:fingerprint,before:old??null,after:next});

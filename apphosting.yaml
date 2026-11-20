@@ -168,6 +168,12 @@ env:
     availability:
       - RUNTIME
 
+  # Item 10: encomendas pagas somente após aceite da economia e Jornal.
+  - variable: CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED

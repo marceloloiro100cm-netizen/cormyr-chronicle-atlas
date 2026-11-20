@@ -33,6 +33,8 @@ import {readOperationalRecordDocs,projectOperationalRecords,
  projectOperationalVersions,readOperationalRecordVersionDocs} from './operational-records';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
 import {representationRpc,RepresentationRpcError} from './representation-rpc';
+import {createFirebaseCommissions,readFirebaseCommissions,FirebaseCommissionError}
+ from '../newspaper/firebase-news-commissions.server';
 import {readAgeRegistry,projectAgeDashboard,projectHouseAges,listAgeTransitions,CharacterAgesError} from './operational-character-ages';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
@@ -444,7 +446,14 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    if(name==='campaign_newspapers')return (await rows(name)).filter(r=>editor||['published','archived'].includes(r['state']));
    if(name==='campaign_newspaper_reads')return (await rows(name)).filter(r=>editor||r['user_id']===scope.uid);
-   if(name==='campaign_newspaper_commissions')return (await rows(name)).filter(r=>editor||houseAllowed(r['house_id']));
+   if(name==='campaign_newspaper_commissions'){
+     const original=(await rows(name)).filter(r=>editor||houseAllowed(r['house_id']));
+     const operational=await readFirebaseCommissions(db,snapshotId,scope);
+     const ids=new Set(original.map(r=>r['id']));
+     if(operational.some((r:Row)=>ids.has(r['id'])))
+      throw new CloudAccessError('newspaper_commission_source_conflict',503);
+     return [...original,...operational];
+    }
    if(name==='campaign_newspaper_staff')return rows(name);
    if(['campaign_newspaper_story_models','campaign_newspaper_engravings','campaign_newspaper_settings','campaign_newspaper_revisions'].includes(name)){
     if(!editor)return [];
@@ -461,6 +470,20 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
   };
   const rpc=async(name:string,args:Row)=>{
+   if(['newspaper_commission_story','newspaper_reject_commission',
+       'mark_newspaper_commissions_seen'].includes(name)){
+    try{
+     const writer=createFirebaseCommissions({db,snapshotId,actor:scope});
+     if(name==='newspaper_commission_story')
+      return writer.commission(args,await rows('campaign_newspaper_commissions'));
+     if(name==='newspaper_reject_commission')
+      return writer.reject(args);
+     return writer.markSeen(args);
+    }catch(e){
+     if(e instanceof FirebaseCommissionError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
    if(['start_campaign_representation','stop_campaign_representation',
        'campaign_representation_action'].includes(name)){
     try{return await representationRpc({
