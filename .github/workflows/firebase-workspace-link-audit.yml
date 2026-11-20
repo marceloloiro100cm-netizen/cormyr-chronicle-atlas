@@ -57,6 +57,8 @@ jobs:
           project_id: cormyr
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Diagnose private login projections and Google provider (read-only)
+        env:
+          CORMYR_FIREBASE_RECORDS_ENABLED: 'true'
         run: node scripts/firebase/workspace-login-diagnostic.mjs
       - name: Verify private import reference counts without modifying data
         run: node scripts/firebase/workspace-link-audit-cli.mjs

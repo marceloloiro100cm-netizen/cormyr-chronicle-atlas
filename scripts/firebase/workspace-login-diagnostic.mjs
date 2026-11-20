@@ -9,7 +9,6 @@ import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {build} from 'esbuild';
 import {mkdtemp,rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {listCurrentAccountAccess} from './operational-account-access.mjs';
@@ -31,7 +30,7 @@ try{
   const config=response.ok?await response.json():null;
   console.log(JSON.stringify({googleProvider:{status:response.status,enabled:config?.enabled===true,configured:typeof config?.clientId==='string'&&config.clientId.length>0}}));
  }catch{console.log(JSON.stringify({googleProvider:{status:'unavailable'}}));}
- temporary=await mkdtemp(join(tmpdir(),'cormyr-login-'));
+ temporary=await mkdtemp(join(resolve('node_modules'),'.cormyr-login-'));
  const output=join(temporary,'workspace.mjs');
  await build({entryPoints:[resolve('src/lib/firebase-workspace/service.ts')],
   bundle:true,platform:'node',format:'esm',target:'node24',outfile:output,
