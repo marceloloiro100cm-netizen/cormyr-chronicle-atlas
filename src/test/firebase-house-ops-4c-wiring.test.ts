@@ -25,6 +25,16 @@ describe('Ficha Firebase: contrato de integração 4c',()=>{
   expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED\n\s+value: "true"/);
   expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "false"/);
  });
+ it('a cotação e a Ficha leem as mesmas regras mesmo sem habilitar gravações',()=>{
+  const quote=source('src/routes/api/firebase-cloud-house-quote.ts');
+  expect(quote).toContain("process.env['CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED']");
+  expect(quote).toContain('readOperationalHouseRules(db,snapshotId,');
+  const workspace=source('src/lib/firebase-workspace/service.ts');
+  expect(workspace).toContain('readiness.houseRulesReadable');
+  const yaml=source('apphosting.yaml');
+  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED\n\s+value: "true"/);
+  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "false"/);
+ });
  it('inclui ledger operacional e mantém guardas desativadas na implantação',()=>{
   expect(source('src/lib/firebase-workspace/service.ts'))
    .toContain('readOperationalHouseLedger(db,snapshotId)');
