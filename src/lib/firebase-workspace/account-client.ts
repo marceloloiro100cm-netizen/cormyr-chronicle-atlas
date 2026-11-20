@@ -5,9 +5,10 @@ export async function firebaseAccountRequest<T>(
  action:AccountAction,input:Record<string,unknown>={},
 ):Promise<T>{
  const auth=firebasePilotAuth();
+ const beforeUid=auth?.current()?.uid;
  const token=await auth?.getToken();
  const uid=auth?.current()?.uid;
- if(!token||!uid||auth?.current()?.uid!==uid)
+ if(!token||!uid||(beforeUid&&beforeUid!==uid)||auth?.current()?.uid!==uid)
    throw Error('Entre novamente com sua conta Firebase.');
  const response=await fetch('/api/firebase-accounts',{
    method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
