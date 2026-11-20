@@ -22,6 +22,8 @@ import type {HouseState} from '../house/types';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
+import {firebaseHouseRulesReadEnabled,firebaseHouseRulesWriteEnabled,firebaseHouseRulesRuntimeApproved}
+ from '../house/firebase-house-rules-feature';
 import {constructionStateHash} from '../house/firebase-construction-transaction';
 import {projectVerifiedHouseSheets,HouseEconomyReadError}
  from './house-economy-integrity';
@@ -977,14 +979,19 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const [sheet,ledger,houses,overrides,operational]=await Promise.all([
     sheetFor(id),visible('noble_house_ledger'),
     visible('campaign_houses'),visible('noble_house_rule_overrides'),
-    process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'
+    firebaseHouseRulesReadEnabled(process.env)
       ?readOperationalHouseRules(db,snapshotId,id):Promise.resolve([]),
    ]);
    const definitions=overrides.map(r=>r['definition']) as any[];
    const catalog=mergeHouseRuleCatalog(definitions,operational as any);
+   const rulesRuntime=admin&&firebaseHouseRulesWriteEnabled(process.env)
+    ?await db.collection('campaignCloudRuntime').doc(snapshotId).get():null;
+   const rulesWritable=admin&&firebaseHouseRulesWriteEnabled(process.env)&&
+    firebaseHouseRulesRuntimeApproved(rulesRuntime?.data())&&
+    rulesRuntime?.data()?.sourceSnapshotId===snapshotId;
    result={state:(sheet as any).state,version:(sheet as any).version,
     catalog,houses,ledger:mergeHouseLedger(ledger,[],id),
-    admin,canEditAttributes:admin,
+    admin,canEditAttributes:admin,rulesWritable,
     syncState:'synced'};
   }else if(input?.kind==='record'){
    checkHouse(input.houseId);
