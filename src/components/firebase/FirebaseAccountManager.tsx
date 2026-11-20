@@ -27,14 +27,15 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
  const [loaded,setLoaded]=useState(false);
+ const [readOnly,setReadOnly]=useState(true);
  const allowedHouses=houses.filter(h=>h.season===2);
  const record=items.find(a=>a.uid===selected);
  const dirty=()=>{setRequestKey(key());setMessage('');};
  async function refresh(){
   setBusy(true);setMessage('');
   try{
-   const result=await firebaseAccountRequest<{items:Account[]}>('list');
-   setItems(result.items);setLoaded(true);
+   const result=await firebaseAccountRequest<{items:Account[];readOnly:boolean}>('list');
+   setItems(result.items);setReadOnly(result.readOnly!==false);setLoaded(true);
   }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível consultar as contas.');}
   finally{setBusy(false);}
  }
@@ -104,7 +105,12 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
       </option>)}
     </select>
    </label>
-   {loaded&&<form className="campaign-form" onSubmit={e=>void save(e)}>
+   {loaded&&readOnly&&<p role="status" className="text-sm">
+     Inventário disponível somente para conferência. Cadastro, edição de
+     vínculo, ativação de usuários e mudança de senha ainda exigem
+     homologação de segurança no Firebase.
+   </p>}
+   {loaded&&!readOnly&&<form className="campaign-form" onSubmit={e=>void save(e)}>
     <label>Nome<input required maxLength={160} value={name} disabled={busy}
       onChange={e=>{dirty();setName(e.target.value);}}/></label>
     <label>E-mail<input type="email" required value={email} disabled={busy}
