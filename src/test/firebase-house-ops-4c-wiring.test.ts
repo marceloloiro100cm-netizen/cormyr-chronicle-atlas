@@ -25,6 +25,15 @@ describe('Ficha Firebase: contrato de integração 4c',()=>{
   expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED\n\s+value: "true"/);
   expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "false"/);
  });
+ it('nunca mascara economia operacional inconsistente e mantém catálogo da cotação alinhado',()=>{
+  const workspace=source('src/lib/firebase-workspace/service.ts');
+  expect(workspace).toContain('projectVerifiedHouseSheets(');
+  expect(workspace).toContain("new CloudAccessError('house_economy_unreconciled',503)");
+  expect(workspace).toContain('houseEconomyReconciled:sheet.operational===true');
+  const quote=source('src/routes/api/firebase-cloud-house-quote.ts');
+  expect(quote).toContain("process.env['CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED']");
+  expect(quote).toContain('readOperationalHouseRules(db,snapshotId,');
+ });
  it('inclui ledger operacional e mantém guardas desativadas na implantação',()=>{
   expect(source('src/lib/firebase-workspace/service.ts'))
    .toContain('readOperationalHouseLedger(db,snapshotId)');
