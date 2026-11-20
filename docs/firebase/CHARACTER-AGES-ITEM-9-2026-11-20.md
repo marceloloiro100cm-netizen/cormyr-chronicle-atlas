@@ -11,3 +11,14 @@ O ano oficial é lido do HUB operacional. A idade não é gravada ou somada no r
 - A funcionalidade de leitura requer `CORMYR_FIREBASE_CHARACTER_AGES_ENABLED=true`; a origem continua sujeita à validação do servidor. Caso dados não tenham sido exportados, a API responde indisponível, não uma idade falsa.
 
 Inclui testes unitários de visibilidade, de falecimento e de transição de ano. Publicação exclusivamente GitHub + Firebase App Hosting, sem Vercel e sem Lovable.
+
+## Correção da leitura de transições anuais
+
+A listagem do Narrador deduplica o mesmo par de anos e versão que apareça
+tanto no arquivo histórico quanto no livro operacional do Firebase.
+O recibo operacional prevalece, evitando contagem dupla.
+Para eventos operacionais exige o documento identificado pela fronteira
+de anos e o vínculo explícito ao snapshot em leitura. Divergência bloqueia
+a listagem em vez de incorporar evento de outra campanha.
+Testes de regressão para colisão importada/operacional e vínculo adulterado.
+Nenhum calendário ou registro histórico foi alterado.
