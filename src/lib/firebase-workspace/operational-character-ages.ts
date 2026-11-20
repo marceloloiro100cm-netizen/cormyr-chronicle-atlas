@@ -235,7 +235,7 @@ export async function listAgeTransitions(db:any,snapshot:string,registry:AgeRegi
   .map(toHistoric);
 }
 function toHistoric(t:Record<string,any>){
- return {id:t.id,calendar_version:t.calendarVersion,
-  from_year:t.fromYear,to_year:t.toYear,actor:t.actor,
-  created_at:t.createdAt};
+ return {id:t['id'],calendar_version:t['calendarVersion'],
+  from_year:t['fromYear'],to_year:t['toYear'],actor:t['actor'],
+  created_at:t['createdAt']};
 }
