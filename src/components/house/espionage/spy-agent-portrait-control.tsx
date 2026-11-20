@@ -71,7 +71,7 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit,customU
    <Button type="button" variant="ghost" size="sm" className="spy-agent-portrait-pick" disabled={!available.length}
     onClick={()=>{setSelected(agent.portraitId);setError('');setOpen(true);
      void qc.invalidateQueries({queryKey:['spy-house-management',houseId]});}}>
-    {agent.portraitId?'Galeria':'Escolher foto'}
+    {agent.portraitId?'Alterar foto':'Escolher foto'}
    </Button>}
   {canEdit&&onCustomImage&&agent.status!=='dead'&&
    <CustomImageUpload label={'o espião '+agent.codename} hasImage={Boolean(customUrl)} onSave={onCustomImage}/>}
