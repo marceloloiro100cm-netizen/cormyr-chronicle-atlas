@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {
   inspectReleaseConvergence,formatReleaseConvergenceSummary,
 } from './apphosting-release-convergence.mjs';
@@ -92,4 +93,11 @@ test('GitHub summary never prints untrusted provider errors or secrets',()=>{
   assert.ok(!text.includes('PRIVATE_'));
   assert.ok(!text.includes('Bearer'));
   assert.ok(text.includes('INCONCLUSIVE'));
+});
+
+test('Drive UI and Google adapter changes always require serving-SHA verification',()=>{
+  const workflow=readFileSync('.github/workflows/firebase-apphosting-release-convergence.yml','utf8');
+  assert.ok(workflow.includes("'src/components/house/drive-status.tsx'"));
+  assert.ok(workflow.includes("'scripts/firebase/google-drive-read-adapter.mjs'"));
+  assert.ok(workflow.includes("'.github/workflows/firebase-apphosting-release-convergence.yml'"));
 });
