@@ -110,7 +110,7 @@ describe('Item 4b, transação operacional por Casa',()=>{
   const result=await f.service().execute('valid-token-123',f.input());
   expect(result).toMatchObject({version:1,duplicate:false,
    action:'domain_edit',houseId:'house-a'});
-  expect((f.docs.get(f.economyPath)?.state as {domains:{name:string}[]})
+  expect((f.docs.get(f.economyPath)?.['state'] as {domains:{name:string}[]})
    .domains[0]?.name).toBe('Vale Novo');
   expect(f.docs.get(f.sheet)).toEqual(before);
   expect([...f.docs.keys()].filter(k=>k.includes('/houseOperationLedger/'))).toHaveLength(1);
