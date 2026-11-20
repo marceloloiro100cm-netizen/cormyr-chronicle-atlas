@@ -68,7 +68,7 @@ export function canonicalRecordRequest(actor:Scope,input:RecordWriteInput){
   return sha(JSON.stringify(['save',actor.uid,input.recordId,input.expectedVersion,
    input.title,input.content,input.requestKey??null]));
  }
- fail('record_invalid',400);
+ return fail('record_invalid',400);
 }
 export async function commitOperationalRecord({
  db,snapshotId,actor,imported,input,
