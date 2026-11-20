@@ -71,7 +71,8 @@ async function handle(request:Request):Promise<Response>{
   });
   const token=bearer.slice(7);
   const result=action==='status'?await service.status(token):
-    action==='list'?await service.list(token):
+    action==='list'?{...(await service.list(token)),
+      readOnly:process.env['CORMYR_FIREBASE_ACCOUNTS_ENABLED']!=='true'}:
     action==='completePassword'?await service.completePassword(token,input):
     await service.submit(token,input);
   return Response.json({result},{headers});
