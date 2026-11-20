@@ -8,7 +8,8 @@ import {projectCloudLetters} from '../mail/firebase-operational-mail';
 import {originalMailSend,originalMailBatch,originalMailReply,originalReplyDraft,composerOptions,OriginalMailBridgeError} from '../mail/firebase-original-send';
 import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
-import {readWorkspaceSpy} from '../../../scripts/firebase/workspace-spy.mjs';
+import {readWorkspaceSpy,loadImportedSpyData} from '../../../scripts/firebase/workspace-spy.mjs';
+import {commitSpyAction,SpyWriteError} from './operational-spy-write';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
@@ -430,6 +431,22 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='house_gallery_mail_images'||name==='get_house_character_ages'){
     checkHouse(args['p_house']);
     return [];
+   }
+   if(['spy_recruit_agent','spy_create_agent','spy_buy_agent_upgrade',
+       'spy_assign_agent_portrait','spy_rename_agent','spy_remove_agent'].includes(name)){
+    if(process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
+     throw new CloudAccessError('spy_write_disabled',501);
+    const h=args['p_house'];
+    if(typeof h!=='string'||(!admin&&!scope.editHouseIds.includes(h)))denied();
+    const [source,calendar,house]=await Promise.all([
+     loadImportedSpyData(rows,snapshotId),cloud.workspaceCalendar(token),sheetFor(h),
+    ]);
+    try{return await commitSpyAction({db,snapshotId,scope,name,args,
+     source,calendar,fallbackSheet:house});}
+    catch(e){
+     if(e instanceof SpyWriteError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
    }
    if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,db,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
    if(name==='dated_mail_action'){
