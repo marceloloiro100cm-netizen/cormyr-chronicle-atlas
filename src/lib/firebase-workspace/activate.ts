@@ -11,6 +11,13 @@ import {firebasePilotAuth} from '../auth/firebase-pilot-session';
 import {recruitSpyAgent,createSpyAgent,buySpyAgentUpgrade,
  assignSpyPortrait} from '../espionage/spy-agent-actions.functions';
 import {renameSpyAgent,loadSpyHouseManagement} from '../espionage/spy-management.functions';
+import {previewSpyMissionOdds} from '../espionage/spy-mission-preview.functions';
+import {resolveSpyAgentMission} from '../espionage/spy-agent-actions.functions';
+import {retrySpyIntelligence,adjustSpyIntelligence} from '../espionage/spy-dossier.functions';
+import {approveSpyRegionLink} from '../espionage/region-review.functions';
+import {reviewSpyTargetDefense} from '../espionage/spy-target-defense.functions';
+import {loadNarratorSpyHouseDefense}
+ from '../espionage/spy-narrator-house-defense.functions';
 
 type AccountRow={uid:string;playerId:string|null;name:string|null;
  email:string|null;profile:string;version:number;active:boolean;
@@ -113,6 +120,57 @@ export function activateFirebaseWorkspace(){
  registerWorkspaceFunction(loadSpyHouseManagement,async input=>{
   const r=await spyCall('spy_house_management',{p_house:input?.data?.houseId});
   return {...r,availableWealth:null};
+ });
+ registerWorkspaceFunction(previewSpyMissionOdds,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_player_mission_preview',{
+   p_house:d.houseId,p_agent:d.agentId,p_target:d.targetHouseId,
+  });
+ });
+ registerWorkspaceFunction(resolveSpyAgentMission,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_resolve_agent_mission',{
+   p_operation:d.operationId,p_roll:d.roll,p_modifier:d.modifier,
+   p_discovered:d.discovered,p_guard_override:d.guardOverride,
+   p_prison_override:d.prisonOverride,p_expected_version:d.expectedAgentVersion,
+   p_request_key:d.requestKey,p_reason:d.reason,
+  });
+ });
+ registerWorkspaceFunction(retrySpyIntelligence,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_intelligence_finalize',{
+   p_operation:d.operationId,p_request_key:requestKey(),
+  });
+ });
+ registerWorkspaceFunction(adjustSpyIntelligence,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_intelligence_admin_action',{
+   p_dossier:d.dossierId,p_objective:d.objective,
+   p_subject_key:d.subjectKey,p_action:d.action,
+   p_reason:d.reason,p_request_key:requestKey(),
+  });
+ });
+ registerWorkspaceFunction(approveSpyRegionLink,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_review_region_link',{
+   p_id:d.id,p_from:d.fromRegion,p_to:d.toRegion,
+   p_passage:d.passage,p_bidirectional:d.bidirectional,
+   p_approved:d.approved,p_blocked:d.blocked,
+   p_visibility:d.visibility,p_source:d.source,p_expected_version:0,
+   p_reason:d.reason,p_request_key:d.requestKey,
+  });
+ });
+ registerWorkspaceFunction(reviewSpyTargetDefense,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_narrator_house_defense',{
+   p_house:d.targetHouseId,...(d.domainId?{p_domain:d.domainId}:{}),
+  });
+ });
+ registerWorkspaceFunction(loadNarratorSpyHouseDefense,input=>{
+  const d=input?.data??{};
+  return spyCall('spy_narrator_house_defense',{
+   p_house:d.houseId,...(d.domainId?{p_domain:d.domainId}:{}),
+  });
  });
  registerWorkspaceFunction(managePlayerAccount,input=>submitPlayer(input?.data??{}));
  registerWorkspaceFunction(registerPlayer,async input=>{
