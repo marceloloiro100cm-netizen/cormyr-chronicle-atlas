@@ -59,7 +59,7 @@ describe('núcleo puro de operações da Ficha',()=>{
 
 describe('segunda fatia de ações puras da Ficha',()=>{
  it('isola sete atos não econômicos do estado de entrada',()=>{
-  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(7);
+  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(8);
   const review={...newHouseState('house-a'),phase:'review' as const,
    pending:['Conferir domínio','Validar herdeiro']};
   const cleared=applyHouseNonEconomicOperation(review,'clear_pending',{
@@ -236,5 +236,20 @@ describe('calendário e ação mensal com dados do servidor',()=>{
    {type:'Vigiar',notes:'Posto de fronteira'},context);
   expect(out.state.actions).toHaveLength(1);
   expect(state).toEqual(original);
+ });
+});
+
+describe('domínios da mini-ficha vassala',()=>{
+ it('recusa vassala não aprovada sem modificar a Casa',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseNonEconomicOperation(state,'vassal_domain',{
+   vassalId:'inexistente',id:ID,name:'Fortificação do Vale'
+  },'')).toThrow(/Mini-ficha indisponível/);
+  expect(state).toEqual(before);
+ });
+ it('avanço individual continua bloqueado pelo HUB global',()=>{
+  const state=newHouseState('house-a');
+  expect(()=>requireHouseOperationPhase(state,'advance'))
+   .toThrow(/Avanço individual desativado/);
  });
 });

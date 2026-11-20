@@ -104,7 +104,7 @@ export function applyHouseDomainOperation(
  */
 export const HOUSE_NON_ECONOMIC_ACTIONS=[
  'military_rename','court_remove','return_to_draft','clear_pending','approve',
- 'unit_edit','vassal_loyalty',
+ 'unit_edit','vassal_loyalty','vassal_domain',
 ] as const;
 export type HouseNonEconomicAction=typeof HOUSE_NON_ECONOMIC_ACTIONS[number];
 
@@ -140,6 +140,19 @@ export function applyHouseNonEconomicOperation(
    loyalty:z.enum(['loyal','neutral','rebellious'])}).parse(args);
   return {state:setVassalLoyalty(state,input.id,input.loyalty,explanation),
    rule:'Lealdade da vassala: '+input.loyalty+'; decisão narrativa auditada',
+   explanation};
+ }
+ if(action==='vassal_domain'){
+  const vassalId=z.string().parse(args['vassalId']);
+  const next=structuredClone(state);
+  const vassal=next.vassals?.find(v=>v.id===vassalId&&v.status==='approved');
+  if(!vassal?.sheet)throw Error('Mini-ficha indisponível.');
+  const domain=z.object({id:z.string().uuid(),
+   name:z.string().trim().min(1).max(160)}).parse(args);
+  if(vassal.sheet.domains.some(x=>x.id===domain.id))
+   throw Error('Domínio já cadastrado.');
+  vassal.sheet.domains.push({...domain,terrain:'',features:[],notes:''});
+  return {state:next,rule:'Mini-ficha da vassala · recursos independentes da suserana',
    explanation};
  }
  if(action==='return_to_draft'){
