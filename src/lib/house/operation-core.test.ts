@@ -6,7 +6,8 @@ import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_MILITARY_ACTIONS,applyHouseCreationOperation,
  HOUSE_CREATION_ACTIONS,applyHouseDiceOperation,
  HOUSE_DICE_ACTIONS,applyHouseContextOperation,
- HOUSE_CONTEXT_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_CONTEXT_ACTIONS,applyHousePurchaseOperation,
+ HOUSE_PURCHASE_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -251,5 +252,25 @@ describe('domínios da mini-ficha vassala',()=>{
   const state=newHouseState('house-a');
   expect(()=>requireHouseOperationPhase(state,'advance'))
    .toThrow(/Avanço individual desativado/);
+ });
+});
+
+describe('compras de Casas e vassalas com catálogo confirmado',()=>{
+ it('cobre duas compras e rejeita item divergente sem mutar ficha',()=>{
+  expect(HOUSE_PURCHASE_ACTIONS).toHaveLength(2);
+  const state=newHouseState('house-a'),original=structuredClone(state);
+  const item={id:'outro',duration:{months:1},source:'Livro',section:'Teste',
+   version:'1'} as never;
+  expect(()=>applyHousePurchaseOperation(state,'purchase',{
+   itemId:'item-inexistente',id:ID,domainId:ID,name:'Posse'},
+   {item,rawRolls:[1,2,3]})).toThrow(/Catálogo indisponível/);
+  expect(state).toEqual(original);
+ });
+ it('vassala sem aprovação não pode adquirir imóveis',()=>{
+  const state=newHouseState('house-a');
+  const item={id:'tower',duration:{months:1}} as never;
+  expect(()=>applyHousePurchaseOperation(state,'vassal_purchase',{
+   vassalId:ID,itemId:'tower',id:ID,domainId:ID,name:'Torre'},
+   {item,rawRolls:[]})).toThrow(/Mini-ficha indisponível/);
  });
 });

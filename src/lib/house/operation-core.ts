@@ -6,7 +6,9 @@ import {unitSchema} from './schemas';
 import {operationSchema} from './schemas';
 import {isMonthSensitiveHouseAction} from './monthly-operation-policy';
 import {RESOURCE_KEYS,SKILLS,type HouseState} from './types';
-import {createUnit,balances,activeHoldings,UNIT_TYPES} from './engine';
+import {createUnit,balances,activeHoldings,UNIT_TYPES,purchase} from './engine';
+import {vassalState} from './vassals';
+import type {CatalogItem} from './types';
 import {equipUnit,changeUnitState,resolveSurvivors,
  SURVIVOR_CONDITIONS} from './military';
 import {changeSiegeAssignment} from './siege';
@@ -712,4 +714,60 @@ export function applyHouseContextOperation(
   return {state:next,rule:'Livro básico p. 153 · ação mensal auditada'};
  }
  throw Error('Ação de contexto não implementada.');
+}
+
+/** Compras utilizam catálogo canônico confirmado na MESMA transação que grava.
+ * Sorteios econômicos entram como números de 32 bits do servidor, sem I/O.
+ */
+export const HOUSE_PURCHASE_ACTIONS=['purchase','vassal_purchase'] as const;
+export type HousePurchaseAction=typeof HOUSE_PURCHASE_ACTIONS[number];
+export type HousePurchaseContext={item:CatalogItem;rawRolls:readonly number[]};
+const drawDuration=(count:number,sides:number,rolls:readonly number[]):number[]=>{
+ if(!Number.isSafeInteger(count)||count<0||count>100||
+    !Number.isSafeInteger(sides)||sides<1||sides>10000)
+  throw Error('Duração de construção fora do catálogo autorizado.');
+ const output:number[]=[];let i=0;
+ const max=2**32,limit=Math.floor(max/sides)*sides;
+ while(output.length<count){
+  const value=rolls[i++];
+  if(value===undefined||!Number.isSafeInteger(value)||value<0||value>=max)
+   throw Error('Dados do servidor insuficientes para a obra.');
+  if(value<limit)output.push(value%sides+1);
+ }
+ return output;
+};
+export function applyHousePurchaseOperation(
+ state:HouseState,action:HousePurchaseAction,args:Record<string,unknown>,
+ ctx:HousePurchaseContext,
+):{state:HouseState;rule:string}{
+ if(action==='purchase'){
+  const input=z.object({id:z.string().uuid(),itemId:z.string(),
+   domainId:z.string(),name:z.string().max(160),
+   parentId:z.string().optional(),supportId:z.string().optional(),
+   replaceId:z.string().optional(),
+   weaponSpecialty:z.enum(['fighting','marksmanship']).optional()}).parse(args);
+  if(ctx.item?.id!==input.itemId)
+   throw Error('Catálogo indisponível para a posse selecionada.');
+  const dice=state.phase==='active'?
+   drawDuration(ctx.item.duration.dice??0,ctx.item.duration.sides??6,ctx.rawRolls):[];
+  return {state:purchase(state,ctx.item,{...input,dice}),
+   rule:ctx.item.source+' · '+ctx.item.section+' · '+ctx.item.version};
+ }
+ if(action==='vassal_purchase'){
+  const vassalId=z.string().parse(args['vassalId']);
+  const next=structuredClone(state);
+  const vassal=next.vassals?.find(v=>v.id===vassalId&&v.status==='approved');
+  if(!vassal?.sheet)throw Error('Mini-ficha indisponível.');
+  const input=z.object({itemId:z.string(),id:z.string().uuid(),
+   domainId:z.string(),name:z.string().max(160),
+   parentId:z.string().optional(),supportId:z.string().optional()}).parse(args);
+  if(ctx.item?.id!==input.itemId)
+   throw Error('Catálogo indisponível para a posse selecionada.');
+  const result=purchase(vassalState(next,vassal),ctx.item,{...input,dice:[]});
+  vassal.sheet.holdings=result.holdings;
+  vassal.sheet.permanent=result.permanent;
+  vassal.sheet.domains=result.domains;
+  return {state:next,rule:'Mini-ficha da vassala · recursos independentes da suserana'};
+ }
+ throw Error('Compra não implementada.');
 }

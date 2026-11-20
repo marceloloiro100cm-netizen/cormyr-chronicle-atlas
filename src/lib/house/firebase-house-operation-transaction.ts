@@ -6,11 +6,13 @@
 import {createHash,randomInt} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
-import {operationSchema} from './schemas';
+import {operationSchema,catalogSchema} from './schemas';
+import {CORE_CATALOG} from './catalog';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
  applyHouseEconomicOperation,applyHouseMilitaryOperation,
  applyHouseCreationOperation,applyHouseDiceOperation,
- applyHouseContextOperation,HOUSE_CONTEXT_ACTIONS,
+ applyHouseContextOperation,applyHousePurchaseOperation,
+ HOUSE_PURCHASE_ACTIONS,type HousePurchaseAction,HOUSE_CONTEXT_ACTIONS,
  type HouseContextAction,HOUSE_DICE_ACTIONS,
  type HouseDiceAction,HOUSE_CREATION_ACTIONS,
  type HouseCreationAction,HOUSE_ECONOMIC_ACTIONS,
@@ -30,8 +32,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS]);
-const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS]);
+const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS]);
+const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS]);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -98,6 +100,10 @@ export function createFirebaseHouseOperation({
   const trustedDice=(HOUSE_DICE_ACTIONS.includes(action as HouseDiceAction)||
     action==='action'&&args['type']==='Torneio')
    ?Array.from({length:100},()=>randomInt(1,7)):[];
+  const trustedRaw=action==='purchase'
+   ?Array.from({length:300},()=>randomInt(0,2**32)):[];
+  const purchaseItemId=HOUSE_PURCHASE_ACTIONS.includes(action as HousePurchaseAction)
+   &&valid(args['itemId'])?String(args['itemId']):null;
   const requestFingerprint=constructionStateHash({uid,houseId,version,key,
     action,args,explanation});
   const houseRef=source.collection('houses').doc(hash('house:'+houseId));
@@ -110,12 +116,21 @@ export function createFirebaseHouseOperation({
   const actorRef=source.collection('access').doc(uid);
   const overlayRef=root.collection('accountAccess').doc(uid);
   const calendarRef=timeStage.collection('calendar').doc('current');
+  const importedRuleRef=purchaseItemId?nobleStage.collection('ruleOverrides')
+   .doc(hash('noble-rule:'+purchaseItemId)):null;
+  const liveRuleRef=purchaseItemId?root.collection('houseRuleSets')
+   .doc(hash('house:'+houseId)).collection('rules')
+   .doc(hash('rule:'+purchaseItemId)):null;
   return db.runTransaction(async tx=>{
    // Todas as leituras devem ocorrer antes de qualquer escrita.
    const docs=await Promise.all([
     tx.get(source),tx.get(authStage),tx.get(timeStage),tx.get(nobleStage),
     tx.get(root),tx.get(actorRef),tx.get(overlayRef),tx.get(houseRef),
     tx.get(sheetRef),tx.get(economyRef),tx.get(eventRef),tx.get(calendarRef),
+   ]);
+   const [importedRule,liveRule]=await Promise.all([
+    importedRuleRef?tx.get(importedRuleRef):Promise.resolve(null),
+    liveRuleRef?tx.get(liveRuleRef):Promise.resolve(null),
    ]);
    if(!docs.slice(0,4).every(ready))fail('house_stage_unavailable',503);
    const cfg=docs[4].data() as RuntimeRoot|undefined;
@@ -190,12 +205,42 @@ export function createFirebaseHouseOperation({
    if(needsHouseOperationCalendar(state,action)&&
      state.month!==monthFromHarptosDate({year:c.year,month:c.month}))
       fail('house_calendar_conflict',409);
+   let item;
+   if(HOUSE_PURCHASE_ACTIONS.includes(action as HousePurchaseAction)){
+    if(!purchaseItemId)fail('house_item_invalid',400);
+    if(importedRule?.exists){
+     const row=importedRule.data();
+     if(!row||row['ruleId']!==purchaseItemId||
+        !Number.isSafeInteger(row['version'])||
+        !row['definition']||row['definition']['id']!==purchaseItemId)
+      fail('house_catalog_integrity_failed',503);
+    }
+    if(liveRule?.exists){
+     const row=liveRule.data();
+     if(!row||row['houseId']!==houseId||row['itemId']!==purchaseItemId||
+        !Number.isSafeInteger(row['version'])||Number(row['version'])<1||
+        row['sourceSnapshotId']!==snapshotId||
+        !row['definition']||row['definition']['id']!==purchaseItemId||
+        row['definition']['custom']!==true)
+      fail('house_catalog_integrity_failed',503);
+    }
+    try{
+     item=catalogSchema.parse(liveRule?.exists?liveRule.data()?.['definition']:
+       importedRule?.exists?importedRule.data()?.['definition']:
+       CORE_CATALOG.find(x=>x.id===purchaseItemId));
+     if(item.id!==purchaseItemId)fail('house_catalog_integrity_failed',503);
+    }catch{fail('house_item_not_found',409);}
+   }
    let candidate:{state:typeof state;rule:string;explanation?:string};
    try{
     candidate=DOMAINS.has(action)
      ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
      :ECONOMICS.has(action)
-      ?HOUSE_CONTEXT_ACTIONS.includes(action as HouseContextAction)
+      ?HOUSE_PURCHASE_ACTIONS.includes(action as HousePurchaseAction)
+       ?applyHousePurchaseOperation(state,action as HousePurchaseAction,args,{
+         item:item!,rawRolls:trustedRaw,
+        })
+       :HOUSE_CONTEXT_ACTIONS.includes(action as HouseContextAction)
        ?applyHouseContextOperation(state,action as HouseContextAction,args,{
           admin:narrator,explanation,houseName:String(docs[7].data()?.['name']??''),
           calendar:{year:c.year,month:c.month},
