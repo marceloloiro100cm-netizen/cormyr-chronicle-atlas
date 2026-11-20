@@ -134,7 +134,6 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
         <span className="ch-badge">{admin?'Narrador':'Casa '+[...myHouses].map(houseName).join(', ')}</span>
         {admin&&<a className="ch-btn" href="/firebase-hub">⏭ Abrir semana no HUB</a>}
         <button type="button" className="ch-btn primary" onClick={()=>{if(replaceMailDraft(uid))setCompose(null);}}>🪶 Nova missiva</button>
-        {onClassic&&<button type="button" className="ch-btn" onClick={onClassic}>Visão clássica</button>}
       </div>
     </header>
     <div className="ch-toolbar">
@@ -152,7 +151,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
         <option value="">Todas</option>{weeks.map(w=><option key={w} value={String(w)}>Semana {w}</option>)}</select></label>
       <button type="button" className="ch-btn" aria-pressed={timeline} onClick={()=>setTimeline(t=>!t)}>{timeline?'📋 Escrivaninha':'🕰️ Linha do tempo'}</button>
     </div>
-    <nav className="ch-queues" aria-label="Filas">
+    <nav className="ch-queues" aria-label="Pastas">
       {queues.map(q=>{const n=members(q).length;return <button type="button" key={q} aria-pressed={queue===q}
         className={'ch-queue'+(queue===q?' on':'')} onClick={()=>{setQueue(q);setPane('list');setSelected(null);}}>
         <span className="ch-q-title">{QUEUE_TEXT[q][0]}</span>
@@ -162,7 +161,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
     <p className="ch-note">Mostrando <b>{list.length}</b> conversa(s). <b>A leitura só conta quando você marca.</b> {message&&<span role="status">{message}</span>}</p>
     <div className="ch-ws">
       <div className="ch-list" role="list">
-        {list.length===0&&<p className="ch-empty">Nada nesta fila.</p>}
+        {list.length===0&&<p className="ch-empty">Nada nesta pasta.</p>}
         {list.map(c=>{const unread=conversationUnread(c,ctx);return <div key={c.root.id} role="listitem"
           className={'ch-item'+(c.root.id===selected?' sel':'')+(unread?' unread':'')}>
           <button type="button" className="ch-item-open" onClick={()=>{setSelected(c.root.id);setPane('reader');}}>

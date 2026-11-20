@@ -14,8 +14,8 @@ import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
 const ID='11111111-1111-4111-8111-111111111111';
 describe('núcleo puro de operações da Ficha',()=>{
  it('enumera todas as 55 ações do contrato sem conceder privilégios',()=>{
-  expect(HOUSE_ACTIONS).toHaveLength(55);
-  expect(new Set(HOUSE_ACTIONS).size).toBe(55);
+  expect(HOUSE_ACTIONS).toHaveLength(56);
+  expect(new Set(HOUSE_ACTIONS).size).toBe(56);
   for(const action of HOUSE_ACTIONS)expect(typeof action).toBe('string');
   for(const action of ['approve','correct','sync_calendar','vassal_approve',
    'grant_unit_xp','admin_edit'] as const)
@@ -61,7 +61,7 @@ describe('núcleo puro de operações da Ficha',()=>{
 
 describe('segunda fatia de ações puras da Ficha',()=>{
  it('isola sete atos não econômicos do estado de entrada',()=>{
-  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(8);
+  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(9);
   const review={...newHouseState('house-a'),phase:'review' as const,
    pending:['Conferir domínio','Validar herdeiro']};
   const cleared=applyHouseNonEconomicOperation(review,'clear_pending',{

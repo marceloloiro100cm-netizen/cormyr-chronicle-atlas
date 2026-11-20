@@ -17,7 +17,7 @@ import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { I18nProvider } from '@/lib/i18n/context';
 import {decideSessionBoundary,clearSessionQueryCache} from '@/lib/auth/session-boundary';
 
-import { CORMYR_ARCHIVE_ONLY, isFirebasePilotPage, shouldRedirectToFirebasePilot } from '@/lib/archive-only';
+import { CORMYR_ARCHIVE_ONLY, isFirebasePilotPage, isPublicReaderPage, shouldRedirectToFirebasePilot } from '@/lib/archive-only';
 
 
 function NotFoundComponent() {
@@ -92,7 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     // The new Firebase-only pilot is independently guarded by Firebase
     // Admin access and a disabled-by-default server flag. Legacy game routes
     // remain in archive-only mode with no Supabase fallback.
-    const firebasePilotPath = isFirebasePilotPage(location.pathname);
+    const firebasePilotPath = isFirebasePilotPage(location.pathname) || isPublicReaderPage(location.pathname);
     if (CORMYR_ARCHIVE_ONLY && location.pathname !== '/' && !firebasePilotPath) {
       throw redirect({ to: '/' });
     }
@@ -101,11 +101,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Cormyr Web" },
-      { name: "description", content: "Cormyr Web — Crônicas do Reino" },
-      { name: "author", content: "Cormyr Web" },
-      { property: "og:title", content: "Cormyr Web" },
-      { property: "og:description", content: "Cormyr Web — Crônicas do Reino" },
+      { title: "Atlas Cormyr" },
+      { name: "description", content: "Atlas Cormyr: Crônicas do Reino" },
+      { name: "author", content: "Atlas Cormyr" },
+      { property: "og:title", content: "Atlas Cormyr" },
+      { property: "og:description", content: "Atlas Cormyr: Crônicas do Reino" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -114,7 +114,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.ico?v=atlas-cormyr", type: "image/x-icon" },
+      { rel: "apple-touch-icon", href: "/cormyr/assets/cormyr.jpg" },
     ],
   }),
   shellComponent: RootShell,

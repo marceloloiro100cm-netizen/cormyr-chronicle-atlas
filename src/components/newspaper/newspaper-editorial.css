@@ -254,7 +254,7 @@
  flex-direction:column;gap:8px;border:2px dashed #b29267;padding:27px;text-align:center;
  color:#714d3a;background:#fff3d273}
 .folha-future-module span{font-size:.86rem;max-width:450px;line-height:1.45}
-.folha-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:22px 0}
+.folha-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:22px 0}
 .folha-stats>div{display:flex;flex-direction:column;gap:8px;padding:13px;text-align:center;
  background:#fff4dd;border:1px solid #bd9c6c;border-radius:8px}
 .folha-stats strong{font:700 2rem Georgia,serif;color:#602942}
@@ -614,3 +614,6 @@
 .folha-team-card strong{color:#2b1d10}
 .folha-team-role{color:#5b3f1f;opacity:1}
 .folha-team-card p{color:#3a2a18}
+
+/* Missivas no menu do Editor-Chefe (somente leitura). */
+.folha-missivas-reader{background:transparent;color:inherit;border-radius:10px}

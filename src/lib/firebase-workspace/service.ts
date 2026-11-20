@@ -38,6 +38,9 @@ import {representationRpc,RepresentationRpcError} from './representation-rpc';
 import {projectPrivateMailGallery} from './private-media-gallery';
 import {createFirebaseCommissions,readFirebaseCommissions,FirebaseCommissionError}
  from '../newspaper/firebase-news-commissions.server';
+import {readNewspaperStaffOverlay,parseStaffOperation,commitNewspaperStaff,NewspaperStaffError}
+ from '../newspaper/firebase-newspaper-staff.server';
+import {readPublicNewspaperReadCounts,PublicNewspaperError} from '../newspaper/firebase-public-newspaper.server';
 import {readAgeRegistry,projectAgeDashboard,projectHouseAges,listAgeTransitions,CharacterAgesError} from './operational-character-ages';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
@@ -496,7 +499,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       throw new CloudAccessError('newspaper_commission_source_conflict',503);
      return [...original,...operational];
     }
-   if(name==='campaign_newspaper_staff')return rows(name);
+   if(name==='campaign_newspaper_staff'){
+    try{return (await readNewspaperStaffOverlay(db,snapshotId))??await rows(name);}
+    catch(e){if(e instanceof NewspaperStaffError)throw new CloudAccessError(e.code,e.status);throw e;}
+   }
    if(['campaign_newspaper_story_models','campaign_newspaper_engravings','campaign_newspaper_settings','campaign_newspaper_revisions'].includes(name)){
     if(!editor)return [];
     return rows(name);
@@ -525,6 +531,23 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      if(e instanceof FirebaseCommissionError)throw new CloudAccessError(e.code,e.status);
      throw e;
     }
+   }
+   // Redação da Folha (Editor-Chefe e Narrador): cópia operacional auditada.
+   if(['newspaper_staff_save','newspaper_staff_reorder','newspaper_staff_delete'].includes(name)){
+    if(!editor)denied();
+    try{
+     const op=parseStaffOperation(name,args);
+     const current=(await readNewspaperStaffOverlay(db,snapshotId))??await rows('campaign_newspaper_staff');
+     return await commitNewspaperStaff({db,snapshotId,actorUid:scope.uid,imported:current,op});
+    }catch(e){
+     if(e instanceof NewspaperStaffError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
+   if(name==='newspaper_public_read_counts'){
+    if(!editor)denied();
+    try{return await readPublicNewspaperReadCounts(db,snapshotId);}
+    catch(e){if(e instanceof PublicNewspaperError)throw new CloudAccessError(e.code,e.status);throw e;}
    }
    if(['start_campaign_representation','stop_campaign_representation',
        'campaign_representation_action'].includes(name)){

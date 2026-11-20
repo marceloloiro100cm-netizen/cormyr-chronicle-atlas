@@ -59,7 +59,7 @@ export function BattleNarratorHub(){
  };
  return <main className="battle-module" aria-label="Módulo de batalha do Narrador">
   <header className="battle-header">
-   <p className="battle-eyebrow">CORMYR CHRONICLE ATLAS · NARRADOR</p>
+   <p className="battle-eyebrow">ATLAS CORMYR · NARRADOR</p>
    <h1>Módulo de batalha</h1>
    <p>Batalhas de treinamento. Nenhuma perda é lançada nas Casas.</p>
   </header>

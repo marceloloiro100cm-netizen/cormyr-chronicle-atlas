@@ -60,6 +60,12 @@ env:
     value: "true"
     availability:
       - RUNTIME
+  # A Folha Sem Selo no site aberto (/jornal): só edições publicadas e a
+  # equipe da Redação; conta uma leitura por aparelho para o Editor-Chefe.
+  - variable: CORMYR_FIREBASE_PUBLIC_NEWSPAPER_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
   - variable: CORMYR_FIREBASE_CLOUD_MAIL_ENABLED
     value: "true"
     availability:

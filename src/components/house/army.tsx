@@ -9,12 +9,13 @@ import { SiegePanel } from './siege';
 import { UnitManagement } from './unit-management';
 import { UnitSheet } from './unit-sheet';
 import { MilitaryUnitSymbol,unitSymbolType } from './military-unit-symbol';
+import {customImageFor} from '@/lib/house/custom-images';
 import { MilitaryAssets } from './military-assets';
 import { UnitCommanderAssignment } from './unit-commander-assignment';
 import './creation-dialog-theme.css';
 import { unitXpSummary } from '@/lib/house/unit-progression';
 import { SKILLS, SKILL_NAMES, type HouseState, type Unit, type Skill } from '@/lib/house/types';
-export function Army({houseName='Cormyr',commanders=[],state,canEdit,admin,busy,onCreate,onEquipment,onState,onSurvivors,onSiege,onSiegeState,onTrain,onEdit,onGrant,onRename,onBuyMilitary,onConfigure=async()=>false,onWarHounds=async()=>false,onBroadTraining=async()=>false}:{houseName?:string;commanders?:{id:string;title:string}[];state:HouseState;canEdit:boolean;admin:boolean;onSiege:(args:Record<string,unknown>)=>Promise<boolean>;onSiegeState:(args:Record<string,unknown>,reason?:string)=>Promise<boolean>;onState:(args:Record<string,unknown>)=>Promise<boolean>;onSurvivors:(args:Record<string,unknown>)=>Promise<boolean>;onTrain:(args:Record<string,unknown>,reason?:string)=>Promise<boolean>;
+export function Army({houseName='Cormyr',commanders=[],state,canEdit,admin,busy,onCreate,onEquipment,onState,onSurvivors,onSiege,onSiegeState,onTrain,onEdit,onGrant,onRename,onBuyMilitary,onConfigure=async()=>false,onWarHounds=async()=>false,onBroadTraining=async()=>false,onImage}:{houseName?:string;commanders?:{id:string;title:string}[];state:HouseState;canEdit:boolean;admin:boolean;onSiege:(args:Record<string,unknown>)=>Promise<boolean>;onSiegeState:(args:Record<string,unknown>,reason?:string)=>Promise<boolean>;onState:(args:Record<string,unknown>)=>Promise<boolean>;onSurvivors:(args:Record<string,unknown>)=>Promise<boolean>;onTrain:(args:Record<string,unknown>,reason?:string)=>Promise<boolean>;
   onEdit:(args:Record<string,unknown>)=>Promise<boolean>;
   onGrant:(args:Record<string,unknown>,reason:string)=>Promise<boolean>;
   onRename:(args:Record<string,unknown>)=>Promise<boolean>;
@@ -22,6 +23,8 @@ export function Army({houseName='Cormyr',commanders=[],state,canEdit,admin,busy,
   onConfigure?:(args:Record<string,unknown>)=>Promise<boolean>;
   onWarHounds?:(args:Record<string,unknown>)=>Promise<boolean>;
   onBroadTraining?:(args:Record<string,unknown>)=>Promise<boolean>;
+  /** Imagem própria das unidades (operação custom_image). */
+  onImage?:((args:Record<string,unknown>)=>Promise<boolean>)|undefined;
   busy:boolean;onCreate:(args:Record<string,unknown>)=>Promise<boolean>;onEquipment:(args:Record<string,unknown>)=>Promise<boolean>}) {
   const [open,setOpen]=useState(false),[name,setName]=useState(''),[equipmentType,setEquipmentType]=useState(''),[mountName,setMountName]=useState(''),[mountAthletics,setMountAthletics]=useState(3),[mountEndurance,setMountEndurance]=useState(4),[mountSource,setMountSource]=useState(''),[mixedNote,setMixedNote]=useState(''),[mixedDiscipline,setMixedDiscipline]=useState(0),[mixedAllowed,setMixedAllowed]=useState<Skill[]>([]),[types,setTypes]=useState<string[]>([]),[training,setTraining]=useState<keyof typeof TRAINING>('trained'),[domain,setDomain]=useState(''),[commander,setCommander]=useState(''),[skills,setSkills]=useState(Object.fromEntries(SKILLS.map(s=>[s,2])) as Record<Skill,number>);
   const allowed=new Set(UNIT_TYPES.filter(t=>types.includes(t.id)).flatMap(t=>t.skills)),xp=SKILLS.reduce((n,s)=>n+(skills[s]-2)*20,0),unitQuote=types.length?quoteMilitaryUnit(state,types,training):null,cost=unitQuote?.costs.find(c=>c.resource==='power')?.amount??0,baseCost=unitQuote?.base.find(c=>c.resource==='power')?.amount??0;
@@ -35,8 +38,8 @@ export function Army({houseName='Cormyr',commanders=[],state,canEdit,admin,busy,
     mounted:true,atHome:true},state):null;
   return <section className="house-panel"><div className="house-section-heading"><h3>Exército</h3>{canEdit&&<Button onClick={()=>setOpen(true)}><Plus size={16}/>Criar unidade</Button>}</div>{state.units.length===0&&<p className="campaign-empty">Nenhuma unidade conciliada. As tropas das fichas anteriores continuam preservadas.</p>}
     <details className="house-ledger"><summary>Consulta rápida · combate de massa (Capítulo 10)</summary><p>Antes da rolagem de Guerra, escolha o comandante, as unidades, o terreno e a ordem. Compare a Disciplina final com a dificuldade da ordem, aplique cobertura e modificadores e registre baixas e sobreviventes.</p><p>Ordens e dificuldades numéricas específicas devem ser consultadas na tabela oficial e confirmadas pelo Narrador; a ficha não inventa números.</p></details><SiegePanel state={state} canEdit={canEdit} admin={admin} busy={busy} onBuy={onSiege} onChange={onSiegeState}/><div className="house-grid army-unit-grid">{state.units.map(unit=>{const stats=unitStats(unit,state),military=unitMilitaryBonuses(state,unit);return <article className="house-card army-unit-card" key={unit.id}><div className="military-unit-title">
- <div className="military-unit-card-heading"><div className="military-card-badge"><MilitaryUnitSymbol typeId={unitSymbolType(unit.types,unit.equipmentTypeId)} size="small"/></div><h4>{unit.name}</h4></div>
- <UnitSheet unit={unit} state={state} houseName={houseName} commanders={commanders} canEdit={canEdit} admin={admin} busy={busy} onCommander={onState} onEdit={onEdit} onGrant={onGrant} onEquipment={onEquipment} onWarHounds={onWarHounds} onBroadTraining={onBroadTraining}/>
+ <div className="military-unit-card-heading"><div className="military-card-badge"><MilitaryUnitSymbol typeId={unitSymbolType(unit.types,unit.equipmentTypeId)} size="small" customSrc={customImageFor(state,'unit',unit.id)}/></div><h4>{unit.name}</h4></div>
+ <UnitSheet unit={unit} state={state} houseName={houseName} commanders={commanders} canEdit={canEdit} admin={admin} busy={busy} onCommander={onState} onEdit={onEdit} onGrant={onGrant} onEquipment={onEquipment} onWarHounds={onWarHounds} onBroadTraining={onBroadTraining} onImage={onImage}/>
  </div><p className="army-unit-type">{unit.types.map(id=>UNIT_TYPES.find(t=>t.id===id)?.name).join(' / ')} · {TRAINING[unit.training as keyof typeof TRAINING]?.name}</p><div className="military-commander-row"><span>Comandante:</span><UnitCommanderAssignment unit={unit} court={state.court} commanders={commanders} canEdit={canEdit} busy={busy} emptyLabel="Não definido" onAssign={onState}/></div><dl className="army-unit-stats">
  <div className="army-unit-stat"><dt>Efetivo</dt><dd>{Math.max(0,unit.strength-unit.casualties)} / {unit.strength}</dd></div>
  <div className="army-unit-stat"><dt>Saúde</dt><dd>{stats.health} / {stats.maxHealth}</dd></div>

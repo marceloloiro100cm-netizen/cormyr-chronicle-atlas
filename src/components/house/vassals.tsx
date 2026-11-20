@@ -10,6 +10,7 @@ import { ImageViewer } from "@/components/image-viewer";
 import { campaignMonth } from "@/lib/house/regions";
 import type { HouseState } from "@/lib/house/types";
 import {vassalCrestUrl,type VassalHouse} from "@/lib/house/vassal-links";
+import {resolveVassalHouse,usePublicArchiveHouses} from "@/lib/house/public-archive-houses";
 
 /** Presentation only: retain the stored note, but hide internal archive-link metadata. */
 export function vassalDisplayNote(value:string){
@@ -92,6 +93,7 @@ export function Vassals({
     [selectedHouse, setSelectedHouse] = useState(""),
     [openAttach, setOpenAttach] = useState(false),
     [openCreate, setOpenCreate] = useState(false);
+  const archive = usePublicArchiveHouses((state.vassals ?? []).length > 0).data ?? [];
   const approved = (state.vassals ?? []).filter(v=>v.status==="approved").length;
   const available = houses.filter(
     (h) =>
@@ -114,7 +116,9 @@ export function Vassals({
       )}
       <div className="house-grid">
         {(state.vassals ?? []).map((v) => {
-          const h = houses.find((h) => h.id === v.houseId);
+          // No Firebase a lista oficial traz só a Casa da sessão: o brasão e os
+          // dados públicos da vassala vêm do cadastro público do site.
+          const h = resolveVassalHouse(v.houseId, v.name, houses, archive);
           const displayNote=vassalDisplayNote(v.notes);
           return (
             <article className="house-card" key={v.id}>

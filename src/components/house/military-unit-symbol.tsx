@@ -40,9 +40,11 @@ export function militaryUnitSymbolSrc(typeId?:string):string|undefined {
  return file?ASSET_ROOT+file:undefined;
 }
 
-export function MilitaryUnitSymbol({typeId,size='large'}:{typeId?:string;size?:'large'|'small'}){
+export function MilitaryUnitSymbol({typeId,size='large',customSrc=null}:{typeId?:string;size?:'large'|'small';
+ /** Imagem enviada pela Casa (miniatura validada); substitui o símbolo oficial. */
+ customSrc?:string|null}){
  const mark=SYMBOLS[typeId??''];
- const src=militaryUnitSymbolSrc(typeId);
+ const src=customSrc??militaryUnitSymbolSrc(typeId);
  return <div role="img" aria-label={'Símbolo militar: '+(mark?.name??'Unidade militar de tipo não identificado')}
   className={'military-unit-symbol military-unit-symbol--'+size}
   style={{backgroundColor:mark?.field??'#66566a'}}>

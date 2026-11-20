@@ -86,11 +86,13 @@ describe('Visão do Narrador v5: Chancelaria', () => {
   })));
  });
 
- it('abre o Hub Temporal e a escrita de nova missiva no lugar do leitor', async () => {
-  const {onOpenHub}=mountChancelaria();
+ it('mostra as Pastas sem Hub Temporal, Contexto ou Visão clássica e abre a escrita no lugar do leitor', async () => {
+  mountChancelaria();
   await screen.findByRole('heading',{name:'A ponte de Emberfall Crossing'});
-  fireEvent.click(screen.getByRole('button',{name:'Ir para o Hub Temporal →'}));
-  expect(onOpenHub).toHaveBeenCalled();
+  expect(screen.getByRole('navigation',{name:'Pastas'})).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Ir para o Hub Temporal →'})).toBeNull();
+  expect(screen.queryByRole('complementary',{name:'Contexto da conversa'})).toBeNull();
+  expect(screen.queryByRole('button',{name:'Visão clássica'})).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Nova missiva'}));
   expect(await screen.findByText('Formulário de nova missiva')).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole('button',{name:'Fechar'})[0]!);

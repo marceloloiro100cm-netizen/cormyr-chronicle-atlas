@@ -6,6 +6,7 @@ import {
  createFirebaseNewspaperEdition,updateFirebaseNewspaperEdition,
  loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,
 } from './firebase-editorial-bridge';
+import {workspaceRequest} from '@/lib/firebase-workspace/client';
 import {
  PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,NEWSPAPER_ENGRAVINGS,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
@@ -189,6 +190,9 @@ export async function getNewspaperStaff():Promise<NewspaperStaffMember[]>{
  return (data??[]) as NewspaperStaffMember[];
 }
 export async function uploadStaffPhoto(file:File):Promise<string>{
+ // No Firebase, fotos novas da Redação aguardam o Storage homologado.
+ if(isFirebaseNewspaperWorkspace())
+  throw new Error('Fotos novas da Redação ainda aguardam o armazenamento homologado no Firebase. Salve sem foto por enquanto.');
  if(file.size>5*1024*1024)throw new Error('A foto deve ter no máximo 5 MB.');
  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
  if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
@@ -207,6 +211,12 @@ export async function signedStaffPhoto(path:string):Promise<string>{
 export async function saveNewspaperStaff(input:{
  id?:string;name:string;specialty:string;bio:string;photoPath:string|null;sortOrder?:number;
 }):Promise<void>{
+ if(isFirebaseNewspaperWorkspace()){
+  await workspaceRequest({kind:'rpc',name:'newspaper_staff_save',args:{
+   p_id:input.id??null,p_name:input.name,p_specialty:input.specialty,p_bio:input.bio,
+   p_photo_path:input.photoPath,p_sort_order:input.sortOrder??null}});
+  return;
+ }
  const row={name:input.name.trim(),specialty:input.specialty.trim(),bio:input.bio.trim(),
   photo_path:input.photoPath,updated_at:new Date().toISOString()};
  const result=input.id?await db.from('campaign_newspaper_staff').update(row).eq('id',input.id)
@@ -215,12 +225,21 @@ export async function saveNewspaperStaff(input:{
 }
 /** Grava a nova ordem da equipe: a posição na lista vira o sort_order de cada funcionário. */
 export async function reorderNewspaperStaff(ids:readonly string[]):Promise<void>{
+ // Firebase: uma única gravação transacional com a ordem inteira.
+ if(isFirebaseNewspaperWorkspace()){
+  await workspaceRequest({kind:'rpc',name:'newspaper_staff_reorder',args:{p_ids:[...ids]}});
+  return;
+ }
  const results=await Promise.all(ids.map((id,index)=>
   db.from('campaign_newspaper_staff').update({sort_order:index}).eq('id',id)));
  const failed=results.find(r=>r.error);
  if(failed?.error)throw failed.error;
 }
 export async function deleteNewspaperStaff(id:string,photoPath:string|null):Promise<void>{
+ if(isFirebaseNewspaperWorkspace()){
+  await workspaceRequest({kind:'rpc',name:'newspaper_staff_delete',args:{p_id:id}});
+  return;
+ }
  const {error}=await db.from('campaign_newspaper_staff').delete().eq('id',id);
  if(error)throw error;
  if(photoPath)await db.storage.from(STAFF_BUCKET).remove([photoPath]);
@@ -329,4 +348,16 @@ export async function getPublicHubDate():Promise<string>{
  const {data,error}=await db.rpc('get_public_campaign_time');
  if(error)throw error;
  return publicCampaignTimeProjection(data).date;
+}
+
+/** Leituras do site aberto (visitantes sem conta) por edição, para o Editor-Chefe. */
+export async function getPublicNewspaperReadCounts():Promise<Map<string,number>>{
+ if(!isFirebaseNewspaperWorkspace())return new Map();
+ const rows:unknown=await workspaceRequest({kind:'rpc',name:'newspaper_public_read_counts',args:{}});
+ const map=new Map<string,number>();
+ if(Array.isArray(rows))for(const row of rows as {editionId?:unknown;count?:unknown}[]){
+  if(typeof row?.editionId==='string'&&typeof row.count==='number'&&Number.isSafeInteger(row.count))
+   map.set(row.editionId,row.count);
+ }
+ return map;
 }

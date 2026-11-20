@@ -22,6 +22,8 @@
     'ACERVO DA CAMPANHA':['CAMPAIGN ARCHIVE','ARCHIVO DE CAMPAÑA','KAMPAGNENARCHIV'],
     'Reino e regiões':['Kingdom and regions','Reino y regiones','Königreich und Regionen'],
     'Nobreza':['Nobility','Nobleza','Adel'],
+    'Jornal':['Newspaper','Periódico','Zeitung'],
+    'Abrir em tela cheia':['Open full screen','Abrir en pantalla completa','Im Vollbild öffnen'],
     'Constituição de Cormyr':['Constitution of Cormyr','Constitución de Cormyr','Verfassung von Cormyr'],
     'Músicas':['Music','Música','Musik'],
     'Eventos':['Events','Eventos','Ereignisse'],

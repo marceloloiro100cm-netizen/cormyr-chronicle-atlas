@@ -49,6 +49,13 @@
  * "Acessar como jogador", Alterar senha, Sair, a Visão clássica das Missivas
  * e o conteúdo original do Conselho continuam presentes e com as mesmas RPCs;
  * a área dos jogadores não muda. Re-captured after review.
+ * 2026-11-20 (ajustes pedidos pelo proprietário, com capturas de tela):
+ * players-workspace.tsx move a Administração da ficha para "Contas" no menu do
+ * Narrador (mesmo AdminPanel) e leva as Missivas do Editor-Chefe para um item
+ * do menu da Redação; NewspaperHub/NewspaperEditorialDesk ganham esse item
+ * (acima de Configurações) e as leituras do site aberto em Leitura e Alcance;
+ * newspaper-editorial.css só ajusta a grade de estatísticas. Nenhum controle,
+ * filtro ou RPC preexistente foi removido. Re-captured after review.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -61,12 +68,12 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'330959d809a7c015d9ef9044722bdec9c7589ac5',
+  'src/components/players/players-workspace.tsx':'1a70a48723747e47c223767f13029ee0d992d80a',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'55117d8e466edee9ccfaa46356999505cf5268d2',
-  'src/components/newspaper/NewspaperHub.tsx':'d92bceeabd4da3db23f4545f037b135afda28846',
-  'src/components/newspaper/newspaper-editorial.css':'c203f7f932be078925d9835eb4161fc0d3d49318',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'f97bb1c10b1ca77771ff1fdc786214c389f99e48',
+  'src/components/newspaper/NewspaperHub.tsx':'2a0742b8904376ed9aa8e9d160734c0cbd0db23c',
+  'src/components/newspaper/newspaper-editorial.css':'760857899874c1e3167ce578f05d886c78116b34',
   'src/components/newspaper/NewspaperCanvas.tsx':'bb4fabbaa87b8ff10006c3fab2f302c5c522d196',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'d6a763834c157a1582db66489469b289836ea476',

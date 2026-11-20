@@ -8,6 +8,8 @@ import {unitMilitaryBonuses} from '@/lib/house/military-bonuses';
 import {unitAllowedSkills,unitXpSummary,XP_PER_RANK} from '@/lib/house/unit-progression';
 import {SKILLS,SKILL_NAMES,EXTRA_UNIT_SKILLS,UNIT_SKILLS,UNIT_SKILL_NAMES,type Unit,type HouseState,type ExtraUnitSkill,type UnitSkill,type Skill} from '@/lib/house/types';
 import {MilitaryUnitSymbol,unitSymbolType} from './military-unit-symbol';
+import {CustomImageUpload} from './custom-image-upload';
+import {customImageFor} from '@/lib/house/custom-images';
 import {UnitCommanderAssignment} from './unit-commander-assignment';
 import {exportUnitPdf} from '@/lib/house/unit-export';
 
@@ -17,8 +19,11 @@ type Actions={unit:Unit;state:HouseState;houseName:string;canEdit:boolean;admin:
  onGrant:(args:Record<string,unknown>,reason:string)=>Promise<boolean>;
  onEquipment:(args:Record<string,unknown>)=>Promise<boolean>;
  onWarHounds?:(args:Record<string,unknown>)=>Promise<boolean>;
- onBroadTraining?:(args:Record<string,unknown>)=>Promise<boolean>;};
-export function UnitSheet({unit,state,houseName,commanders,canEdit,admin,busy,onCommander,onEdit,onGrant,onEquipment,onWarHounds,onBroadTraining}:Actions){
+ onBroadTraining?:(args:Record<string,unknown>)=>Promise<boolean>;
+ /** Envia ou remove a imagem própria da unidade (operação custom_image). */
+ onImage?:((args:Record<string,unknown>)=>Promise<boolean>)|undefined;};
+export function UnitSheet({unit,state,houseName,commanders,canEdit,admin,busy,onCommander,onEdit,onGrant,onEquipment,onWarHounds,onBroadTraining,onImage}:Actions){
+ const customSrc=customImageFor(state,'unit',unit.id);
  const [open,setOpen]=useState(false),[editing,setEditing]=useState(false);
  const [name,setName]=useState(unit.name),[origin,setOrigin]=useState(unit.origin),[situation,setSituation]=useState(unit.situation),[notes,setNotes]=useState(unit.notes);
  const [skills,setSkills]=useState(unit.skills),[extraSkills,setExtraSkills]=useState(unit.extraSkills??{}),[mount,setMount]=useState(unit.mount);
@@ -40,7 +45,11 @@ export function UnitSheet({unit,state,houseName,commanders,canEdit,admin,busy,on
  <DialogContent className="military-sheet max-w-5xl max-h-[92vh] overflow-y-auto p-5 sm:p-8">
   <DialogHeader>
    <div className="military-sheet-heading">
-    <MilitaryUnitSymbol typeId={unitSymbolType(unit.types,unit.equipmentTypeId)} />
+    <div className="military-sheet-symbol">
+     <MilitaryUnitSymbol typeId={unitSymbolType(unit.types,unit.equipmentTypeId)} customSrc={customSrc}/>
+     {canEdit&&onImage&&<CustomImageUpload label={'a unidade '+unit.name} hasImage={Boolean(customSrc)} busy={busy}
+      onSave={image=>onImage({target:'unit',id:unit.id,image})}/>}
+    </div>
     <div className="military-sheet-header-title">
      <p className="campaign-eyebrow">CASA {houseName.toLocaleUpperCase('pt-BR')} · FICHA DE UNIDADE</p>
      <DialogTitle className="text-3xl font-serif">{unit.name}</DialogTitle>

@@ -20,7 +20,11 @@
 .chancelaria .ch-seg button.on{background:var(--campaign-purple);color:#f5ecd9}
 .chancelaria .ch-queues{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .chancelaria .ch-queue{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;border:1px solid var(--border);border-radius:8px;background:var(--campaign-paper);color:var(--foreground);padding:10px;cursor:pointer;font:inherit}
-.chancelaria .ch-queue.on{border-color:var(--campaign-gold);box-shadow:inset 0 0 0 1px var(--campaign-gold)}
+.chancelaria .ch-queue{border-left:3px solid #d8cdb8;box-shadow:0 1px 2px rgb(39 17 53/.07);transition:border-color .15s,background .15s}
+.chancelaria .ch-queue:hover{border-color:var(--campaign-gold);background:var(--campaign-light)}
+.chancelaria .ch-queue:focus-visible{outline:2px solid var(--campaign-gold);outline-offset:2px}
+.chancelaria .ch-queue.on{background:var(--campaign-purple);color:#fffdf7;border-color:var(--campaign-gold);border-left-color:var(--campaign-gold);box-shadow:0 2px 8px rgb(39 17 53/.25)}
+.chancelaria .ch-queue.on .ch-q-desc{color:#e9dcef}
 .chancelaria .ch-q-title{font-weight:700;font-size:14px}
 .chancelaria .ch-q-count{font-weight:700;font-size:14px;border-radius:999px;padding:0 8px;background:var(--campaign-light);color:var(--foreground)}
 .chancelaria .ch-q-count.hot{background:var(--ch-wax);color:#fff}

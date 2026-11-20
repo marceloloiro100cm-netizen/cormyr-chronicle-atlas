@@ -12,7 +12,7 @@ import {
 
 export const Route=createFileRoute('/_authenticated/diagnostico')({
   head:()=>({meta:[
-    {title:'Verificação do meu acesso — Cormyr Chronicle'},
+    {title:'Verificação do meu acesso · Atlas Cormyr'},
     {name:'robots',content:'noindex,nofollow,noarchive'},
   ]}),
   component:CurrentSessionDiagnostics,

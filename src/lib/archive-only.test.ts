@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CORMYR_ARCHIVE_ONLY, shouldBlockLegacyRequest, isFirebasePilotPage, shouldRedirectToFirebasePilot } from './archive-only';
+import { CORMYR_ARCHIVE_ONLY, shouldBlockLegacyRequest, isFirebasePilotPage, isPublicReaderPage, shouldRedirectToFirebasePilot } from './archive-only';
 
 import { readFileSync } from 'node:fs';
 
@@ -44,6 +44,7 @@ describe('Firebase archive-only cutover', () => {
     ['/api/firebase-cloud-mail', 'router'],
     ['/api/firebase-cloud-newspaper', 'router'],
     ['/api/public/gm-content', 'router'],
+    ['/api/public/newspaper', 'router'],
     ['/unrelated', 'router'],
   ])('keeps public static route %s reachable', (pathname, type) => {
     expect(shouldBlockLegacyRequest(pathname, type)).toBe(false);
@@ -102,6 +103,13 @@ describe('Firebase archive-only cutover', () => {
     for(const p of ['/jogadores','/auth/extra','/reset-password/extra',
       '/firebase-access/extra','/diagnostico','/api/firebase-cloud-read'])
       expect(isFirebasePilotPage(p)).toBe(false);
+  });
+
+  it('abre só a página pública do jornal e sua API, sem liberar serverFns', () => {
+    expect(isPublicReaderPage('/jornal')).toBe(true);
+    for(const p of ['/jornal/extra','/jornais','/jogadores'])expect(isPublicReaderPage(p)).toBe(false);
+    expect(shouldBlockLegacyRequest('/api/public/newspaper','serverFn')).toBe(true);
+    expect(shouldBlockLegacyRequest('/api/public/newspaper/extra','router')).toBe(true);
   });
 
   it('routes legacy player bookmarks to the Firebase pilot, without bypassing login', () => {

@@ -1,9 +1,9 @@
-import {useMemo,useRef,useState} from 'react';
+import {useMemo,useRef,useState,type ReactNode} from 'react';
 import {
  BookOpen,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
  BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
  ImagePlus,Columns3,Quote,TriangleAlert,Plus,Printer,ChevronDown,
- ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,
+ ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,Mail,Globe,
  Undo2,Redo2,Copy,Scissors,ClipboardPaste,CalendarClock,ChevronLeft,ChevronRight,Keyboard,List,
 } from 'lucide-react';
 import {ChangePasswordButton} from '@/components/change-password';
@@ -38,6 +38,7 @@ const NAV=[
  {id:'anuncios',label:'Anúncios',icon:Megaphone},
  {id:'arquivo',label:'Arquivo',icon:Archive},
  {id:'alcance',label:'Leitura e Alcance',icon:BarChart3},
+ {id:'missivas',label:'Missivas',icon:Mail},
  {id:'configuracoes',label:'Configurações',icon:Settings},
 ] as const;
 type Section=typeof NAV[number]['id'];
@@ -47,6 +48,10 @@ export interface NewspaperEditorialProps{
  current:NewspaperEdition|null;
  history:NewspaperEdition[];
  reads:NewspaperRead[];
+ /** Leituras do site aberto (visitantes sem conta), por edição. */
+ publicReads?:ReadonlyMap<string,number>|undefined;
+ /** Missivas entregues, somente leitura: vira um item do menu, acima de Configurações. */
+ missivas?:ReactNode;
  loading:boolean;
  editing:boolean;busy:boolean;
  selectedBlockId:string|null;
@@ -162,6 +167,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const pdfReady=Boolean(current?.pdf_path);
  const materialReady=Boolean(current&&(current.blocks.some(b=>b.type==='headline'||b.type==='article'||b.imagePath||b.imageSrc)||pdfReady));
  const countReads=(edition:NewspaperEdition)=>reads.filter(r=>r.newspaper_id===edition.id&&r.read_version>=edition.publication_revision).length;
+ const countPublic=(edition:NewspaperEdition)=>props.publicReads?.get(edition.id)??0;
  const dateLabel=(value:string)=>{const d=parseDate(value);return d?formatCampaignPeriod(d):'Data indisponível';};
  const openCover=()=>{
   setSection('capa');setFullPreview(false);
@@ -181,6 +187,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const hasUnsavedChanges=current&&editing;
  const availableHistory=history.filter(e=>e.state!=='cancelled');
  const totalViews=history.reduce((total,edition)=>total+countReads(edition),0);
+ const totalPublic=history.reduce((total,edition)=>total+countPublic(edition),0);
+ const navItems=NAV.filter(item=>item.id!=='missivas'||props.missivas!==undefined);
 
  const currentDate=current?.campaign_date??props.hubDate;
  const totalWords=current?editionWords(current.blocks):0;
@@ -250,7 +258,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
      <img className="folha-crest-img" src="/newspaper/brasao_folha.webp" alt="Brasão de A Folha Sem Selo"/>
      <strong>REDAÇÃO<br/>DA FOLHA</strong><span>❧ ❦ ❧</span>
     </div>
-    <nav>{NAV.map(item=>{
+    <nav>{navItems.map(item=>{
      const Icon=item.icon;return <button type="button" key={item.id}
        aria-current={section===item.id?'page':undefined}
        className={section===item.id?'active':''}
@@ -444,16 +452,23 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       </section>}
 
       {section==='alcance'&&<section className="folha-section-content">
-       <h3>Leitura e Alcance</h3><p>Leituras confirmadas pelas contas que receberam o jornal.</p>
+       <h3>Leitura e Alcance</h3><p>Leituras confirmadas pelas contas que receberam o jornal e leituras de visitantes do site aberto (cada aparelho conta uma vez por edição).</p>
        <div className="folha-stats">
         <div><strong>{history.filter(e=>e.state==='published'||e.state==='archived').length}</strong><span>Edições disponíveis</span></div>
         <div><strong>{totalViews}</strong><span>Confirmações de leitura</span></div>
-        <div><strong>{current?countReads(current):0}</strong><span>Leitores desta edição</span></div>
+        <div><strong>{totalPublic}</strong><span>Leituras no site aberto</span></div>
+        <div><strong>{current?countReads(current)+countPublic(current):0}</strong><span>Leitores desta edição</span></div>
        </div>
        <div className="folha-archive-list">{availableHistory.map(e=>
         <button type="button" key={e.id} onClick={()=>browseEdition(e)}>
          <strong>Edição nº {e.edition_no} · {e.title}</strong>
-         <small>{countReads(e)} leitura(s) confirmada(s)</small></button>)}</div>
+         <small>{countReads(e)} leitura(s) confirmada(s) · <Globe size={12} aria-hidden="true"/> {countPublic(e)} no site aberto</small></button>)}</div>
+      </section>}
+
+      {section==='missivas'&&props.missivas!==undefined&&<section className="folha-section-content folha-missivas">
+       <h3>Missivas</h3>
+       <p>Missivas e respostas já entregues entre as Casas, somente para leitura: fonte para as fofocas e notícias da Folha.</p>
+       <div className="campaign-theme folha-missivas-reader">{props.missivas}</div>
       </section>}
 
       {section==='configuracoes'&&<section className="folha-section-content">

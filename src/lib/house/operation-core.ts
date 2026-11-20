@@ -4,6 +4,7 @@ import {isNarrativeNpc} from './narrative-npc';
 import {validateVassalNpcs,linkVassalNpcs} from './vassal-links';
 import {attachVassal} from './vassals';
 import {renameMilitaryHolding,editUnitProfile} from './unit-progression';
+import {setCustomImage} from './custom-images';
 import {setVassalLoyalty} from './military';
 import {unitSchema} from './schemas';
 import {operationSchema} from './schemas';
@@ -130,7 +131,7 @@ export function applyHouseDomainOperation(
  */
 export const HOUSE_NON_ECONOMIC_ACTIONS=[
  'military_rename','court_remove','return_to_draft','clear_pending','approve',
- 'unit_edit','vassal_loyalty','vassal_domain',
+ 'unit_edit','vassal_loyalty','vassal_domain','custom_image',
 ] as const;
 export type HouseNonEconomicAction=typeof HOUSE_NON_ECONOMIC_ACTIONS[number];
 
@@ -159,6 +160,11 @@ export function applyHouseNonEconomicOperation(
    mount:unitSchema.shape.mount.optional()}).parse(args);
   return {state:editUnitProfile(state,input),
    rule:'Guerra dos Tronos RPG · edição de unidade e habilidades, 20 XP por graduação e déficit registrado',
+   explanation};
+ }
+ if(action==='custom_image'){
+  return {state:setCustomImage(state,args),
+   rule:'Cormyr · retrato próprio de espião ou unidade, sem efeito em regras ou recursos',
    explanation};
  }
  if(action==='vassal_loyalty'){

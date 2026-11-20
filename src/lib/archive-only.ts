@@ -17,6 +17,13 @@ export function isFirebasePilotPage(pathname: string): boolean {
     pathname === '/auth' ||pathname === '/reset-password';
 }
 
+/** Página pública do jornal (A Folha Sem Selo) para visitantes sem conta.
+ * Lê só a API pública /api/public/newspaper, que devolve edições publicadas.
+ */
+export function isPublicReaderPage(pathname: string): boolean {
+  return pathname === '/jornal';
+}
+
 /** Legacy player bookmarks route to Firebase; never to the retired backend.
  * /auth is now a real Firebase-only login form and is NOT redirected.
  */
@@ -54,7 +61,10 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        pathname === '/api/firebase-operational-economy' ||
        pathname === '/api/firebase-house-reconciliation-audit' ||
        pathname === '/api/firebase-treasury-audit' ||
-       pathname === '/api/public/gm-content') && handlerType !== 'serverFn') return false;
+       pathname === '/api/public/gm-content' ||
+       // Public newspaper: published editions only, own feature flag and
+       // anonymous per-device read counter; never drafts, mail or Houses.
+       pathname === '/api/public/newspaper') && handlerType !== 'serverFn') return false;
   return handlerType === 'serverFn' ||
     pathname === '/mcp' ||
     pathname === '/.well-known/oauth-protected-resource' ||

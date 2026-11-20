@@ -101,7 +101,7 @@ export function createFirebaseHouseOperation({
   if(!FIREBASE_HOUSE_SUPPORTED_ACTIONS.has(action))
     fail('house_operation_not_implemented',501);
   if(Buffer.byteLength(JSON.stringify(args),'utf8')>
-      (action==='import'?520_000:14_000))
+      (action==='import'?520_000:action==='custom_image'?26_000:14_000))
     fail('house_operation_too_large',413);
   const crestPath=action==='crest_import'&&typeof args['path']==='string'?
    args['path']:null;

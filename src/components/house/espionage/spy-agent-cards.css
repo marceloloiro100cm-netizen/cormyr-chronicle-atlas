@@ -2,14 +2,17 @@
    equipamentos próprios da espionagem. Sem tabela nem rolagem horizontal. */
 .spy-agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));align-items:start;gap:16px;min-width:0}
 .spy-agent-card{display:flex;flex-direction:column;gap:12px;min-width:0}
-.spy-agent-card-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.spy-agent-identity{display:flex;align-items:center;min-width:0;flex:1 1 200px;gap:10px}
-.spy-agent-identity>div:first-child{flex-shrink:0}
+.spy-agent-card-heading{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:12px;min-width:0}
+.spy-agent-portrait{display:grid;justify-items:center;align-content:start;gap:4px;width:96px}
+.spy-agent-portrait .spy-agent-portrait-pick{min-height:30px;padding:0 6px;font-size:12px}
+.spy-agent-portrait .custom-image-upload{justify-content:center}
+.spy-agent-portrait .custom-image-upload button{min-height:30px;padding:0 6px;font-size:12px}
 .spy-agent-identity-text{min-width:0}
-.spy-agent-identity-text .campaign-eyebrow{margin:0 0 2px;font-size:10px}
-.spy-agent-identity-text h4{margin:0;font:700 21px/1.25 Georgia,serif;overflow-wrap:anywhere}
+.spy-agent-kicker{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.spy-agent-identity-text .campaign-eyebrow{margin:0;font-size:10px;letter-spacing:.08em;white-space:nowrap}
+.spy-agent-identity-text h4{margin:0;font:700 21px/1.25 Georgia,serif;overflow-wrap:break-word;word-break:normal;hyphens:auto}
 .spy-agent-identity-text small{display:block;color:var(--muted-foreground);margin-top:5px}
-.spy-agent-state{border:1px solid var(--border);border-radius:999px;padding:4px 8px;font-size:12px;white-space:normal}
+.spy-agent-state{border:1px solid var(--border);border-radius:999px;padding:3px 9px;font-size:12px;white-space:nowrap}
 .spy-agent-portrait-zoom{padding:0;margin:0;border:0;background:transparent;border-radius:50%;cursor:zoom-in;display:inline-grid;place-items:center;flex-shrink:0}
 .spy-agent-portrait-zoom:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
 .spy-agent-portrait-large{min-height:200px;display:grid;place-items:center;overflow:hidden;border-radius:10px;background:rgba(140,140,140,.08)}
@@ -18,7 +21,7 @@
 .spy-agent-name-form label{display:grid;gap:5px}
 .spy-agent-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .spy-agent-stat-grid>div{border:1px solid var(--border);border-radius:8px;padding:10px 8px;min-width:0}
-.spy-agent-stat-grid small{font-size:11px;color:var(--muted-foreground);display:block;line-height:1.3}
+.spy-agent-stat-grid small{font-size:11px;color:var(--muted-foreground);display:block;line-height:1.3;overflow-wrap:break-word;hyphens:auto}
 .spy-agent-stat-grid strong{display:block;font:700 20px/1.2 Georgia,serif;margin-top:6px;overflow-wrap:anywhere}
 .spy-agent-progress{display:grid;gap:6px}
 .spy-agent-progress small{color:var(--muted-foreground);font-size:12px}
@@ -37,7 +40,7 @@
 .spy-agent-equipment>summary small{color:var(--muted-foreground);font-size:11px;font-weight:400}
 .spy-agent-equipment>section{margin-top:12px;min-width:0!important}
 .spy-agent-card-footer{margin-top:auto;display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px;gap:8px}
-@media(max-width:440px){.spy-agent-grid{grid-template-columns:minmax(0,1fr)}.spy-agent-stat-grid strong{font-size:17px}.spy-agent-card-heading{flex-direction:column}.spy-agent-state{align-self:flex-start}}
+@media(max-width:440px){.spy-agent-grid{grid-template-columns:minmax(0,1fr)}.spy-agent-stat-grid strong{font-size:17px}.spy-agent-portrait{width:84px}}
 
 /* P1: informar disponibilidade e fase atual antes do histórico detalhado. */
 .spy-agent-overview{margin:8px 0 14px;font-size:13px;color:var(--muted-foreground);

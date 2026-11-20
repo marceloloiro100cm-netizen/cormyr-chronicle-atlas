@@ -1,3 +1,4 @@
+import {setCustomImage} from './custom-images';
 import {applyHouseDomainOperation,requireHouseOperationRole,
  requireHouseOperationPhase,needsHouseOperationCalendar} from './operation-core';
 import {isNarrativeNpc} from './narrative-npc';
@@ -245,6 +246,10 @@ export const houseOperation=createServerFn({method:'POST'}).middleware([requireS
     next=changeSiegeAssignment(state,input);rule='Cerco: '+(input.destroyed?'destruição permanente':'mudança de operadores')+' auditada';
   }
   if(data.action==='unit_state'){const input=z.object({unitId:z.string(),mounted:z.boolean(),atHome:z.boolean(),health:z.number(),casualties:z.number().int(),situation:z.string().max(1000),commanderName:z.string().trim().max(160).optional(),domainId:z.string().optional(),disband:z.boolean().optional()}).parse(args);next=changeUnitState(state,input);if(input.commanderName&&!next.court.some(c=>c.name===input.commanderName))next.court.push({id:crypto.randomUUID(),name:input.commanderName,role:'Comandante de Exército',notes:'Comandante gerado na tropa'});rule='Livro básico · Condição, cavalaria e guarnição';}
+  if(data.action==='custom_image'){
+    next=setCustomImage(state,args);
+    rule='Cormyr · retrato próprio de espião ou unidade, sem efeito em regras ou recursos';
+  }
   if(data.action==='unit_edit'){
     const input=z.object({unitId:z.string(),name:z.string().trim().min(1).max(160),origin:z.string().max(160),
       situation:z.string().max(1000),notes:z.string().max(4000),skills:unitSchema.shape.skills,
