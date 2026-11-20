@@ -139,7 +139,7 @@ export function createFirebaseHouseOperation({
      cfg?.sourceSnapshotId!==snapshotId||cfg?.sourceSnapshotReconciled!==true||
      cfg?.applicationEnabled!==true||cfg?.houseOpsWriteApproved!==true)
      fail('house_operations_not_approved',503);
-   let access:ReturnType<typeof chooseCurrentAccountAccess>;
+   let access:ReturnType<typeof chooseCurrentAccountAccess>=null;
    try{access=chooseCurrentAccountAccess(uid,docs[5].data(),
      docs[6].exists?docs[6].data():null,cfg);}
    catch{fail('invalid_access_scope',403);}
