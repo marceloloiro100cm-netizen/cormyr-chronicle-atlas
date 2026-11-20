@@ -7,6 +7,7 @@ import {crossOriginRejected} from '@/lib/server/request-origin';
 import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
 import {mergeHouseRuleCatalog} from '@/lib/house/firebase-house-rules-core';
+import {firebaseHouseRulesReadEnabled} from '@/lib/house/firebase-house-rules-feature';
 import {catalogSchema} from '@/lib/house/schemas';
 
 /** Read-only building quote from a permission-scoped House snapshot.
@@ -86,7 +87,7 @@ async function handle(request:Request):Promise<Response>{
       id:string;name:string;version:number;state:unknown;
     };
     let catalog;
-    if(process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'){
+    if(firebaseHouseRulesReadEnabled(process.env)){
       const ruleRows=await readWorkspaceTable(db,snapshotId,
         'noble_house_rule_overrides') as {definition:unknown}[];
       const archived=ruleRows.map(row=>catalogSchema.parse(row.definition));
