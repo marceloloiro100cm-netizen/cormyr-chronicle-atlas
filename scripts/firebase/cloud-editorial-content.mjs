@@ -33,11 +33,17 @@ export function validateEditorialContent(input){
        Object.keys(b).some(k=>!['id','type','text','subtitle','byline','caption',
          'imageSrc','titleFont','bodyFont','span','height',
          'icon','align','imageStyle','autoHeight','imageFocus',
-         'focusX','focusY','cropZoom','pinned','dropCap'].includes(k))||
+         'focusX','focusY','cropZoom','pinned','dropCap','commissionId'].includes(k))||
        typeof b.id!=='string'||!/^[-a-zA-Z0-9_]{1,100}$/.test(b.id)||
        ids.has(b.id)||!kinds.includes(b.type))invalid();
     ids.add(b.id);
     const out={id:b.id,type:b.type,text:text(b.text,16000)};
+    if(b.commissionId!==undefined){
+      if(b.type!=='article'||typeof b.commissionId!=='string'||
+         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.commissionId))
+        invalid();
+      out.commissionId=b.commissionId;
+    }
     for(const [key,max] of [['subtitle',1000],['byline',200],['caption',600]])
       if(b[key]!==undefined)out[key]=text(b[key],max);
     if(b.imageSrc!==undefined){
@@ -76,6 +82,8 @@ export function validateEditorialContent(input){
     if(b.type==='image'&&!out.imageSrc)invalid();
     return out;
   });
+  const commissions=blocks.filter(b=>b.commissionId).map(b=>b.commissionId);
+  if(new Set(commissions).size!==commissions.length)invalid();
   if(!blocks.some(b=>b.text.trim()||b.imageSrc))invalid();
   const result={title,subtitle,blocks,
     ...(input.template!==undefined?{template:input.template}:{}),
