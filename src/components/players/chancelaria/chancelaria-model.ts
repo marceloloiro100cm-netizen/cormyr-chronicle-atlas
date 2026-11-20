@@ -39,6 +39,7 @@ const KIND_LABEL:Record<ConversationKind,string>={narrador:'Do Narrador','ao-nar
 /** Letra pode ser respondida por este usuário? Espelha cloudReplyRoute do servidor. */
 export function canReplyTo(m:MailRow,uid:string,admin:boolean,editHouses:Set<string>):boolean{
   if(!delivered(m)||m.sender_user_id===uid||
+     !['firebase-cloud','imported'].includes(m.source??'')||
      m.source==='firebase-cloud'&&!CLOUD_ID.test(m.id))return false;
   if(admin)return !m.recipient_house_id&&Boolean(m.origin_house_id);
   if(m.letter_kind==='geral'&&!m.origin_house_id&&!m.recipient_house_id)
