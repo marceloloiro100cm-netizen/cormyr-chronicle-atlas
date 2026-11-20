@@ -333,6 +333,44 @@ export function createFirebaseCloudMail({
 
   }
 
+
+  // O JWT continua pertencendo ao Narrador. O alvo e as permissões são
+  // validados novamente dentro da própria transação de envio.
+  async function represented(tx,realUid){
+    if(env.CORMYR_FIREBASE_REPRESENTATION_ENABLED!=='true')
+      deny('representation_disabled',501);
+    const actual=await readyTransaction(tx,realUid);
+    if(actual.actor.role!=='narrador')deny('representation_denied',403);
+    const ref=runtime.collection('representationSessions').doc(realUid);
+    const doc=await tx.get(ref),session=doc.data();
+    if(!doc.exists||session?.actorUid!==realUid||
+       session?.sourceSnapshotId!==snapshotId||
+       !validId(session?.representedUid)||session.representedUid===realUid||
+       typeof session?.nonce!=='string'||
+       !Number.isFinite(Date.parse(session?.expiresAt))||
+       Date.parse(session.expiresAt)<=Date.now())
+      deny('representation_expired',403);
+    const target=await readyTransaction(tx,session.representedUid);
+    if(target.actor.role!=='jogador'||target.actor.playerId!==session.playerId)
+      deny('representation_denied',403);
+    return {...target,uid:session.representedUid,realActorUid:realUid,
+      sessionNonce:session.nonce};
+  }
+
+  function validateRepresentedReply(input){
+    if(!input||typeof input!=='object'||Array.isArray(input)||
+      Object.keys(input).some(k=>!['requestKey','letterId','content','expectedCampaignDate','draft'].includes(k))||
+      (input.expectedCampaignDate!==undefined&&
+       (typeof input.expectedCampaignDate!=='string'||
+        !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
+      typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+      typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
+      !validText(input.content,MAX_CONTENT_BYTES)||
+      (input.draft!==undefined&&typeof input.draft!=='boolean'))
+      deny('invalid_reply_request',400);
+    return input;
+  }
+
   return {
     async status(idToken){
       const uid=await uidFromToken(idToken);
