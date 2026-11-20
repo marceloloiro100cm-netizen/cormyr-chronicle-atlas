@@ -20,7 +20,8 @@ import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/
 import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
 import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-ledger';
 import {readOperationalRecordDocs,projectOperationalRecords,
- projectOperationalVersions} from './operational-records';
+ projectOperationalVersions,readOperationalRecordVersionDocs} from './operational-records';
+import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -365,7 +366,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       return archived.filter(r=>ids.has(r['record_id']));
     }
     return projectOperationalVersions(scope,visibleRecords,archived,
-      await operationalRecords());
+      await operationalRecords(),await readOperationalRecordVersionDocs(db,snapshotId));
    }
    if(['campaign_letters','letter_replies','letter_receipts','letter_rounds','letter_versions','letter_reply_versions','narrator_mail_notes','campaign_letter_consequences'].includes(name)){
     // The Editor-Chefe reads delivered mail and own receipts only.
@@ -406,7 +407,23 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    denied();return [];
   };
+  const writeRecord=async(input:Parameters<typeof commitOperationalRecord>[0]['input'])=>{
+   try{return await commitOperationalRecord({
+    db,snapshotId,actor:scope,imported:await rows('campaign_records'),input,
+   });}catch(e){
+    if(e instanceof RecordWriteError)throw new CloudAccessError(e.code,e.status);
+    throw e;
+   }
+  };
   const rpc=async(name:string,args:Row)=>{
+   if(name==='save_campaign_record'){
+    if(!args||typeof args!=='object'||Array.isArray(args)||
+      Object.keys(args).some(k=>!['p_id','p_version','p_title','p_content','p_request_key'].includes(k)))
+     throw new CloudAccessError('invalid_record_request',400);
+    return writeRecord({action:'save',recordId:args['p_id'],
+     expectedVersion:args['p_version'],title:args['p_title'],
+     content:args['p_content'],requestKey:args['p_request_key']});
+   }
    // Galeria e idades canônicas ainda não foram migradas (imagens dependem do
    // Storage; idades, do motor de personagens). Responder vazio, depois de
    // conferir a Casa, evita erro na tela sem inventar dados.
@@ -731,7 +748,14 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const steps=input.steps as QueryStep[];
    if(!Array.isArray(steps)||steps.length>40)throw new CloudAccessError('invalid_query',400);
    const mutations=steps.some(s=>['insert','update','delete','upsert'].includes(s.op));
-   if(mutations&&input.table==='narrator_mail_notes'&&steps.length===1&&steps[0]?.op==='upsert')
+   if(mutations&&input.table==='campaign_records'&&steps.length===1&&
+       steps[0]?.op==='insert'&&steps[0].args?.length===1){
+    const row=steps[0].args[0];
+    if(!row||typeof row!=='object'||Array.isArray(row))
+     throw new CloudAccessError('invalid_record_request',400);
+    result={data:await writeRecord({action:'create',row}),error:null};
+   }
+   else if(mutations&&input.table==='narrator_mail_notes'&&steps.length===1&&steps[0]?.op==='upsert')
     result=await saveNarratorNote(steps[0].args?.[0]);
    else if(mutations)throw new CloudAccessError('workspace_operation_not_implemented',501);
    else result=queryRows(await visible(String(input.table)),steps);
