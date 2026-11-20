@@ -15,6 +15,8 @@ export async function workspaceRequest(input:Record<string,unknown>):Promise<any
    r.status===403?'Acesso não autorizado.':
    r.status===409?'A data ou o registro mudou. Atualize a página e confira a semana do HUB antes de repetir.':
    r.status===429?'Limite de missivas desta semana atingido.':
+   r.status===413&&input['kind']==='houseLedgerExport'?
+    'O histórico ultrapassa 1.000 lançamentos. A exportação integral exige paginação homologada; nenhum arquivo parcial foi gerado.':
    r.status===501?(input['name']==='dated_mail_action'
     ?'Esta modalidade de missiva ainda não está disponível no Firebase (por exemplo, múltiplos destinatários, rascunho, agendamento ou vínculos). Nada foi enviado.'
     :'Esta função ainda não está disponível no Firebase. Nada foi alterado.'):
