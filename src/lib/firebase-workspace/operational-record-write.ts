@@ -120,7 +120,8 @@ export async function commitOperationalRecord({
     source_file_id:null,source_modified_at:null};
    baseVersion=0;
   }else{
-   if(!before||!editable(actor,before))fail('access_denied',403);
+   if(before===null)throw new RecordWriteError('access_denied',403);
+   if(!editable(actor,before))throw new RecordWriteError('access_denied',403);
    if(before['version']!==input.expectedVersion)fail('record_version_conflict',409);
    if(current&&source&&!sameIdentity(source,current.record))fail('record_source_conflict',503);
    const now=new Date().toISOString();
