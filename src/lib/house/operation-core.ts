@@ -15,7 +15,9 @@ import {resourcesSchema} from './schemas';
 import {depositGold,donateGold,donateGlory,spendInfluence,
  redeemIntrigueBonus} from './resource-transactions';
 import {alternativeFortune} from './engine';
-import {convertResources,confirmFortune} from './fortune';
+import {convertResources,confirmFortune,runTournament} from './fortune';
+import {reconcileHouseCalendar,calendarMonthIndex} from './calendar-consistency';
+import {legacyCostIssues,reconcileLegacyCosts} from './legacy-cost-reconciliation';
 import {validateResources} from './engine';
 import {changeHoldingCondition,legacyEffectCandidates,legacyCatalogEffects} from './holding-accounting';
 import {historyAdjustments,memberBonusAdjustments,rollFoundation,
@@ -639,4 +641,62 @@ export function applyHouseDiceOperation(
    rule:'Vassala · cinco d6 registrados por recurso; custo 20/10/5 Poder da suserana'};
  }
  throw Error('Ação de sorteio não coberta.');
+}
+
+/** Ações dependentes do calendário ou do nome canônico da Casa.
+ * Os fatos externos são conferidos dentro da transação e passados explicitamente.
+ */
+export const HOUSE_CONTEXT_ACTIONS=['sync_calendar','reconcile_legacy_costs','action'] as const;
+export type HouseContextAction=typeof HOUSE_CONTEXT_ACTIONS[number];
+export type HouseContext={
+ admin:boolean;explanation:string;houseName:string;
+ calendar:{year:number;month:number};dice:readonly number[];
+};
+export function applyHouseContextOperation(
+ state:HouseState,action:HouseContextAction,args:Record<string,unknown>,
+ ctx:HouseContext,
+):{state:HouseState;rule:string}{
+ if(action==='sync_calendar'){
+  if(!ctx.admin)throw Error('Somente o Narrador pode conciliar o calendário de uma Casa.');
+  const next=reconcileHouseCalendar(state,ctx.calendar,ctx.explanation);
+  return {state:next,rule:'Conciliação auditada com o mês global de Harptos '+
+   calendarMonthIndex(ctx.calendar)+'; obras conferidas; sem retrocesso'};
+ }
+ if(action==='reconcile_legacy_costs'){
+  if(!ctx.admin)throw Error('Conciliação legada exclusiva do Narrador.');
+  if(ctx.explanation.trim().length<10)
+   throw Error('Justifique a conferência da fonte histórica.');
+  if(!ctx.houseName.trim())throw Error('Nome canônico da Casa indisponível.');
+  const ids=z.array(z.string().min(1)).min(1).max(6).parse(args['ids']);
+  const candidates=legacyCostIssues(state,ctx.houseName);
+  if(ids.some(id=>!candidates.some(row=>row.id===id)))
+   throw Error('Divergência entre a ficha e a fonte legada. Nada foi alterado.');
+  const next=reconcileLegacyCosts(state,ctx.houseName,ids);
+  return {state:next,rule:'Conciliação pontual da auditoria 16; itens '+
+   ids.join(', ')+'; antes '+JSON.stringify(balances(state))+
+   '; depois '+JSON.stringify(balances(next))};
+ }
+ if(action==='action'){
+  if(state.phase!=='active')throw Error('Casa não ativa.');
+  const input=z.object({type:z.string().min(1).max(100),
+   notes:z.string().min(1).max(4000),
+   scale:z.enum(['local','regional','grand']).optional(),
+   competitions:z.number().int().min(1).max(30).optional()}).parse(args);
+  if(state.actions.some(a=>a.month===state.month))
+   throw Error('A Casa já utilizou sua ação mensal (inclusive conversões).');
+  if(input.type==='Torneio'){
+   if(!input.scale||!input.competitions)
+    throw Error('Informe porte e competições do torneio.');
+   const sides=input.scale==='local'?1:input.scale==='regional'?3:6;
+   const roll=ctx.dice[0];
+   if(!Number.isInteger(roll)||roll===undefined||roll<1||roll>sides)
+    throw Error('Sorteio de torneio inválido.');
+   return {state:runTournament(state,input.scale,input.competitions,roll,input.notes),
+    rule:'Livro básico pp. 155–156 · torneio '+input.scale+'; Influência rolada '+roll};
+  }
+  const next=structuredClone(state);
+  next.actions.push({month:state.month,type:input.type,notes:input.notes});
+  return {state:next,rule:'Livro básico p. 153 · ação mensal auditada'};
+ }
+ throw Error('Ação de contexto não implementada.');
 }

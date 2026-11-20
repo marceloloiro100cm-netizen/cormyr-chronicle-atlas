@@ -5,7 +5,8 @@ import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_ECONOMIC_ACTIONS,applyHouseMilitaryOperation,
  HOUSE_MILITARY_ACTIONS,applyHouseCreationOperation,
  HOUSE_CREATION_ACTIONS,applyHouseDiceOperation,
- HOUSE_DICE_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_DICE_ACTIONS,applyHouseContextOperation,
+ HOUSE_CONTEXT_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -210,5 +211,30 @@ describe('rolagens registradas e determinísticas por requestKey',()=>{
    {resource:'wealth'},ctx)).toThrow(/apenas uma vez/);
   expect(()=>applyHouseDiceOperation(state,'member_bonus',
    {resource:'wealth'},{...ctx,playerId:null})).toThrow(/jogador cadastrado/);
+ });
+});
+
+describe('calendário e ação mensal com dados do servidor',()=>{
+ const context={admin:false,explanation:'Justificativa para o calendário oficial',
+  houseName:'Casa Ashkar',calendar:{year:1522,month:2},
+  dice:[1,2,3,4,5,6]};
+ it('cobre três ações de contexto e recusa conciliação não autorizada',()=>{
+  expect(HOUSE_CONTEXT_ACTIONS).toHaveLength(3);
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseContextOperation(state,'sync_calendar',{},context))
+   .toThrow(/Narrador/);
+  expect(()=>applyHouseContextOperation(state,'reconcile_legacy_costs',
+   {ids:['inexistente']},context)).toThrow(/Narrador/);
+  expect(state).toEqual(before);
+ });
+ it('ação da Casa exige campanha ativa e preserva histórico do original',()=>{
+  const state=newHouseState('house-a'),original=structuredClone(state);
+  expect(()=>applyHouseContextOperation(state,'action',
+   {type:'Vigiar',notes:'Posto de fronteira'},context)).toThrow(/ativa/);
+  const active={...state,phase:'active' as const};
+  const out=applyHouseContextOperation(active,'action',
+   {type:'Vigiar',notes:'Posto de fronteira'},context);
+  expect(out.state.actions).toHaveLength(1);
+  expect(state).toEqual(original);
  });
 });
