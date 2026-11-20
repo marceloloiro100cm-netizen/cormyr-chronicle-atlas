@@ -70,15 +70,15 @@ export async function commitSpyAction({
   fail('spy_write_disabled',501);
  if(!METHODS.has(name)||!args||typeof args!=='object'||Array.isArray(args)||
     !/^[a-f0-9]{64}$/.test(snapshotId))fail('spy_operation_invalid');
- const houseId=args.p_house;
+ const houseId=args['p_house'];
  if(!safe(houseId)||scope.profile!=='narrador'&&
     (scope.profile!=='jogador'||!scope.editHouseIds.includes(houseId)))
    fail('access_denied',403);
  if(scope.profile==='editor')fail('access_denied',403);
- const agentId=args.p_agent,now=new Date().toISOString();
- const requestKey=args.p_request_key??args.p_key??
+ const agentId=args['p_agent'],now=new Date().toISOString();
+ const requestKey=args['p_request_key']??args['p_key']??
    (name==='spy_assign_agent_portrait'?
-    digest(JSON.stringify([name,houseId,agentId,args.p_portrait,args.p_expected_version])):null);
+    digest(JSON.stringify([name,houseId,agentId,args['p_portrait'],args['p_expected_version']])):null);
  if(typeof requestKey!=='string'||!safe(requestKey)||
     (name!=='spy_assign_agent_portrait'&&!uuid(requestKey)))
    fail('spy_operation_invalid');
@@ -91,7 +91,7 @@ export async function commitSpyAction({
  const houseEconomy=root.collection('houseEconomies').doc(digest('house:'+houseId));
  const houseControl=root.collection('spyHouseControls').doc(digest('spy-house:'+houseId));
  const request=root.collection('spyAgentRequests').doc(digest('spy-request:'+scope.uid+':'+requestKey));
- const claimId=typeof args.p_portrait==='string'?args.p_portrait:null;
+ const claimId=typeof args['p_portrait']==='string'?args['p_portrait']:null;
  const claim=claimId?root.collection('spyPortraitClaims').doc(digest('portrait:'+claimId)):null;
  const actor={uid:scope.uid,role:scope.profile,memberHouseIds:new Set(scope.memberHouseIds),
   editHouseIds:new Set(scope.editHouseIds)};
@@ -137,22 +137,22 @@ export async function commitSpyAction({
   const calendarData=calendar;
   try{
    if(name==='spy_recruit_agent'){
-    const r=recruitAgent({actor,houseId,sourceHolding:args.p_source_holding,
-     codename:args.p_codename,key:requestKey,sheet,assets:d.assets,
+    const r=recruitAgent({actor,houseId,sourceHolding:args['p_source_holding'],
+     codename:args['p_codename'],key:requestKey,sheet,assets:d.assets,
      existingByKey:previousRequest,existingAgent:previousRequest?
       d.assets.find((a:any)=>a.id===previousRequest.agentId):null,
      locations:d.locations,calendar:calendarData,newId,now});
     resultingAgent=r.agent;result=r.result;if(r.history)histories.push(r.history);
    }else if(name==='spy_create_agent'){
-    if(!Array.isArray(args.p_upgrades))fail('spy_operation_invalid');
-    const codes=args.p_upgrades;
+    if(!Array.isArray(args['p_upgrades']))fail('spy_operation_invalid');
+    const codes=args['p_upgrades'];
     const previousAgent=previousRequest?d.assets.find((a:any)=>a.id===previousRequest.agentId):null;
-    const r=createAgent({actor,houseId,sourceHolding:args.p_source_holding,
-     codename:args.p_codename,portraitId:args.p_portrait,upgrades:codes,key:requestKey,
+    const r=createAgent({actor,houseId,sourceHolding:args['p_source_holding'],
+     codename:args['p_codename'],portraitId:args['p_portrait'],upgrades:codes,key:requestKey,
      ctx:{existingByKey:previousRequest,existingAgent:previousAgent,
       existingAgentUpgrades:d.upgrades.filter((u:any)=>u.agentId===previousAgent?.id),
-      portrait:d.portraits.find((p:any)=>p.id===args.p_portrait),
-      portraitHeldByOther:args.p_portrait?holder(args.p_portrait):false,
+      portrait:d.portraits.find((p:any)=>p.id===args['p_portrait']),
+      portraitHeldByOther:args['p_portrait']?holder(args['p_portrait']):false,
       catalogHasActive:d.portraits.some((p:any)=>p.active),
       sheet,assets:d.assets,locations:d.locations,calendar:calendarData,
       ledgerKeysTaken:new Set(),historyKeysTaken:new Set()},
@@ -162,8 +162,8 @@ export async function commitSpyAction({
     extra.ledgers=r.ledgers??[];
    }else if(name==='spy_buy_agent_upgrade'){
     const r=buyUpgrade({actor,houseId,agent:existsAgent,
-     code:args.p_code,expectedAgentVersion:args.p_expected_agent_version,
-     expectedHouseVersion:args.p_expected_house_version,key:requestKey,sheet,
+     code:args['p_code'],expectedAgentVersion:args['p_expected_agent_version'],
+     expectedHouseVersion:args['p_expected_house_version'],key:requestKey,sheet,
      keyUpgrade:d.upgrades.find((u:any)=>u.requestKey===requestKey),
      agentUpgrades,ledgerKeyTaken:false,historyKeyTaken:!!previousRequest,
      hasActiveOperation:operating,calendar:calendarData,newId,now});
@@ -172,23 +172,23 @@ export async function commitSpyAction({
     if(r.ledger)extra.ledgers=[r.ledger];
    }else if(name==='spy_assign_agent_portrait'){
     const r=assignPortrait({actor,houseId,agent:existsAgent,
-     portraitId:args.p_portrait,expectedVersion:args.p_expected_version,
-     catalogItem:d.portraits.find((p:any)=>p.id===args.p_portrait),
-     heldByOther:holder(args.p_portrait)});
+     portraitId:args['p_portrait'],expectedVersion:args['p_expected_version'],
+     catalogItem:d.portraits.find((p:any)=>p.id===args['p_portrait']),
+     heldByOther:holder(args['p_portrait'])});
     resultingAgent=r.changed?r.agent:null;result=r.result;
    }else if(name==='spy_rename_agent'){
     if(!existsAgent||existsAgent.ownerHouseId!==houseId||
-       !Number.isSafeInteger(args.p_expected_version)||
-       existsAgent.version!==args.p_expected_version)fail('spy_version_conflict',409);
-    const nameValue=String(args.p_name??'').trim();
+       !Number.isSafeInteger(args['p_expected_version'])||
+       existsAgent.version!==args['p_expected_version'])fail('spy_version_conflict',409);
+    const nameValue=String(args['p_name']??'').trim();
     if(nameValue.length<2||nameValue.length>80||/[\u0000-\u001f\u007f]/.test(nameValue))
      fail('spy_operation_invalid');
     resultingAgent={...existsAgent,codename:nameValue,version:existsAgent.version+1};
     result={id:agentId,codename:nameValue,version:resultingAgent.version};
    }else if(name==='spy_remove_agent'){
     const r=removeAgent({actor,houseId,agent:existsAgent,
-     expectedAgentVersion:args.p_expected_agent_version,
-     expectedHouseVersion:args.p_expected_house_version,key:requestKey,sheet,
+     expectedAgentVersion:args['p_expected_agent_version'],
+     expectedHouseVersion:args['p_expected_house_version'],key:requestKey,sheet,
      previousRemoval:d.removals.find((x:any)=>x.agentId===agentId),
      keyRemoval:d.removals.some((x:any)=>x.requestKey===requestKey),
      ledgerKeyTaken:false,agentUpgrades,hasActiveOperation:operating,
