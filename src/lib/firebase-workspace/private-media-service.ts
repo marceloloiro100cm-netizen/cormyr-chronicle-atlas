@@ -74,26 +74,28 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
  };
  return {
   async upload(token:string,request:unknown){
-   if(!isObj(request)||Object.keys(request).some(k=>
+   if(!isObj(request))return privateMediaFail('private_media_upload_invalid',400);
+   const input=request as Record<string,string>;
+   if(Object.keys(input).some(k=>
        !['action','id','contentType','dataBase64'].includes(k))||
-      request['action']!=='upload'||!PRIVATE_MEDIA_UUID.test(String(request['id']))||
-      typeof request['contentType']!=='string'||
-      typeof request['dataBase64']!=='string'||
-      request['dataBase64'].length>Math.ceil(PRIVATE_MEDIA_LIMIT*4/3)+8||
-      !b64.test(request['dataBase64']))
-    privateMediaFail('private_media_upload_invalid',400);
-   const typed=privateMediaType(request['contentType']);
-   if(!typed)privateMediaFail('private_media_type_invalid',415);
-   const data=Buffer.from(request['dataBase64'],'base64');
+      input['action']!=='upload'||!PRIVATE_MEDIA_UUID.test(String(input['id']))||
+      typeof input['contentType']!=='string'||
+      typeof input['dataBase64']!=='string'||
+      input['dataBase64'].length>Math.ceil(PRIVATE_MEDIA_LIMIT*4/3)+8||
+      !b64.test(input['dataBase64']))
+    return privateMediaFail('private_media_upload_invalid',400);
+   const typed=privateMediaType(input['contentType']);
+   if(!typed)return privateMediaFail('private_media_type_invalid',415);
+   const data=Buffer.from(input['dataBase64'],'base64');
    if(!data.length||data.length>PRIVATE_MEDIA_LIMIT||
-      data.toString('base64')!==request['dataBase64']||
+      data.toString('base64')!==input['dataBase64']||
       !typed.magic(data))privateMediaFail('private_media_upload_invalid',400);
    await approved(true);
    const viewer=await scope(token),at=new Date().toISOString();
    if(viewer.profile!=='narrador'&&
       (viewer.profile!=='jogador'||!viewer.memberHouseIds.length))
     privateMediaFail('private_media_denied');
-   const path='private/'+snapshotId+'/'+viewer.uid+'/'+request['id']+'.'+typed.ext;
+   const path='private/'+snapshotId+'/'+viewer.uid+'/'+input['id']+'.'+typed.ext;
    const key=privateMediaRef(root,path),file=bucket.file(path);
    const digest=privateMediaHash(data.toString('base64'));
    const reserve=await db.runTransaction(async(tx:any)=>{
@@ -106,13 +108,13 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
     if(existing.exists){
      const prev=existing.data();
      if(prev?.ownerUid!==viewer.uid||prev?.path!==path||
-        prev?.digest!==digest||prev?.contentType!==request['contentType'])
+        prev?.digest!==digest||prev?.contentType!==input['contentType'])
       privateMediaFail('private_media_request_conflict',409);
      if(prev?.status==='ready')return {duplicate:true,path};
      privateMediaFail('private_media_incomplete',409);
     }
     tx.create(key,{path,ownerUid:viewer.uid,sourceSnapshotId:snapshotId,
-     status:'pending',contentType:request['contentType'],size:data.length,
+     status:'pending',contentType:input['contentType'],size:data.length,
      digest,createdAt:at,updatedAt:at});
     return {duplicate:false,path};
    });
@@ -120,7 +122,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    try{
     await file.save(data,{resumable:false,
       preconditionOpts:{ifGenerationMatch:0},
-      metadata:{contentType:request['contentType'],
+      metadata:{contentType:input['contentType'],
        cacheControl:'private,max-age=0,no-store'},
     });
     const again=await scope(token);
@@ -138,7 +140,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
      tx.update(key,{status:'ready',updatedAt:now});
      tx.create(root.collection('privateMediaAudits').doc(privateMediaHash('upload:'+path)),{
       action:'private_media_upload',ownerUid:viewer.uid,path,
-      contentType:request['contentType'],size:data.length,occurredAt:now,
+      contentType:input['contentType'],size:data.length,occurredAt:now,
       sourceSnapshotId:snapshotId,
      });
     });
