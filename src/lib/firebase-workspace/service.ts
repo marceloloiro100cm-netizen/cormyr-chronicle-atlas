@@ -345,7 +345,8 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='noble_house_sheets')return sheets();
    if(name==='noble_house_ledger'){
     const archived=(await rows(name)).filter(r=>houseAllowed(r['house_id']));
-    if(process.env['CORMYR_FIREBASE_HOUSE_OPS_ENABLED']!=='true')
+    if(process.env['CORMYR_FIREBASE_HOUSE_OPS_ENABLED']!=='true'&&
+       process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
      return archived;
     const operational=(await operationalLedger()).filter(r=>houseAllowed(r.house_id));
     return [...archived,...operational] as Row[];
