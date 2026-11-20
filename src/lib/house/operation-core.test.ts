@@ -2,7 +2,8 @@ import {describe,it,expect} from 'vitest';
 import {newHouseState} from './types';
 import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_NON_ECONOMIC_ACTIONS,applyHouseEconomicOperation,
- HOUSE_ECONOMIC_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_ECONOMIC_ACTIONS,applyHouseMilitaryOperation,
+ HOUSE_MILITARY_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -126,5 +127,26 @@ describe('ações econômicas puras com rastreabilidade',()=>{
   expect(()=>applyHouseEconomicOperation(state,'correct',{
    changes:{defense:0,influence:0,lands:0,law:0,population:0,power:0,wealth:1}},
    {admin:false,key:ID,explanation:'Justificativa comprovada'})).toThrow(/Narrador/);
+ });
+});
+
+describe('ações militares puras com validação de escopo',()=>{
+ it('enumeram oito operações e recusam unidades inexistentes sem mutação',()=>{
+  expect(HOUSE_MILITARY_ACTIONS).toHaveLength(8);
+  const state=newHouseState('house-a'),copy=structuredClone(state);
+  expect(()=>applyHouseMilitaryOperation(state,'grant_unit_xp',{
+   unitId:'no-unit',amount:20,reason:'Concessão do Narrador'},
+   {admin:false,key:ID,explanation:'Concessão do Narrador'})).toThrow(/Narrador/);
+  expect(()=>applyHouseMilitaryOperation(state,'unit_state',{
+   unitId:'no-unit',mounted:false,atHome:true,health:5,casualties:0,
+   situation:''},{admin:false,key:ID,explanation:''})).toThrow(/indisponível/);
+  expect(state).toEqual(copy);
+ });
+ it('rejeita melhorias sem a construção militar necessária',()=>{
+  const state=newHouseState('house-a'),copy=structuredClone(state);
+  expect(()=>applyHouseMilitaryOperation(state,'broad_training',{
+   unitId:'no-unit',skill:'fighting'},{admin:false,key:ID,explanation:''}))
+   .toThrow(/não está ativo/);
+  expect(state).toEqual(copy);
  });
 });
