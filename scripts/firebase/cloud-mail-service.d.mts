@@ -38,11 +38,15 @@ export interface CloudMailRuntime {
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
   reply(idToken:string,input:{
-    requestKey:unknown;letterId:unknown;content:unknown;expectedCampaignDate?:unknown;
-    draft?:unknown;signedBy?:unknown;
+    requestKey:unknown;letterId:unknown;replyId?:unknown;content:unknown;
+    expectedCampaignDate?:unknown;draft?:unknown;signedBy?:unknown;
   }):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
+  moderateImported(idToken:string,input:{
+    letterId:unknown;action:unknown;
+  }):Promise<{removed?:boolean;restored?:boolean;alreadyRemoved?:boolean;
+    alreadyActive?:boolean;version:number;removalKind?:string}>;
   markRead(idToken:string,input:unknown):Promise<{
     recorded:boolean;alreadyRecorded:boolean;readAt:string;
   }>;
