@@ -91,6 +91,7 @@ describe('aceite Cloud da Ficha com escopo de leitura',()=>{
   assert.equal(r.scannedHouses,1);
   assert.equal(r.reconciledHouses,1);
   assert.equal(r.runtimeApproved,true);
+  assert.equal(r.houseRulesWriteApproved,false);
   assert.equal(r.databaseMetadataHttp,200);
   assert.equal(r.calendarApproved,true);
   assert.equal(r.releaseDecision,'NO_GO');
