@@ -32,7 +32,7 @@ import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/
 import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
 import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-ledger';
 import {readOperationalRecordDocs,projectOperationalRecords,
- projectOperationalVersions,readOperationalRecordVersionDocs} from './operational-records';
+ projectOperationalVersions,readOperationalRecordVersionDocs,OperationalRecordError} from './operational-records';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
 import {representationRpc,RepresentationRpcError} from './representation-rpc';
 import {projectPrivateMailGallery} from './private-media-gallery';
@@ -61,7 +61,7 @@ const KNOWN_WORKSPACE_ERRORS:Record<string,string>={
  workspace_archive_integrity_failed:'workspace_archive_integrity_failed',
 };
 export function workspaceErrorCategory(e:unknown):{status:number;code:string}{
- if(e instanceof CloudAccessError)return {status:e.status,code:e.code};
+ if(e instanceof CloudAccessError||e instanceof OperationalRecordError)return {status:e.status,code:e.code};
  const m=e instanceof Error?e.message:'';
  return {status:503,code:Object.hasOwn(KNOWN_WORKSPACE_ERRORS,m)?KNOWN_WORKSPACE_ERRORS[m]!:'workspace_unavailable'};
 }
