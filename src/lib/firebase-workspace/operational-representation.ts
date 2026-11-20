@@ -142,12 +142,17 @@ export function createRepresentationService({db,auth,snapshotId,actor,importedPl
    });
   },
   async stop(){
-   requireActor();
+   // Encerrar não concede privilégios: continuar possível após desligar a função.
+   if(actor.profile!=='narrador')deny('representation_access_denied',403);
    return db.runTransaction(async(tx:any)=>{
     const [rt,snap]=await Promise.all([
      tx.get(root),tx.get(sessions.doc(actor.uid)),
     ]);
-    rootReady(rt.data(),snapshotId,false);
+    const meta=rt.data();
+    if(!rt.exists||meta?.status!=='active'||meta?.private!==true||
+       meta?.sourceSnapshotId!==snapshotId||
+       meta?.sourceSnapshotReconciled!==true)
+     deny('representation_unavailable',503);
     if(!snap.exists)return {stopped:false};
     const session=snap.data();
     if(session?.actor!==actor.uid)deny('representation_session_invalid',503);
