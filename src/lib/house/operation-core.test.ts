@@ -54,7 +54,7 @@ describe('núcleo puro de operações da Ficha',()=>{
 
 describe('segunda fatia de ações puras da Ficha',()=>{
  it('isola os cinco atos não econômicos do estado de entrada',()=>{
-  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(5);
+  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(7);
   const review={...newHouseState('house-a'),phase:'review' as const,
    pending:['Conferir domínio','Validar herdeiro']};
   const cleared=applyHouseNonEconomicOperation(review,'clear_pending',{
@@ -79,5 +79,27 @@ describe('segunda fatia de ações puras da Ficha',()=>{
   expect(state.court).toHaveLength(1);
   expect(()=>applyHouseNonEconomicOperation(state,'court_remove',{
    id:'22222222-2222-4222-8222-222222222222'},'')).toThrow(/não encontrado/);
+ });
+});
+
+describe('conferência de operações militares e lealdade',()=>{
+ it('recusa unidade inexistente e não altera a ficha em erro',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseNonEconomicOperation(state,'unit_edit',{
+   unitId:'inexistente',name:'Leões',origin:'Cormyr',
+   situation:'',notes:'',skills:{
+    agility:2,athletics:2,awareness:2,endurance:2,
+    fighting:2,marksmanship:2,stealth:2,cunning:2,healing:2,
+    animalHandling:2,warfare:2,survival:2,
+   },
+  },'')).toThrow(/indisponível/);
+  expect(state).toEqual(before);
+ });
+ it('somente altera lealdade de vassalagem realmente aprovada',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseNonEconomicOperation(state,'vassal_loyalty',{
+   id:'id-sem-vassalagem',loyalty:'loyal',
+  },'Justificativa suficiente do Narrador')).toThrow(/ativa/);
+  expect(state).toEqual(before);
  });
 });

@@ -1,6 +1,8 @@
 import {z} from 'zod';
 import {removeCourtAssignment} from './court';
-import {renameMilitaryHolding} from './unit-progression';
+import {renameMilitaryHolding,editUnitProfile} from './unit-progression';
+import {setVassalLoyalty} from './military';
+import {unitSchema} from './schemas';
 import {operationSchema} from './schemas';
 import {isMonthSensitiveHouseAction} from './monthly-operation-policy';
 import type {HouseState} from './types';
@@ -81,6 +83,7 @@ export function applyHouseDomainOperation(
  */
 export const HOUSE_NON_ECONOMIC_ACTIONS=[
  'military_rename','court_remove','return_to_draft','clear_pending','approve',
+ 'unit_edit','vassal_loyalty',
 ] as const;
 export type HouseNonEconomicAction=typeof HOUSE_NON_ECONOMIC_ACTIONS[number];
 
@@ -99,6 +102,23 @@ export function applyHouseNonEconomicOperation(
   const {id}=z.object({id:z.string().uuid()}).parse(args);
   return {state:removeCourtAssignment(state,id),
    rule:'Corte · vínculo removido; personagem e histórico preservados',
+   explanation};
+ }
+ if(action==='unit_edit'){
+  const input=z.object({unitId:z.string(),
+   name:z.string().trim().min(1).max(160),origin:z.string().max(160),
+   situation:z.string().max(1000),notes:z.string().max(4000),
+   skills:unitSchema.shape.skills,extraSkills:unitSchema.shape.extraSkills,
+   mount:unitSchema.shape.mount.optional()}).parse(args);
+  return {state:editUnitProfile(state,input),
+   rule:'Guerra dos Tronos RPG · edição de unidade e habilidades, 20 XP por graduação e déficit registrado',
+   explanation};
+ }
+ if(action==='vassal_loyalty'){
+  const input=z.object({id:z.string(),
+   loyalty:z.enum(['loyal','neutral','rebellious'])}).parse(args);
+  return {state:setVassalLoyalty(state,input.id,input.loyalty,explanation),
+   rule:'Lealdade da vassala: '+input.loyalty+'; decisão narrativa auditada',
    explanation};
  }
  if(action==='return_to_draft'){
