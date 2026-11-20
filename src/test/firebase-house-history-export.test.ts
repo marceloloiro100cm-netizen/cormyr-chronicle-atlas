@@ -20,6 +20,13 @@ describe('Item 12: Histórico e documentos da Casa no Firebase',()=>{
   expect(src).toContain('exportHouseExcel(state,house.name,catalog,full)');
   expect(src).toContain('exportHousePdf(state,house.name,catalog,full)');
   expect(src).toContain('fetchFullLedger()');
+  const activation=readFileSync('src/lib/firebase-workspace/activate.ts','utf8');
+  expect(activation).toContain("kind:'houseLedgerExport'");
+  expect(activation).toContain('registerWorkspaceFunction(loadHouseLedger');
+  const backend=readFileSync('src/lib/firebase-workspace/service.ts','utf8');
+  expect(backend).toContain("input?.kind==='houseLedgerExport'");
+  expect(backend).toContain('checkHouse(id)');
+  expect(backend).toContain("throw new CloudAccessError('house_ledger_export_too_large',413)");
   const drive=readFileSync('src/components/house/drive-status.tsx','utf8');
   expect(drive).toContain('enabled: !firebaseMode');
   expect(drive).toContain('if(firebaseMode)return');
