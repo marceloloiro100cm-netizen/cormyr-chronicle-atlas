@@ -18,6 +18,8 @@ import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
 import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
 import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
+import {readOperationalRecordDocs,projectOperationalRecords,
+ projectOperationalVersions} from './operational-records';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -308,6 +310,9 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(!sheet||!sheet['state']||typeof sheet['state']!=='object')throw new CloudAccessError('house_sheet_unavailable',404);
    return {state:sheet['state'],version:sheet['version']};
   };
+  let operationalRecordsPromise:ReturnType<typeof readOperationalRecordDocs>|undefined;
+  const operationalRecords=()=>operationalRecordsPromise??=
+    readOperationalRecordDocs(db,snapshotId);
   const visible=async(name:string):Promise<Row[]>=>{
    if(name==='campaign_access_profiles')return (await accessDocs()).filter((a:any)=>admin||a.userId===scope.uid).map((a:any)=>({user_id:a.userId,profile:a.profile}));
    // A conta pode ter linhas históricas (outra temporada ou outro jogador
@@ -334,10 +339,21 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='noble_house_sheets')return sheets();
    if(['noble_house_ledger','spy_agent_upgrades'].includes(name))return (await rows(name)).filter(r=>houseAllowed(r['house_id']??r['owner_house_id']));
    if(name==='noble_house_rule_overrides')return scope.profile==='editor'?[]:rows(name);
-   if(name==='campaign_records')return (await rows(name)).filter(r=>recordVisible(scope,r));
+   if(name==='campaign_records'){
+    const archived=await rows(name);
+    if(process.env['CORMYR_FIREBASE_RECORDS_ENABLED']!=='true')
+      return archived.filter(r=>recordVisible(scope,r));
+    return projectOperationalRecords(scope,archived,await operationalRecords());
+   }
    if(name==='record_versions'){
-    const ids=new Set((await visible('campaign_records')).map(r=>r['id']));
-    return (await rows(name)).filter(r=>ids.has(r['record_id']));
+    const visibleRecords=await visible('campaign_records');
+    const archived=await rows(name);
+    if(process.env['CORMYR_FIREBASE_RECORDS_ENABLED']!=='true'){
+      const ids=new Set(visibleRecords.map(r=>r['id']));
+      return archived.filter(r=>ids.has(r['record_id']));
+    }
+    return projectOperationalVersions(scope,visibleRecords,archived,
+      await operationalRecords());
    }
    if(['campaign_letters','letter_replies','letter_receipts','letter_rounds','letter_versions','letter_reply_versions','narrator_mail_notes','campaign_letter_consequences'].includes(name)){
     // The Editor-Chefe reads delivered mail and own receipts only.

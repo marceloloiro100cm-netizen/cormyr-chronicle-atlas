@@ -144,6 +144,11 @@ env:
     value: "false"
     availability:
       - RUNTIME
+  # Item 6: leitura operacional versionada de registros só após aceite no Cloud.
+  - variable: CORMYR_FIREBASE_RECORDS_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
 
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
