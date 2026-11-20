@@ -13,6 +13,17 @@ on:
       - 'src/lib/archive-only.ts'
       - 'src/routes/api/firebase-workspace.ts'
       - 'src/lib/firebase-workspace/**'
+      # As funções Firebase são expostas por mais de uma rota e serviço.
+      # Toda alteração nestes módulos exige verificar o SHA realmente servido.
+      - 'src/lib/house/**'
+      - 'src/lib/espionage/**'
+      - 'src/lib/newspaper/**'
+      - 'src/lib/drive/**'
+      - 'src/routes/api/firebase-house-operation.ts'
+      - 'src/routes/api/firebase-private-media.ts'
+      - 'src/routes/api/firebase-accounts.ts'
+      - 'src/routes/api/firebase-house-rules.ts'
+      - 'src/lib/player-admin.functions.ts'
       - 'src/routes/api/firebase-cloud-read.ts'
       - 'src/routes/api/firebase-cloud-mail.ts'
       - 'src/routes/api/firebase-cloud-newspaper.ts'
