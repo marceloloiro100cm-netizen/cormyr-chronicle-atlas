@@ -83,11 +83,24 @@ export function projectOperationalRecords(
 }
 export function projectOperationalVersions(
  scope:Scope,records:RecordRow[],importedVersions:RecordRow[],
- operational:OperationalRecord[],
+ operational:OperationalRecord[],persistedVersions:RecordRow[] = [],
 ):RecordRow[]{
  const permitted=new Set(records.map(r=>r['id']));
  const list=importedVersions.filter(v=>permitted.has(v['record_id']));
- const ids=new Set(list.map(v=>v['record_id']+'|'+v['version']));
+ const ids=new Map(list.map(v=>[v['record_id']+'|'+v['version'],v]));
+ for(const saved of persistedVersions){
+  if(!permitted.has(saved['record_id']))continue;
+  const key=saved['record_id']+'|'+saved['version'];
+  if(!Number.isSafeInteger(saved['version'])||saved['version']<1||
+     !saved['snapshot']||typeof saved['snapshot']!=='object'||
+     (saved['snapshot'] as RecordRow)['id']!==saved['record_id']||
+     (saved['snapshot'] as RecordRow)['version']!==saved['version'])
+    fail('record_version_invalid');
+  const existing=ids.get(key);
+  if(existing&&JSON.stringify(existing['snapshot'])!==JSON.stringify(saved['snapshot']))
+    fail('record_version_conflict');
+  if(!existing){list.push(saved);ids.set(key,saved);}
+ }
  for(const next of operational){
   validate(next);
   if(!permitted.has(next.id))continue;
@@ -98,15 +111,19 @@ export function projectOperationalVersions(
      version:next.previous['version'],snapshot:next.previous,
      author:next.previous['updated_by']??null,
      created_at:next.previous['updated_at']??null});
-    ids.add(oldKey);
+    ids.set(oldKey,list[list.length-1]!);
    }
   }
   const key=next.id+'|'+next.version;
-  if(ids.has(key))fail('record_version_conflict');
-  list.push({id:hash('record-version:'+key),record_id:next.id,
-   version:next.version,snapshot:next.record,
-   author:next.updatedBy,created_at:next.updatedAt});
-  ids.add(key);
+  if(ids.has(key)){
+   if(JSON.stringify(ids.get(key)!['snapshot'])!==JSON.stringify(next.record))
+    fail('record_version_conflict');
+  }else{
+   list.push({id:hash('record-version:'+key),record_id:next.id,
+    version:next.version,snapshot:next.record,
+    author:next.updatedBy,created_at:next.updatedAt});
+   ids.set(key,list[list.length-1]!);
+  }
  }
  return list;
 }
@@ -130,5 +147,31 @@ export async function readOperationalRecordDocs(db:any,snapshotId:string):
     row.sourceSnapshotId!==snapshotId)
    fail('record_document_integrity_failed');
   return row as OperationalRecord;
+ });
+}
+
+/** Histórico operacional, separado do documento atual para não exceder 1 MiB. */
+export async function readOperationalRecordVersionDocs(db:any,snapshotId:string):
+ Promise<RecordRow[]>{
+ if(!/^[a-f0-9]{64}$/.test(snapshotId))fail('record_source_unavailable');
+ const root=db.collection('campaignCloudRuntime').doc(snapshotId);
+ const meta=await root.get();
+ if(!meta.exists||meta.data()?.status!=='active'||meta.data()?.private!==true||
+    meta.data()?.applicationEnabled!==true||meta.data()?.sourceSnapshotId!==snapshotId||
+    meta.data()?.sourceSnapshotReconciled!==true||meta.data()?.recordsReadApproved!==true)
+   fail('record_runtime_not_approved');
+ const docs=await root.collection('recordVersions').limit(5001).get();
+ if(!Array.isArray(docs.docs)||docs.docs.length>5000)
+   fail('record_history_too_large');
+ return docs.docs.map((doc:any)=>{
+  const d=doc.data();
+  if(!d||!safe(d.record_id)||!Number.isSafeInteger(d.version)||d.version<1||
+     doc.id!==hash('record-version:'+d.record_id+'|'+d.version)||
+     d.sourceSnapshotId!==snapshotId||!d.snapshot||
+     typeof d.snapshot!=='object'||d.snapshot.id!==d.record_id||
+     d.snapshot.version!==d.version)
+    fail('record_version_integrity_failed');
+  return {id:doc.id,record_id:d.record_id,version:d.version,
+   snapshot:d.snapshot,author:d.author??null,created_at:d.created_at??null};
  });
 }
