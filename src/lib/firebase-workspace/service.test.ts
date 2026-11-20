@@ -174,6 +174,28 @@ describe('real Firebase workspace boundary',()=>{
   expect((await run({kind:'query',table:'campaign_letters',steps:[]})).data.map((m:any)=>m.id))
    .toEqual(['mine','secret',id,foreign]);
  });
+ it('mostra marcação de exclusão legada na Lixeira do Narrador sem alterar acervo',async()=>{
+  const {createHash}=await import('node:crypto');
+  f.runtimeReady=true;
+  const id='mine',snapshot='a'.repeat(64);
+  f.cloudModeration=[{id:createHash('sha256').update('legacy-mail:'+id).digest('hex'),data:{
+   letterId:id,sourceSnapshotId:snapshot,version:2,
+   deletedAt:'2026-11-20T13:00:00Z',removalKind:'excluida',
+  }}];
+  const before=structuredClone(f.tables['campaign_letters']);
+  f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
+  const inbox=await run({kind:'rpc',name:'mail_page',args:{p_filters:{text:'mine'}}});
+  expect(inbox.letters).toHaveLength(0);
+  const trash=await run({kind:'rpc',name:'mail_trash_page',args:{p_filters:{text:'mine'}}});
+  expect(trash.letters).toHaveLength(1);
+  expect(trash.letters[0]).toMatchObject({
+   id,source:'imported',removal_kind:'excluida',version:2,
+  });
+  expect(f.tables['campaign_letters']).toEqual(before);
+  f.scope={uid:'a',profile:'jogador',playerId:'pa',
+   memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
+  expect((await run({kind:'rpc',name:'mail_trash_page',args:{}})).letters).toHaveLength(0);
+ });
  it('refuses a malformed approved Cloud message rather than returning a partial inbox',async()=>{
   f.runtimeReady=true;
   f.cloudLetters=[{id:'b'.repeat(64),data:{subject:'bad'}}];
