@@ -1,6 +1,8 @@
 import {describe,it,expect} from 'vitest';
 import {projectOperationalRecords,projectOperationalVersions,
+ readOperationalRecordDocs,readOperationalRecordVersionDocs,OperationalRecordError,
  type OperationalRecord} from './operational-records';
+import {workspaceErrorCategory} from './service';
 import type {Scope} from './service';
 const user:Scope={uid:'player-one',profile:'jogador',playerId:'p1',
  memberHouseIds:['house-a'],editHouseIds:['house-a']};
@@ -57,5 +59,44 @@ describe('item 6, acervo e versões operacionais',()=>{
    ...one.record,id:'r5',house_id:'house-b'}};
   const rows=projectOperationalRecords(user,imported,[one,other]);
   expect(rows.map(r=>r['id'])).toEqual(['r1','r4']);
+ });
+});
+
+describe('Records runtime approval vs immutable import',()=>{
+ const snapshot='a'.repeat(64);
+ const rootMetadata={status:'active',private:true,applicationEnabled:true,
+  sourceSnapshotId:snapshot,sourceSnapshotReconciled:true,
+  recordsReadApproved:false,recordsWriteApproved:false};
+ function fakeDb(metadata:Record<string,unknown>,stored:unknown[]=[],versions:unknown[]=[]){
+  const root={
+   get:async()=>({exists:true,data:()=>metadata}),
+   collection:(name:string)=>({
+    limit:()=>({get:async()=>({docs:name==='records'?stored:versions})}),
+   }),
+  };
+  return {collection:()=>({doc:()=>root})};
+ }
+ it('serves verified imported rows while the read gate is pending and the overlay is empty',async()=>{
+  const db=fakeDb(rootMetadata);
+  expect(await readOperationalRecordDocs(db,snapshot)).toEqual([]);
+  expect(await readOperationalRecordVersionDocs(db,snapshot)).toEqual([]);
+  expect(projectOperationalRecords(user,imported,[]).map(row=>row['id'])).toEqual(['r1']);
+ });
+ it('does not hide any operational records or history if approval is pending',async()=>{
+  await expect(readOperationalRecordDocs(fakeDb(rootMetadata,[{id:'saved'}]),snapshot))
+   .rejects.toMatchObject({code:'record_runtime_not_approved'});
+  await expect(readOperationalRecordVersionDocs(fakeDb(rootMetadata,[],[{version:1}]),snapshot))
+   .rejects.toMatchObject({code:'record_runtime_not_approved'});
+ });
+ it('never mistakes an incomplete root for approved imported-only fallback',async()=>{
+  const invalid={...rootMetadata,sourceSnapshotReconciled:false};
+  await expect(readOperationalRecordDocs(fakeDb(invalid),snapshot))
+   .rejects.toMatchObject({code:'record_runtime_not_approved'});
+ });
+ it('exposes only a fixed Records diagnostic, never a raw provider error',()=>{
+  expect(workspaceErrorCategory(new OperationalRecordError('record_runtime_not_approved')))
+   .toEqual({status:503,code:'record_runtime_not_approved'});
+  expect(workspaceErrorCategory(new Error('private Firestore message')))
+   .toEqual({status:503,code:'workspace_unavailable'});
  });
 });
