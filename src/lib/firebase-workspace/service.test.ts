@@ -1,6 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
- runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],cloudVersions:[] as any[],cloudNotes:[] as any[],hubAudit:[] as any[],events:[] as any[],economies:[] as any[],writes:[] as any[],schedule:vi.fn(),ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn(),
+ runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],cloudModeration:[] as any[],cloudVersions:[] as any[],cloudNotes:[] as any[],hubAudit:[] as any[],events:[] as any[],economies:[] as any[],writes:[] as any[],schedule:vi.fn(),ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn(),
  unread:vi.fn(),cancel:vi.fn(),restore:vi.fn(),edit:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
@@ -29,14 +29,14 @@ const db:any={runTransaction:async(work:any)=>work({get:async(ref:any)=>ref.get(
  collection:(sub:string)=>({
   get:async()=>({docs:sub==='access'?access.map(v=>({id:v.userId,data:()=>v})):[]}),
   doc:()=>({get:async()=>({exists:f.runtimeReady,data:()=>({year:1522,month:0,day:1,version:1})})}),
-  limit:()=>({get:async()=>({docs:(sub==='accountAccess'?[]:sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:sub==='narratorMailNotes'?f.cloudNotes:sub==='calendarAudit'?f.hubAudit:sub==='scheduleEvents'?f.events:sub==='houseEconomies'?f.economies:sub==='letterConsequences'?[]:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
+  limit:()=>({get:async()=>({docs:(sub==='accountAccess'?[]:sub==='letters'?f.cloudLetters:sub==='letterVersions'?f.cloudVersions:sub==='narratorMailNotes'?f.cloudNotes:sub==='calendarAudit'?f.hubAudit:sub==='scheduleEvents'?f.events:sub==='houseEconomies'?f.economies:sub==='letterConsequences'?[]:sub==='legacyMailModeration'?f.cloudModeration:f.cloudReceipts).map(v=>({id:v.id,data:()=>v.data}))})}),
   where:()=>({get:async()=>({docs:[]})}),
  })
 })})};
 const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(64)}).execute('valid-token',input);
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
- f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.cloudVersions=[];f.cloudNotes=[];f.hubAudit=[];f.events=[];f.economies=[];f.writes=[];f.schedule.mockReset();f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();
+ f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.cloudModeration=[];f.cloudVersions=[];f.cloudNotes=[];f.hubAudit=[];f.events=[];f.economies=[];f.writes=[];f.schedule.mockReset();f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();
  f.unread.mockReset();f.cancel.mockReset();f.restore.mockReset();f.edit.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
