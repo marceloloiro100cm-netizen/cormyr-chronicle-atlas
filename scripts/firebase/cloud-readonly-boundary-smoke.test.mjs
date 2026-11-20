@@ -20,7 +20,7 @@ const safeCall=(options)=>{
   assert.equal(options.body,
     '{"action":"__cormyr_readonly_probe_invalid_action__"}');
 };
-test('four read-only, three gated Cloud and four archive-closed routes reject anonymous probes',async()=>{
+test('four read-only, four gated Cloud and four archive-closed routes reject anonymous probes',async()=>{
   const calls=[];
   const report=await inspectCloudReadonlyBoundaries(async(url,options)=>{
     calls.push(url);safeCall(options);
@@ -32,7 +32,7 @@ test('four read-only, three gated Cloud and four archive-closed routes reject an
   assert.deepEqual(calls,
     [...READ_ROUTES,...CLOUD_ROUTES,...CLOSED_ROUTES]
       .map(x=>ORIGIN+x[1]));
-  assert.equal(report.requests,11);
+  assert.equal(report.requests,12);
   assert.equal(report.verified,true);
   assert.equal(report.readonlyRoutesReachOwnGuards,true);
   assert.equal(report.cloudPrivateRoutesProtected,true);
