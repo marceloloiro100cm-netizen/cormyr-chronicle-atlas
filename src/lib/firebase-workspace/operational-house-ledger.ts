@@ -8,8 +8,10 @@ export type HouseLedgerRow={id:string;house_id:string;action:string;
  version:number;campaign_month:number};
 export function mergeHouseLedger(
  archived:Record<string,unknown>[],
- operational:HouseLedgerRow[],houseId:string,
+ operational:HouseLedgerRow[],houseId:string,limit=100,
 ):Record<string,unknown>[]{
+ if(!Number.isSafeInteger(limit)||limit<1||limit>1000)
+  throw new OperationalLedgerError('invalid_ledger_limit');
  if(typeof houseId!=='string'||!ID.test(houseId))
   throw new OperationalLedgerError('invalid_house');
  const result=[...archived.filter(r=>r['house_id']===houseId)];
@@ -23,8 +25,10 @@ export function mergeHouseLedger(
    throw new OperationalLedgerError('invalid_house_ledger');
   seen.add(row.id);result.push({...row});
  }
+ if(limit===1000&&result.length>limit)
+  throw new OperationalLedgerError('house_ledger_export_too_large');
  return result.sort((a,b)=>String(b['created_at']).localeCompare(
-  String(a['created_at']))).slice(0,100);
+  String(a['created_at']))).slice(0,limit);
 }
 export async function readOperationalHouseLedger(
  db:any,snapshotId:string,houseId?:string,
