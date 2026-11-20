@@ -155,6 +155,13 @@ env:
     availability:
       - RUNTIME
 
+  # Item 8: representação exige Narrador real, sessão curta e auditoria.
+  # Continua desativada até homologação do Firestore e das Casas.
+  - variable: CORMYR_FIREBASE_REPRESENTATION_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED
