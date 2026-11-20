@@ -14,6 +14,7 @@ import {readSpyOverlay,projectSpyOverlay} from '../../../scripts/firebase/worksp
 import {commitSpyMission,previewSpyMission,spyMissionMethod}
  from './operational-spy-missions';
 import {SpyOperationError,spyDigest} from './operational-spy-context';
+import {commitSpyNarrator,spyNarratorMethod} from './operational-spy-narrator';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
@@ -483,6 +484,19 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      targetHouseId:id,data:d,targetSheet:await privateTargetSheet(id)});}
     catch(e){if(e instanceof SpyOperationError)
       throw new CloudAccessError(e.code,e.status);throw e;}
+   }
+   if(spyNarratorMethod(name)){
+    if(!admin)denied();
+    if(process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
+     throw new CloudAccessError('spy_write_disabled',501);
+    try{return await commitSpyNarrator({
+     db,snapshotId,scope,name,args,
+     source:await loadImportedSpyData(rows,snapshotId),
+     calendar:await cloud.workspaceCalendar(token),
+     archivedSheets:await rows('noble_house_sheets'),
+    });}
+    catch(e){if(e instanceof SpyOperationError)
+     throw new CloudAccessError(e.code,e.status);throw e;}
    }
    if(spyMissionMethod(name)){
     if(process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
