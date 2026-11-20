@@ -19,7 +19,7 @@ const snap='a'.repeat(64),root='campaignCloudRuntime/'+snap;
 const image=Buffer.from('89504e470d0a1a0a0000000000','hex');
 const body={action:'upload',id:'11111111-1111-4111-8111-111111111111',
  contentType:'image/png',dataBase64:image.toString('base64')};
-function fixture(){
+function fixture(afterSave?:(docs:Map<string,any>,blobs:Map<string,Buffer>,path:string)=>void){
  const docs=new Map<string,any>([[root,{
   status:'active',private:true,sourceSnapshotId:snap,
   sourceSnapshotReconciled:true,applicationEnabled:true,
@@ -51,7 +51,7 @@ function fixture(){
  };
  const bucket={file:(path:string)=>({
   save:async(data:Buffer)=>{if(blobs.has(path))throw Error('duplicate');
-   blobs.set(path,Buffer.from(data));},
+   blobs.set(path,Buffer.from(data));afterSave?.(docs,blobs,path);},
   delete:async()=>{blobs.delete(path);},
   getSignedUrl:async()=>['https://storage.example/signed?exp=60'],
   download:async()=>[blobs.get(path)??Buffer.from('')],
@@ -121,6 +121,32 @@ describe('Item 11, gateway privado do Storage',()=>{
   });
   await expect(f.api.signed('valid-token',{action:'sign',path}))
    .rejects.toThrow('private_media_denied');
+ });
+ it('não publica nem conserva bytes corrompidos durante o upload',async()=>{
+  const f=fixture((_docs,blobs,path)=>blobs.set(path,Buffer.alloc(image.length)));
+  await expect(f.api.upload('valid-token',body))
+   .rejects.toThrow('private_media_integrity_failed');
+  const path='private/'+snap+'/alice/'+body.id+'.png';
+  expect(f.blobs.has(path)).toBe(false);
+  expect(f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path)))
+   .toMatchObject({status:'pending'});
+  expect(f.docs.has(root+'/privateMediaAudits/'+privateMediaHash('upload:'+path)))
+   .toBe(false);
+ });
+ it.each([
+  ['status','inactive'],['private',false],['sourceSnapshotId','b'.repeat(64)],
+  ['sourceSnapshotReconciled',false],['applicationEnabled',false],
+  ['privateMediaReadApproved',false],['privateMediaWriteApproved',false],
+ ])('nega confirmação se %s for revogado durante o envio',async(field,value)=>{
+  const f=fixture(docs=>docs.set(root,{...docs.get(root),[field]:value}));
+  await expect(f.api.upload('valid-token',body))
+   .rejects.toThrow('private_media_upload_revoked');
+  const path='private/'+snap+'/alice/'+body.id+'.png';
+  expect(f.blobs.has(path)).toBe(false);
+  expect(f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path)))
+   .toMatchObject({status:'pending'});
+  expect(f.docs.has(root+'/privateMediaAudits/'+privateMediaHash('upload:'+path)))
+   .toBe(false);
  });
  it('não apaga objeto já existente após falha por geração duplicada',async()=>{
   const f=fixture(),path='private/'+snap+'/alice/'+body.id+'.png';
