@@ -431,7 +431,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     checkHouse(args['p_house']);
     return [];
    }
-   if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
+   if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,db,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
    if(name==='dated_mail_action'){
     if(scope.profile==='editor')denied();
     if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
