@@ -583,6 +583,54 @@ export function createFirebaseCloudMail({
       });
     },
 
+
+    /**
+     * Narrator's separate operational removal marker for delivered legacy
+     * mail. Archive bytes and immutable migration snapshots never change.
+     * A restore changes only the marker and records an audit.
+     */
+    async moderateImported(idToken,input){
+      const uid=await uidFromToken(idToken);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['letterId','action'].includes(k))||
+         !validId(input.letterId)||!['remove','restore'].includes(input.action))
+        deny('invalid_mail_lifecycle_request',400);
+      return db.runTransaction(async tx=>{
+        const {actor}=await readyTransaction(tx,uid);
+        if(actor.role!=='narrador')deny('moderation_not_allowed',403);
+        const original=await tx.get(stage.collection('letters')
+          .doc(hash('letter:'+input.letterId)));
+        const source=original.exists?original.data():null;
+        if(!source||source.sourceId!==input.letterId||
+           source.publicationState!=='delivered'||source.deletedAt!==null)
+          deny('letter_not_found',404);
+        const ref=importedModeration.doc(hash('legacy-mail:'+input.letterId));
+        const existing=await tx.get(ref),marker=existing.exists?existing.data():null;
+        if(marker&&(marker.letterId!==input.letterId||
+          marker.sourceSnapshotId!==snapshotId||
+          !Number.isSafeInteger(marker.version)||marker.version<1))
+          deny('invalid_legacy_moderation',409);
+        if(input.action==='remove'&&marker?.deletedAt)
+          return {removed:true,alreadyRemoved:true,version:marker.version};
+        if(input.action==='restore'&&!marker?.deletedAt)
+          return {restored:true,alreadyActive:true,version:marker?.version??0};
+        const version=(marker?.version??0)+1,at=serverTime();
+        const next={letterId:input.letterId,sourceSnapshotId:snapshotId,
+          version,deletedAt:input.action==='remove'?at:null,
+          removalKind:input.action==='remove'?'excluida':null,
+          changedAt:at,actorUid:uid};
+        if(existing.exists)tx.update(ref,next);
+        else tx.create(ref,next);
+        tx.create(audits.doc(hash('legacy-mail-'+input.action+':'+input.letterId+':'+version)),{
+          action:input.action==='remove'?'legacy_remove':'legacy_restore',
+          actorUid:uid,source:'imported',letterId:input.letterId,
+          version,occurredAt:at});
+        return input.action==='remove'
+          ?{removed:true,alreadyRemoved:false,version,removalKind:'excluida'}
+          :{restored:true,alreadyActive:false,version};
+      });
+    },
+
     /** Narrator restores anything; an author restores own cancellation
      * while the delivery week is still open. */
     async restore(idToken,input){
