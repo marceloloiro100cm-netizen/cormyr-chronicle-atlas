@@ -59,6 +59,13 @@
  * 2026-11-20 (funções ligadas): players-workspace.tsx só acrescenta, em Contas,
  * o painel de aprovações do runtime Firebase acima da revisão de contas.
  * Re-captured after review.
+ * 2026-11-20 (correção da entrada Firebase, PR #667): carregamento da caixa
+ * de Missivas separado do carregamento central do Conselho. Se o serviço de
+ * correspondência falhar, a tela histórica mantém as abas, filtros e ações,
+ * mas mostra aviso e nova tentativa somente no módulo afetado. Acrescenta
+ * diagnóstico seguro à falha do carregamento geral. Nenhuma opção de jogo,
+ * controle histórico ou filtro original foi removido; hash recapturado
+ * após revisão explícita do diff.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -71,7 +78,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'b3224841d3a7bb1baa0806453653ebd82592a410',
+  'src/components/players/players-workspace.tsx':'7cd337ddb4cd529370bdb720f9e3a30f2372e728',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f97bb1c10b1ca77771ff1fdc786214c389f99e48',

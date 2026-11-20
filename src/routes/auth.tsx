@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { CampaignShell } from '@/components/campaign-shell';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { firebasePilotAuth } from '@/lib/auth/firebase-pilot-session';
+import { FirebaseAuthError } from '@/integrations/auth/firebase-rest-auth';
+import { FirebaseGoogleSignIn } from '@/components/firebase/FirebaseGoogleSignIn';
 import { firebasePilotLoginFailure } from '@/lib/auth/firebase-pilot-login-feedback';
 import { loadFirebasePublicSeasonHouses } from '@/lib/auth/season-houses';
 import { takeLoginMessage } from '@/lib/auth/firebase-login-handoff';
@@ -73,6 +75,25 @@ function Auth() {
   }finally{setBusy(false);}
  }
 
+ async function signInWithGoogle(credential:string){
+  if(busy)return;
+  setBusy(true);setMessage('');
+  const auth=firebasePilotAuth();
+  let signedIn=false;
+  try{
+   if(!auth)throw Error('Firebase Auth indisponível');
+   await auth.signInWithGoogleIdToken(credential,window.location.origin+'/auth');
+   signedIn=true;
+   await navigate({to:'/firebase-access'});
+  }catch(e){
+   if(signedIn)auth?.signOut();
+   setMessage(e instanceof FirebaseAuthError&&e.code==='ACCOUNT_LINK_REQUIRED'
+    ?'Esta conta Google precisa ser vinculada à conta Firebase já existente. Entre com e-mail e senha e solicite a vinculação ao administrador.'
+    :signedIn?firebasePilotLoginFailure(true):
+     'Não foi possível entrar com Google. Verifique se o provedor está habilitado no Firebase e se esta conta possui acesso ao Atlas.');
+  }finally{setBusy(false);}
+ }
+
  async function requestPasswordReset(){
   if(busy || !email.trim()){
    if(!email.trim())setMessage('Informe seu e-mail para recuperar a senha.');
@@ -112,6 +133,10 @@ function Auth() {
      <Button disabled={busy||!email.trim()} type="button" variant="outline"
       onClick={()=>void requestPasswordReset()}>Recuperar senha</Button>
     </form>
+    <div className="campaign-auth-google">
+     <p className="campaign-hint">Ou entre com sua conta Google:</p>
+     <FirebaseGoogleSignIn disabled={busy} onCredential={signInWithGoogle}/>
+    </div>
     {message&&<p role="status">{message}</p>}
    </section>
    <section>

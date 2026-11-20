@@ -13,14 +13,22 @@ async function allRows<T>(query:(from:number,to:number)=>PromiseLike<{data:T[]|n
  * ao mesmo tempo e viajam num único lote; o servidor confere o token e o
  * escopo no início e no fim do lote, então não há nova verificação aqui.
  */
+/**
+ * The protected Council opens with identity, Houses, memberships and records.
+ * A slow or unavailable historical mailbox is not allowed to block all other
+ * modules. Its separate query still checks Firebase permissions on the server.
+ */
 async function loadPanelFirebase(){
   const db=supabase as unknown as SupabaseClient;
-  const [auth,before,role,[houses,players,members,records,letters,receipts,catalog],replyRows,rounds,editorialRoles]=await Promise.all([
+  const [auth,before,role,[houses,players,members,records,catalog],editorialRoles]=await Promise.all([
    supabase.auth.getUser(),loadCampaignAccessScope(),supabase.rpc('is_campaign_admin'),
    Promise.all([
-    supabase.from('campaign_houses').select('*').order('name'),supabase.from('campaign_players').select('*').order('name'),supabase.from('house_memberships').select('*'),supabase.from('campaign_records').select('*').order('updated_at',{ascending:false}),allRows((from,to)=>supabase.from('campaign_letters').select('id,sender_user_id,sender_player_id,sender_name,recipient_house_id,recipient_player_id,subject,created_at,sync_state,last_synced_at,letter_number,letter_kind,publication_state,delivery_week,creation_week,conversation_id,deleted_at,delivered_at,version,batch_key,origin_house_id,court_member_id,court_assignment,military_unit_id,house_sheet_version,campaign_date').order('id').range(from,to)).then(rows=>({data:rows.map(l=>({...l,content:''})),error:null})),allRows((from,to)=>supabase.from('letter_receipts').select('*').order('letter_id').order('user_id').range(from,to)).then(data=>({data,error:null})),supabase.from('house_catalog').select('id,name').order('name')]),
-   allRows((from,to)=>supabase.from('letter_replies').select('id,letter_id,author_user_id,author_player_id,author_name,house_id,recipient_user_id,created_at,delivered_at,publication_state,delivery_week,creation_week,reply_to_id,sync_state,campaign_date,version,updated_at,deleted_at').order('id').range(from,to)),
-   supabase.from('letter_rounds').select('*'),
+    supabase.from('campaign_houses').select('*').order('name'),
+    supabase.from('campaign_players').select('*').order('name'),
+    supabase.from('house_memberships').select('*'),
+    supabase.from('campaign_records').select('*').order('updated_at',{ascending:false}),
+    supabase.from('house_catalog').select('id,name').order('name'),
+   ]),
    db.from('campaign_access_profiles').select('user_id').eq('profile','editor'),
   ]);
   const user=auth.data.user;
@@ -29,13 +37,29 @@ async function loadPanelFirebase(){
   if(role.error)throw role.error;
   const admin=role.data;
   if(Boolean(admin)!==before.admin)throw new Error('Permissões alteradas. Recarregue o acervo.');
-  for(const result of [houses,players,members,records,letters,receipts,catalog])if(result.error)throw result.error;
-  if(rounds.error)throw rounds.error;
+  for(const result of [houses,players,members,records,catalog])if(result.error)throw result.error;
   if(editorialRoles.error)throw new Error('Perfis editoriais indisponíveis.');
-  const replies={data:replyRows.map(r=>({...r,content:''}))};
   const editors=new Set((editorialRoles.data??[]).map(row=>String(row.user_id)));
-  return {user,catalog:catalog.data??[],admin:Boolean(admin),houses:houses.data??[],players:(players.data??[]).filter(p=>!p.user_id||!editors.has(p.user_id)),members:members.data??[],records:records.data??[],letters:letters.data??[],receipts:receipts.data??[],replies:replies.data??[],rounds:rounds.data??[]};
+  return {user,catalog:catalog.data??[],admin:Boolean(admin),
+    houses:houses.data??[],players:(players.data??[]).filter(p=>!p.user_id||!editors.has(p.user_id)),
+    members:members.data??[],records:records.data??[],
+    letters:[],receipts:[],replies:[],rounds:[]};
 }
+
+/** Load only the mail index (never bodies); a failure is shown in Missivas. */
+export async function loadFirebasePanelMail(){
+  if(!firebaseWorkspaceClient())throw new Error('Sessão Firebase do Conselho indisponível.');
+  const [letters,receipts,replyRows,rounds]=await Promise.all([
+    allRows((from,to)=>supabase.from('campaign_letters').select('id,sender_user_id,sender_player_id,sender_name,recipient_house_id,recipient_player_id,subject,created_at,sync_state,last_synced_at,letter_number,letter_kind,publication_state,delivery_week,creation_week,conversation_id,deleted_at,delivered_at,version,batch_key,origin_house_id,court_member_id,court_assignment,military_unit_id,house_sheet_version,campaign_date').order('id').range(from,to)),
+    allRows((from,to)=>supabase.from('letter_receipts').select('*').order('letter_id').order('user_id').range(from,to)),
+    allRows((from,to)=>supabase.from('letter_replies').select('id,letter_id,author_user_id,author_player_id,author_name,house_id,recipient_user_id,created_at,delivered_at,publication_state,delivery_week,creation_week,reply_to_id,sync_state,campaign_date,version,updated_at,deleted_at').order('id').range(from,to)),
+    supabase.from('letter_rounds').select('*'),
+  ]);
+  if(rounds.error)throw rounds.error;
+  return {letters:letters.map(l=>({...l,content:''})),receipts,
+    replies:replyRows.map(r=>({...r,content:''})),rounds:rounds.data??[]};
+}
+
 export async function loadPanel(){
   if(firebaseWorkspaceClient())return loadPanelFirebase();
   const {data:{user},error:authError}=await supabase.auth.getUser();if(authError||!user)throw new Error('Sessão expirada.');

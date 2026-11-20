@@ -13,6 +13,8 @@ export interface FirebaseRestAuthOptions {
   fetch?: typeof fetch;
   emulatorHost?: string;
   storage?: TokenStorage;
+  /** Optional tab-scoped ID-token cache, avoids a network refresh on each reload. */
+  idTokenStorage?: TokenStorage;
   now?: () => number;
   /** Refresh when the ID token expires within this many ms. */
   skewMs?: number;
@@ -22,6 +24,7 @@ interface Raw {
   error?: { message?: unknown };
   localId?: unknown; idToken?: unknown; refreshToken?: unknown; expiresIn?: unknown;
   user_id?: unknown; id_token?: unknown; refresh_token?: unknown; expires_in?: unknown;
+  needConfirmation?: unknown;
 }
 export class FirebaseAuthError extends Error {
   readonly code: string;
@@ -35,6 +38,7 @@ export function memoryStorage(): TokenStorage {
 
 export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthTokenProvider & {
   signInWithPassword(email: string, password: string): Promise<FirebaseSession>;
+  signInWithGoogleIdToken(googleIdToken: string, requestUri: string): Promise<FirebaseSession>;
   requestPasswordReset(email: string): Promise<void>;
   confirmPasswordReset(oobCode: string, newPassword: string): Promise<void>;
   signOut(): void;
@@ -48,7 +52,24 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
   const skew = opts.skewMs ?? 60_000;
   const origin = (host: string) => opts.emulatorHost ? `http://${opts.emulatorHost}/${host}` : `https://${host}`;
   const key = encodeURIComponent(opts.apiKey);
-  let session: FirebaseSession | null = null;
+  // A cached ID token is an optimization, never authorization: protected APIs
+  // always verify its signature, revocation and current House permissions.
+  const restore = (): FirebaseSession | null => {
+    try {
+      const raw = opts.idTokenStorage?.get();
+      if (!raw) return null;
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      const s = parsed as Record<string, unknown>;
+      if (typeof s['uid'] !== 'string' || !s['uid'] ||
+          typeof s['idToken'] !== 'string' || !s['idToken'] ||
+          typeof s['expiresAt'] !== 'number' || !Number.isFinite(s['expiresAt']) ||
+          s['expiresAt'] - now() <= skew || s['expiresAt'] - now() > 3_600_000)
+        return null;
+      return {uid:s['uid'],idToken:s['idToken'],expiresAt:s['expiresAt']};
+    } catch { return null; }
+  };
+  let session: FirebaseSession | null = restore();
   let inflight: Promise<FirebaseSession | null> | null = null;
   // Invalidate outstanding network requests when the identity changes or logs out.
   // A delayed refresh must never restore a signed-out or replaced session.
@@ -74,6 +95,7 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
       throw new FirebaseAuthError('BAD_RESPONSE');
     storage.set(refresh);
     session = { uid, idToken, expiresAt: now() + secs * 1000 };
+    opts.idTokenStorage?.set(JSON.stringify(session));
     emit();
     return session;
   };
@@ -81,7 +103,7 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
   async function refresh(): Promise<FirebaseSession | null> {
     const version = sessionVersion;
     const rt = storage.get();
-    if (!rt) { if (version === sessionVersion) { session = null; emit(); } return null; }
+    if (!rt) { if (version === sessionVersion) { session = null; opts.idTokenStorage?.set(null); emit(); } return null; }
     try {
       const b = await post(`${origin('securetoken.googleapis.com')}/v1/token?key=${key}`, {
         method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -94,7 +116,7 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
       // Never allow an old refresh failure to revoke a newer identity.
       if (version === sessionVersion && storage.get() === rt &&
           e instanceof FirebaseAuthError && e.code !== 'NETWORK') {
-        storage.set(null); session = null; emit();
+        storage.set(null); opts.idTokenStorage?.set(null); session = null; emit();
       }
       throw e;
     }
@@ -108,6 +130,25 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email, password, returnSecureToken: true }),
       });
+      return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
+    },
+    async signInWithGoogleIdToken(googleIdToken, requestUri) {
+      // Exchange a Google Identity Services credential for a Firebase session.
+      // The Google ID token itself never becomes an Atlas bearer token.
+      if (!/^[A-Za-z0-9_-]+([.][A-Za-z0-9_-]+){2}$/.test(googleIdToken) ||
+          !/^https:\/\/[^/?#]+\/auth$/.test(requestUri))
+        throw new FirebaseAuthError('INVALID_GOOGLE_CREDENTIAL');
+      const version = ++sessionVersion;
+      inflight = null;
+      const b = await post(`${origin('identitytoolkit.googleapis.com')}/v1/accounts:signInWithIdp?key=${key}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          postBody: `id_token=${encodeURIComponent(googleIdToken)}&providerId=google.com`,
+          requestUri, returnSecureToken: true, returnIdpCredential: false,
+        }),
+      });
+      if (b.needConfirmation === true)
+        throw new FirebaseAuthError('ACCOUNT_LINK_REQUIRED');
       return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
     },
     async requestPasswordReset(email) {
@@ -135,7 +176,7 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
       });
       // Resetting a password must NOT create a session or trust any provider role.
     },
-    signOut() { ++sessionVersion; inflight = null; storage.set(null); session = null; emit(); },
+    signOut() { ++sessionVersion; inflight = null; storage.set(null); opts.idTokenStorage?.set(null); session = null; emit(); },
     current: () => session,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     async getToken() {

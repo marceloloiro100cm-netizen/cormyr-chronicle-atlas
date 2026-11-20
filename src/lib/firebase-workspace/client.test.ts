@@ -8,6 +8,12 @@ describe('Firebase identity boundary',()=>{
   expect(await workspaceRequest({kind:'auth'})).toBe('source');
   expect(fetch).toHaveBeenCalledWith('/api/firebase-workspace',expect.objectContaining({credentials:'omit',redirect:'error',cache:'no-store',headers:expect.objectContaining({Authorization:'Bearer verified-token'})}));
  });
+ it('allows the first request after a reload to hydrate its UID from the Firebase refresh',async()=>{
+  session.uid='';
+  session.token.mockImplementation(async()=>{session.uid='a';return 'verified-token';});
+  expect(await workspaceRequest({kind:'auth'})).toBe('source');
+  expect(fetch).toHaveBeenCalledTimes(1);
+ });
  it('rejects a changed identity while refreshing the token before requesting data',async()=>{
   session.token.mockImplementation(async()=>{session.uid='b';return 'old-token';});
   await expect(workspaceRequest({kind:'auth'})).rejects.toThrow('Sessão alterada');
