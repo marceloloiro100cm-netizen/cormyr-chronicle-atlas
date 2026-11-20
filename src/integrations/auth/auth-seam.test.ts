@@ -132,4 +132,32 @@ describe('firebase rest auth', () => {
     const a = createFirebaseRestAuth({ apiKey: 'k', fetch: (async () => json(200, { localId: 'u' })) as never });
     await expect(a.signInWithPassword('a', 'b')).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
   });
+  it('restores a still-valid tab session without another network request', async () => {
+    const refreshTokens=memoryStorage(), ids=memoryStorage(),f=vi.fn(async () => json(200,signIn));
+    const opts={apiKey:'k',fetch:f as never,storage:refreshTokens,idTokenStorage:ids,now:()=>1000};
+    const first=createFirebaseRestAuth(opts);
+    await first.signInWithPassword('a@b.c','pw');
+    const restored=createFirebaseRestAuth(opts);
+    expect(restored.current()?.uid).toBe('u1');
+    expect(await restored.getToken()).toBe('id1');
+    expect(f).toHaveBeenCalledTimes(1);
+    restored.signOut();
+    expect(ids.get()).toBeNull();
+    expect(refreshTokens.get()).toBeNull();
+  });
+  it('ignores expired and malformed cached tokens and refreshes from Firebase', async () => {
+    const storage=memoryStorage(), ids=memoryStorage();
+    storage.set('refresh');
+    ids.set(JSON.stringify({uid:'old',idToken:'stale',expiresAt:100}));
+    const f=vi.fn(async()=>json(200,{
+      user_id:'fresh',id_token:'fresh-id',refresh_token:'fresh-refresh',expires_in:'3600',
+    }));
+    const a=createFirebaseRestAuth({apiKey:'k',storage,idTokenStorage:ids,
+      now:()=>500,fetch:f as never});
+    expect(a.current()).toBeNull();
+    expect(await a.getToken()).toBe('fresh-id');
+    expect(a.current()?.uid).toBe('fresh');
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
 });
