@@ -92,6 +92,15 @@ describe('Item 11, gateway privado do Storage',()=>{
   expect((await f.api.signed('valid-token',{action:'sign',path})).signedUrl)
    .toContain('signed');
  });
+ it('não apaga objeto já existente após falha por geração duplicada',async()=>{
+  const f=fixture(),path='private/'+snap+'/alice/'+body.id+'.png';
+  const original=Buffer.from(image);
+  f.blobs.set(path,original);
+  await expect(f.api.upload('valid-token',body)).rejects.toThrow('duplicate');
+  expect(f.blobs.get(path)).toEqual(original);
+  const meta=f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path));
+  expect(meta).toMatchObject({status:'pending',ownerUid:'alice'});
+ });
  it('rejeita MIME forjado, flag de homologação e conta editorial',async()=>{
   const f=fixture(),docs=f.docs;
   await expect(f.api.upload('valid-token',{...body,dataBase64:Buffer.from('fake').toString('base64')}))
