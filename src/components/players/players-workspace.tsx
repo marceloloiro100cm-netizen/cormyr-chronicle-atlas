@@ -266,7 +266,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       </div>:
       section==='missivas'?(mailPanel??<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}
         onOpenHub={()=>goSection('calendario')} initialHouse={mailHouse||undefined}
-        classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>)):
+        classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>):
       <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
         <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>{setMailHouse(id);setSection('missivas');}} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</div>:null;
     return <NarratorWorkspace menu={NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)}
