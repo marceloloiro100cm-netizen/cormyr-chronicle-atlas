@@ -52,13 +52,13 @@ describe('registros operacionais: transação, histórico e autorização',()=>{
   });
   expect(saved).toEqual(first);
   expect([...f.data.keys()].filter(k=>k.includes('recordAudits/'))).toHaveLength(1);
-  expect([...f.data.keys()].filter(k=>k.includes('recordVersions/'))).toHaveLength(1);
+  expect([...f.data.keys()].filter(k=>k.includes('recordVersions/'))).toHaveLength(2);
   const second=await commitOperationalRecord({
    db:f.db,snapshotId:snap,actor,imported:[source],
    input:{...input,expectedVersion:2,content:'Terceira versão'},
   });
   expect(second['version']).toBe(3);
-  expect([...f.data.keys()].filter(k=>k.includes('recordVersions/'))).toHaveLength(2);
+  expect([...f.data.keys()].filter(k=>k.includes('recordVersions/'))).toHaveLength(3);
   await expect(commitOperationalRecord({
    db:f.db,snapshotId:snap,actor,imported:[source],
    input:{...input,content:'Alteração concorrente'},
