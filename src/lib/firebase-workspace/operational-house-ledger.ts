@@ -1,6 +1,4 @@
 /** Livro-razão por Casa sem alterar as entradas importadas. */
-import {createHash} from 'node:crypto';
-const hash=(x:string)=>createHash('sha256').update(x).digest('hex');
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 export class OperationalLedgerError extends Error{
  constructor(readonly code:string){super(code);}
@@ -48,8 +46,11 @@ export async function readOperationalHouseLedger(
  for(const doc of snap.docs){
   const d=doc.data();
   if(!d||!ID.test(d.id)||d.id!==doc.id||
-     doc.id!==hash('house-operation:'+d.actorUid+':'+d.requestKey)&&
-     typeof d.requestKey==='string')
+     !ID.test(d.actorUid)||typeof d.houseId!=='string'||
+     !ID.test(d.houseId)||typeof d.action!=='string'||
+     !Number.isSafeInteger(d.version)||d.version<1||
+     typeof d.created_at!=='string'||
+     !Number.isFinite(Date.parse(d.created_at)))
    throw new OperationalLedgerError('invalid_ledger_document');
   if(d.houseId===houseId)selected.push({
    id:d.id,house_id:d.houseId,action:d.action,
