@@ -1,0 +1,71 @@
+name: Firebase — contas e economias, auditoria de liberação
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/cloud-account-service*.mjs'
+      - 'scripts/firebase/accounts-cloud-readiness*.mjs'
+      - 'scripts/firebase/house-ops-cloud-acceptance*.mjs'
+      - '.github/workflows/firebase-accounts-house-readiness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/cloud-account-service*.mjs'
+      - 'scripts/firebase/accounts-cloud-readiness*.mjs'
+      - 'scripts/firebase/house-ops-cloud-acceptance*.mjs'
+      - '.github/workflows/firebase-accounts-house-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Testar permissões revogadas, idempotência e auditoria somente leitura
+        run: |
+          node --check scripts/firebase/cloud-account-service.mjs
+          node --check scripts/firebase/accounts-cloud-readiness.mjs
+          node --check scripts/firebase/house-ops-cloud-acceptance.mjs
+          node --test scripts/firebase/cloud-account-service.test.mjs
+          node --test scripts/firebase/accounts-cloud-readiness.test.mjs
+          node --test scripts/firebase/house-ops-cloud-acceptance.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  cloud-readonly:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Autenticação temporária com a identidade de somente leitura
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Conferir contas e escopos sem expor identidade
+        run: node scripts/firebase/accounts-cloud-readiness.mjs
+      - name: Reconciliar economias existentes e diagnosticar Casas ausentes
+        run: node scripts/firebase/house-ops-cloud-acceptance.mjs
+      - name: Restrições operacionais preservadas
+        if: always()
+        run: |
+          echo 'Auditorias do Firestore somente GET; nenhuma conta, Casa, saldo, senha ou flag foi alterada.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Flag de gestão de contas e operações econômicas permanecem fechadas até o aceite Auth/Narrador/Jogador.' >> "$GITHUB_STEP_SUMMARY"
