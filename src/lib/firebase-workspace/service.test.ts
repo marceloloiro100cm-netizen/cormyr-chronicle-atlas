@@ -433,10 +433,19 @@ describe('real Firebase workspace boundary',()=>{
  });
  it('reads the operational House sheet (seeded from the import) once activated, and House-scoped consequences',async()=>{
   const {constructionStateHash}=await import('../house/firebase-construction-transaction');
-  const live={houseId:'ashkar',month:24301,court:[],units:[]};
-  f.tables['noble_house_sheets']=[{house_id:'ashkar',version:1,state:{houseId:'ashkar',month:24300,court:[],units:[]}}];
+  const {newHouseState}=await import('../house/types');
+  const {createHash}=await import('node:crypto');
+  const imported=newHouseState('ashkar','Ferlin',24300);
+  imported.phase='active';imported.method='import';
+  const live={...structuredClone(imported),month:24301};
+  const snapshot='a'.repeat(64);
+  const houseKey=createHash('sha256').update('house:ashkar').digest('hex');
+  f.tables['noble_house_sheets']=[{house_id:'ashkar',version:1,state:imported}];
   f.tables['noble_house_ledger']=[];f.tables['noble_house_rule_overrides']=[];
-  f.economies=[{id:'e',data:{houseId:'ashkar',status:'active',seedVerified:true,sourceSnapshotId:'a'.repeat(64),
+  // O leitor exige ID derivado da Casa e cadeia de hashes validada.
+  f.economies=[{id:houseKey,data:{houseId:'ashkar',status:'active',private:true,
+   seedVerified:true,sourceSnapshotId:snapshot,sourceReconciled:true,
+   sourceSheetVersion:1,sourceStateHash:constructionStateHash(imported),
    version:7,state:live,stateHash:constructionStateHash(live)}},
    {id:'bad',data:{houseId:'other',status:'active',seedVerified:true,sourceSnapshotId:'a'.repeat(64),version:2,state:{x:1},stateHash:'tampered'}}];
   const rows=(await run({kind:'query',table:'noble_house_sheets',steps:[{op:'select',args:['version']},{op:'eq',args:['house_id','ashkar']},{op:'single',args:[]}]})).data;
