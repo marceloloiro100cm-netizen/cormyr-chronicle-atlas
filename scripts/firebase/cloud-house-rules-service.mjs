@@ -28,7 +28,8 @@ export async function readOperationalHouseRules(db,snapshotId,houseId){
  const result=[];
  for(const doc of docs.docs){
   const d=doc.data();
-  if(!d||d.houseId!==houseId||!validId(d.itemId)||
+  if(!d||d.houseId!==houseId||d.sourceSnapshotId!==snapshotId||
+    !validId(d.itemId)||
     doc.id!==hash('rule:'+d.itemId)||
     !Number.isSafeInteger(d.version)||d.version<1||d.version>2147483646||
     !d.definition||d.definition.id!==d.itemId||
