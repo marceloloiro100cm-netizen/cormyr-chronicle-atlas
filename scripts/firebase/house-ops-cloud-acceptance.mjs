@@ -39,6 +39,9 @@ const safeInt=n=>Number.isSafeInteger(n)&&n>=0;
 
 const newReport=()=>({
  scannedHouses:0,reconciledHouses:0,missingEconomies:0,
+ missingPreflight:{requiresNarratorReview:0,partialTargets:0,
+  sourceNotReady:0,calendarMismatch:0,treasuryInvalid:0,
+  readInconclusive:0},
  invalidEconomies:0,invalidSources:0,unknownHouses:0,
  runtimeApproved:false,calendarApproved:false,
  stageRootsVerified:false,snapshotDetected:false,
@@ -159,7 +162,40 @@ export async function auditHouseOpsCloud({
    get('campaignCloudRuntime/'+snapshot+'/houseEconomies/'+id),
   ]);
   if(source.status!==200){r.invalidSources++;continue}
-  if(economy.status===404){r.missingEconomies++;continue}
+  if(economy.status===404){
+   r.missingEconomies++;
+   // GET-only, privacy-preserving triage of missing economy baselines.
+   // An authenticated Narrator still must run the canonical GoT preflight.
+   const [treasury,audit]=await Promise.all([
+    get('campaignCloudRuntime/'+snapshot+'/houseTreasuries/'+id),
+    get('campaignCloudRuntime/'+snapshot+'/houseActivationAudits/'+id),
+   ]);
+   const m=r.missingPreflight;
+   if(treasury.status===200||audit.status===200){
+    m.partialTargets++;continue;
+   }
+   if(treasury.status!==404||audit.status!==404){
+    m.readInconclusive++;continue;
+   }
+   try{
+    const sheet=fields(source.body);
+    const state=sheet?.state;
+    if(!sheet||sheet.houseId!==h.sourceId||!safeInt(sheet.version)||
+       !state||state.houseId!==h.sourceId||state.phase!=='active'){
+      m.sourceNotReady++;continue;
+    }
+    if(!safeInt(state.treasury)||state.treasury>1000000000){
+      m.treasuryInvalid++;continue;
+    }
+    const target=c?.year*12+c?.month,month=state.month;
+    if(!r.calendarApproved||!safeInt(month)||
+       !safeInt(target)||month>target||target-month>3){
+      m.calendarMismatch++;continue;
+    }
+    m.requiresNarratorReview++;
+   }catch{m.readInconclusive++}
+   continue;
+  }
   if(economy.status!==200){r.unknownHouses++;continue}
   try{
    const sheet=fields(source.body),op=fields(economy.body);
@@ -200,6 +236,12 @@ export const summarize=r=>[
  '| Casas ativas examinadas | '+r.scannedHouses+' |',
  '| Economias conciliadas | '+r.reconciledHouses+' |',
  '| Economias ausentes | '+r.missingEconomies+' |',
+ '| Ausentes: sem tesouro/auditoria preexistente, aptas à conferência do Narrador | '+r.missingPreflight.requiresNarratorReview+' |',
+ '| Ausentes: dados operacionais parciais existentes | '+r.missingPreflight.partialTargets+' |',
+ '| Ausentes: ficha de origem não pronta | '+r.missingPreflight.sourceNotReady+' |',
+ '| Ausentes: incompatibilidade temporal | '+r.missingPreflight.calendarMismatch+' |',
+ '| Ausentes: tesouro inválido | '+r.missingPreflight.treasuryInvalid+' |',
+ '| Ausentes: leitura inconclusiva | '+r.missingPreflight.readInconclusive+' |',
  '| Fontes inconsistentes | '+r.invalidSources+' |',
  '| Economias inconsistentes | '+r.invalidEconomies+' |',
  '| Casas sem leitura conclusiva | '+r.unknownHouses+' |',
