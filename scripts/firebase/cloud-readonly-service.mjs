@@ -93,9 +93,11 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
     }catch{deny('authentication_required',401);}
     if(user.disabled===true||user.uid!==token.uid)
       deny('authentication_required',401);
-    await stageReady('migrationDomainStage');
-    await stageReady('migrationAuthStage');
-    const v=await currentAccountAccess(db,snapshotId,token.uid);
+    const [,,v]=await Promise.all([
+      stageReady('migrationDomainStage'),
+      stageReady('migrationAuthStage'),
+      currentAccountAccess(db,snapshotId,token.uid),
+    ]);
     if(!v||v.userId!==token.uid||v.active!==true||
        v.requirePasswordChange!==false)deny('access_denied',403);
     if(!['jogador','editor','narrador'].includes(v.profile))deny('access_denied',403);
