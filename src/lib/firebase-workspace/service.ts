@@ -149,19 +149,19 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     if(!m||typeof m.letterId!=='string'||
        d.id!==createHash('sha256').update('legacy-mail:'+m.letterId).digest('hex')||
        m.sourceSnapshotId!==snapshotId||
-       !Number.isSafeInteger(m.version)||m.version<1||
-       !(m.deletedAt===null||typeof m.deletedAt==='string'&&
-         Number.isFinite(Date.parse(m.deletedAt)))||
-       (m.deletedAt!==null&&m.removalKind!=='excluida')||
+       !Number.isSafeInteger(m['version'])||Number(m['version'])<1||
+       !(m['deletedAt']===null||typeof m['deletedAt']==='string'&&
+         Number.isFinite(Date.parse(m['deletedAt'])))||
+       (m['deletedAt']!==null&&m['removalKind']!=='excluida')||
        markers.has(m.letterId))
       throw new CloudAccessError('mail_moderation_integrity_failed',503);
     markers.set(m.letterId,m);
    }
-   const archived=letters.map(l=>{
+   const archived:Row[]=letters.map(l=>{
     const mark=markers.get(String(l['id']));
     return {...l,source:'imported',historical_source:true,
-      ...(mark?{deleted_at:mark.deletedAt,
-       removal_kind:mark.removalKind,version:mark.version}:{}),
+      ...(mark?{deleted_at:mark['deletedAt'],
+       removal_kind:mark['removalKind'],version:mark['version']}:{}),
     };
    });
    const operational=projectCloudLetters(mailDocs.docs,snapshotId,live.data().openRound as number);
