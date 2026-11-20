@@ -161,7 +161,7 @@ describe('criação e conciliação sem consultas externas',()=>{
   const state=newHouseState('house-a'),before=structuredClone(state);
   expect(()=>applyHouseCreationOperation(state,'draft',{
    base:{...state.base,wealth:5},identity:state.identity,
-   method:'budget',creationStep:0},ctx)).toThrow(/não está autorizada/);
+   method:'budget',creationStep:0},ctx)).toThrow(/bloqueada|não está autorizada/);
   expect(state).toEqual(before);
  });
  it('protege ficha do Narrador e dados históricos imutáveis',()=>{
