@@ -86,7 +86,8 @@ async function handle(request:Request):Promise<Response>{
       id:string;name:string;version:number;state:unknown;
     };
     let catalog;
-    if(process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'){
+    if(process.env['CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED']==='true'||
+       process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'){
       const ruleRows=await readWorkspaceTable(db,snapshotId,
         'noble_house_rule_overrides') as {definition:unknown}[];
       const archived=ruleRows.map(row=>catalogSchema.parse(row.definition));
