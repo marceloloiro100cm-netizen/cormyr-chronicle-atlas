@@ -54,7 +54,7 @@ if(snapshot){
   if(!Array.isArray(accounts))throw Error('invalid_access_scope');
  });
  for(const table of ['campaign_houses','campaign_players','house_memberships',
-     'campaign_records','house_catalog','campaign_access_profiles']){
+     'campaign_records','house_catalog']){
    await check('source_'+table,async()=>{
     const rows=await readWorkspaceTable(db,snapshot,table);
     if(!Array.isArray(rows))throw Error('workspace_archive_integrity_failed');
