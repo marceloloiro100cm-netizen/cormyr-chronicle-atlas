@@ -1,6 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {createWorkspaceService} from '@/lib/firebase-workspace/service';
-import {CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
+import {createWorkspaceService,workspaceErrorCategory} from '@/lib/firebase-workspace/service';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 const headers={'Cache-Control':'private, no-store','Vary':'Authorization','X-Content-Type-Options':'nosniff'};
 export async function handleWorkspace(request:Request){
@@ -22,23 +21,12 @@ export async function handleWorkspace(request:Request){
   const result=await createWorkspaceService({db:getFirestore(app),auth:getAuth(app),snapshotId,cacheImportedTables:true}).execute(bearer.slice(7),input);
   return Response.json({result},{headers});
  }catch(e){
-  if(e instanceof CloudAccessError)return error(e.status,e.code);
-  // Fixed, content-free categories so a blocked area can be diagnosed
-  // without exposing Firestore paths, IDs or provider messages.
-  const m=e instanceof Error?e.message:'';
-  const known:Record<string,string>={
-   workspace_import_pending:'workspace_import_pending',
-   workspace_source_table_missing:'workspace_source_table_missing',
-   workspace_table_not_supported:'workspace_table_not_supported',
-   'Registro não encontrado ou ambíguo.':'workspace_ambiguous_record',
-   'Consulta não suportada pelo Firebase.':'workspace_query_not_supported',
-   firebase_operational_mail_integrity_failed:'operational_mail_integrity_failed',
-   workspace_mail_contract_invalid:'workspace_mail_contract_invalid',
-   workspace_archive_integrity_failed:'workspace_archive_integrity_failed',
-  };
-  const code=Object.hasOwn(known,m)?known[m]!:'workspace_unavailable';
-  console.error('[firebase-workspace] unavailable',code);
-  return error(503,code);
+  const category=workspaceErrorCategory(e);
+  // Never leak raw Firestore/provider messages or tokens. Only reviewed fixed
+  // error codes cross the boundary, including the Records approval gate.
+  if(category.code==='workspace_unavailable')
+   console.error('[firebase-workspace] unavailable',category.code);
+  return error(category.status,category.code);
  }
 }
 export const Route=createFileRoute('/api/firebase-workspace')({server:{handlers:{POST:({request})=>handleWorkspace(request)}}});
