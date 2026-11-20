@@ -42,6 +42,8 @@ const newReport=()=>({
  missingPreflight:{requiresNarratorReview:0,partialTargets:0,
   sourceNotReady:0,calendarMismatch:0,treasuryInvalid:0,
   readInconclusive:0},
+ missingSourceReasons:{missingState:0,invalidVersion:0,
+  mismatchedHouse:0,draft:0,review:0,unknownPhase:0},
  invalidEconomies:0,invalidSources:0,unknownHouses:0,
  runtimeApproved:false,calendarApproved:false,
  stageRootsVerified:false,snapshotDetected:false,
@@ -180,9 +182,20 @@ export async function auditHouseOpsCloud({
    try{
     const sheet=fields(source.body);
     const state=sheet?.state;
-    if(!sheet||sheet.houseId!==h.sourceId||!safeInt(sheet.version)||
-       !state||state.houseId!==h.sourceId||state.phase!=='active'){
-      m.sourceNotReady++;continue;
+    if(!sheet||!safeInt(sheet.version)||
+       !state||typeof state!=='object'||
+       sheet.houseId!==h.sourceId||state.houseId!==h.sourceId||
+       state.phase!=='active'){
+      m.sourceNotReady++;
+      const reasons=r.missingSourceReasons;
+      if(!sheet||!state||typeof state!=='object')reasons.missingState++;
+      else if(!safeInt(sheet.version))reasons.invalidVersion++;
+      else if(sheet.houseId!==h.sourceId||state.houseId!==h.sourceId)
+       reasons.mismatchedHouse++;
+      else if(state.phase==='draft')reasons.draft++;
+      else if(state.phase==='review')reasons.review++;
+      else reasons.unknownPhase++;
+      continue;
     }
     if(!safeInt(state.treasury)||state.treasury>1000000000){
       m.treasuryInvalid++;continue;
@@ -239,6 +252,12 @@ export const summarize=r=>[
  '| Ausentes: sem tesouro/auditoria preexistente, aptas à conferência do Narrador | '+r.missingPreflight.requiresNarratorReview+' |',
  '| Ausentes: dados operacionais parciais existentes | '+r.missingPreflight.partialTargets+' |',
  '| Ausentes: ficha de origem não pronta | '+r.missingPreflight.sourceNotReady+' |',
+ '| Origem: ficha em rascunho | '+r.missingSourceReasons.draft+' |',
+ '| Origem: ficha aguardando revisão | '+r.missingSourceReasons.review+' |',
+ '| Origem: vínculo de Casa divergente | '+r.missingSourceReasons.mismatchedHouse+' |',
+ '| Origem: estado ausente | '+r.missingSourceReasons.missingState+' |',
+ '| Origem: versão inválida | '+r.missingSourceReasons.invalidVersion+' |',
+ '| Origem: fase desconhecida | '+r.missingSourceReasons.unknownPhase+' |',
  '| Ausentes: incompatibilidade temporal | '+r.missingPreflight.calendarMismatch+' |',
  '| Ausentes: tesouro inválido | '+r.missingPreflight.treasuryInvalid+' |',
  '| Ausentes: leitura inconclusiva | '+r.missingPreflight.readInconclusive+' |',
