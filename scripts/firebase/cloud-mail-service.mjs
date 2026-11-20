@@ -177,8 +177,9 @@ export function createFirebaseCloudMail({
   }
   /** Draft or still-scheduled: the author (under current authority) may
    * change it at any time, because nobody has received it yet. */
-  function authorOfPending(actor,uid,v){
-    if(v.senderUid!==uid||!['draft','scheduled'].includes(v.publicationState))return false;
+  function authorOfPending(actor,uid,v,round){
+    if(v.senderUid!==uid||v.creationRound!==round||
+       !['draft','scheduled'].includes(v.publicationState))return false;
     if(actor.role==='jogador')return actor.editHouses.includes(v.originHouseId);
     return actor.role==='narrador'&&v.originHouseId===null;
   }
@@ -188,7 +189,7 @@ export function createFirebaseCloudMail({
    * origin (a House lost since sending is no longer an authorization).
    */
   function authorInOpenWeek(actor,uid,v,round){
-    if(authorOfPending(actor,uid,v))return true;
+    if(authorOfPending(actor,uid,v,round))return true;
     if(v.senderUid!==uid||v.publicationState!=='delivered')return false;
     if(actor.role==='jogador'&&!actor.editHouses.includes(v.originHouseId))
       return false;
@@ -728,7 +729,7 @@ export function createFirebaseCloudMail({
         if(v.deletedAt!==null)deny('letter_removed',409);
         if(v.publicationState!=='draft')deny('not_a_draft',409);
         checkVersion(v,req.expectedVersion);
-        if(!authorOfPending(actor,uid,v))deny('schedule_not_allowed',403);
+        if(!authorOfPending(actor,uid,v,round))deny('schedule_not_allowed',403);
         const plan=deliveryPlan(actor.role,{deliveryRound:req.deliveryRound??v.deliveryRound??null},round);
         if(plan.error)deny(plan.error,400);
         const at=serverTime(),version=v.version+1;
