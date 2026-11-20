@@ -166,8 +166,9 @@ describe('firebase rest auth', () => {
     const googleId='header.payload.signature';
     expect(await a.signInWithGoogleIdToken(googleId,'https://atlas.cormyr.com.br/auth'))
      .toEqual({uid:'u1',idToken:'id1',expiresAt:expect.any(Number)});
-    expect(String(f.mock.calls[0]?.[0])).toContain('accounts:signInWithIdp?key=k');
-    const body=JSON.parse(String((f.mock.calls[0]?.[1] as RequestInit).body));
+    const calls=f.mock.calls as unknown as Array<[string,RequestInit]>;
+    expect(String(calls[0]?.[0])).toContain('accounts:signInWithIdp?key=k');
+    const body=JSON.parse(String(calls[0]?.[1].body));
     expect(body).toMatchObject({
       postBody:'id_token=header.payload.signature&providerId=google.com',
       requestUri:'https://atlas.cormyr.com.br/auth',returnSecureToken:true,
