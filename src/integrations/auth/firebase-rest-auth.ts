@@ -135,7 +135,7 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
     async signInWithGoogleIdToken(googleIdToken, requestUri) {
       // Exchange a Google Identity Services credential for a Firebase session.
       // The Google ID token itself never becomes an Atlas bearer token.
-      if (!/^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$/.test(googleIdToken) ||
+      if (!/^[A-Za-z0-9_-]+([.][A-Za-z0-9_-]+){2}$/.test(googleIdToken) ||
           !/^https:\/\/[^/?#]+\/auth$/.test(requestUri))
         throw new FirebaseAuthError('INVALID_GOOGLE_CREDENTIAL');
       const version = ++sessionVersion;
