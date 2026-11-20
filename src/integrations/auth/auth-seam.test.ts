@@ -160,4 +160,30 @@ describe('firebase rest auth', () => {
     expect(f).toHaveBeenCalledTimes(1);
   });
 
+  it('exchanges a Google identity credential with Firebase without trusting the Google token for Atlas APIs', async () => {
+    const f=vi.fn(async()=>json(200,signIn));
+    const a=createFirebaseRestAuth({apiKey:'k',fetch:f as never});
+    const googleId='header.payload.signature';
+    expect(await a.signInWithGoogleIdToken(googleId,'https://atlas.cormyr.com.br/auth'))
+     .toEqual({uid:'u1',idToken:'id1',expiresAt:expect.any(Number)});
+    expect(String(f.mock.calls[0]?.[0])).toContain('accounts:signInWithIdp?key=k');
+    const body=JSON.parse(String((f.mock.calls[0]?.[1] as RequestInit).body));
+    expect(body).toMatchObject({
+      postBody:'id_token=header.payload.signature&providerId=google.com',
+      requestUri:'https://atlas.cormyr.com.br/auth',returnSecureToken:true,
+    });
+    expect(await a.getToken()).toBe('id1');
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+  it('does not accept an unlinked Google account or a forged credential', async () => {
+    const f=vi.fn(async()=>json(200,{needConfirmation:true}));
+    const a=createFirebaseRestAuth({apiKey:'k',fetch:f as never});
+    await expect(a.signInWithGoogleIdToken('header.payload.signature',
+      'https://atlas.cormyr.com.br/auth')).rejects.toMatchObject({code:'ACCOUNT_LINK_REQUIRED'});
+    expect(a.current()).toBeNull();
+    await expect(a.signInWithGoogleIdToken('forged',
+      'https://atlas.cormyr.com.br/auth')).rejects.toMatchObject({code:'INVALID_GOOGLE_CREDENTIAL'});
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
 });
