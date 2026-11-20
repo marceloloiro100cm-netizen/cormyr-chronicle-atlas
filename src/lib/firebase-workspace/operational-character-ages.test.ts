@@ -8,7 +8,7 @@ const gm:Scope={uid:'narrator',profile:'narrador',playerId:null,
  memberHouseIds:[],editHouseIds:[]};
 const player:Scope={uid:'alice',profile:'jogador',playerId:'p1',
  memberHouseIds:['h1'],editHouseIds:[]};
-const make=(id:string,extra:Record<string,unknown>={})=>({
+const make=(id:string,extra:Partial<AgeRegistry['characters'][number]>={}):AgeRegistry['characters'][number]=>({
  id,displayName:'Pessoa '+id,houseId:'h1',nobleRoles:['Lorde'],race:null,
  isNoble:true,visibility:'house',ownerUserId:null,
  aliveStatus:'alive',reviewStatus:'reviewed',confidence:'confirmed',
