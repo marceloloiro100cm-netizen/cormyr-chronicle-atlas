@@ -24,6 +24,7 @@ export const RUNTIME_APPROVALS=[
  ['constructionReadApproved','Obras: leitura'],
  ['constructionWriteApproved','Obras: compras e andamento'],
  ['mailWriteApproved','Missivas: envio e respostas'],
+ ['privateGmContentApproved','Eventos e Aventuras do Narrador'],
 ] as const;
 export type RuntimeApprovalKey=typeof RUNTIME_APPROVALS[number][0];
 const KEYS=new Set<string>(RUNTIME_APPROVALS.map(([k])=>k));

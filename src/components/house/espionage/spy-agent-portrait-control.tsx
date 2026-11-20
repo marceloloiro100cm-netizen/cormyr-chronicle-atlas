@@ -73,8 +73,7 @@ export function SpyAgentPortraitControl({houseId,agent,portraits,canEdit,customU
      void qc.invalidateQueries({queryKey:['spy-house-management',houseId]});}}>
     {agent.portraitId?'Alterar foto':'Escolher foto'}
    </Button>}
-  {canEdit&&onCustomImage&&agent.status!=='dead'&&
-   <CustomImageUpload label={'o espião '+agent.codename} hasImage={Boolean(customUrl)} onSave={onCustomImage}/>}
+
   <Dialog open={open} onOpenChange={next=>{if(busy)return;setOpen(next);}}>
    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
     <DialogHeader><DialogTitle>Retrato de {agent.codename}</DialogTitle></DialogHeader>

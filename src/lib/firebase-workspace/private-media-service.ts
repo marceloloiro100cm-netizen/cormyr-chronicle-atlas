@@ -3,7 +3,7 @@ import {createFirebaseCloudReadonly} from '../../../scripts/firebase/cloud-reado
 import {createWorkspaceService} from './service';
 import {PRIVATE_MEDIA_LIMIT,PRIVATE_MEDIA_UUID,privateMediaType,
  privateMediaHash,privateMediaRef,privateMediaFail,privateMediaReferenced,
- validatePrivateMediaSource} from './private-media-core';
+ validatePrivateMediaSource,privateMediaTokens} from './private-media-core';
 
 const SHA=/^[a-f0-9]{64}$/;
 const b64=/^[A-Za-z0-9+/]+={0,2}$/;
@@ -12,6 +12,12 @@ const safe=(v:unknown)=>typeof v==='string'&&v.length>0&&v.length<=128&&
 const isObj=(v:unknown):v is Record<string,unknown>=>
  !!v&&typeof v==='object'&&!Array.isArray(v);
 
+/** Cópia do bucket antigo de imagens da campanha (Lovable), no mesmo bucket do Firebase. */
+const LEGACY_PREFIX='migration-staging/campaign-images/';
+const LEGACY_PATH=/^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/;
+const LEGACY_LIMIT=20*1024*1024;
+/** Entre requisições (a rota cria o serviço a cada chamada). */
+const legacyCache=new Map<string,{until:number;paths:Promise<Set<string>>}>();
 export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
  db:any;auth:any;bucket:any;snapshotId:string;
 }){
@@ -75,6 +81,51 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
       privateMediaReferenced(r.content,path)))return true;
   }
   return false;
+ };
+/**
+  * Imagens históricas (galeria, Corte, missivas): os arquivos do bucket antigo
+  * foram copiados para migration-staging/campaign-images/ no mesmo bucket.
+  * Só são entregues a quem pode ler hoje um registro, carta ou resposta que
+  * contém o token da imagem (mesma regra das imagens privadas novas). A lista
+  * de caminhos autorizados de cada leitor fica em memória por 60 segundos.
+  */
+ const legacyPaths=(token:string,viewer:{uid:string})=>{
+  const key=viewer.uid+':'+JSON.stringify(viewer);
+  const hit=legacyCache.get(key);
+  if(hit&&hit.until>Date.now())return hit.paths;
+  const paths=(async()=>{
+   const service=createWorkspaceService({db,auth,snapshotId,cacheImportedTables:true});
+   const found=new Set<string>();
+   for(const table of ['campaign_records','campaign_letters','letter_replies']){
+    const result=await service.execute(token,{kind:'query',table,steps:[]});
+    const rows=result?.data;
+    if(!Array.isArray(rows))privateMediaFail('private_media_source_unavailable',503);
+    for(const r of rows)if(typeof r?.content==='string')
+     for(const p of privateMediaTokens(r.content))found.add(p);
+   }
+   return found;
+  })();
+  paths.catch(()=>legacyCache.delete(key));
+  legacyCache.set(key,{until:Date.now()+60_000,paths});
+  if(legacyCache.size>200)for(const [k,v] of legacyCache)if(v.until<=Date.now())legacyCache.delete(k);
+  return paths;
+ };
+ const legacyDownload=async(token:string,path:string)=>{
+  if(!LEGACY_PATH.test(path)||path.includes('..')||path.startsWith('private/'))
+   privateMediaFail('private_media_path_invalid',400);
+  await approved(false);
+  const viewer=await scope(token);
+  if(!(await legacyPaths(token,viewer)).has(path))privateMediaFail('private_media_denied');
+  const file=bucket.file(LEGACY_PREFIX+path);
+  const [exists]=await file.exists();
+  if(!exists)privateMediaFail('private_media_not_found',404);
+  const [meta]=await file.getMetadata();
+  const size=Number(meta?.size);
+  if(!Number.isSafeInteger(size)||size<1||size>LEGACY_LIMIT)privateMediaFail('private_media_not_found',404);
+  const [bytes]=await file.download();
+  const type=['image/png','image/jpeg','image/webp','image/gif'].find(t=>privateMediaType(t)?.magic(bytes));
+  if(!type)privateMediaFail('private_media_type_invalid',415);
+  return {bytes,contentType:type as string};
  };
  const authorize=async(token:string,path:string)=>{
   if(typeof path!=='string')privateMediaFail('private_media_path_invalid',400);
@@ -224,6 +275,8 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    if(Object.keys(request).some(k=>!['action','path'].includes(k))||
       input['action']!=='download'||typeof input['path']!=='string')
     privateMediaFail('private_media_request_invalid',400);
+   if(!(input['path'] as string).startsWith('private/'))
+    return legacyDownload(token,input['path'] as string);
    const {file,meta}=await authorize(token,input['path'] as string);
    const [bytes]=await file.download();
    if(bytes.length!==meta.size||
