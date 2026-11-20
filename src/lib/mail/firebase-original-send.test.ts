@@ -73,8 +73,11 @@ describe('historically faithful Cloud reply routing',()=>{
    content:'Retorno',expectedCampaignDate:dt,
   });
   expect(()=>originalMailReply(reply,'1522-01-02')).toThrow('campaign_date_changed');
-  expect(()=>originalMailReply({...reply,p_args:{...reply.p_args,p_reply:'another'}},dt))
-   .toThrow('mail_feature_not_yet_available');
+  expect(originalMailReply({...reply,p_args:{...reply.p_args,p_letter:'legacy-letter-001',p_reply:'legacy-reply-001'}},dt))
+   .toMatchObject({letterId:'legacy-letter-001',replyId:'legacy-reply-001',
+    content:'Retorno',expectedCampaignDate:dt});
+  expect(()=>originalMailReply({...reply,p_args:{...reply.p_args,p_reply:'../other'}},dt))
+   .toThrow('invalid_mail_request');
   expect(originalMailReply({...reply,p_args:{...reply.p_args,p_draft:true,p_signed_by:'Vetrus'}},dt))
    .toMatchObject({draft:true,signedBy:'Vetrus'});
  });
