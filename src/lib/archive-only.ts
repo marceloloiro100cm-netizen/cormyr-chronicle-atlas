@@ -40,6 +40,13 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        // The route is gated in apphosting.yaml and revalidates the original
        // House sheet inside Firestore before each create-only transaction.
        pathname === '/api/firebase-house-activation' ||
+       // Migrated endpoints retain their own feature flags, Firebase Auth
+       // and transaction-level scope checks. Routing is not write approval.
+       pathname === '/api/firebase-accounts' ||
+       pathname === '/api/firebase-house-source' ||
+       pathname === '/api/firebase-house-operation' ||
+       pathname === '/api/firebase-house-rules' ||
+       pathname === '/api/firebase-private-media' ||
        pathname === '/api/firebase-cloud-newspaper' ||
        // These four are READ ONLY, with separate runtime flags, Firebase
        // token validation, strict per-House access and deny-by-default rules.

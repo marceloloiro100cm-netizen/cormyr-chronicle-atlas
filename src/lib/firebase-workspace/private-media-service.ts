@@ -32,13 +32,15 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    privateMediaFail('private_media_denied');
   return viewer;
  };
+ const runtimeApproved=(doc:any,write=false)=>{
+  const value=doc.data();
+  return doc.exists&&value?.status==='active'&&value.private===true&&
+   value.sourceSnapshotId===snapshotId&&value.sourceSnapshotReconciled===true&&
+   value.applicationEnabled===true&&value.privateMediaReadApproved===true&&
+   (!write||value.privateMediaWriteApproved===true);
+ };
  const approved=async(write=false)=>{
-  const doc=await root.get(),value=doc.data();
-  if(!doc.exists||value?.status!=='active'||value.private!==true||
-     value.sourceSnapshotId!==snapshotId||value.sourceSnapshotReconciled!==true||
-     value.applicationEnabled!==true||
-     value.privateMediaReadApproved!==true||
-     (write&&value.privateMediaWriteApproved!==true))
+  if(!runtimeApproved(await root.get(),write))
    privateMediaFail('private_media_not_approved',503);
  };
  const visibleReference=async(token:string,path:string)=>{
@@ -122,10 +124,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    const digest=privateMediaHash(data.toString('base64'));
    const reserve=await db.runTransaction(async(tx:any)=>{
     const [runtime,existing]=await Promise.all([tx.get(root),tx.get(key)]);
-    const rt=runtime.data();
-    if(!runtime.exists||rt?.privateMediaReadApproved!==true||
-       rt?.privateMediaWriteApproved!==true||rt.sourceSnapshotId!==snapshotId||
-       rt.sourceSnapshotReconciled!==true||rt.applicationEnabled!==true)
+    if(!runtimeApproved(runtime,true))
      privateMediaFail('private_media_not_approved',503);
     if(existing.exists){
      const prev=existing.data();
@@ -149,14 +148,18 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
        cacheControl:'private,max-age=0,no-store'},
     });
     savedByThisRequest=true;
+    // Confirmar os bytes persistidos antes de tornar a referência utilizável.
+    const [persisted]=await file.download();
+    if(persisted.length!==data.length||
+       privateMediaHash(persisted.toString('base64'))!==digest)
+     privateMediaFail('private_media_integrity_failed',503);
     const again=await scope(token);
     if(JSON.stringify(viewer)!==JSON.stringify(again))
      privateMediaFail('private_media_denied');
     await db.runTransaction(async(tx:any)=>{
      const [runtime,current]=await Promise.all([tx.get(root),tx.get(key)]);
-     const r=runtime.data(),m=current.data();
-     if(!runtime.exists||r?.privateMediaReadApproved!==true||
-        r?.privateMediaWriteApproved!==true||
+     const m=current.data();
+     if(!runtimeApproved(runtime,true)||
         m?.status!=='pending'||m?.ownerUid!==viewer.uid||
         m?.digest!==digest||m?.path!==path)
       privateMediaFail('private_media_upload_revoked',403);
