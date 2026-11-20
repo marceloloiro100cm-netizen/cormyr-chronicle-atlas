@@ -14,7 +14,7 @@ import {commissionStory,rejectCommission,commissionRow,markCommissionsSeen,
 import type {Scope} from '../firebase-workspace/service';
 
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const valid=(x:unknown):x is string=>typeof x==='string'&&ID.test(x);
 export class FirebaseCommissionError extends Error{
