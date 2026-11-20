@@ -7,6 +7,14 @@ projeto `cormyr`. O acesso de escrita é condicionado à variável
 `CORMYR_FIREBASE_ACCOUNTS_ENABLED`, definida como `false` em `apphosting.yaml`
 até o aceite de ponta a ponta. O código não substitui a migração imutável.
 
+Em 20/11, `CORMYR_FIREBASE_ACCOUNTS_READ_ENABLED=true` foi adicionado como
+chave separada para permitir apenas `status` (próprio perfil) e `list`
+(somente Narrador validado) na mesma rota. `submit` e
+`completePassword` continuam respondendo `account_write_disabled`
+(HTTP 503) mesmo com a leitura ativada. O catálogo de contas não é público.
+Os vínculos e o privilégio do Narrador passaram a ser revalidados dentro da
+transação de gravação para resistir à revogação antes do commit.
+
 ## Estrutura
 
 - Autorização histórica: `migrationDomainStage/{snapshot}/access/{uid}`,
