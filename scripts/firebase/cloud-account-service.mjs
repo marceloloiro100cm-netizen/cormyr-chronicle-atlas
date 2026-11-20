@@ -203,13 +203,39 @@ export function createFirebaseAccountService({
    if(!created&&input.password)
      await auth.updateUser(uid,{password:input.password,displayName:next.name});
    await db.runTransaction(async tx=>{
-     const [live,source,previous,request]=await Promise.all([
-       tx.get(runtime),tx.get(domain.collection('access').doc(uid)),
-       tx.get(accounts.doc(uid)),tx.get(requestRef),
-     ]);
-     if(!runtimeReady(live.data(),snapshotId))deny('account_runtime_not_ready',503);
+     // Revalidate the Narrator, target access and all selected Houses inside
+     // the same transaction. An access revocation after token verification
+     // must never authorize a stale account change.
+     const houseRefs=next.memberHouseIds.map(houseId=>
+       domain.collection('houses').doc(hash('house:'+houseId)));
+     const [live,source,previous,request,actorArchived,actorOverlay,...houseDocs]=
+       await Promise.all([
+         tx.get(runtime),tx.get(domain.collection('access').doc(uid)),
+         tx.get(accounts.doc(uid)),tx.get(requestRef),
+         tx.get(domain.collection('access').doc(actorUid)),
+         tx.get(accounts.doc(actorUid)),
+         ...houseRefs.map(ref=>tx.get(ref)),
+       ]);
+     if(!runtimeReady(live.data(),snapshotId))
+       deny('account_runtime_not_ready',503);
+     const actorNow=actorArchived.data();
+     if(actorOverlay.exists||actorNow?.userId!==actorUid||
+        actorNow.profile!=='narrador'||actorNow.admin!==true||
+        actorNow.active!==true||actorNow.requirePasswordChange!==false||
+        !Array.isArray(actorNow.memberHouseIds)||actorNow.memberHouseIds.length||
+        !Array.isArray(actorNow.editHouseIds)||actorNow.editHouseIds.length)
+       deny('narrator_required',403);
+     if(houseDocs.some((doc,i)=>!doc.exists||
+        doc.data()?.sourceId!==next.memberHouseIds[i]||
+        doc.data()?.active!==true||doc.data()?.season!==2))
+       deny('invalid_house_scope',403);
      if(request.exists)deny('request_key_conflict',409);
      if(source.data()?.profile==='narrador')deny('narrator_cannot_be_reassigned',403);
+     if(previous.exists&&(
+        previous.data()?.userId!==uid||
+        previous.data()?.profile!==next.profile||
+        previous.data()?.admin!==false))
+       deny('account_scope_changed',409);
      const version=previous.exists?previous.data()?.version??0:source.data()?.version??0;
      if(version!==input.expectedVersion)deny('version_conflict',409);
      if(created&&source.exists)deny('source_account_conflict',409);
