@@ -140,4 +140,26 @@ describe('Item 10, encomendas de notícias com Riqueza real',()=>{
    .rejects.toThrow('newspaper_commissions_not_approved');
   expect(f.docs.get(f.economy).version).toBe(0);
  });
+ it('pedidos já pagos continuam legíveis quando a escrita editorial é suspensa',async()=>{
+  const f=fixture();
+  await f.story().commission(order,[]);
+  const runtime='campaignCloudRuntime/'+snapshot;
+  f.docs.set(runtime,{...f.docs.get(runtime),
+   newspaperWriteApproved:false,newspaperCommissionsWriteApproved:false});
+  const list=await readFirebaseCommissions(f.db,snapshot,player);
+  expect(list).toHaveLength(1);
+  expect(list[0]).toMatchObject({state:'pending',house_id:'house-a'});
+  await expect(f.story().commission({...order,p_key:'33333333-3333-4333-8333-333333333333'},[]))
+   .rejects.toThrow('newspaper_commissions_not_approved');
+  expect(f.docs.get(f.economy).version).toBe(1);
+ });
+ it('sem aprovação de leitura nenhuma encomenda operacional é exposta',async()=>{
+  const f=fixture(),runtime='campaignCloudRuntime/'+snapshot;
+  await f.story().commission(order,[]);
+  f.docs.set(runtime,{...f.docs.get(runtime),
+   newspaperCommissionsReadApproved:false});
+  await expect(readFirebaseCommissions(f.db,snapshot,player))
+   .rejects.toThrow('newspaper_commissions_not_approved');
+ });
+
 });
