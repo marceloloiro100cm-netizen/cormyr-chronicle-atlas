@@ -114,7 +114,7 @@ describe('Idade canônica ligada ao HUB, item 9',()=>{
    actor:'narrator',createdAt:'2026-11-19T00:00:00.000Z'}]};
   const transitions=await listAgeTransitions(mem.db,snapshot,imported,30);
   expect(transitions).toHaveLength(1);
-  expect(transitions[0].id).toBe('operational-id');
+  expect(transitions[0]?.id).toBe('operational-id');
  });
  it('recusa uma transição de ano com vínculo de snapshot adulterado',async()=>{
   const mem=inMemory(),root='campaignCloudRuntime/'+snapshot;
