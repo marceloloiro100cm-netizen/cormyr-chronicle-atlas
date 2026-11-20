@@ -82,6 +82,20 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(pathname, 'serverFn')).toBe(true);
   });
 
+  it.each([
+    '/api/firebase-accounts',
+    '/api/firebase-house-source',
+    '/api/firebase-house-operation',
+    '/api/firebase-house-rules',
+    '/api/firebase-private-media',
+  ])('routes migrated endpoint %s to its own authorization boundary', pathname => {
+    for(const kind of ['router','api'])
+      expect(shouldBlockLegacyRequest(pathname,kind)).toBe(false);
+    expect(shouldBlockLegacyRequest(pathname,'serverFn')).toBe(true);
+    for(const suffix of ['/','-old','/legacy','/extra'])
+      expect(shouldBlockLegacyRequest(pathname+suffix,'router')).toBe(true);
+  });
+
   it('permits only exact Firebase login, reset and independently secured pilot pages', () => {
     for(const p of ['/auth','/reset-password','/firebase-access'])
       expect(isFirebasePilotPage(p)).toBe(true);
