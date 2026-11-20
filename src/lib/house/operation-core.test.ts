@@ -4,7 +4,8 @@ import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_NON_ECONOMIC_ACTIONS,applyHouseEconomicOperation,
  HOUSE_ECONOMIC_ACTIONS,applyHouseMilitaryOperation,
  HOUSE_MILITARY_ACTIONS,applyHouseCreationOperation,
- HOUSE_CREATION_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_CREATION_ACTIONS,applyHouseDiceOperation,
+ HOUSE_DICE_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -176,5 +177,38 @@ describe('criação e conciliação sem consultas externas',()=>{
   expect(()=>applyHouseCreationOperation(state,'submit',{},ctx))
    .toThrow();
   expect(state).toEqual(before);
+ });
+});
+
+describe('rolagens registradas e determinísticas por requestKey',()=>{
+ const ctx={admin:true,key:ID,playerId:'player-a',
+  dice:Array.from({length:100},(_,i)=>i%6+1)};
+ it('registra cinco ações e reproduz as mesmas rolagens',()=>{
+  expect(HOUSE_DICE_ACTIONS).toHaveLength(5);
+  const state=newHouseState('house-a');
+  const first=applyHouseDiceOperation(state,'roll',{},ctx);
+  const repeated=applyHouseDiceOperation(state,'roll',{},ctx);
+  expect(first.state.rolls).toEqual(repeated.state.rolls);
+  expect(first.state.rolls).toHaveLength(7);
+  expect(state.rolls).toHaveLength(0);
+ });
+ it('fundação e eventos históricos não alteram a fonte original',()=>{
+  const state=newHouseState('house-a');
+  const out=applyHouseDiceOperation(state,'foundation_roll',{},ctx);
+  expect(out.state.creationHistory).toBeDefined();
+  expect(state.creationHistory).toBeUndefined();
+  const history=applyHouseDiceOperation(out.state,'history_roll',
+   {infrastructure:['defense','wealth']},ctx);
+  expect(history.state.creationHistory?.events[0]?.id).toBe(ID);
+  expect(out.state.creationHistory?.events).toHaveLength(0);
+ });
+ it('bônus pessoal não aceita duplicidade nem Narrador sem perfil de jogador',()=>{
+  const state=newHouseState('house-a');
+  const out=applyHouseDiceOperation(state,'member_bonus',{resource:'wealth'},ctx);
+  expect(out.state.creationBonuses).toHaveLength(1);
+  expect(()=>applyHouseDiceOperation(out.state,'member_bonus',
+   {resource:'wealth'},ctx)).toThrow(/apenas uma vez/);
+  expect(()=>applyHouseDiceOperation(state,'member_bonus',
+   {resource:'wealth'},{...ctx,playerId:null})).toThrow(/jogador cadastrado/);
  });
 });
