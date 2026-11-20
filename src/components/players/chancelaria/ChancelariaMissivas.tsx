@@ -278,11 +278,14 @@ function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode
     return parts.length?<div className="ch-status">{parts}</div>:null;
   };
   const editForm=(m:MailRow)=><form className="ch-form" onSubmit={e=>{e.preventDefault();
-    void act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:editText},(m['campaign_date'] as string|null|undefined)??''))
-      .then(ok=>{if(ok)setEditing(null);});}}>
+    void uploadImages(editText,[],key).then(content=>
+      act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:content},(m['campaign_date'] as string|null|undefined)??''))
+      .then(ok=>{if(ok)setEditing(null);}));}}>
     <b>✏️ Editando o envio</b><span className="ch-muted">Quem já leu verá "Editada"; a versão anterior fica no histórico.</span>
     {!m['conversation_id']||m['conversation_id']===m.id?<label>Assunto<input value={editSubject} onChange={e=>setEditSubject(e.target.value)} required/></label>:null}
     <label>Texto<textarea rows={8} value={editText} onChange={e=>setEditText(e.target.value)} required/></label>
+    <ImagePicker images={[]} onChange={()=>{}} disabled/>
+    <p className="ch-muted" role="note">Imagens disponíveis após a homologação do Firebase Storage. Nenhum arquivo é enviado nesta edição.</p>
     <div className="ch-row"><button type="button" className="ch-btn" onClick={()=>setEditing(null)}>Descartar</button>
       <button type="submit" className="ch-btn primary" disabled={busy}>Salvar nova versão</button></div>
   </form>;
@@ -318,16 +321,25 @@ function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode
         {i.letter&&!editing&&statusBar(i.letter)}
       </div>)}
     </section>
-    {!trashMode&&(target?<form className="ch-form" onSubmit={e=>{e.preventDefault();void sendReply(false);}}>
+    {!trashMode&&(canSend?<form className="ch-form" onSubmit={e=>{e.preventDefault();void sendReply(false);}}>
       <b>{admin?'Responder como Narrador':'Responder'}</b>
       {admin&&<label>Assinado por (NPC ou cargo)<input maxLength={120} value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Ex.: Vetrus, Intendente"/></label>}
-      <textarea rows={5} value={reply} onChange={e=>setReply(e.target.value)} placeholder="Escreva sua resposta ou ordem…" aria-label="Texto da resposta"/>
+      <textarea id={'ch-responder-'+c.root.id} rows={5} value={reply} onChange={e=>setReply(e.target.value)} placeholder="Escreva sua resposta ou ordem…" aria-label="Texto da resposta"/>
+      <ImagePicker images={[]} onChange={()=>{}} disabled/>
+      <p className="ch-muted" role="note">Imagens indisponíveis até a homologação do Firebase Storage. A resposta é enviada somente como texto.</p>
       <div className="ch-row"><button type="button" className="ch-btn" disabled={busy||!reply.trim()} onClick={()=>void sendReply(true)}>Salvar rascunho</button>
         <button type="submit" className="ch-btn primary" disabled={busy||!reply.trim()}>✉ Enviar resposta</button></div>
-    </form>:<div className="ch-readonly">{c.root['historical_source']||(openRound!==null&&(c.root.delivery_week??0)<openRound)
-      ?'Semana encerrada: o fio fica para consulta.'
-      :admin&&c.kind==='entre'?'Carta entre Casas: o Narrador acompanha e registra, mas não entra no fio.'
-      :'Nada a responder aqui no momento.'}</div>)}
+    </form>:<div className="ch-readonly" role="status">{blockedReason}</div>)}
+    <div className="ch-actions ch-read-actions" role="group" aria-label="Ações da missiva">
+      {!trashMode&&(unread?<button type="button" className="ch-btn small" onClick={onRead}>✓ Marcar como lida</button>
+        :<button type="button" className="ch-btn small" onClick={onUnread}>📭 Marcar como não lida</button>)}
+      <button type="button" className="ch-btn primary" disabled={!canSend}
+        aria-label="Responder" title={canSend?'Escrever resposta':blockedReason}
+        onClick={()=>document.getElementById('ch-responder-'+c.root.id)?.focus()}>✉ Responder</button>
+      {!trashMode&&!admin&&c.root.publication_state==='delivered'&&
+        <button type="button" className="ch-btn" onClick={onForward}>↪ Encaminhar</button>}
+      {!canSend&&<span className="ch-muted" role="note">{blockedReason}</span>}
+    </div>
     {admin&&!trashMode&&<>
       <NarratorMailNotes letterId={c.root.id} userId={uid}/>
       <LetterConsequences letterId={c.root.id} admin houses={data.houses.filter(h=>h.active).map(h=>({id:h.id,name:h.name}))}
