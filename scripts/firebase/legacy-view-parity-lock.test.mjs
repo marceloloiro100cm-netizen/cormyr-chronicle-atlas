@@ -43,6 +43,12 @@
  * Calendário usa FirebaseNarratorWeekDraft. Fora do Firebase a tela
  * NarratorCalendar original permanece intacta; nenhuma RPC legada
  * é montada na área do Narrador autenticada pelo Firebase.
+ * 2026-11-19 (visão do Narrador v5, PR #618): players-workspace.tsx renderiza
+ * a área do Narrador dentro de NarratorWorkspace (cabeçalho de uma linha, rail
+ * de módulos e barra inferior no celular). Todas as seções, o seletor
+ * "Acessar como jogador", Alterar senha, Sair, a Visão clássica das Missivas
+ * e o conteúdo original do Conselho continuam presentes e com as mesmas RPCs;
+ * a área dos jogadores não muda. Re-captured after review.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -55,7 +61,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'1ce27508146cc3662db21427022cbfb314a38cd1',
+  'src/components/players/players-workspace.tsx':'330959d809a7c015d9ef9044722bdec9c7589ac5',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'55117d8e466edee9ccfaa46356999505cf5268d2',

@@ -1,0 +1,101 @@
+/* Visão do Narrador (layout v5): casca de tela cheia com cabeçalho de uma linha,
+   rail de módulos e barra inferior no celular. Escopo restrito a .nw-root. */
+.nw-root{
+ --nw-purple:var(--campaign-purple);--nw-purple-2:#3a1d4d;--nw-gold:var(--campaign-gold);--nw-gold-2:#dcc28f;
+ --nw-paper:var(--campaign-paper);--nw-light:var(--campaign-light);--nw-line:#e4dccd;--nw-wax:#8e2b2b;
+ height:100vh;height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden;
+ background:var(--background);color:var(--foreground);
+}
+.nw-root .nw-top{grid-row:1}.nw-root .nw-status{grid-row:2}.nw-root .nw-body{grid-row:3}.nw-root .nw-bottom{grid-row:4}
+.nw-root :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.nw-icon{flex:none}
+.nw-spacer{flex:1}
+
+/* Cabeçalho */
+.nw-top{height:58px;display:flex;align-items:center;gap:12px;padding:0 14px 0 12px;background:var(--nw-purple);color:#fffdf7;border-bottom:3px solid var(--nw-gold);z-index:30;min-width:0}
+.nw-brand{display:flex;align-items:center;gap:10px;min-width:0;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer}
+.nw-brand img{height:42px;width:auto;filter:drop-shadow(0 1px 2px rgb(0 0 0/.4))}
+.nw-brand b{display:block;font:600 19px/1.1 Georgia,serif;white-space:nowrap}
+.nw-brand b em{font-style:normal;color:var(--nw-gold)}
+.nw-clock,.nw-clock small{display:block;font-size:11.5px;line-height:1.3;color:#d9cfe4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+.nw-week{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgb(191 155 94/.7);background:rgb(255 255 255/.06);color:#f4ead6;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer}
+.nw-week:hover{background:rgb(255 255 255/.12)}
+.nw-week-dot{width:8px;height:8px;border-radius:50%;background:#7fc38f;box-shadow:0 0 0 3px rgb(127 195 143/.2)}
+.nw-week--closed .nw-week-dot{background:var(--nw-gold);box-shadow:none}
+.nw-week-short{display:none}
+.nw-represent{height:34px;max-width:240px;border-radius:7px;border:1px solid rgb(255 255 255/.22);background:rgb(255 255 255/.07);color:#fffdf7;font-size:13px;font-weight:600;padding:0 8px;cursor:pointer}
+.nw-represent:hover{border-color:var(--nw-gold)}
+.nw-represent option,.nw-represent optgroup{color:var(--foreground);background:#fff}
+.nw-account{position:relative}
+.nw-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--nw-gold);color:var(--nw-purple);font:700 15px Georgia,serif;border:0;cursor:pointer}
+.nw-menu{position:absolute;right:0;top:calc(100% + 10px);z-index:70;min-width:240px;background:var(--nw-paper);color:var(--foreground);border:1px solid var(--nw-gold);border-radius:10px;box-shadow:0 12px 32px rgb(39 17 53/.28);padding:8px;display:none;gap:6px}
+.nw-menu--open{display:grid}
+.nw-menu-title{margin:2px 4px 4px!important;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary)}
+.nw-menu-actions{display:grid;gap:6px}
+.nw-menu-actions>button{width:100%;justify-content:flex-start}
+.nw-menu hr{border:0;border-top:1px solid var(--nw-line);margin:2px 0}
+.nw-menu a{display:block;padding:7px 8px;border-radius:6px;color:var(--foreground);text-decoration:none;font-size:13.5px}
+.nw-menu a:hover{background:var(--nw-light)}
+.nw-menu-lang{padding:4px 6px}
+.nw-status{display:flex;align-items:center;gap:10px;margin:0!important;border-radius:0!important}
+.nw-status span{flex:1}
+.nw-status button{background:none;border:0;color:inherit;cursor:pointer;display:grid;place-items:center}
+
+/* Rail e área do módulo */
+.nw-body{display:grid;grid-template-columns:76px minmax(0,1fr);min-height:0}
+.nw-rail{background:linear-gradient(180deg,var(--nw-purple),#1c0c27);border-right:1px solid rgb(191 155 94/.35);display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 7px;overflow-y:auto;scrollbar-width:none}
+.nw-nav-btn{position:relative;width:62px;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;border-radius:9px;background:none;color:#e8dff0;font-size:10.5px;font-weight:600;line-height:1.1;padding:6px 2px;text-align:center;cursor:pointer}
+.nw-nav-btn:hover{background:rgb(255 255 255/.08)}
+.nw-nav-btn[aria-current=page]{background:rgb(255 255 255/.13);border-color:var(--nw-gold);color:#fff;box-shadow:inset 3px 0 var(--nw-gold)}
+.nw-badge{position:absolute;top:2px;right:4px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--nw-wax);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;border:1.5px solid var(--nw-purple)}
+.nw-main{min-width:0;min-height:0;overflow-y:auto;scrollbar-width:thin}
+.nw-main--app{overflow:hidden}
+.narrator-section{min-height:100%}
+.narrator-section--app{height:100%}
+.nw-page{padding:20px 28px 40px;max-width:1500px}
+
+/* Conselho das casas */
+.nw-eyebrow{margin:0!important;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary)}
+.nw-root .nw-title{margin:2px 0 4px;font:600 28px/1.15 Georgia,serif;color:var(--nw-purple)}
+.nw-lead{margin:0 0 6px!important;color:var(--muted-foreground);max-width:70ch}
+.nw-root .nw-group-title{margin:22px 0 10px;font:600 16px Georgia,serif;color:var(--nw-purple);display:flex;align-items:center;gap:10px}
+.nw-group-title::after{content:"";flex:1;border-top:1px solid var(--nw-gold)}
+.nw-house-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.nw-house-card{display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--nw-paper);border:1px solid var(--nw-line);border-radius:10px;box-shadow:0 1px 3px rgb(39 17 53/.06)}
+.nw-house-head{display:flex;gap:12px;align-items:flex-start}
+.nw-root .nw-house-head h3{margin:0;font:600 18px/1.2 Georgia,serif;color:var(--nw-purple)}
+.nw-house-head p{margin:2px 0 0!important;font-size:12px;color:var(--muted-foreground)}
+.nw-facts{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}
+.nw-facts dt{color:var(--muted-foreground)}.nw-facts dd{margin:0;font-weight:600}
+.nw-house-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.nw-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 13px;border-radius:7px;border:1px solid var(--border);background:var(--nw-paper);color:var(--foreground);font-size:13.5px;font-weight:600;white-space:nowrap;cursor:pointer}
+.nw-btn:hover{border-color:var(--ring)}
+.nw-btn--sm{min-height:32px;padding:0 10px;font-size:12.5px}
+.nw-council-admin{background:var(--nw-paper);border:1px solid var(--nw-line);border-radius:10px;padding:16px 18px}
+
+/* Estandartes */
+.nw-mark{width:26px;height:31px;border-radius:3px;object-fit:cover;flex:none;box-shadow:0 0 0 1px rgb(0 0 0/.12);background:var(--nw-light)}
+.nw-mark--xs{width:18px;height:22px;border-radius:2px;vertical-align:-5px;margin-right:5px}
+.nw-mark--lg{width:64px;height:77px;border-radius:5px}
+.nw-mark--crest{object-fit:contain;box-shadow:none;background:none}
+
+/* Celular: barra inferior e "Mais" */
+.nw-bottom{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--nw-purple);border-top:2px solid var(--nw-gold);padding-bottom:env(safe-area-inset-bottom);z-index:30}
+.nw-bottom .nw-nav-btn{width:auto;min-height:56px;border-radius:0;font-size:11px}
+.nw-bottom .nw-nav-btn[aria-current=page]{box-shadow:inset 0 3px var(--nw-gold);border-color:transparent}
+.nw-bottom .nw-badge{right:calc(50% - 24px)}
+.nw-scrim{position:fixed;inset:0;background:rgb(20 8 28/.5);z-index:64}
+.nw-more{position:fixed;left:0;right:0;bottom:0;z-index:66;background:var(--nw-paper);border-top:2px solid var(--nw-gold);border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));display:grid;gap:4px}
+.nw-more button{display:flex;align-items:center;gap:12px;border:0;background:none;padding:12px;border-radius:8px;font-size:15px;text-align:left;color:var(--foreground);cursor:pointer}
+.nw-more button:hover,.nw-more button[aria-current=page]{background:var(--nw-light)}
+
+@media (max-width:1023px){.nw-represent{max-width:170px}}
+@media (max-width:767px){
+ .nw-top{height:50px;gap:8px;padding-right:8px}
+ .nw-brand img{height:32px}.nw-brand b{font-size:16px}.nw-brand b em,.nw-clock{display:none}
+ .nw-week{padding:0 10px}.nw-week-long{display:none}.nw-week-short{display:inline}
+ .nw-represent{max-width:118px;font-size:12px}
+ .nw-body{grid-template-columns:minmax(0,1fr)}
+ .nw-page{padding:12px 12px 24px}
+ .nw-council-admin{padding:12px}
+}
