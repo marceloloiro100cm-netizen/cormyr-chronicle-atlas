@@ -12,7 +12,8 @@ import { pathToFileURL } from 'node:url';
 
 export const EXPECTED_ROUTES = Object.freeze([
   {path:'/api/firebase-auth-verify', status:503, kind:'json'},
-  {path:'/api/public/translations', status:503, kind:'json'},
+  // 20/11/2026: a rota pública de traduções voltou a responder; sem locale é 400.
+  {path:'/api/public/translations', status:400, kind:'json'},
   {path:'/cormyr/index.html', status:200, kind:'html'},
   {path:'/spy-portraits/tillet.jpg', status:200, kind:'image'},
 ]);

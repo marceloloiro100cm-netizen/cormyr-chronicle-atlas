@@ -53,14 +53,16 @@ export const OVERLAY_TABLES:Readonly<Record<string,TableConfig>>={
 };
 export const isOverlayTable=(name:string)=>Object.prototype.hasOwnProperty.call(OVERLAY_TABLES,name);
 
-const collection=(db:any,snapshotId:string)=>db.collection('campaignCloudRuntime').doc(snapshotId)
+/** campaignCloudRuntime/{snapshot}/workspaceTableRows: um documento por linha, com o nome da tabela. */
+const collection=(db:any,snapshotId:string,_table:string)=>db.collection('campaignCloudRuntime').doc(snapshotId)
  .collection('workspaceTableRows');
 const docId=(table:string,key:unknown)=>createHash('sha256').update(table+':'+JSON.stringify(key)).digest('hex');
 
 /** Linhas operacionais de uma tabela (inclui marcas de exclusão). */
 export async function readOverlayRows(db:any,snapshotId:string,table:string):Promise<{key:unknown;row:Row|null}[]>{
- const snap=await collection(db,snapshotId).where('table','==',table).limit(2001).get();
- if(snap.docs.length>2000)fail('overlay_too_large',503);
+ // Poucas linhas por tabela: leitura única e filtro pelo nome da tabela.
+ const snap=await collection(db,snapshotId,table).limit(5001).get();
+ if(snap.docs.length>5000)fail('overlay_too_large',503);
  return snap.docs.map((d:any)=>d.data()).filter((v:any)=>v&&v.table===table)
   .map((v:any)=>({key:v.key,row:v.deleted?null:(v.row??null)}));
 }
@@ -139,7 +141,7 @@ export function planOverlayMutation(table:string,profile:Profile,current:Row[],s
 /** Grava o plano em transação, com auditoria por linha. */
 export async function commitOverlayPlan(db:any,snapshotId:string,table:string,actorUid:string,plan:OverlayPlan,now:string){
  if(plan.writes.length===0)return;
- const rows=collection(db,snapshotId);
+ const rows=collection(db,snapshotId,table);
  const audits=db.collection('campaignCloudRuntime').doc(snapshotId).collection('workspaceTableAudits');
  await db.runTransaction(async(tx:any)=>{
   const refs=plan.writes.map(w=>rows.doc(docId(table,w.key)));

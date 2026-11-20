@@ -16,7 +16,7 @@ export async function deletedNewspaperIds(db,snapshotId){
   try{snap=await deletedEditionsCollection(db,snapshotId).limit(501).get();}
   catch{return new Set();}
   const docs=Array.isArray(snap?.docs)?snap.docs:[];
-  return new Set(docs.map(d=>d.data()).filter(v=>v&&typeof v.id==='string'&&v.deleted!==false).map(v=>v.id));
+  return new Set(docs.map(d=>d.data()).filter(v=>v&&typeof v.id==='string'&&v.deleted===true&&typeof v.deletedBy==='string').map(v=>v.id));
 }
 
 export async function markNewspaperDeleted(db,snapshotId,{id,actorUid,draftOnly=false,state=null}){
