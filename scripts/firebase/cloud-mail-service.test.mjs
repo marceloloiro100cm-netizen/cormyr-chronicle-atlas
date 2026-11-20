@@ -867,3 +867,92 @@ test('signature is Narrator-only; court and unit links are player-House-only',as
   await rejects(()=>f.service().send(sampleToken,req({originHouseId:null,unitId:'u1',requestKey:'narrator-link-key'})),'links_not_allowed',400);
   await rejects(()=>f.service().send(sampleToken,req({originHouseId:null,courtMemberId:'c1',requestKey:'narrator-bad-key'})),'invalid_mail_request',400);
 });
+
+function representationFixture(){
+ const f=fixture('narrador');
+ const root='campaignCloudRuntime/'+snapshot;
+ const runtime=f.records.get(root);
+ f.records.set(root,{...runtime,representationReadApproved:true,
+   representationWriteApproved:true});
+ f.records.set('migrationDomainStage/'+snapshot+'/access/player-2',{
+   userId:'player-2',profile:'jogador',active:true,
+   requirePasswordChange:false,admin:false,
+   playerId:'player-source-2',
+   memberHouseIds:['house-a'],editHouseIds:['house-a'],
+ });
+ f.records.set(root+'/representationSessions/player-1',{
+   actorUid:'player-1',representedUid:'player-2',playerId:'player-source-2',
+   nonce:'33333333-3333-4333-8333-333333333333',
+   startedAt:new Date().toISOString(),
+   expiresAt:new Date(Date.now()+30*60_000).toISOString(),
+   sourceSnapshotId:snapshot,
+ });
+ return {...f,represented:()=>f.service({
+   env:{CORMYR_FIREBASE_REPRESENTATION_ENABLED:'true'},
+ })};
+}
+
+test('Representação Cloud: o Narrador assina auditoria mas o jogador é o autor',async()=>{
+ const f=representationFixture(),svc=f.represented();
+ const result=await svc.sendRepresented(sampleToken,req());
+ const base='campaignCloudRuntime/'+snapshot;
+ assert.equal(result.duplicate,false);
+ const letter=f.records.get(base+'/letters/'+result.id);
+ assert.equal(letter.senderUid,'player-2');
+ assert.equal(letter.senderPlayerId,'player-source-2');
+ assert.equal(letter.administrativeActorUid,'player-1');
+ const audit=f.records.get(base+'/mailAudits/'+result.id);
+ assert.equal(audit.actorUid,'player-1');
+ assert.equal(audit.representedUid,'player-2');
+ assert.equal([...f.records].filter(([p])=>p.includes('/representationAudits/')).length,1);
+ const duplicate=await svc.sendRepresented(sampleToken,req());
+ assert.equal(duplicate.id,result.id);
+ assert.equal(duplicate.duplicate,true);
+ assert.equal([...f.records].filter(([p])=>p.includes('/representationAudits/')).length,1);
+ const cancelled=await svc.cancelRepresented(sampleToken,{
+  letterId:result.id,expectedVersion:1,
+ });
+ assert.equal(cancelled.removed,true);
+ assert.equal(f.records.get(base+'/letters/'+result.id).administrativeActorUid,'player-1');
+ assert.equal([...f.records].filter(([p])=>p.includes('/representationAudits/')).length,2);
+});
+
+test('Representação Cloud: responde às missivas autorizadas, sem token do jogador',async()=>{
+ const f=representationFixture(),svc=f.represented();
+ const incoming=await f.service().send(sampleToken,req({
+  requestKey:'narrator-letter-1234',originHouseId:null,
+  recipientKind:'house',recipientHouseId:'house-a',
+ }));
+ const response=await svc.replyRepresented(sampleToken,{
+  letterId:incoming.id,requestKey:'represented-reply-12',
+  content:'Resposta legitimamente autorizada',
+  expectedCampaignDate:'1522-01-10',
+ });
+ const letter=f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+response.id);
+ assert.equal(letter.senderUid,'player-2');
+ assert.equal(letter.administrativeActorUid,'player-1');
+ assert.equal(letter.replyToId,incoming.id);
+ assert.equal(letter.recipientHouseId,'house-a'===letter.originHouseId?null:letter.recipientHouseId);
+});
+
+test('Representação Cloud: gates, expiração e revogação negam toda escrita',async()=>{
+ const f=representationFixture(),root='campaignCloudRuntime/'+snapshot;
+ const runtime=f.records.get(root),session=root+'/representationSessions/player-1';
+ const access='migrationDomainStage/'+snapshot+'/access/player-2';
+ const originalAccess=f.records.get(access),originalSession=f.records.get(session);
+ const svc=f.represented();
+ for(const field of ['representationReadApproved','representationWriteApproved']){
+  f.records.set(root,{...runtime,[field]:false});
+  await rejects(()=>svc.sendRepresented(sampleToken,req()),'representation_write_not_approved',503);
+ }
+ f.records.set(root,runtime);
+ f.records.set(session,{...originalSession,expiresAt:'2020-01-01T00:00:00Z'});
+ await rejects(()=>svc.sendRepresented(sampleToken,req()),'representation_expired');
+ f.records.set(session,originalSession);
+ f.records.set(access,{...originalAccess,active:false});
+ await rejects(()=>svc.sendRepresented(sampleToken,req()),'access_denied');
+ f.records.set(access,originalAccess);
+ const noFlag=f.service({env:{}});
+ await rejects(()=>noFlag.sendRepresented(sampleToken,req()),'representation_disabled',501);
+ assert.equal([...f.records].filter(([p])=>p.includes('/letters/')).length,0);
+});
