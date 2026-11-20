@@ -4,7 +4,11 @@ import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_NON_ECONOMIC_ACTIONS,applyHouseEconomicOperation,
  HOUSE_ECONOMIC_ACTIONS,applyHouseMilitaryOperation,
  HOUSE_MILITARY_ACTIONS,applyHouseCreationOperation,
- HOUSE_CREATION_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_CREATION_ACTIONS,applyHouseDiceOperation,
+ HOUSE_DICE_ACTIONS,applyHouseContextOperation,
+ HOUSE_CONTEXT_ACTIONS,applyHousePurchaseOperation,
+ HOUSE_PURCHASE_ACTIONS,applyHouseLinkOperation,
+ HOUSE_LINK_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -57,7 +61,7 @@ describe('núcleo puro de operações da Ficha',()=>{
 
 describe('segunda fatia de ações puras da Ficha',()=>{
  it('isola sete atos não econômicos do estado de entrada',()=>{
-  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(7);
+  expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(8);
   const review={...newHouseState('house-a'),phase:'review' as const,
    pending:['Conferir domínio','Validar herdeiro']};
   const cleared=applyHouseNonEconomicOperation(review,'clear_pending',{
@@ -176,5 +180,117 @@ describe('criação e conciliação sem consultas externas',()=>{
   expect(()=>applyHouseCreationOperation(state,'submit',{},ctx))
    .toThrow();
   expect(state).toEqual(before);
+ });
+});
+
+describe('rolagens registradas e determinísticas por requestKey',()=>{
+ const ctx={admin:true,key:ID,playerId:'player-a',
+  dice:Array.from({length:100},(_,i)=>i%6+1)};
+ it('registra cinco ações e reproduz as mesmas rolagens',()=>{
+  expect(HOUSE_DICE_ACTIONS).toHaveLength(5);
+  const state=newHouseState('house-a');
+  const first=applyHouseDiceOperation(state,'roll',{},ctx);
+  const repeated=applyHouseDiceOperation(state,'roll',{},ctx);
+  expect(first.state.rolls).toEqual(repeated.state.rolls);
+  expect(first.state.rolls).toHaveLength(7);
+  expect(state.rolls).toHaveLength(0);
+ });
+ it('fundação e eventos históricos não alteram a fonte original',()=>{
+  const state=newHouseState('house-a');
+  const out=applyHouseDiceOperation(state,'foundation_roll',{},ctx);
+  expect(out.state.creationHistory).toBeDefined();
+  expect(state.creationHistory).toBeUndefined();
+  const history=applyHouseDiceOperation(out.state,'history_roll',
+   {infrastructure:['defense','wealth']},ctx);
+  expect(history.state.creationHistory?.events[0]?.id).toBe(ID);
+  expect(out.state.creationHistory?.events).toHaveLength(0);
+ });
+ it('bônus pessoal não aceita duplicidade nem Narrador sem perfil de jogador',()=>{
+  const state=newHouseState('house-a');
+  const out=applyHouseDiceOperation(state,'member_bonus',{resource:'wealth'},ctx);
+  expect(out.state.creationBonuses).toHaveLength(1);
+  expect(()=>applyHouseDiceOperation(out.state,'member_bonus',
+   {resource:'wealth'},ctx)).toThrow(/apenas uma vez/);
+  expect(()=>applyHouseDiceOperation(state,'member_bonus',
+   {resource:'wealth'},{...ctx,playerId:null})).toThrow(/jogador cadastrado/);
+ });
+});
+
+describe('calendário e ação mensal com dados do servidor',()=>{
+ const context={admin:false,explanation:'Justificativa para o calendário oficial',
+  houseName:'Casa Ashkar',calendar:{year:1522,month:2},
+  dice:[1,2,3,4,5,6]};
+ it('cobre três ações de contexto e recusa conciliação não autorizada',()=>{
+  expect(HOUSE_CONTEXT_ACTIONS).toHaveLength(3);
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseContextOperation(state,'sync_calendar',{},context))
+   .toThrow(/Narrador/);
+  expect(()=>applyHouseContextOperation(state,'reconcile_legacy_costs',
+   {ids:['inexistente']},context)).toThrow(/Narrador/);
+  expect(state).toEqual(before);
+ });
+ it('ação da Casa exige campanha ativa e preserva histórico do original',()=>{
+  const state=newHouseState('house-a'),original=structuredClone(state);
+  expect(()=>applyHouseContextOperation(state,'action',
+   {type:'Vigiar',notes:'Posto de fronteira'},context)).toThrow(/ativa/);
+  const active={...state,phase:'active' as const};
+  const out=applyHouseContextOperation(active,'action',
+   {type:'Vigiar',notes:'Posto de fronteira'},context);
+  expect(out.state.actions).toHaveLength(1);
+  expect(state).toEqual(original);
+ });
+});
+
+describe('domínios da mini-ficha vassala',()=>{
+ it('recusa vassala não aprovada sem modificar a Casa',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseNonEconomicOperation(state,'vassal_domain',{
+   vassalId:'inexistente',id:ID,name:'Fortificação do Vale'
+  },'')).toThrow(/Mini-ficha indisponível/);
+  expect(state).toEqual(before);
+ });
+ it('avanço individual continua bloqueado pelo HUB global',()=>{
+  const state=newHouseState('house-a');
+  expect(()=>requireHouseOperationPhase(state,'advance'))
+   .toThrow(/Avanço individual desativado/);
+ });
+});
+
+describe('compras de Casas e vassalas com catálogo confirmado',()=>{
+ it('cobre duas compras e rejeita item divergente sem mutar ficha',()=>{
+  expect(HOUSE_PURCHASE_ACTIONS).toHaveLength(2);
+  const state=newHouseState('house-a'),original=structuredClone(state);
+  const item={id:'outro',duration:{months:1},source:'Livro',section:'Teste',
+   version:'1'} as never;
+  expect(()=>applyHousePurchaseOperation(state,'purchase',{
+   itemId:'item-inexistente',id:ID,domainId:ID,name:'Posse'},
+   {item,rawRolls:[1,2,3]})).toThrow(/Catálogo indisponível/);
+  expect(state).toEqual(original);
+ });
+ it('vassala sem aprovação não pode adquirir imóveis',()=>{
+  const state=newHouseState('house-a');
+  const item={id:'tower',duration:{months:1}} as never;
+  expect(()=>applyHousePurchaseOperation(state,'vassal_purchase',{
+   vassalId:ID,itemId:'tower',id:ID,domainId:ID,name:'Torre'},
+   {item,rawRolls:[]})).toThrow(/Mini-ficha indisponível/);
+ });
+});
+
+describe('Corte e vassalagem com escopo de NPCs',()=>{
+ const ctx={houseId:'house-a',actorUid:'narrator',
+  narrator:true,houseName:'Casa Fortes',npcIds:[],
+  records:[],explanation:'Justificativa do Narrador'};
+ it('reconhece quatro ações e proíbe Corte sem registro autorizado',()=>{
+  expect(HOUSE_LINK_ACTIONS).toHaveLength(4);
+  const state=newHouseState('house-a'),previous=structuredClone(state);
+  expect(()=>applyHouseLinkOperation(state,'court',{
+   id:ID,npcId:ID,role:'Administrador',notes:'',
+  },ctx)).toThrow(/não pertence/);
+  expect(state).toEqual(previous);
+ });
+ it('não aprova vassalagem sem proposta',()=>{
+  const state=newHouseState('house-a');
+  expect(()=>applyHouseLinkOperation(state,'vassal_approve',{
+   id:ID,influencePenalty:0},ctx)).toThrow(/Proposta/);
  });
 });
