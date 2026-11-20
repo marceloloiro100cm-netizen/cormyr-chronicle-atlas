@@ -254,6 +254,83 @@ export function createFirebaseCloudMail({
   }
 
 
+  /** Resolves the immutable imported root inside the SAME transaction used
+   * to authorize the Cloud reply. No destination is taken from the browser.
+   * A historical reply ID must belong to the root and target this actor.
+   */
+  async function resolveReply(tx,actor,input,round){
+    if(LETTER_HASH.test(input.letterId)){
+      const existing=await tx.get(letters.doc(input.letterId));
+      if(existing.exists){
+        if(input.replyId!==undefined)deny('invalid_reply_request',400);
+        const parent=effectiveCloudMail(existing.data(),round);
+        const route=cloudReplyRoute(actor,parent,snapshotId);
+        if(!route||parent.id!==input.letterId)deny('reply_not_authorized',403);
+        return {parent,route,replyToId:parent.id,
+          threadRootId:parent.threadRootId??parent.replyToId??parent.id};
+      }
+    }
+    const [source,moderated]=await Promise.all([
+      tx.get(stage.collection('letters').doc(hash('letter:'+input.letterId))),
+      tx.get(importedModeration.doc(hash('legacy-mail:'+input.letterId))),
+    ]);
+    const root=source.exists?source.data():null;
+    if(!root||root.sourceId!==input.letterId||
+       root.publicationState!=='delivered'||root.deletedAt!==null||
+       moderated.exists&&moderated.data()?.deletedAt!==null)
+      deny('reply_not_authorized',403);
+    let recipientPersonHouseId=null;
+    if(root.recipientKind==='player'){
+      if(!validId(root.recipientPlayerId))deny('reply_not_authorized',403);
+      const person=await tx.get(stage.collection('players')
+        .doc(hash('player:'+root.recipientPlayerId)));
+      if(!person.exists||person.data()?.id!==root.recipientPlayerId||
+         !validId(person.data()?.rosterHouseId))
+        deny('reply_not_authorized',403);
+      recipientPersonHouseId=person.data().rosterHouseId;
+    }
+    let parent={
+      ...root,id:input.letterId,source:'imported',
+    };
+    let replyToId=input.letterId;
+    if(input.replyId!==undefined){
+      const historyRoot=await tx.get(importedReplies);
+      if(!historyRoot.exists||historyRoot.data()?.status!=='complete'||
+         historyRoot.data()?.private!==true)
+        deny('mail_history_not_ready',503);
+      const response=await tx.get(importedReplies.collection('replies')
+        .doc(hash('reply:'+input.replyId)));
+      const old=response.exists?response.data():null;
+      if(!old||old.sourceId!==input.replyId||
+         old.letterId!==hash('letter:'+input.letterId)||
+         old.publicationState!=='delivered'||old.deletedAt!==null||
+         !validId(old.authorUid)||old.authorUid===actor.uid||
+         old.recipientUid!==actor.uid||typeof old.content!=='string')
+        deny('reply_not_authorized',403);
+      const fromOriginal=old.authorUid===root.senderUid;
+      const receivingHouse=root.recipientKind==='player'
+        ?recipientPersonHouseId:root.recipientHouseId;
+      if(!fromOriginal&&(!validId(receivingHouse)||
+         !validId(root.originHouseId)&&root.originHouseId!==null))
+        deny('reply_not_authorized',403);
+      parent={
+        ...parent,senderUid:old.authorUid,
+        originHouseId:fromOriginal?root.originHouseId:receivingHouse,
+        recipientKind:fromOriginal?root.recipientKind:
+          root.originHouseId===null?'narrator':'house',
+        recipientHouseId:fromOriginal?root.recipientHouseId:root.originHouseId,
+        recipientPlayerId:fromOriginal?root.recipientPlayerId:null,
+        subject:root.subject,content:old.content,
+      };
+      if(!fromOriginal)recipientPersonHouseId=null;
+      replyToId=input.replyId;
+    }
+    const route=cloudReplyRoute(actor,parent,snapshotId,{recipientPersonHouseId});
+    if(!route)deny('reply_not_authorized',403);
+    return {parent,route,replyToId,threadRootId:input.letterId};
+  }
+
+
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
   async function persist(tx,{uid,actor,date,round,req,replyToId=null,threadRootId=null,realActorUid=null,sessionNonce=null}){
