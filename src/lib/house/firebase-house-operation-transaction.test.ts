@@ -186,3 +186,42 @@ describe('segunda fatia de operações Firebase',()=>{
   expect(f.writes()).toBe(4);
  });
 });
+
+describe('transação de economia com ledger completo',()=>{
+ it('doa ouro e grava saldos antes e depois no livro-razão',async()=>{
+  const f=fixture();
+  const source=structuredClone(f.docs.get(f.sheet)!);
+  const state=source['state'] as ReturnType<typeof newHouseState>;
+  state.treasury=1000;
+  f.docs.set(f.sheet,source);
+  const original=f.docs.get(f.economyPath)!;
+  const stateHash=constructionStateHash(state);
+  f.docs.set(f.economyPath,{...original,state:structuredClone(state),
+   stateHash,sourceStateHash:stateHash});
+  const out=await f.service().execute('valid-token-123',f.input({
+   action:'donate_gold',args:{points:1},
+  }));
+  expect(out.version).toBe(1);
+  const after=f.docs.get(f.economyPath)!['state'] as ReturnType<typeof newHouseState>;
+  expect(after.treasury).toBe(800);
+  expect(after.permanent.wealth).toBe(state.permanent.wealth+1);
+  const ledger=[...f.docs].find(([p])=>p.includes('/houseOperationLedger/'))?.[1];
+  expect(ledger?.['beforeTreasury']).toBe(1000);
+  expect(ledger?.['afterTreasury']).toBe(800);
+  expect(ledger?.['afterBalances']).toBeDefined();
+  expect(f.docs.get(f.sheet)?.['state']).toEqual(state);
+  const repeat=await f.service().execute('valid-token-123',f.input({
+   action:'donate_gold',args:{points:1},
+  }));
+  expect(repeat.duplicate).toBe(true);
+  expect(f.writes()).toBe(4);
+ });
+ it('não concede recursos por APIs narrativas a jogador',async()=>{
+  const f=fixture();
+  await denied(()=>f.service().execute('valid-token-123',f.input({
+   action:'treasury_deposit',args:{coins:500,source:'Recolhimento comprovado'},
+   explanation:'Aprovação da receita pelo narrador',
+  })),'house_operation_forbidden',403);
+  expect(f.writes()).toBe(0);
+ });
+});

@@ -1,7 +1,8 @@
 import {describe,it,expect} from 'vitest';
 import {newHouseState} from './types';
 import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
- HOUSE_NON_ECONOMIC_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_NON_ECONOMIC_ACTIONS,applyHouseEconomicOperation,
+ HOUSE_ECONOMIC_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -103,5 +104,27 @@ describe('conferência de operações militares e lealdade',()=>{
    id:'id-sem-vassalagem',loyalty:'loyal',
   },'Justificativa suficiente do Narrador')).toThrow(/ativa/);
   expect(state).toEqual(before);
+ });
+});
+
+describe('ações econômicas puras com rastreabilidade',()=>{
+ it('a doação de 400 DO gera dois pontos de Riqueza sem alterar a entrada',()=>{
+  const state=newHouseState('house-a');
+  state.phase='active';state.treasury=500;
+  const after=applyHouseEconomicOperation(state,'donate_gold',{points:2},
+   {admin:false,key:ID,explanation:'Doação de ouro'});
+  expect(after.state.permanent.wealth).toBe(state.permanent.wealth+2);
+  expect(after.state.treasury).toBe(100);
+  expect(state.treasury).toBe(500);
+  expect(HOUSE_ECONOMIC_ACTIONS).toHaveLength(12);
+ });
+ it('bloqueia correção não autorizada e doação sem cofre',()=>{
+  const state=newHouseState('house-a');
+  state.phase='active';
+  expect(()=>applyHouseEconomicOperation(state,'donate_gold',{points:1},
+   {admin:false,key:ID,explanation:''})).toThrow(/Cofre/);
+  expect(()=>applyHouseEconomicOperation(state,'correct',{
+   changes:{defense:0,influence:0,lands:0,law:0,population:0,power:0,wealth:1}},
+   {admin:false,key:ID,explanation:'Justificativa comprovada'})).toThrow(/Narrador/);
  });
 });

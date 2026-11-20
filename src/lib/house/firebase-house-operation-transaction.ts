@@ -8,8 +8,10 @@ import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema} from './schemas';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
+ applyHouseEconomicOperation,HOUSE_ECONOMIC_ACTIONS,
  HOUSE_NON_ECONOMIC_ACTIONS,requireHouseOperationRole,requireHouseOperationPhase,
- needsHouseOperationCalendar,type HouseNonEconomicAction} from './operation-core';
+ needsHouseOperationCalendar,type HouseNonEconomicAction,
+ type HouseEconomicAction} from './operation-core';
 import {verifiedEconomicState,calculateFirebaseHouseEconomy}
  from './firebase-economic-readonly';
 import {constructionStateHash} from './firebase-construction-transaction';
@@ -22,7 +24,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS]);
+const ECONOMICS=new Set<string>(HOUSE_ECONOMIC_ACTIONS);
+const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS]);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -181,8 +184,11 @@ export function createFirebaseHouseOperation({
    try{
     candidate=DOMAINS.has(action)
      ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
-     :applyHouseNonEconomicOperation(state,action as HouseNonEconomicAction,
-       args,explanation);
+     :ECONOMICS.has(action)
+      ?applyHouseEconomicOperation(state,action as HouseEconomicAction,args,
+        {admin:narrator,key,explanation})
+      :applyHouseNonEconomicOperation(state,action as HouseNonEconomicAction,
+        args,explanation);
    }catch{throw new HouseOperationError('house_rule_rejected',409);}
    const next=JSON.parse(JSON.stringify(candidate.state));
    if(!verifiedEconomicState(next))
@@ -190,8 +196,19 @@ export function createFirebaseHouseOperation({
    const previous=calculateFirebaseHouseEconomy(state);
    const after=calculateFirebaseHouseEconomy(next);
    if(!previous||!after)throw new HouseOperationError('house_operation_balance_mismatch',503);
-   if(JSON.stringify(previous.balances)!==JSON.stringify(after.balances))
+   if(!ECONOMICS.has(action)&&
+      JSON.stringify(previous.balances)!==JSON.stringify(after.balances))
      fail('house_operation_balance_mismatch',503);
+   // Operações econômicas sempre têm o antes e o depois preservados no ledger.
+   // Não é permitido agravar um déficit em qualquer recurso sem decisão
+   // administrativa explícita de correção (que fica auditada como tal).
+   if(ECONOMICS.has(action)&&action!=='correct'&&
+      Object.keys(after.balances.available).some(k=>{
+       const resource=k as keyof typeof after.balances.available;
+       const before=previous.balances.available[resource];
+       const value=after.balances.available[resource];
+       return value<0&&value<before;
+      }))fail('house_operation_insufficient_resources',409);
    const updatedAt=clock();
    if(!Number.isFinite(Date.parse(updatedAt)))fail('invalid_server_clock',503);
    const nextVersion=economy.version+1;
@@ -205,6 +222,8 @@ export function createFirebaseHouseOperation({
      version:nextVersion,explanation:candidate.explanation??explanation,rule:candidate.rule,
      campaignMonth:state.month,campaignDate,created_at:updatedAt,
      before:previous.balances.total,after:after.balances.total,
+     beforeBalances:previous.balances,afterBalances:after.balances,
+     beforeTreasury:state.treasury??0,afterTreasury:next.treasury??0,
      requestKeyDigest:hash(key)});
    tx.create(auditRef,{eventId,actorUid:uid,houseId,action,
      previousVersion:economy.version,nextVersion,
