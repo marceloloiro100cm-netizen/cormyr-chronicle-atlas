@@ -5,7 +5,12 @@ import {setVassalLoyalty} from './military';
 import {unitSchema} from './schemas';
 import {operationSchema} from './schemas';
 import {isMonthSensitiveHouseAction} from './monthly-operation-policy';
-import {RESOURCE_KEYS,type HouseState} from './types';
+import {RESOURCE_KEYS,SKILLS,type HouseState} from './types';
+import {createUnit,balances,activeHoldings,UNIT_TYPES} from './engine';
+import {equipUnit,changeUnitState,resolveSurvivors,
+ SURVIVOR_CONDITIONS} from './military';
+import {changeSiegeAssignment} from './siege';
+import {grantUnitXp,unitAllowedSkills} from './unit-progression';
 import {resourcesSchema} from './schemas';
 import {depositGold,donateGold,donateGlory,spendInfluence,
  redeemIntrigueBonus} from './resource-transactions';
@@ -270,4 +275,138 @@ export function applyHouseEconomicOperation(
     ' de Poder e término da penalidade de Influência'};
  }
  throw Error('Ação econômica não coberta pelo núcleo.');
+}
+
+/**
+ * Operações militares puras: o ID de comandante e o evento de XP
+ * são derivados da chave UUID transacional, nunca de sorteio interno.
+ */
+export const HOUSE_MILITARY_ACTIONS=[
+ 'unit','unit_state','grant_unit_xp','military_config','war_hounds',
+ 'broad_training','survivors','siege_state',
+] as const;
+export type HouseMilitaryAction=typeof HOUSE_MILITARY_ACTIONS[number];
+export type HouseMilitaryContext={admin:boolean;key:string;explanation:string};
+export function applyHouseMilitaryOperation(
+ state:HouseState,action:HouseMilitaryAction,
+ args:Record<string,unknown>,ctx:HouseMilitaryContext,
+):{state:HouseState;rule:string;explanation?:string}{
+ const {admin,explanation,key}=ctx;
+ if(action==='unit'){
+  const parsed=unitSchema.parse(args['unit']);
+  if(parsed.types.length>1&&!admin)
+   throw Error('O Narrador precisa confirmar a adaptação dos tipos mistos.');
+  const unit=equipUnit({...parsed,costs:[],xp:0,equipment:[]});
+  const next=createUnit(state,unit,UNIT_TYPES);
+  if(parsed.commanderName&&!next.court.some(c=>c.name===parsed.commanderName))
+   next.court.push({id:key,name:parsed.commanderName,
+    role:'Comandante de Exército',notes:'Comandante gerado na tropa'});
+  return {state:next,rule:'Livro básico · Tipos mistos e tabelas10-1/10-2'};
+ }
+ if(action==='unit_state'){
+  const input=z.object({unitId:z.string(),mounted:z.boolean(),
+   atHome:z.boolean(),health:z.number(),casualties:z.number().int(),
+   situation:z.string().max(1000),commanderName:z.string().trim().max(160).optional(),
+   domainId:z.string().optional(),disband:z.boolean().optional()}).parse(args);
+  const next=changeUnitState(state,input);
+  if(input.commanderName&&!next.court.some(c=>c.name===input.commanderName))
+   next.court.push({id:key,name:input.commanderName,
+    role:'Comandante de Exército',notes:'Comandante gerado na tropa'});
+  return {state:next,rule:'Livro básico · Condição, cavalaria e guarnição'};
+ }
+ if(action==='grant_unit_xp'){
+  if(!admin)throw Error('Somente o Narrador concede XP às unidades.');
+  const input=z.object({unitId:z.string(),
+   amount:z.number().int().min(1).max(1000),
+   reason:z.string().trim().min(10).max(1000)}).parse(args);
+  return {state:grantUnitXp(state,input,key),
+   rule:'Cormyr · prêmio de experiência livre pelo Narrador, sem alterar treinamento nem habilidades',
+   explanation:input.reason};
+ }
+ if(action==='military_config'){
+  const input=z.object({holdingId:z.string(),kind:z.enum(['skill','unit','type']),
+   value:z.string().max(160)}).parse(args);
+  const next=structuredClone(state);
+  const h=next.holdings.find(x=>x.id===input.holdingId&&x.status==='active');
+  if(!h||!activeHoldings(state).some(x=>x.id===h.id))
+   throw Error('Posse militar ativa não encontrada.');
+  if(input.kind==='skill'){
+   if(h.itemId!=='pros-military-academy--core-training')
+    throw Error('Esta posse não permite selecionar habilidade.');
+   const newSkill=z.enum(SKILLS).parse(input.value);
+   if(h.militarySkill&&h.militarySkill!==newSkill&&!admin)
+    throw Error('Somente o Narrador pode mudar a habilidade já designada.');
+   h.militarySkill=newSkill;
+  }else if(input.kind==='type'){
+   if(h.itemId!=='pros-master-of-arms--field-master')
+    throw Error('Especialidade inválida para esta posse.');
+   if(!UNIT_TYPES.some(t=>t.id===input.value))
+    throw Error('Tipo de unidade não encontrado.');
+   if(h.militaryTypeId&&h.militaryTypeId!==input.value&&!admin)
+    throw Error('Somente o Narrador pode trocar a especialização de Mestre de Campo.');
+   h.militaryTypeId=input.value;
+  }else{
+   if(!['pros-trading-inn','pros-abbey--warrior-brotherhood'].includes(h.itemId))
+    throw Error('A posse não permite designar uma unidade.');
+   if(input.value&&!next.units.some(u=>u.id===input.value&&!u.destroyed&&
+     u.domainId===h.domainId))
+    throw Error('Unidade não pertence ao domínio da posse.');
+   h.militaryUnitId=input.value||undefined;
+  }
+  return {state:next,
+   rule:'Configuração auditada de bônus militar: '+h.name+' · '+input.kind+' '+input.value};
+ }
+ if(action==='war_hounds'){
+  const input=z.object({unitId:z.string(),holdingId:z.string()}).parse(args);
+  const next=structuredClone(state);
+  const unit=next.units.find(u=>u.id===input.unitId&&!u.destroyed);
+  const h=activeHoldings(state).find(h=>h.id===input.holdingId&&
+    h.itemId==='pros-dog-kennels--war-hounds');
+  if(!unit||!h)throw Error('Unidade ou Cães de Guerra indisponíveis.');
+  if(unit.types.includes('warships')||
+    (unit.types.includes('cavalry')&&unit.mounted!==false))
+   throw Error('Cães de Guerra exigem unidade não montada e não naval.');
+  if(unit.warHoundsHoldingId)
+   throw Error('Unidade já equipada com cães de guerra.');
+  if(balances(state).available.wealth<2)
+   throw Error('Sem recursos: exigem 2 Riqueza para equipar os cães.');
+  unit.warHoundsHoldingId=h.id;
+  unit.costs.push({resource:'wealth',amount:2,mode:'permanent'});
+  next.permanent.wealth-=2;
+  return {state:next,rule:'Cães de Guerra equipados na unidade por 2 Riqueza permanente · '+h.name};
+ }
+ if(action==='broad_training'){
+  const input=z.object({unitId:z.string(),skill:z.enum(SKILLS)}).parse(args);
+  if(!activeHoldings(state).some(h=>h.itemId==='pros-military-academy--broad-training'))
+   throw Error('Treinamento Amplo não está ativo.');
+  const next=structuredClone(state);
+  const unit=next.units.find(u=>u.id===input.unitId&&!u.destroyed);
+  if(!unit||unit.broadTrainingSkill)
+   throw Error('Unidade indisponível ou já treinada.');
+  if(unitAllowedSkills(unit).has(input.skill))
+   throw Error('Escolha a quarta habilidade fora das disponíveis originalmente.');
+  unit.broadTrainingSkill=input.skill;
+  next.actions.push({month:state.month,type:'broad_training',
+   notes:unit.name+' · Treinamento Amplo: '+input.skill});
+  return {state:next,
+   rule:'Ação da Casa: Treinamento Amplo concede quarta habilidade elegível à unidade'};
+ }
+ if(action==='survivors'){
+  const input=z.object({id:z.string().uuid(),unitId:z.string(),
+   roll:z.number().int(),condition:z.enum(SURVIVOR_CONDITIONS),
+   disorganizations:z.number().int().nonnegative(),skills:unitSchema.shape.skills,
+   justification:z.string().min(1)}).parse(args);
+  return {state:resolveSurvivors(state,input),
+   rule:'Livro básico · tabela10-6 Sobreviventes'};
+ }
+ if(action==='siege_state'){
+  if(!admin)throw Error('Reatribuição e baixa de equipamento de cerco requerem o Narrador.');
+  if(explanation.trim().length<10)throw Error('Registre a decisão de cerco.');
+  const input=z.object({id:z.string(),engineerId:z.string(),
+   carrierId:z.string(),destroyed:z.boolean()}).parse(args);
+  return {state:changeSiegeAssignment(state,input),
+   rule:'Cerco: '+(input.destroyed?'destruição permanente':
+    'mudança de operadores')+' auditada'};
+ }
+ throw Error('Ação militar não coberta pelo núcleo.');
 }

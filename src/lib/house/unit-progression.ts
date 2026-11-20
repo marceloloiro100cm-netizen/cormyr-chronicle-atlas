@@ -63,7 +63,7 @@ export function editUnitProfile(state:HouseState,input:{unitId:string;name:strin
  u.health=Math.min(u.health,unitStats(u,next).maxHealth);
  return next;
 }
-export function grantUnitXp(state:HouseState,input:{unitId:string;amount:number;reason:string}):HouseState{
+export function grantUnitXp(state:HouseState,input:{unitId:string;amount:number;reason:string},eventId?:string):HouseState{
  if(!Number.isInteger(input.amount)||input.amount<1||input.amount>1000)throw new Error('Conceda de 1 a 1000 XP por lançamento.');
  if(input.reason.trim().length<10)throw new Error('Justifique o XP concedido (mínimo de 10 caracteres).');
  const next=structuredClone(state),u=next.units.find(x=>x.id===input.unitId&&!x.destroyed);
@@ -71,7 +71,7 @@ export function grantUnitXp(state:HouseState,input:{unitId:string;amount:number;
  const old=syncUnitXp(u);
  u.bonusXp=old.bonus+input.amount;
  u.xp=old.total+input.amount-old.spent;
- u.xpEvents??=[];u.xpEvents.push({id:crypto.randomUUID(),month:state.month,delta:input.amount,reason:input.reason.trim(),kind:'award'});
+ u.xpEvents??=[];u.xpEvents.push({id:eventId??crypto.randomUUID(),month:state.month,delta:input.amount,reason:input.reason.trim(),kind:'award'});
  return next;
 }
 export function changeUnitTrainingXp(unit:Unit,target:keyof typeof TRAINING,month:number,reason:string){
