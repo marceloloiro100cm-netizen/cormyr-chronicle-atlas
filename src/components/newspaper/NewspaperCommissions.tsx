@@ -3,6 +3,7 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {ImagePlus,Megaphone,Send} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
+import {isFirebaseNewspaperWorkspace} from '@/lib/newspaper/firebase-editorial-bridge';
 import {
  commissionNewspaperStory,markCommissionsSeen,signedCommissionImage,uploadCommissionImage,
 } from '@/lib/newspaper/data';
@@ -31,6 +32,7 @@ export function CommissionForm({houseId,userId,commissions}:{
  houseId:string;userId:string;commissions:NewspaperCommission[];
 }){
  const qc=useQueryClient();
+ const firebaseMode=isFirebaseNewspaperWorkspace();
  const [open,setOpen]=useState(false);
  const [title,setTitle]=useState('');
  const [body,setBody]=useState('');
@@ -61,7 +63,7 @@ export function CommissionForm({houseId,userId,commissions}:{
    await commissionNewspaperStory({houseId,title,body,imagePath,requestKey:key.current});
    key.current=crypto.randomUUID();
    setTitle('');setBody('');setFile(null);setOpen(false);
-   setDone('Notícia enviada ao Editor-Chefe. Ela será publicada na próxima edição.');
+   setDone('Pedido enviado à Redação. O Editor-Chefe poderá publicar ou recusar.');
    await Promise.all([
     qc.invalidateQueries({queryKey:['campaign-newspaper-commissions',userId]}),
     qc.invalidateQueries({queryKey:['campaign-panel']}),
@@ -73,7 +75,7 @@ export function CommissionForm({houseId,userId,commissions}:{
  return <section className="newspaper-commission" aria-label="Contratar notícia">
   <header>
    <div><strong><Megaphone size={17}/> Contratar notícia</strong>
-    <span>Custa {COMMISSION_COST_WEALTH} de Riqueza da sua Casa. Escreva o texto e anexe uma imagem; o Editor-Chefe revisa e publica.</span></div>
+    <span>Custa {COMMISSION_COST_WEALTH} de Riqueza da sua Casa. Escreva a notícia para revisão do Editor-Chefe.{firebaseMode?' Os anexos aguardam homologação no Firebase.':' Você também pode anexar uma imagem.'}</span></div>
    {!open&&<Button type="button" disabled={!canHire} onClick={()=>{setOpen(true);setDone('');}}>Escrever notícia</Button>}
   </header>
   {!canHire&&<p className="newspaper-notice" role="status">
@@ -96,9 +98,11 @@ export function CommissionForm({houseId,userId,commissions}:{
      onChange={e=>setBody(e.target.value)}
      onKeyDown={e=>handleNewspaperTextareaTab(e,setBody)}/>
     <small>{body.length}/6000</small></label>
-   <label className="newspaper-upload"><ImagePlus size={17}/> {file?file.name:'Anexar imagem (opcional)'}
-    <input type="file" accept="image/png,image/jpeg,image/webp"
-     onChange={e=>{setFile(e.target.files?.[0]??null);e.target.value='';}}/></label>
+   {firebaseMode?
+    <p className="newspaper-notice" role="status">Envio de imagens temporariamente indisponível no Firebase. O pedido de texto pode ser enviado normalmente, se a contratação estiver liberada.</p>:
+    <label className="newspaper-upload"><ImagePlus size={17}/> {file?file.name:'Anexar imagem (opcional)'}
+     <input type="file" accept="image/png,image/jpeg,image/webp"
+      onChange={e=>{setFile(e.target.files?.[0]??null);e.target.value='';}}/></label>}
    {error&&<p className="newspaper-alert" role="alert">{error}</p>}
    <div className="newspaper-commission-actions">
     <Button type="button" variant="outline" disabled={busy}
