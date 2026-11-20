@@ -71,8 +71,7 @@ for(const profile of ['narrador','jogador'] as const){
   getUser:(uid:string)=>adminAuth.getUser(uid)};
  const service=createWorkspaceService({db,auth,snapshotId,cacheImportedTables:true});
  try{
-  const data=await service.execute('internal-readonly-diagnostic',[].length
-   ?{}:{kind:'batch',items:probes.map(p=>p.input)});
+  const data=await service.execute('internal-readonly-diagnostic',{kind:'batch',items:probes.map(p=>p.input)});
   if(!Array.isArray(data)||data.length!==probes.length)
    throw Error('invalid_batch_response');
   data.forEach((result,i)=>{
