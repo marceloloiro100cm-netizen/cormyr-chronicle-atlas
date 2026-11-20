@@ -50,8 +50,10 @@ function mock({denied=false,missing=false,corrupt=false,approved=true}={}){
   calls.push({url,method:opts.method});
   assert.equal(opts.method,'GET');
   assert.equal(opts.headers.Authorization,'Bearer temporary-oidc');
-  const path=new URL(url).pathname.split('/documents/')[1];
   if(denied)return {status:403};
+  if(new URL(url).pathname==='/v1/projects/cormyr/databases/(default)')
+   return {status:200};
+  const path=new URL(url).pathname.split('/documents/')[1];
   let result;
   if(path==='migrationDomainStage'){
    result={documents:[document(base+'migrationDomainStage/'+snap,docs.get(
@@ -73,8 +75,9 @@ describe('aceite Cloud da Ficha com escopo de leitura',()=>{
    tokenProvider:()=> 'temporary-oidc'});
   assert.equal(r.releaseDecision,'NO_GO');
   assert.equal(r.cloudReadHttp,403);
+  assert.equal(r.databaseMetadataHttp,403);
   assert.ok(r.blockingCodes.includes('FIRESTORE_READER_UNAVAILABLE'));
-  assert.equal(m.calls.length,1);
+  assert.equal(m.calls.length,2);
   assert.ok(m.calls.every(c=>c.method==='GET'));
  });
  it('identifica origem íntegra, mas não considera E2E de perfis homologado',async()=>{
@@ -84,6 +87,7 @@ describe('aceite Cloud da Ficha com escopo de leitura',()=>{
   assert.equal(r.scannedHouses,1);
   assert.equal(r.reconciledHouses,1);
   assert.equal(r.runtimeApproved,true);
+  assert.equal(r.databaseMetadataHttp,200);
   assert.equal(r.calendarApproved,true);
   assert.equal(r.releaseDecision,'NO_GO');
   assert.deepEqual(r.blockingCodes,['AUTHENTICATED_ROLE_E2E_PENDING']);
