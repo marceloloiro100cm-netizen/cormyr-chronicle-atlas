@@ -9,7 +9,7 @@ const migration=readFileSync('drizzle/migrations/0061_public_campaign_time_proje
 
 test('Atlas público possui referência viva e não fixa em 1522 CV',()=>{
  assert.match(html,/id="public-campaign-current-time"/);
- assert.match(html,/src="campaign-time.js" defer/);
+ assert.match(html,/src="campaign-time.js(?:\?v=[a-z0-9]+)?" defer/);
  assert.doesNotMatch(html,/<strong>1522 CV<\/strong>/);
  assert.doesNotMatch(html,/<strong>1522<\/strong>/); // não exibir ano fixo no lugar da data oficial
 });
