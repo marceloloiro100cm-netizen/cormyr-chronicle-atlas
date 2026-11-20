@@ -449,7 +449,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     const original=(await rows(name)).filter(r=>editor||houseAllowed(r['house_id']));
     const operational=await readFirebaseCommissions(db,snapshotId,scope);
     const ids=new Set(original.map(r=>r['id']));
-    if(operational.some(r=>ids.has(r['id'])))
+    if(operational.some((r:Row)=>ids.has(r['id'])))
      throw new CloudAccessError('newspaper_commission_source_conflict',503);
     return [...original,...operational];
    }
