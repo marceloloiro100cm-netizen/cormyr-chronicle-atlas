@@ -183,6 +183,12 @@ env:
 
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
+  # O inventário autenticado do Narrador pode ser consultado sem permitir
+  # cadastro, alteração de vínculo, ativação ou mudança de senha.
+  - variable: CORMYR_FIREBASE_ACCOUNTS_READ_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED
     value: "false"
     availability:

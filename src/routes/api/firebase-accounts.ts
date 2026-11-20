@@ -1,6 +1,8 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseAccountService} from '../../../scripts/firebase/cloud-account-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
+import {firebaseAccountActionEnabled,type FirebaseAccountAction}
+  from '@/lib/firebase-workspace/account-feature-gates';
 
 const headers={'Cache-Control':'private, no-store, max-age=0',
   'Vary':'Authorization','X-Content-Type-Options':'nosniff'};
@@ -8,7 +10,8 @@ const fail=(status:number,code:string)=>Response.json({error:code},{status,heade
 const ACTIONS=new Set(['status','list','submit','completePassword']);
 async function handle(request:Request):Promise<Response>{
  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
- if(process.env['CORMYR_FIREBASE_ACCOUNTS_ENABLED']!=='true'||
+ if((process.env['CORMYR_FIREBASE_ACCOUNTS_ENABLED']!=='true'&&
+     process.env['CORMYR_FIREBASE_ACCOUNTS_READ_ENABLED']!=='true')||
     process.env['CORMYR_FIREBASE_CLOUD_READ_ENABLED']!=='true'||
     !/^[a-f0-9]{64}$/.test(snapshotId)||
     process.env['FIRESTORE_EMULATOR_HOST']||
@@ -43,6 +46,8 @@ async function handle(request:Request):Promise<Response>{
   const action=input['action'];
   if(typeof action!=='string'||!ACTIONS.has(action))
     return fail(400,'invalid_action');
+  if(!firebaseAccountActionEnabled(action as FirebaseAccountAction,process.env))
+    return fail(503,'account_write_disabled');
   if(action==='list'||action==='status'){
     if(Object.keys(input).length!==1)return fail(400,'invalid_request');
   }else if(action==='completePassword'){
@@ -66,7 +71,8 @@ async function handle(request:Request):Promise<Response>{
   });
   const token=bearer.slice(7);
   const result=action==='status'?await service.status(token):
-    action==='list'?await service.list(token):
+    action==='list'?{...(await service.list(token)),
+      readOnly:process.env['CORMYR_FIREBASE_ACCOUNTS_ENABLED']!=='true'}:
     action==='completePassword'?await service.completePassword(token,input):
     await service.submit(token,input);
   return Response.json({result},{headers});

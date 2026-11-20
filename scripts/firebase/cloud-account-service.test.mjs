@@ -47,9 +47,11 @@ function fixture(){
    return {exists:false,size:0,docs:[],data:()=>undefined};
   },
  });
+ let beforeTransaction=()=>{};
  const db={
   collection:name=>ref(name),
   async runTransaction(fn){
+   await beforeTransaction();
    const tx={
     get:r=>r.get(),
     set:(r,v)=>documents.set(r.path,v),
@@ -99,7 +101,8 @@ function fixture(){
  const service=createFirebaseAccountService({
   db,auth,snapshotId:SNAP,projectId:'cormyr',enabled:true,env:{},
  });
- return {db,auth,service,documents,users,created:()=>created};
+ return {db,auth,service,documents,users,created:()=>created,
+   beforeTransaction:fn=>{beforeTransaction=fn;}};
 }
 const input={
  requestKey:'request-example-01',expectedVersion:0,
@@ -213,4 +216,43 @@ test('Editor-Chefe não recebe Casa nem permissão de Narrador',async()=>{
  await assert.rejects(()=>f.service.submit('token-narrator',{
    ...input,requestKey:'editor-invalid-001',profile:'editor',
  }),e=>e.code==='editor_without_house_required');
+});
+
+test('revogação de Narrador entre autenticação e transação bloqueia nova conta',async()=>{
+ const f=fixture();
+ f.beforeTransaction(()=>{
+  f.documents.get('migrationDomainStage/'+SNAP+'/access/gm').active=false;
+ });
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+  ...input,requestKey:'revoked-narrator-01',
+ }),e=>e.code==='account_operation_incomplete');
+ const created=f.users.get('new-account');
+ assert.ok(created);
+ assert.equal(created.disabled,true);
+ assert.equal(f.documents.has(root+'/accountAccess/new-account'),false);
+ assert.equal(f.documents.has(root+'/accountRequests/'+hash('accounts:gm:revoked-narrator-01')),false);
+});
+test('Casa desativada após prévia e antes do commit não concede edição',async()=>{
+ const f=fixture();
+ f.beforeTransaction(()=>{
+  f.documents.get('migrationDomainStage/'+SNAP+'/houses/'+hash('house:house-a')).active=false;
+ });
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+  ...input,requestKey:'revoked-house-01',
+ }),e=>e.code==='account_operation_incomplete');
+ assert.equal(f.users.get('new-account').disabled,true);
+ assert.equal(f.documents.has(root+'/accountAccess/new-account'),false);
+});
+test('sobreposição indevida da identidade do Narrador impede gravação mesmo com token antigo',async()=>{
+ const f=fixture();
+ f.beforeTransaction(()=>{
+  f.documents.set(root+'/accountAccess/gm',{
+   userId:'gm',profile:'jogador',admin:false,active:true,
+  });
+ });
+ await assert.rejects(()=>f.service.submit('token-narrator',{
+  ...input,requestKey:'revoked-overlay-01',
+ }),e=>e.code==='account_operation_incomplete');
+ assert.equal(f.users.get('new-account').disabled,true);
+ assert.equal(f.documents.has(root+'/accountAccess/new-account'),false);
 });

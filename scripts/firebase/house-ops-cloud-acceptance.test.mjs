@@ -8,7 +8,7 @@ const hash=v=>createHash('sha256').update(v).digest('hex');
 const stable=v=>v&&typeof v==='object'
  ?Array.isArray(v)?v.map(stable):Object.fromEntries(
    Object.keys(v).sort().map(k=>[k,stable(v[k])])):v;
-const state={houseId:uid,phase:'active',month:18265,base:{wealth:2},
+const state={houseId:uid,phase:'active',month:18265,treasury:42,base:{wealth:2},
  identity:{region:'Ferlin'}};
 const checksum=hash(JSON.stringify(stable(state)));
 const encode=v=>{
@@ -28,7 +28,8 @@ const goodRoot={status:'active',private:true,sourceSnapshotId:snap,
  sourceSnapshotReconciled:true,applicationEnabled:true,
  houseOpsWriteApproved:true,calendarVersion:5};
 const base='projects/cormyr/databases/(default)/documents/';
-function mock({denied=false,missing=false,corrupt=false,approved=true}={}){
+function mock({denied=false,missing=false,corrupt=false,approved=true,
+ partial=false,wrongMonth=false}={}){
  const docs=new Map([
   ['migrationDomainStage/'+snap,{status:'complete',private:true}],
   ['migrationAuthStage/'+snap,{status:'complete',private:true}],
@@ -38,12 +39,14 @@ function mock({denied=false,missing=false,corrupt=false,approved=true}={}){
   ['migrationTimeEngineStage/'+snap+'/calendar/current',
    {year:1522,month:1,day:1,version:5}],
   ['migrationNobleHouseStage/'+snap+'/sheets/'+hash('noble-sheet:'+uid),
-   {houseId:uid,version:3,state}],
+   {houseId:uid,version:3,state:wrongMonth?{...state,month:18250}:state}],
   ...(!missing?[['campaignCloudRuntime/'+snap+'/houseEconomies/'+hash('house:'+uid),
    {houseId:uid,status:'active',private:true,
     sourceSnapshotId:snap,sourceReconciled:true,seedVerified:true,
     sourceSheetVersion:3,sourceStateHash:checksum,
     stateHash:corrupt?'0'.repeat(64):checksum,version:0,state}]]:[]),
+  ...(missing&&partial?[['campaignCloudRuntime/'+snap+'/houseTreasuries/'+hash('house:'+uid),
+   {houseId:uid,sourceSnapshotId:snap,balance:42}]]:[]),
  ]);
  const calls=[];
  const fetcher=async (url,opts)=>{
@@ -99,10 +102,27 @@ describe('aceite Cloud da Ficha com escopo de leitura',()=>{
    const r=await auditHouseOpsCloud({fetcher:mock(opts).fetcher,
     tokenProvider:()=> 'temporary-oidc'});
    assert.equal(r.releaseDecision,'NO_GO');
-   if(opts.missing)assert.equal(r.missingEconomies,1);
+   if(opts.missing){
+    assert.equal(r.missingEconomies,1);
+    assert.equal(r.missingPreflight.requiresNarratorReview,1);
+   }
    if(opts.corrupt)assert.equal(r.invalidEconomies,1);
    if(opts.approved===false)
     assert.ok(r.blockingCodes.includes('HOUSE_WRITE_APPROVAL_MISSING'));
+  }
+ });
+ it('classifica destinos parciais e descompasso temporal sem expor dados das Casas',async()=>{
+  const cases=[
+   [{missing:true,partial:true},'partialTargets'],
+   [{missing:true,wrongMonth:true},'calendarMismatch'],
+  ];
+  for(const [opts,kind] of cases){
+   const m=mock(opts);
+   const r=await auditHouseOpsCloud({tokenProvider:()=> 'temporary-oidc',fetcher:m.fetcher});
+   assert.equal(r.missingEconomies,1);
+   assert.equal(r.missingPreflight[kind],1);
+   assert.ok(m.calls.every(c=>c.method==='GET'));
+   assert.doesNotMatch(summarize(r),/house-a|temporary-oidc|a{64}/);
   }
  });
  it('não consulta Cloud sem credencial OIDC de leitura',async()=>{
