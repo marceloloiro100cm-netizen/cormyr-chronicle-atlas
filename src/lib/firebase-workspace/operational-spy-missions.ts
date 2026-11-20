@@ -13,7 +13,8 @@ const missionMethods=['spy_submit_house_mission','spy_cancel_house_mission'] as 
 export const spyMissionMethod=(name:string)=>
  missionMethods.includes(name as typeof missionMethods[number]);
 const ready=(scope:Scope,houseId:unknown,write:boolean)=>{
- if(!spySafe(houseId)||scope.profile==='editor')spyFail('access_denied',403);
+ if(!spySafe(houseId))return spyFail('access_denied',403);
+ if(scope.profile==='editor')return spyFail('access_denied',403);
  if(scope.profile!=='narrador'&&
   (!scope.memberHouseIds.includes(houseId)||
    write&&!scope.editHouseIds.includes(houseId)))
@@ -40,8 +41,8 @@ export function previewSpyMission({scope,houseId,agentId,targetHouseId,
   preview=previewMission({actor:spyActor(scope),houseId,agent,target,
    sheet:targetSheet,stats});
  }catch(e){return asSpyError(e);}
- const equipment=new Set(data.upgrades.filter((u:any)=>
-   u.agentId===agentId&&u.ownerHouseId===houseId).map((u:any)=>u.upgradeCode));
+ const equipment=new Set<string>(data.upgrades.filter((u:any)=>
+   u.agentId===agentId&&u.ownerHouseId===houseId).map((u:any)=>String(u.upgradeCode)));
  if([...equipment].some(c=>!['forged_documents','ace_in_the_hole'].includes(c)))
   spyFail('spy_equipment_invalid',503);
  return {houseId:preview.houseId,agentId:preview.agentId,
