@@ -420,6 +420,8 @@ export function createFirebaseCloudMail({
       return db.runTransaction(async tx=>{
         const {actor,uid,round,sessionNonce}=await represented(tx,realUid);
         const v=cloudLetterOf(await tx.get(letters.doc(letterId)),letterId,round);
+        if(v.senderUid!==uid||!actor.editHouses.includes(v.originHouseId))
+          deny('cancel_not_allowed',403);
         if(v.deletedAt!==null)return {removed:true,alreadyRemoved:true,version:v.version};
         checkVersion(v,expectedVersion);
         if(!authorInOpenWeek(actor,uid,v,round))
