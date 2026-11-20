@@ -15,6 +15,10 @@ import {commitSpyMission,previewSpyMission,spyMissionMethod}
  from './operational-spy-missions';
 import {SpyOperationError,spyDigest} from './operational-spy-context';
 import {commitSpyNarrator,spyNarratorMethod} from './operational-spy-narrator';
+import {resolveSpyHouseDefense} from '../espionage/spy-house-target-defense';
+import {calculateSpyDefense} from '../espionage/spy-defense';
+import {spyLawDifficulty} from '../espionage/spy-law-difficulty';
+import type {HouseState} from '../house/types';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
@@ -469,6 +473,42 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='house_gallery_mail_images'||name==='get_house_character_ages'){
     checkHouse(args['p_house']);
     return [];
+   }
+   if(name==='spy_narrator_house_defense'){
+    if(!admin)denied();
+    const id=args['p_house'],domain=args['p_domain'];
+    if(typeof id!=='string'||domain!==undefined&&typeof domain!=='string')
+     throw new CloudAccessError('spy_defense_invalid',400);
+    const source=await loadImportedSpyData(rows,snapshotId);
+    const target=source.catalog.find((x:any)=>x.id===id&&x.publicReviewed===true);
+    if(!target)throw new CloudAccessError('spy_target_not_found',404);
+    const official=source.nobleStats.find((s:any)=>s.houseId===id)??null;
+    const sheet=await privateTargetSheet(id);
+    let resolution:any,domains:any[]=[];
+    try{
+     if(sheet){
+      const state=sheet.state as HouseState;
+      resolution=resolveSpyHouseDefense({
+       kind:'with_sheet',state,region:target.region,
+       ...(domain?{domainId:domain}:{}),
+      });
+      const profile=calculateSpyDefense(state);
+      domains=profile.domains.map(d=>({domainId:d.domainId,
+       name:d.name,difficulty:d.difficulty}));
+     }else if(official){
+      if(!Number.isSafeInteger(official.law)||official.law<0)
+       throw new CloudAccessError('spy_defense_invalid',503);
+      const dc=spyLawDifficulty(official.law);
+      resolution={source:'imported_noble_sheet',law:official.law,
+       regionalLaw:null,baseDifficulty:dc,constructionBonus:0,
+       difficulty:dc,domainId:null,sources:[]};
+     }else resolution=resolveSpyHouseDefense({
+       kind:'without_sheet',region:target.region,
+      });
+    }catch(e){if(e instanceof CloudAccessError)throw e;
+     throw new CloudAccessError('spy_defense_invalid',503);}
+    return {houseId:target.id,houseName:target.name,region:target.region,
+     ...resolution,sourceSpreadsheetRow:null,domains};
    }
    if(name==='spy_player_mission_preview'){
     const h=args['p_house'],id=args['p_target'];
