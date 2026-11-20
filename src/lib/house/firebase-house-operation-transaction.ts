@@ -5,8 +5,9 @@
  */
 import {createHash,randomInt} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
-import type {Firestore} from 'firebase-admin/firestore';
+import type {Firestore,DocumentReference} from 'firebase-admin/firestore';
 import {operationSchema,catalogSchema} from './schemas';
+import {PRIVATE_MEDIA_RE,privateMediaRef} from '../firebase-workspace/private-media-core';
 import {applyHouseImportOperation,type HouseImportArchive} from './operation-import-core';
 import {CORE_CATALOG} from './catalog';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
@@ -35,7 +36,7 @@ const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
 const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
-const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
+const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import','crest_import']);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -46,7 +47,9 @@ const ready=(doc:{exists:boolean;data:()=>Record<string,unknown>|undefined})=>
 
 type RuntimeRoot={status?:string;private?:boolean;sourceSnapshotId?:string;
  sourceSnapshotReconciled?:boolean;applicationEnabled?:boolean;
- houseOpsWriteApproved?:boolean;recordsReadApproved?:boolean;calendarVersion?:number};
+ houseOpsWriteApproved?:boolean;recordsReadApproved?:boolean;
+ privateMediaReadApproved?:boolean;privateMediaWriteApproved?:boolean;
+ calendarVersion?:number};
 type SourceSheet={houseId?:string;version?:number;
  state?:Record<string,unknown>};
 type EconomyDoc={houseId?:string;status?:string;private?:boolean;
@@ -290,6 +293,36 @@ export function createFirebaseHouseOperation({
      if(item.id!==purchaseItemId)fail('house_catalog_integrity_failed',503);
     }catch{fail('house_item_not_found',409);}
    }
+   let crestPath:string|null=null;
+   let crestRef:DocumentReference|null=null;
+   if(action==='crest_import'){
+    const rawPath=args['mediaPath'];
+    if(Object.keys(args).length!==1||typeof rawPath!=='string')
+     fail('house_crest_invalid',400);
+    const match=PRIVATE_MEDIA_RE.exec(rawPath as string);
+    if(!match||match[1]!==snapshotId||match[2]!==uid||
+       match[3]!==key||!['png','jpg','webp'].includes(match[4]??''))
+     fail('house_crest_path_denied',403);
+    if(state.phase!=='draft'&&!narrator)
+     fail('house_crest_narrator_required',403);
+    if(!narrator&&state.importSources.length)
+     fail('house_crest_imported_requires_review',403);
+    if(cfg.privateMediaReadApproved!==true||cfg.privateMediaWriteApproved!==true)
+     fail('house_crest_storage_not_approved',503);
+    crestRef=privateMediaRef(root,rawPath as string) as DocumentReference;
+    const media=await tx.get(crestRef);
+    const m=media.data();
+    if(!media.exists||m?.['status']!=='ready'||
+       m?.['path']!==rawPath||m?.['sourceSnapshotId']!==snapshotId||
+       m?.['ownerUid']!==uid||
+       !['image/png','image/jpeg','image/webp'].includes(String(m?.['contentType']))||
+       !Number.isSafeInteger(m?.['size'])||Number(m?.['size'])<32||
+       Number(m?.['size'])>2*1024*1024)
+     fail('house_crest_media_denied',403);
+    if(m?.['linkedHouseId']&&m['linkedHouseId']!==houseId)
+     fail('house_crest_media_already_linked',409);
+    crestPath=rawPath as string;
+   }
    let undoPreviousEventId:string|null=null;
    let undoSnapshot:typeof state|null=null;
    if(action==='undo'){
@@ -324,7 +357,11 @@ export function createFirebaseHouseOperation({
    let candidate:{state:typeof state;rule:string;explanation?:string;
     archive?:HouseImportArchive};
    try{
-    candidate=action==='import'
+    candidate=action==='crest_import'
+     ?{state:{...structuredClone(state),
+         identity:{...structuredClone(state.identity),crestPath:crestPath!}},
+        rule:'Cormyr · importação privada de brasão vinculada à ficha e auditada'}
+     :action==='import'
      ?applyHouseImportOperation(state,args,String(docs[7].data()?.['name']??''))
      :action==='undo'
      ?{state:structuredClone(undoSnapshot!) as typeof state,
@@ -406,6 +443,8 @@ export function createFirebaseHouseOperation({
    const lastOperationId=action==='undo'?undoPreviousEventId:eventId;
    tx.update(economyRef,{state:next,stateHash:nextStateHash,
      version:nextVersion,lastHouseOperationId:lastOperationId,updatedAt});
+   if(crestRef)
+    tx.update(crestRef,{linkedHouseId:houseId,crestEventId:eventId,updatedAt});
    tx.create(eventSnapshotRef,{eventId,houseId,version:nextVersion,
      actorUid:uid,action,sourceSnapshotId:snapshotId,
      beforeState:JSON.parse(JSON.stringify(state)),

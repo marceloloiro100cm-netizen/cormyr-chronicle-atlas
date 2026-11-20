@@ -295,3 +295,43 @@ describe('histórico operacional e desfazer em rascunho',()=>{
   expect(f.writes()).toBe(0);
  });
 });
+
+describe('brasões privados vinculados ao Storage por Casa',()=>{
+ it('vincula imagem pronta, mantém auditoria e não muda a fonte importada',async()=>{
+  const f=fixture();
+  const sheet=structuredClone(f.docs.get(f.sheet)!);
+  const state=sheet['state'] as ReturnType<typeof newHouseState>;
+  state.phase='draft';
+  f.docs.set(f.sheet,sheet);
+  const before=structuredClone(sheet);
+  const oldEconomy=f.docs.get(f.economyPath)!;
+  const stateHash=constructionStateHash(state);
+  f.docs.set(f.economyPath,{...oldEconomy,state:structuredClone(state),
+   stateHash,sourceStateHash:stateHash});
+  f.docs.set(root('campaignCloudRuntime'),{
+   ...f.docs.get(root('campaignCloudRuntime')),
+   privateMediaReadApproved:true,privateMediaWriteApproved:true,
+  });
+  const key='22222222-2222-4222-8222-222222222222';
+  const path='private/'+snapshot+'/'+uid+'/'+key+'.png';
+  const doc=root('campaignCloudRuntime')+'/privateMedia/'+hash('private-media:'+path);
+  f.docs.set(doc,{path,ownerUid:uid,sourceSnapshotId:snapshot,
+   status:'ready',contentType:'image/png',size:1024,digest:'b'.repeat(64)});
+  const out=await f.service().execute('valid-token-123',f.input({
+   action:'crest_import',args:{mediaPath:path},explanation:'Novo brasão da Casa',
+  }));
+  expect(out.version).toBe(1);
+  const next=f.docs.get(f.economyPath)?.['state'] as ReturnType<typeof newHouseState>;
+  expect(next.identity.crestPath).toBe(path);
+  expect(f.docs.get(doc)?.['linkedHouseId']).toBe('house-a');
+  expect(f.docs.get(f.sheet)).toEqual(before);
+  expect(f.writes()).toBe(6);
+ });
+ it('nega mídia forjada antes de qualquer gravação',async()=>{
+  const f=fixture();
+  await denied(()=>f.service().execute('valid-token-123',f.input({
+   action:'crest_import',args:{mediaPath:'private/outro/arquivo.png'},
+  })),'house_crest_path_denied',403);
+  expect(f.writes()).toBe(0);
+ });
+});

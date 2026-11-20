@@ -1,4 +1,5 @@
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
+import {uploadFirebasePrivateImage} from '@/lib/firebase-workspace/private-media-client';
 import type {HouseAction} from './operation-core';
 
 export type HouseOperationRequest={houseId:string;version:number;
@@ -12,10 +13,22 @@ export async function submitFirebaseHouseOperation(
  const token=await auth?.getToken();
  if(!uid||!token||uid!==auth?.current()?.uid)
   throw Error('Sessão Firebase encerrada. Entre novamente.');
+ let payload=request;
+ if(request.action==='crest_import'){
+  const base64=request.args['base64'],mime=request.args['mime'];
+  if(typeof base64!=='string'||base64.length<16||
+     base64.length>3_000_000||typeof mime!=='string'||
+     !['image/png','image/jpeg','image/webp'].includes(mime))
+   throw Error('Brasão inválido. Use imagem de até 2 MB em PNG, JPEG ou WebP.');
+  const uploaded=await uploadFirebasePrivateImage(request.key,mime,base64);
+  if(uid!==auth?.current()?.uid)
+   throw Error('A sessão mudou durante o envio do brasão.');
+  payload={...request,args:{mediaPath:uploaded.path}};
+ }
  const response=await fetch('/api/firebase-house-operation',{
   method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-  body:JSON.stringify(request),
+  body:JSON.stringify(payload),
  });
  if(uid!==auth?.current()?.uid)
   throw Error('A sessão mudou durante a operação. Recarregue a Ficha.');
