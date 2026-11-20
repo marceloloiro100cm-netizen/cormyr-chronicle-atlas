@@ -1,0 +1,62 @@
+name: Firebase House 4b/4c — auditoria final somente leitura
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/house-ops-cloud-acceptance*.mjs'
+      - '.github/workflows/firebase-house-ops-final-release-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/house-ops-cloud-acceptance*.mjs'
+      - '.github/workflows/firebase-house-ops-final-release-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Regressão sem dados privados e sem mutações
+        run: |
+          node --check scripts/firebase/house-ops-cloud-acceptance.mjs
+          node --test scripts/firebase/house-ops-cloud-acceptance.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  firestore-readonly:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: offline-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Credencial temporária OIDC de leitura, sem chave persistente
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Auditar reconciliação do runtime e das Casas ativas
+        run: node scripts/firebase/house-ops-cloud-acceptance.mjs
+      - name: Reafirmar bloqueio até aceite autenticado
+        if: always()
+        run: |
+          echo 'A auditoria só envia GET ao Firestore e retorna contagens agregadas.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Nenhuma flag foi alterada, nenhum usuário foi ativado e nenhum estado privado foi exportado.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'O CI verde não substitui E2E de Narrador e duas Casas reais. Release permanece NO_GO.' >> "$GITHUB_STEP_SUMMARY"
