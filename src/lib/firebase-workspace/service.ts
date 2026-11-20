@@ -483,7 +483,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     if(process.env['CORMYR_FIREBASE_CHARACTER_AGES_ENABLED']!=='true')
      throw new CloudAccessError('character_ages_disabled',501);
     try{
-     const calendar=await cloud.workspaceCalendar(token);
+     const calendar=await cloud.workspaceCalendar(token) as {year:number}|null;
      if(!calendar||!Number.isSafeInteger(calendar.year))
       throw new CharacterAgesError('character_calendar_unavailable');
      const registry=await readAgeRegistry(db,snapshotId);
