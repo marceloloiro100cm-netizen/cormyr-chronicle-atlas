@@ -6,7 +6,7 @@ import {validateResources} from './engine';
 /** Importação privada de uma ficha legada. O acervo e as abas originais são
  * preservados sem interpolar planilhas no texto público do livro-razão. */
 export type HouseImportArchive={source:string;sourceHouse:string;original:{
- name:string;rows:{address:string;value:unknown;formula?:string}[][]}[]};
+ name:string;rows:{address:string;value:unknown;formula?:string|undefined}[][]}[]};
 export function applyHouseImportOperation(
  state:HouseState,args:Record<string,unknown>,officialName:string,
 ):{state:HouseState;rule:string;archive:HouseImportArchive;explanation:string}{
