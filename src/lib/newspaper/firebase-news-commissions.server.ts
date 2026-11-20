@@ -36,8 +36,9 @@ const rowScope=(actor:Scope)=>({
 const assertRuntime=(v:any,snapshotId:string,write=false)=>{
  if(!v||v.status!=='active'||v.private!==true||
  v.sourceSnapshotId!==snapshotId||v.sourceSnapshotReconciled!==true||
- v.applicationEnabled!==true||v.newspaperWriteApproved!==true||
+ v.applicationEnabled!==true||
  v.newspaperCommissionsReadApproved!==true||
+ (write&&v.newspaperWriteApproved!==true)||
  (write&&v.newspaperCommissionsWriteApproved!==true))
   fail('newspaper_commissions_not_approved',503);
 };
