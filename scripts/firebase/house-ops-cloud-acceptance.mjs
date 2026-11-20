@@ -45,7 +45,7 @@ const newReport=()=>({
  missingSourceReasons:{missingState:0,invalidVersion:0,
   mismatchedHouse:0,draft:0,review:0,unknownPhase:0},
  invalidEconomies:0,invalidSources:0,unknownHouses:0,
- runtimeApproved:false,calendarApproved:false,
+ runtimeApproved:false,houseRulesWriteApproved:false,calendarApproved:false,
  stageRootsVerified:false,snapshotDetected:false,
  cloudReadHttp:null,databaseMetadataHttp:null,realRoleTestsVerified:false,
  releaseDecision:'NO_GO',blockingCodes:[],
@@ -143,6 +143,7 @@ export async function auditHouseOpsCloud({
  r.runtimeApproved=rt?.status==='active'&&rt?.private===true&&
   rt?.sourceSnapshotId===snapshot&&rt?.sourceSnapshotReconciled===true&&
   rt?.applicationEnabled===true&&rt?.houseOpsWriteApproved===true;
+ r.houseRulesWriteApproved=rt?.houseRulesWriteApproved===true;
  if(!r.runtimeApproved)issue(r,'HOUSE_WRITE_APPROVAL_MISSING');
  if(!r.calendarApproved)issue(r,'CALENDAR_NOT_RECONCILED');
  const houses=await list('migrationDomainStage/'+snapshot+'/houses',
@@ -245,6 +246,7 @@ export const summarize=r=>[
  '| Snapshot único | '+r.snapshotDetected+' |',
  '| Estágios históricos | '+r.stageRootsVerified+' |',
  '| Runtime de escrita aprovado | '+r.runtimeApproved+' |',
+ '| Item 5: aprovação de escrita de regras no runtime | '+r.houseRulesWriteApproved+' |',
  '| Calendário validado | '+r.calendarApproved+' |',
  '| Casas ativas examinadas | '+r.scannedHouses+' |',
  '| Economias conciliadas | '+r.reconciledHouses+' |',
