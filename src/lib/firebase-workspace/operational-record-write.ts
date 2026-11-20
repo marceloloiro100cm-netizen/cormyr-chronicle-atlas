@@ -4,6 +4,7 @@
  */
 import {createHash,randomUUID} from 'node:crypto';
 import {chooseCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
+import {activeSeason2HouseScopeValid} from '../../../scripts/firebase/cloud-season2-house-scope.mjs';
 import type {Scope} from './service';
 import {projectOperationalRecords,type RecordRow,type OperationalRecord} from './operational-records';
 
@@ -81,7 +82,10 @@ export async function commitOperationalRecord({
   fail('record_write_disabled',501);
  if(!/^[a-f0-9]{64}$/.test(snapshotId)||!Array.isArray(imported))
   fail('record_source_unavailable',503);
- const requestDigest=canonicalRecordRequest(actor,input);
+ const requestDigest=representation
+  ?sha(canonicalRecordRequest(actor,input)+':representation:'+
+    representation.realActorUid+':'+representation.sessionNonce)
+  :canonicalRecordRequest(actor,input);
  const id=input.action==='create'?input.row['id'] as string:input.recordId;
  const matching=imported.filter(row=>row['id']===id);
  if(matching.length>1)fail('record_source_conflict',503);
@@ -129,6 +133,12 @@ export async function commitOperationalRecord({
      JSON.stringify(effective.memberHouseIds)!==JSON.stringify(actor.memberHouseIds)||
      JSON.stringify(effective.editHouseIds)!==JSON.stringify(actor.editHouseIds))
     fail('representation_scope_invalid',403);
+   const houses=await Promise.all(actor.memberHouseIds.map(id=>
+    tx.get(stage.collection('houses').doc(sha('house:'+id)))));
+   if(!activeSeason2HouseScopeValid({
+    memberHouseIds:actor.memberHouseIds,editHouseIds:actor.editHouseIds,
+    houseDocuments:houses,
+   }))fail('representation_house_invalid',403);
   }
   if(attempt.exists){
    const saved=attempt.data();
