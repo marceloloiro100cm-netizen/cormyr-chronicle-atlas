@@ -3,7 +3,8 @@ import {newHouseState} from './types';
 import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_NON_ECONOMIC_ACTIONS,applyHouseEconomicOperation,
  HOUSE_ECONOMIC_ACTIONS,applyHouseMilitaryOperation,
- HOUSE_MILITARY_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_MILITARY_ACTIONS,applyHouseCreationOperation,
+ HOUSE_CREATION_ACTIONS,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -148,5 +149,32 @@ describe('ações militares puras com validação de escopo',()=>{
    unitId:'no-unit',skill:'fighting'},{admin:false,key:ID,explanation:''}))
    .toThrow(/não está ativo/);
   expect(state).toEqual(copy);
+ });
+});
+
+describe('criação e conciliação sem consultas externas',()=>{
+ const ctx={admin:false,mayBuyAttributes:false,explanation:''};
+ it('registra seis ações e recusa aprovação de atributos sem autorização',()=>{
+  expect(HOUSE_CREATION_ACTIONS).toHaveLength(6);
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseCreationOperation(state,'draft',{
+   base:{...state.base,wealth:5},identity:state.identity,
+   method:'budget',creationStep:0},ctx)).toThrow(/bloqueada|não está autorizada/);
+  expect(state).toEqual(before);
+ });
+ it('protege ficha do Narrador e dados históricos imutáveis',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseCreationOperation(state,'admin_edit',{
+   base:state.base,permanent:state.permanent,identity:state.identity},ctx))
+   .toThrow(/Narrador/);
+  expect(()=>applyHouseCreationOperation(state,'restore_legacy_effects',{
+   holdingIds:['inexistente']},ctx)).toThrow(/Narrador/);
+  expect(state).toEqual(before);
+ });
+ it('envio exige domínio e não aceita ficha incompleta',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  expect(()=>applyHouseCreationOperation(state,'submit',{},ctx))
+   .toThrow();
+  expect(state).toEqual(before);
  });
 });

@@ -8,7 +8,9 @@ import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema} from './schemas';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
- applyHouseEconomicOperation,applyHouseMilitaryOperation,HOUSE_ECONOMIC_ACTIONS,
+ applyHouseEconomicOperation,applyHouseMilitaryOperation,
+ applyHouseCreationOperation,HOUSE_CREATION_ACTIONS,
+ type HouseCreationAction,HOUSE_ECONOMIC_ACTIONS,
  HOUSE_MILITARY_ACTIONS,type HouseMilitaryAction,
  HOUSE_NON_ECONOMIC_ACTIONS,requireHouseOperationRole,requireHouseOperationPhase,
  needsHouseOperationCalendar,type HouseNonEconomicAction,
@@ -25,8 +27,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS]);
-const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS]);
+const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS]);
+const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS]);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -186,11 +188,16 @@ export function createFirebaseHouseOperation({
     candidate=DOMAINS.has(action)
      ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
      :ECONOMICS.has(action)
-      ?HOUSE_MILITARY_ACTIONS.includes(action as HouseMilitaryAction)
-       ?applyHouseMilitaryOperation(state,action as HouseMilitaryAction,args,
-         {admin:narrator,key,explanation})
-       :applyHouseEconomicOperation(state,action as HouseEconomicAction,args,
-         {admin:narrator,key,explanation})
+      ?HOUSE_CREATION_ACTIONS.includes(action as HouseCreationAction)
+       ?applyHouseCreationOperation(state,action as HouseCreationAction,args,
+         {admin:narrator,mayBuyAttributes:narrator||
+          Array.isArray(access?.['attrHouseIds'])&&access['attrHouseIds'].includes(houseId),
+          explanation})
+       :HOUSE_MILITARY_ACTIONS.includes(action as HouseMilitaryAction)
+        ?applyHouseMilitaryOperation(state,action as HouseMilitaryAction,args,
+          {admin:narrator,key,explanation})
+        :applyHouseEconomicOperation(state,action as HouseEconomicAction,args,
+          {admin:narrator,key,explanation})
       :applyHouseNonEconomicOperation(state,action as HouseNonEconomicAction,
         args,explanation);
    }catch{throw new HouseOperationError('house_rule_rejected',409);}
@@ -206,7 +213,7 @@ export function createFirebaseHouseOperation({
    // Operações econômicas sempre têm o antes e o depois preservados no ledger.
    // Não é permitido agravar um déficit em qualquer recurso sem decisão
    // administrativa explícita de correção (que fica auditada como tal).
-   if(ECONOMICS.has(action)&&action!=='correct'&&
+   if(ECONOMICS.has(action)&&!['correct','fortune','admin_edit'].includes(action)&&
       Object.keys(after.balances.available).some(k=>{
        const resource=k as keyof typeof after.balances.available;
        const before=previous.balances.available[resource];
