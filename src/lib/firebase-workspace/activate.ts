@@ -57,7 +57,9 @@ export function activateFirebaseWorkspace(){
  if(stop){clearTimeout(stop);stop=null;}
  setFirebaseWorkspaceClient(createWorkspaceClient());
  registerWorkspaceFunction(loadHouseHub,input=>workspaceRequest({kind:'house',houseId:input?.data?.houseId}));
- registerWorkspaceFunction(loadHouseLedger,async input=>(await workspaceRequest({kind:'house',houseId:input?.data?.houseId})).ledger);
+ registerWorkspaceFunction(loadHouseLedger,async input=>workspaceRequest({
+  kind:'houseLedgerExport',houseId:input?.data?.houseId,
+ }));
  registerWorkspaceFunction(houseOperation,async input=>{
   const data=input?.data??{};
   if(typeof data.houseId!=='string'||typeof data.key!=='string'||
