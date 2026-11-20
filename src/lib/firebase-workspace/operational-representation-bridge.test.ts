@@ -68,7 +68,7 @@ beforeEach(()=>{
 });
 describe('item 8, ponte de representação',()=>{
  it('não mostra registros ou missivas de outras Casas nem do Narrador',async()=>{
-  const result=await bridge().action('read',{}) as {
+  const result=await bridge().action('read',{}) as unknown as {
    records:{id:string}[];houses:{id:string}[];letters:{id:string}[];
   };
   expect(result.records.map((r:any)=>r.id)).toEqual(['own','house']);
