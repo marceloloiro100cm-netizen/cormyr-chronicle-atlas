@@ -961,3 +961,114 @@ test('Representação Cloud: gates, expiração e revogação negam toda escrita
  await rejects(()=>noFlag.sendRepresented(sampleToken,req()),'representation_disabled',501);
  assert.equal([...f.records].filter(([p])=>p.includes('/letters/')).length,0);
 });
+
+
+test('A current House author replies to imported delivered letter without changing migration documents',async()=>{
+ const f=fixture();
+ const id='historic-to-house';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ f.records.set(path,{sourceId:id,senderUid:'narrator-source',
+  senderPlayerId:null,recipientKind:'house',recipientHouseId:'house-a',
+  recipientPlayerId:null,originHouseId:null,publicationState:'delivered',
+  deletedAt:null,letterKind:'reservada',subject:'Carta importada',content:'Texto intacto'});
+ const before=structuredClone(f.records.get(path));
+ const r=await f.service().reply(sampleToken,{
+  requestKey:'legacy-house-reply-001',letterId:id,
+  content:'Resposta oficial',expectedCampaignDate:'1522-01-10',
+ });
+ const written=f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+r.id);
+ assert.equal(written.threadRootId,id);
+ assert.equal(written.replyToId,id);
+ assert.equal(written.originHouseId,'house-a');
+ assert.equal(written.recipientKind,'narrator');
+ assert.equal(written.campaignDate,'1522-01-10');
+ assert.deepEqual(f.records.get(path),before);
+ await rejects(()=>f.service().reply(sampleToken,{
+  requestKey:'forged-reply-target',letterId:id,content:'x',
+  recipientHouseId:'house-b',
+ }),'invalid_reply_request',400);
+});
+
+test('House cannot reply to a foreign archived letter or choose destination',async()=>{
+ const f=fixture();
+ const id='only-other-house';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ f.records.set(path,{sourceId:id,senderUid:'narrator-source',
+  recipientKind:'house',recipientHouseId:'house-b',recipientPlayerId:null,
+  originHouseId:null,publicationState:'delivered',deletedAt:null,
+  subject:'Privado',content:'Segredo'});
+ await rejects(()=>f.service().reply(sampleToken,{
+  requestKey:'unauthorized-legacy-01',letterId:id,content:'Indevido',
+ }),'reply_not_authorized',403);
+ assert.equal([...f.records.keys()].some(x=>x.includes('letters/')&&
+   x.startsWith('campaignCloudRuntime/')),false);
+});
+
+test('Imported letter to a named person uses that persons House and current editing grant',async()=>{
+ const f=fixture(),id='historic-to-person';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ f.records.set(path,{sourceId:id,senderUid:'narrator-source',
+  recipientKind:'player',recipientHouseId:null,recipientPlayerId:'legacy-person',
+  originHouseId:null,publicationState:'delivered',deletedAt:null,
+  subject:'Carta ao governante',content:'Conteúdo'});
+ f.records.set('migrationDomainStage/'+snapshot+'/players/'+h('player:legacy-person'),{
+  id:'legacy-person',rosterHouseId:'house-a',
+ });
+ const r=await f.service().reply(sampleToken,{
+  requestKey:'legacy-person-answer-01',letterId:id,content:'Casa responde',
+ });
+ assert.equal(f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+r.id).originHouseId,'house-a');
+});
+
+test('Narrator can answer a historical reply, preserving its archived parent and root',async()=>{
+ const f=fixture('narrador'),id='legacy-archive-root',replyId='legacy-reply-01';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ f.records.set(path,{sourceId:id,senderUid:'player-1',
+  recipientKind:'narrator',recipientHouseId:null,recipientPlayerId:null,
+  originHouseId:'house-a',publicationState:'delivered',deletedAt:null,
+  subject:'Carta ao Narrador',content:'Raiz'});
+ const hist='migrationMailHistoryStage/'+snapshot;
+ f.records.set(hist,{status:'complete',private:true});
+ f.records.set(hist+'/replies/'+h('reply:'+replyId),{
+  sourceId:replyId,letterId:h('letter:'+id),authorUid:'other-author',
+  recipientUid:'player-1',publicationState:'delivered',deletedAt:null,
+  content:'Retorno da Casa'});
+ const before=structuredClone(f.records.get(hist+'/replies/'+h('reply:'+replyId)));
+ const r=await f.service().reply(sampleToken,{
+  requestKey:'reply-to-legacy-reply',letterId:id,replyId,content:'Resposta no fio',
+ });
+ const sent=f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+r.id);
+ assert.equal(sent.replyToId,replyId);
+ assert.equal(sent.threadRootId,id);
+ assert.equal(sent.recipientHouseId,'house-a');
+ assert.equal(sent.originHouseId,null);
+ assert.deepEqual(f.records.get(hist+'/replies/'+h('reply:'+replyId)),before);
+ await rejects(()=>f.service().reply(sampleToken,{
+  requestKey:'forged-historical-id',letterId:id,replyId:'not-the-reply',
+  content:'x',
+ }),'reply_not_authorized',403);
+});
+
+test('Only Narrator moderates and restores imported letters via operational markers',async()=>{
+ const gm=fixture('narrador'),id='legacy-for-moderation';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ const row={sourceId:id,senderUid:'other-author',publicationState:'delivered',
+  deletedAt:null,recipientKind:'house',recipientHouseId:'house-a',subject:'Importada',content:'Intacta'};
+ gm.records.set(path,row);
+ const before=structuredClone(gm.records.get(path));
+ const removed=await gm.service().moderateImported(sampleToken,{letterId:id,action:'remove'});
+ assert.equal(removed.removalKind,'excluida');
+ const markerPath='campaignCloudRuntime/'+snapshot+'/legacyMailModeration/'+h('legacy-mail:'+id);
+ assert.equal(typeof gm.records.get(markerPath).deletedAt,'string');
+ await rejects(()=>gm.service().reply(sampleToken,{
+  letterId:id,requestKey:'reply-to-removed-01',content:'Texto',
+ }),'reply_not_authorized',403);
+ const restored=await gm.service().moderateImported(sampleToken,{letterId:id,action:'restore'});
+ assert.equal(restored.restored,true);
+ assert.equal(gm.records.get(markerPath).deletedAt,null);
+ assert.deepEqual(gm.records.get(path),before);
+ const player=fixture('jogador');player.records.set(path,row);
+ await rejects(()=>player.service().moderateImported(sampleToken,{
+  letterId:id,action:'remove',
+ }),'moderation_not_allowed',403);
+});
