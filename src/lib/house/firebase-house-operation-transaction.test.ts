@@ -102,7 +102,7 @@ describe('Item 4b, transação operacional por Casa',()=>{
    env:{FIRESTORE_EMULATOR_HOST:'127.0.0.1:8080'}}))
    .toThrow(HouseOperationError);
   await denied(()=>f.service().execute('valid-token-123',
-   f.input({action:'purchase'})),'house_operation_not_implemented',501);
+   f.input({action:'purchase'})),'house_item_invalid',400);
   expect(f.writes()).toBe(0);
  });
  it('grava estado e livro-razão, idempotência, snapshot imutável',async()=>{

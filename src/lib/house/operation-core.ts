@@ -1,12 +1,17 @@
 import {z} from 'zod';
-import {removeCourtAssignment} from './court';
+import {removeCourtAssignment,assignCourt,validateCourtRecord} from './court';
+import {isNarrativeNpc} from './narrative-npc';
+import {validateVassalNpcs,linkVassalNpcs} from './vassal-links';
+import {attachVassal} from './vassals';
 import {renameMilitaryHolding,editUnitProfile} from './unit-progression';
 import {setVassalLoyalty} from './military';
 import {unitSchema} from './schemas';
 import {operationSchema} from './schemas';
 import {isMonthSensitiveHouseAction} from './monthly-operation-policy';
 import {RESOURCE_KEYS,SKILLS,type HouseState} from './types';
-import {createUnit,balances,activeHoldings,UNIT_TYPES} from './engine';
+import {createUnit,balances,activeHoldings,UNIT_TYPES,purchase} from './engine';
+import {vassalState} from './vassals';
+import type {CatalogItem} from './types';
 import {equipUnit,changeUnitState,resolveSurvivors,
  SURVIVOR_CONDITIONS} from './military';
 import {changeSiegeAssignment} from './siege';
@@ -15,12 +20,17 @@ import {resourcesSchema} from './schemas';
 import {depositGold,donateGold,donateGlory,spendInfluence,
  redeemIntrigueBonus} from './resource-transactions';
 import {alternativeFortune} from './engine';
-import {convertResources,confirmFortune} from './fortune';
+import {convertResources,confirmFortune,runTournament} from './fortune';
+import {reconcileHouseCalendar,calendarMonthIndex} from './calendar-consistency';
+import {legacyCostIssues,reconcileLegacyCosts} from './legacy-cost-reconciliation';
 import {validateResources} from './engine';
 import {changeHoldingCondition,legacyEffectCandidates,legacyCatalogEffects} from './holding-accounting';
-import {historyAdjustments,memberBonusAdjustments} from './creation-history';
+import {historyAdjustments,memberBonusAdjustments,rollFoundation,
+ rollHistoricalEvent,historicalFoundationYear} from './creation-history';
+import {createVassal} from './vassals';
+import type {Resource} from './types';
 import {improveEquipment} from './equipment';
-import {trainUnit,endVassal} from './military';
+import {trainUnit,endVassal,approveVassal} from './military';
 import {buySiege} from './siege';
 
 export type HouseAction=z.infer<typeof operationSchema>['action'];
@@ -99,7 +109,7 @@ export function applyHouseDomainOperation(
  */
 export const HOUSE_NON_ECONOMIC_ACTIONS=[
  'military_rename','court_remove','return_to_draft','clear_pending','approve',
- 'unit_edit','vassal_loyalty',
+ 'unit_edit','vassal_loyalty','vassal_domain',
 ] as const;
 export type HouseNonEconomicAction=typeof HOUSE_NON_ECONOMIC_ACTIONS[number];
 
@@ -135,6 +145,19 @@ export function applyHouseNonEconomicOperation(
    loyalty:z.enum(['loyal','neutral','rebellious'])}).parse(args);
   return {state:setVassalLoyalty(state,input.id,input.loyalty,explanation),
    rule:'Lealdade da vassala: '+input.loyalty+'; decisão narrativa auditada',
+   explanation};
+ }
+ if(action==='vassal_domain'){
+  const vassalId=z.string().parse(args['vassalId']);
+  const next=structuredClone(state);
+  const vassal=next.vassals?.find(v=>v.id===vassalId&&v.status==='approved');
+  if(!vassal?.sheet)throw Error('Mini-ficha indisponível.');
+  const domain=z.object({id:z.string().uuid(),
+   name:z.string().trim().min(1).max(160)}).parse(args);
+  if(vassal.sheet.domains.some(x=>x.id===domain.id))
+   throw Error('Domínio já cadastrado.');
+  vassal.sheet.domains.push({...domain,terrain:'',features:[],notes:''});
+  return {state:next,rule:'Mini-ficha da vassala · recursos independentes da suserana',
    explanation};
  }
  if(action==='return_to_draft'){
@@ -550,4 +573,262 @@ export function applyHouseCreationOperation(
  }
  validateResources(next.base);validateResources(next.permanent);
  return {state:next,rule};
+}
+
+/**
+ * Sorteios servidor-side fornecidos como dados imutáveis da operação.
+ * A mesma matriz será reutilizada em cada retry da transação Firestore.
+ */
+export const HOUSE_DICE_ACTIONS=[
+ 'roll','foundation_roll','history_roll','member_bonus','vassal_create',
+] as const;
+export type HouseDiceAction=typeof HOUSE_DICE_ACTIONS[number];
+export type HouseDiceContext={admin:boolean;key:string;playerId:string|null;
+ dice:readonly number[]};
+export function applyHouseDiceOperation(
+ state:HouseState,action:HouseDiceAction,args:Record<string,unknown>,
+ ctx:HouseDiceContext,
+):{state:HouseState;rule:string}{
+ const next=structuredClone(state);
+ let cursor=0;
+ const die=()=>{
+  const value=ctx.dice[cursor++];
+  if(!Number.isInteger(value)||value===undefined||value<1||value>6)
+   throw Error('Sorteio do servidor não foi validado.');
+  return value;
+ };
+ if(action==='roll'){
+  if(state.phase!=='draft'||state.rolls.length||state.method==='import'||
+    state.importSources.length)
+   throw Error('Rolagens já registradas, importadas ou criação encerrada.');
+  if(!ctx.admin&&!(state.method==='roll'||(state.method==='budget'&&
+    state.budget===null&&RESOURCE_KEYS.every(r=>state.base[r]===0)&&
+    !state.holdings.length&&!state.units.length)))
+   throw Error('Método por orçamento autorizado; somente o Narrador pode alterá-lo.');
+  next.method='roll';next.budget=null;
+  next.rolls=RESOURCE_KEYS.map(()=>Array.from({length:7},die));
+  RESOURCE_KEYS.forEach((r,i)=>{
+   next.base[r]=(next.rolls[i]??[]).reduce((a,b)=>a+b,0);
+  });
+  next.regionalApplied=true;
+  return {state:next,rule:'Livro básico · 7d6 por recurso, p. 126 · rolagem imutável'};
+ }
+ if(action==='foundation_roll'){
+  if(state.phase!=='draft'||state.method==='import'||
+    state.importSources.length||state.creationHistory)
+   throw Error('Fundação já registrada, importada ou criação encerrada.');
+  const history=rollFoundation(die);
+  next.creationHistory=history;
+  if(next.identity.foundation===undefined)
+   next.identity.foundation=historicalFoundationYear(history.foundationRoll);
+  return {state:next,rule:'Livro básico · tabela 6-3 · fundação e número de eventos registrados'};
+ }
+ if(action==='history_roll'){
+  const history=state.creationHistory;
+  if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+    !history||history.applied||history.events.length>=history.limit)
+   throw Error('Rolagem de evento indisponível, completa ou criação importada.');
+  const input=z.object({infrastructure:z.tuple([z.enum(RESOURCE_KEYS),
+    z.enum(RESOURCE_KEYS)])}).parse(args);
+  if(input.infrastructure[0]===input.infrastructure[1])
+   throw Error('Escolha dois recursos distintos para Infraestrutura.');
+  const result=rollHistoricalEvent(die,input.infrastructure,ctx.key);
+  next.creationHistory={...history,events:[...history.events,result]};
+  return {state:next,rule:'Livro básico · tabela 6-4 · 3d6 e modificadores por recurso (piso zero)'};
+ }
+ if(action==='member_bonus'){
+  if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+    state.creationBonusesApplied)
+   throw Error('Bônus pessoal disponível apenas durante a criação não importada.');
+  const {resource}=z.object({resource:z.enum(RESOURCE_KEYS)}).parse(args);
+  const playerId=ctx.playerId;
+  if(!playerId)throw Error('Somente um jogador cadastrado pode contribuir com o bônus.');
+  if((state.creationBonuses??[]).some(b=>b.playerId===playerId))
+   throw Error('Cada jogador pode aplicar seu bônus apenas uma vez.');
+  next.creationBonuses=[...(state.creationBonuses??[]),
+   {playerId,resource,die:die()}];
+  return {state:next,rule:'Livro básico · ajuste inicial de jogador vinculado, +1d6 auditado'};
+ }
+ if(action==='vassal_create'){
+  const input=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(160),
+   region:z.string().min(1).max(100),motto:z.string().max(500),
+   lordName:z.string().max(160)}).parse(args);
+  const rolls=Object.fromEntries(RESOURCE_KEYS.map(r=>[r,
+   Array.from({length:5},die)])) as Record<Resource,number[]>;
+  return {state:createVassal(state,input,rolls),
+   rule:'Vassala · cinco d6 registrados por recurso; custo 20/10/5 Poder da suserana'};
+ }
+ throw Error('Ação de sorteio não coberta.');
+}
+
+/** Ações dependentes do calendário ou do nome canônico da Casa.
+ * Os fatos externos são conferidos dentro da transação e passados explicitamente.
+ */
+export const HOUSE_CONTEXT_ACTIONS=['sync_calendar','reconcile_legacy_costs','action'] as const;
+export type HouseContextAction=typeof HOUSE_CONTEXT_ACTIONS[number];
+export type HouseContext={
+ admin:boolean;explanation:string;houseName:string;
+ calendar:{year:number;month:number};dice:readonly number[];
+};
+export function applyHouseContextOperation(
+ state:HouseState,action:HouseContextAction,args:Record<string,unknown>,
+ ctx:HouseContext,
+):{state:HouseState;rule:string}{
+ if(action==='sync_calendar'){
+  if(!ctx.admin)throw Error('Somente o Narrador pode conciliar o calendário de uma Casa.');
+  const next=reconcileHouseCalendar(state,ctx.calendar,ctx.explanation);
+  return {state:next,rule:'Conciliação auditada com o mês global de Harptos '+
+   calendarMonthIndex(ctx.calendar)+'; obras conferidas; sem retrocesso'};
+ }
+ if(action==='reconcile_legacy_costs'){
+  if(!ctx.admin)throw Error('Conciliação legada exclusiva do Narrador.');
+  if(ctx.explanation.trim().length<10)
+   throw Error('Justifique a conferência da fonte histórica.');
+  if(!ctx.houseName.trim())throw Error('Nome canônico da Casa indisponível.');
+  const ids=z.array(z.string().min(1)).min(1).max(6).parse(args['ids']);
+  const candidates=legacyCostIssues(state,ctx.houseName);
+  if(ids.some(id=>!candidates.some(row=>row.id===id)))
+   throw Error('Divergência entre a ficha e a fonte legada. Nada foi alterado.');
+  const next=reconcileLegacyCosts(state,ctx.houseName,ids);
+  return {state:next,rule:'Conciliação pontual da auditoria 16; itens '+
+   ids.join(', ')+'; antes '+JSON.stringify(balances(state))+
+   '; depois '+JSON.stringify(balances(next))};
+ }
+ if(action==='action'){
+  if(state.phase!=='active')throw Error('Casa não ativa.');
+  const input=z.object({type:z.string().min(1).max(100),
+   notes:z.string().min(1).max(4000),
+   scale:z.enum(['local','regional','grand']).optional(),
+   competitions:z.number().int().min(1).max(30).optional()}).parse(args);
+  if(state.actions.some(a=>a.month===state.month))
+   throw Error('A Casa já utilizou sua ação mensal (inclusive conversões).');
+  if(input.type==='Torneio'){
+   if(!input.scale||!input.competitions)
+    throw Error('Informe porte e competições do torneio.');
+   const sides=input.scale==='local'?1:input.scale==='regional'?3:6;
+   const roll=ctx.dice[0];
+   if(!Number.isInteger(roll)||roll===undefined||roll<1||roll>sides)
+    throw Error('Sorteio de torneio inválido.');
+   return {state:runTournament(state,input.scale,input.competitions,roll,input.notes),
+    rule:'Livro básico pp. 155–156 · torneio '+input.scale+'; Influência rolada '+roll};
+  }
+  const next=structuredClone(state);
+  next.actions.push({month:state.month,type:input.type,notes:input.notes});
+  return {state:next,rule:'Livro básico p. 153 · ação mensal auditada'};
+ }
+ throw Error('Ação de contexto não implementada.');
+}
+
+/** Compras utilizam catálogo canônico confirmado na MESMA transação que grava.
+ * Sorteios econômicos entram como números de 32 bits do servidor, sem I/O.
+ */
+export const HOUSE_PURCHASE_ACTIONS=['purchase','vassal_purchase'] as const;
+export type HousePurchaseAction=typeof HOUSE_PURCHASE_ACTIONS[number];
+export type HousePurchaseContext={item:CatalogItem;rawRolls:readonly number[]};
+const drawDuration=(count:number,sides:number,rolls:readonly number[]):number[]=>{
+ if(!Number.isSafeInteger(count)||count<0||count>100||
+    !Number.isSafeInteger(sides)||sides<1||sides>10000)
+  throw Error('Duração de construção fora do catálogo autorizado.');
+ const output:number[]=[];let i=0;
+ const max=2**32,limit=Math.floor(max/sides)*sides;
+ while(output.length<count){
+  const value=rolls[i++];
+  if(value===undefined||!Number.isSafeInteger(value)||value<0||value>=max)
+   throw Error('Dados do servidor insuficientes para a obra.');
+  if(value<limit)output.push(value%sides+1);
+ }
+ return output;
+};
+export function applyHousePurchaseOperation(
+ state:HouseState,action:HousePurchaseAction,args:Record<string,unknown>,
+ ctx:HousePurchaseContext,
+):{state:HouseState;rule:string}{
+ if(action==='purchase'){
+  const input=z.object({id:z.string().uuid(),itemId:z.string(),
+   domainId:z.string(),name:z.string().max(160),
+   parentId:z.string().optional(),supportId:z.string().optional(),
+   replaceId:z.string().optional(),
+   weaponSpecialty:z.enum(['fighting','marksmanship']).optional()}).parse(args);
+  if(ctx.item?.id!==input.itemId)
+   throw Error('Catálogo indisponível para a posse selecionada.');
+  const dice=state.phase==='active'?
+   drawDuration(ctx.item.duration.dice??0,ctx.item.duration.sides??6,ctx.rawRolls):[];
+  return {state:purchase(state,ctx.item,{...input,dice}),
+   rule:ctx.item.source+' · '+ctx.item.section+' · '+ctx.item.version};
+ }
+ if(action==='vassal_purchase'){
+  const vassalId=z.string().parse(args['vassalId']);
+  const next=structuredClone(state);
+  const vassal=next.vassals?.find(v=>v.id===vassalId&&v.status==='approved');
+  if(!vassal?.sheet)throw Error('Mini-ficha indisponível.');
+  const input=z.object({itemId:z.string(),id:z.string().uuid(),
+   domainId:z.string(),name:z.string().max(160),
+   parentId:z.string().optional(),supportId:z.string().optional()}).parse(args);
+  if(ctx.item?.id!==input.itemId)
+   throw Error('Catálogo indisponível para a posse selecionada.');
+  const result=purchase(vassalState(next,vassal),ctx.item,{...input,dice:[]});
+  vassal.sheet.holdings=result.holdings;
+  vassal.sheet.permanent=result.permanent;
+  vassal.sheet.domains=result.domains;
+  return {state:next,rule:'Mini-ficha da vassala · recursos independentes da suserana'};
+ }
+ throw Error('Compra não implementada.');
+}
+
+/**
+ * Corte e vassalagem somente por registros privados verificados.
+ * Referências a NPCs e nomes oficiais são resolvidas pelo servidor na transação.
+ */
+export const HOUSE_LINK_ACTIONS=['court','vassal','vassal_approve','vassal_npcs'] as const;
+export type HouseLinkAction=typeof HOUSE_LINK_ACTIONS[number];
+export type HouseLinkRecord={id:string;house_id:string|null;kind:string;
+ title:string;content:string;visibility:'player'|'house'|'gm'};
+export type HouseLinkContext={houseId:string;actorUid:string;narrator:boolean;
+ houseName:string;npcIds:string[];records:HouseLinkRecord[];explanation:string};
+export function applyHouseLinkOperation(
+ state:HouseState,action:HouseLinkAction,args:Record<string,unknown>,
+ ctx:HouseLinkContext,
+):{state:HouseState;rule:string}{
+ if(action==='court'){
+  const member=z.object({id:z.string().uuid(),npcId:z.string().uuid(),
+   role:z.string().min(1).max(160),notes:z.string().max(4000)}).parse(args);
+  const record=ctx.records.find(x=>x.id===member.npcId)??null;
+  validateCourtRecord(ctx.houseId,record);
+  if(!record||!isNarrativeNpc(record))
+   throw Error('Selecione um NPC narrativo, não uma ficha técnica.');
+  return {state:assignCourt(state,{...member,name:record.visibility==='house'?
+    record.title:'Integrante restrito'}),
+   rule:'Corte · cargo ligado a registro existente, sem copiar personagem'};
+ }
+ if(action==='vassal'){
+  const input=z.object({id:z.string().uuid(),houseId:z.string(),
+   notes:z.string().min(1).max(4000)}).parse(args);
+  if(!ctx.houseName.trim())throw Error('Casa oficial não encontrada.');
+  const ids=validateVassalNpcs(ctx.houseId,ctx.npcIds,ctx.records);
+  return {state:attachVassal(state,{...input,name:ctx.houseName,npcIds:ids}),
+   rule:'Vassalagem imediata · 20/10/5 Poder; sem acesso à ficha da outra casa'};
+ }
+ if(action==='vassal_approve'){
+  if(!ctx.narrator)throw Error('Somente o Narrador aprova vassalagens.');
+  const input=z.object({id:z.string(),
+   influencePenalty:z.number().int().nonnegative()}).parse(args);
+  if(!ctx.explanation.trim())throw Error('Registre a decisão de vínculo e Influência.');
+  const ids=validateVassalNpcs(ctx.houseId,ctx.npcIds,ctx.records);
+  const next=linkVassalNpcs(approveVassal(state,input.id,input.influencePenalty),
+   input.id,ids);
+  const vassal=next.vassals?.find(v=>v.id===input.id);
+  if(vassal){vassal.approvalNote=ctx.explanation;vassal.approvedBy=ctx.actorUid;}
+  return {state:next,
+   rule:'Livro básico · Brasões vassalos20/10/5Poder; decisão e NPCs confirmados pelo Narrador'};
+ }
+ if(action==='vassal_npcs'){
+  if(!ctx.narrator)throw Error('Somente o Narrador altera referências vassalas.');
+  const id=z.string().parse(args['id']);
+  if(!ctx.explanation.trim())
+   throw Error('Registre a decisão de alteração dos NPCs.');
+  const ids=validateVassalNpcs(ctx.houseId,ctx.npcIds,ctx.records);
+  return {state:linkVassalNpcs(state,id,ids),
+   rule:'Referências a NPCs existentes alteradas pelo Narrador; sem duplicação ou novo custo'};
+ }
+ throw Error('Vínculo não implementado.');
 }
