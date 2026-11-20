@@ -101,6 +101,9 @@ export async function commitOperationalRecord({
   ]);
   assertRuntime(rt.exists?rt.data():null,snapshotId);
   if(representation){
+   if(rt.data()?.representationReadApproved!==true||
+      rt.data()?.representationWriteApproved!==true)
+    fail('representation_write_not_approved',503);
    if(actor.profile!=='jogador'||actor.uid===representation.realActorUid||
      !validId(representation.realActorUid)||!uuid(representation.sessionNonce))
     fail('representation_denied',403);
