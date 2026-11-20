@@ -18,7 +18,20 @@ habilitada, a raiz operacional deverá ter
 `recordsReadApproved=true`, `sourceSnapshotReconciled=true` e
 `applicationEnabled=true`.
 
-**Ainda pendente para completar o item 6:** criar transação de escrita
-`save_campaign_record` e inserção de registros com comparação de
-versão, idempotência, auditoria e testes em emulador/Cloud real.
-Nenhuma gravação em produção foi habilitada por esta etapa.
+## Atualização em 20/11/2026
+
+A escrita `save_campaign_record` e a criação de registros já estão
+implementadas em `operational-record-write.ts`, com versão otimista,
+idempotência, histórico e auditoria. O acervo migrado continua imutável.
+
+A gravação direta agora relê o acesso efetivo (incluindo `accountAccess`)
+e a situação das Casas dentro da própria transação, antes de alterar o
+registro ou devolver um recibo idempotente. Revogação da edição,
+desativação da conta/Casa, troca de jogador ou exigência de senha
+impedem a gravação. A representação mantém sua verificação transacional
+independente de sessão, Narrador e jogador.
+
+**Pendente:** homologação em emulador/Cloud real e liberação operacional.
+A flag permanece false e exige `recordsReadApproved=true` e
+`recordsWriteApproved=true` no runtime. Testes com Firestore simulado
+não comprovam aprovação nem funcionamento em produção.

@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {describe,it,expect,afterEach,beforeEach} from 'vitest';
 import {commitSpyAction} from './operational-spy-write';
 import type {Scope} from './service';
@@ -20,6 +21,14 @@ const source=(assets:any[]=[agent(id1)])=>({
 });
 function memoryDb(){
  const data=new Map<string,any>([['campaignCloudRuntime/'+snapshot,meta]]);
+ data.set('migrationDomainStage/'+snapshot+'/access/'+scope.uid,{
+  userId:scope.uid,profile:scope.profile,admin:scope.profile==='narrador',
+  active:true,requirePasswordChange:false,playerId:scope.playerId,
+  memberHouseIds:scope.memberHouseIds,editHouseIds:scope.editHouseIds,
+ });
+ for(const id of scope.memberHouseIds)data.set(
+  'migrationDomainStage/'+snapshot+'/houses/'+createHash('sha256').update('house:'+id).digest('hex'),
+  {sourceId:id,active:true,season:2});
  const col=(path:string):any=>({
   path,limit:(_max:number)=>({query:path}),
   doc:(id:string)=>ref(path+'/'+id),
@@ -92,5 +101,24 @@ describe('item 7a, proteção da espionagem operacional',()=>{
    source:source(),calendar})).rejects.toMatchObject({
    code:'spy_runtime_not_approved',status:503,
   });
+ });
+ it('revogação operacional prevalece sobre permissão importada e recibos',async()=>{
+  const m=memoryDb(),input={db:m.db,snapshotId:snapshot,scope,
+   name:'spy_rename_agent',source:source(),calendar,args:{
+    p_house:'h1',p_agent:id1,p_name:'Corvo',p_expected_version:1,p_request_key:key,
+   }};
+  await commitSpyAction(input);
+  m.data.set('campaignCloudRuntime/'+snapshot+'/accountAccess/'+scope.uid,{
+   userId:scope.uid,profile:'jogador',admin:false,active:false,
+   requirePasswordChange:false,playerId:scope.playerId,
+   memberHouseIds:['h1'],editHouseIds:['h1'],attrHouseIds:[],
+  });
+  const before=structuredClone([...m.data]);
+  await expect(commitSpyAction(input))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  await expect(commitSpyAction({...input,args:{...input.args,
+   p_expected_version:2,p_request_key:id2}}))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  expect([...m.data]).toEqual(before);
  });
 });

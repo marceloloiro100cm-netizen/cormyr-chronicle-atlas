@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {describe,it,expect,afterEach,beforeEach} from 'vitest';
 import {commitSpyMission,previewSpyMission} from './operational-spy-missions';
 import {spyDigest} from './operational-spy-context';
@@ -30,6 +31,14 @@ function memory(){
   sourceSnapshotId:snapshot,sourceSnapshotReconciled:true,
   spyReadApproved:true,spyWriteApproved:true,calendarVersion:calendar.version,
  }]]);
+ data.set('migrationDomainStage/'+snapshot+'/access/'+scope.uid,{
+  userId:scope.uid,profile:scope.profile,admin:scope.profile==='narrador',
+  active:true,requirePasswordChange:false,playerId:scope.playerId,
+  memberHouseIds:scope.memberHouseIds,editHouseIds:scope.editHouseIds,
+ });
+ for(const id of scope.memberHouseIds)data.set(
+  'migrationDomainStage/'+snapshot+'/houses/'+createHash('sha256').update('house:'+id).digest('hex'),
+  {sourceId:id,active:true,season:2});
  const ref=(path:string):any=>({path,collection:(name:string)=>collection(path+'/'+name)});
  const collection=(path:string):any=>({
   doc:(id:string)=>ref(path+'/'+id),
@@ -106,5 +115,24 @@ describe('7b, missões de espionagem operacional',()=>{
    .rejects.toMatchObject({code:'access_denied'});
   await expect(commitSpyMission({...input,source:{...archived,catalog:[]}}))
    .rejects.toMatchObject({code:'spy_target_not_reviewed'});
+ });
+ it('nega envio e cancelamento se a Casa foi desativada depois do login',async()=>{
+  const m=memory(),input={db:m.db,snapshotId:snapshot,scope,
+   name:'spy_submit_house_mission',source:archived,calendar,args:{
+    p_house:'h1',p_agent:agentId,p_target:'h2',p_destination:'crownlands',
+    p_objective:'house_resources',p_expected_agent_version:1,
+    p_expected_calendar_version:7,p_request_key:key,
+   }};
+  const first=await commitSpyMission(input);
+  m.data.set('migrationDomainStage/'+snapshot+'/houses/'+spyDigest('house:h1'),
+   {sourceId:'h1',active:false,season:2});
+  const before=structuredClone([...m.data]);
+  await expect(commitSpyMission(input))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  await expect(commitSpyMission({...input,name:'spy_cancel_house_mission',
+   args:{p_house:'h1',p_operation:first.operationId,p_expected_version:1,
+    p_request_key:cancelKey}}))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  expect([...m.data]).toEqual(before);
  });
 });
