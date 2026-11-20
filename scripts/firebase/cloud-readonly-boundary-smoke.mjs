@@ -1,6 +1,6 @@
 /**
  * Anonymous, no-op verification of the four independently gated Firebase
- * Cloud READ routes, three private Cloud routes and four legacy/WRITE routes
+ * Cloud READ routes, four private Cloud routes and four legacy/WRITE routes
  * (including treasury) still blocked by archive mode.
  * Never authenticates, sends a valid action, or reads private documents.
  */
@@ -14,13 +14,14 @@ export const READ_ROUTES=Object.freeze([
   ['houseReconciliation','/api/firebase-house-reconciliation-audit','house_reconciliation_audit_disabled'],
   ['treasuryAudit','/api/firebase-treasury-audit','firebase_treasury_audit_disabled'],
 ]);
-// Only these three Cloud routes bypass archive mode, requiring either a
+// Only these four Cloud routes bypass archive mode, requiring either a
 // disabled feature flag (503) or a Firebase ID token (401).
 // Every probe sends an impossible action without credentials.
 export const CLOUD_ROUTES=Object.freeze([
   ['firebaseCloudSession','/api/firebase-cloud-read','firebase_cloud_read_disabled'],
   ['firebaseCloudMail','/api/firebase-cloud-mail','firebase_cloud_mail_disabled'],
   ['firebaseCloudNewspaper','/api/firebase-cloud-newspaper','firebase_cloud_newspaper_disabled'],
+  ['houseActivation','/api/firebase-house-activation','house_activation_disabled'],
 ]);
 export const CLOSED_ROUTES=Object.freeze([
   ['constructionPurchase','/api/firebase-cloud-construction'],

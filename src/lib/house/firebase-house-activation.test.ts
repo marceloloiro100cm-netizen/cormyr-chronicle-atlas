@@ -25,7 +25,18 @@ function fixture(profile='narrador'){
   source.domains=[{id:'d1',name:'Vale',terrain:'plains',features:[],notes:''}];
   const sheet='migrationNobleHouseStage/'+snapshot+'/sheets/'+hash('noble-sheet:house-a');
   docs.set(sheet,{houseId:'house-a',state:source,version:4});
-  const ref=(p:string):any=>({path:p,collection:(n:string)=>ref(p+'/'+n),doc:(n:string)=>ref(p+'/'+n)});
+  let catalogReads=0;
+  const ref=(p:string):any=>({
+    path:p,collection:(n:string)=>ref(p+'/'+n),doc:(n:string)=>ref(p+'/'+n),
+    get:async()=>{
+      if(p==='migrationDomainStage/'+snapshot+'/houses'){
+        catalogReads++;
+        return {docs:[...docs.entries()].filter(([k])=>k.startsWith(p+'/'))
+          .map(([,v])=>({data:()=>v}))};
+      }
+      return {exists:docs.has(p),data:()=>docs.get(p)};
+    },
+  });
   const db={collection:(n:string)=>ref(n),runTransaction:async(fn:any)=>{
     const writes:any[]=[];
     const result=await fn({get:async(r:any)=>({exists:docs.has(r.path),data:()=>docs.get(r.path)}),
@@ -41,7 +52,7 @@ function fixture(profile='narrador'){
   const inspect=()=>service.execute('synthetic-token',{action:'inspect',houseId:'house-a'});
   const activate=async()=>{const preview=await inspect();return service.execute('synthetic-token',{
     action:'activate',houseId:'house-a',expectedSourceVersion:preview.preview?.sourceSheetVersion,expectedSourceHash:preview.sourceHash});};
-  return {docs,runtime,scope,sheet,service,inspect,activate};
+  return {docs,runtime,scope,sheet,service,inspect,activate,catalogReads:()=>catalogReads};
 }
 describe('Explicit narrator House activation',()=>{
   it('previews without writes then atomically clones the exact baseline and Treasury',async()=>{
@@ -85,4 +96,38 @@ describe('Explicit narrator House activation',()=>{
     const far=fixture();far.docs.get(far.sheet).state.month-=4;
     expect((await far.inspect()).status).toBe('calendar_mismatch');
   });
+});
+
+
+describe('Batch activation: Narrator authorization and bounded listing',()=>{
+ it('does not query private House catalog before checking the Narrator profile',async()=>{
+  const player=fixture('jogador');
+  await expect(player.service.listHouses('synthetic-token')).rejects
+   .toMatchObject({code:'narrator_required',status:403});
+  expect(player.catalogReads()).toBe(0);
+  const invalid=fixture();
+  await expect(invalid.service.listHouses('x')).rejects
+   .toMatchObject({code:'authentication_required',status:401});
+  expect(invalid.catalogReads()).toBe(0);
+ });
+ it('lists only active season-2 Houses, then keeps historical data immutable',async()=>{
+  const f=fixture(),before=structuredClone(f.docs);
+  f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:archived'),{
+    sourceId:'archived',active:false,season:2,
+  });
+  f.docs.set('migrationDomainStage/'+snapshot+'/houses/'+hash('house:other-season'),{
+    sourceId:'other-season',active:true,season:1,
+  });
+  expect(await f.service.listHouses('synthetic-token'))
+   .toEqual({houseIds:['house-a']});
+  expect(f.catalogReads()).toBe(1);
+  const result=await f.service.activateAll('synthetic-token');
+  expect(result.results).toEqual([{houseId:'house-a',status:'activated'}]);
+  for(const [key,val] of before){
+   if(key.startsWith('migration')&&f.docs.has(key))
+    expect(f.docs.get(key)).toEqual(val);
+  }
+  const repeated=await f.service.activateAll('synthetic-token');
+  expect(repeated.results).toEqual([{houseId:'house-a',status:'already_initialized'}]);
+ });
 });
