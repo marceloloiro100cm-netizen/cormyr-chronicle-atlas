@@ -25,6 +25,7 @@ export type Conversation={
   unreadLetterIds:(ctx:QueueContext)=>string[];
   lastIncomingLetterId:(uid:string)=>string|null;
   replyTarget:(uid:string,admin:boolean,editHouses:Set<string>)=>string|null;
+  replyToHistoricalId:(uid:string,admin:boolean,editHouses:Set<string>)=>string|null;
 };
 
 export function conversationKind(root:Pick<LetterRow,'origin_house_id'|'recipient_house_id'|'letter_kind'|'sender_user_id'>):ConversationKind{
@@ -37,9 +38,11 @@ const KIND_LABEL:Record<ConversationKind,string>={narrador:'Do Narrador','ao-nar
 
 /** Letra pode ser respondida por este usuário? Espelha cloudReplyRoute do servidor. */
 export function canReplyTo(m:MailRow,uid:string,admin:boolean,editHouses:Set<string>):boolean{
-  if(!CLOUD_ID.test(m.id)||m.source!=='firebase-cloud'||!delivered(m)||
-     m.recipient_player_id||m.sender_user_id===uid)return false;
+  if(!delivered(m)||m.sender_user_id===uid||
+     m.source==='firebase-cloud'&&!CLOUD_ID.test(m.id))return false;
   if(admin)return !m.recipient_house_id&&Boolean(m.origin_house_id);
+  if(m.letter_kind==='geral'&&!m.origin_house_id&&!m.recipient_house_id)
+    return editHouses.size===1;
   return Boolean(m.recipient_house_id)&&editHouses.has(m.recipient_house_id as string)&&
     m.origin_house_id!==m.recipient_house_id;
 }
@@ -84,8 +87,28 @@ export function buildConversations(letters:MailRow[],replies:ReplyRow[]):Convers
         return ids;
       },
       lastIncomingLetterId:(uid)=>all.filter(m=>delivered(m)&&m.sender_user_id!==uid).sort((a,b)=>at(a).localeCompare(at(b))).at(-1)?.id??null,
-      replyTarget:(uid,admin,editHouses)=>all.filter(m=>canReplyTo(m,uid,admin,editHouses))
-        .sort((a,b)=>at(a).localeCompare(at(b))).at(-1)?.id??null,
+      replyTarget:(uid,admin,editHouses)=>{
+        const cloud=all.filter(m=>canReplyTo(m,uid,admin,editHouses))
+          .map(m=>({id:m.id,at:at(m)}));
+        const old=historical.filter(r=>deliveredReply(r)&&
+          r.author_user_id!==uid&&r.recipient_user_id===uid&&
+          (admin?kind==='ao-narrador'||kind==='narrador':
+            kind!=='geral'||editHouses.size===1))
+          .map(r=>({id:root.id,at:at(r)}));
+        return [...cloud,...old].sort((a,b)=>a.at.localeCompare(b.at))
+          .at(-1)?.id??null;
+      },
+      replyToHistoricalId:(uid,admin,editHouses)=>{
+        const candidate=historical.filter(r=>deliveredReply(r)&&
+          r.author_user_id!==uid&&r.recipient_user_id===uid&&
+          (admin?kind==='ao-narrador'||kind==='narrador':
+            kind!=='geral'||editHouses.size===1))
+          .sort((a,b)=>at(a).localeCompare(at(b))).at(-1);
+        const newestCloud=all.filter(m=>canReplyTo(m,uid,admin,editHouses))
+          .sort((a,b)=>at(a).localeCompare(at(b))).at(-1);
+        return candidate&&(!newestCloud||at(candidate)>at(newestCloud))
+          ?candidate.id:null;
+      },
     });
   }
   return result;
