@@ -64,3 +64,23 @@ export type SpyNarratorIncident=z.infer<typeof spyNarratorIncidentSchema>;
 export async function readSpyNarratorIncidentsBrowser():Promise<SpyNarratorIncident[]>{
  return spyNarratorIncidentListSchema.parse(await privateSpyRead('spy_narrator_incident_history',{}));
 }
+
+/** O Narrador aplica a data oficial do HUB aos deslocamentos ativos.
+ * O servidor valida novamente a versão do calendário e audita a tentativa.
+ */
+export async function advanceSpyActiveMissionsBrowser(){
+ const clock=await privateSpyRead('get_campaign_calendar',{});
+ const version=clock&&typeof clock==='object'&&Number.isSafeInteger(clock.version)
+  ?clock.version:null;
+ if(version===null)throw new Error('Calendário oficial do HUB indisponível.');
+ const response=await privateSpyRead('spy_advance_active_missions',{
+  p_calendar_version:version,p_request_key:crypto.randomUUID(),
+ });
+ const parsed=z.object({
+  advanced:z.number().int().nonnegative(),
+  calendarVersion:z.number().int().positive(),
+ }).passthrough().safeParse(response);
+ if(!parsed.success||parsed.data.calendarVersion!==version)
+  throw new Error('Atualização de espionagem não confirmada.');
+ return parsed.data;
+}
