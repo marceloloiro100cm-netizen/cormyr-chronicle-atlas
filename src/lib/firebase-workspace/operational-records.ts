@@ -91,7 +91,7 @@ export function projectOperationalVersions(
  for(const saved of persistedVersions){
   if(!permitted.has(saved['record_id']))continue;
   const key=saved['record_id']+'|'+saved['version'];
-  if(!Number.isSafeInteger(saved['version'])||saved['version']<1||
+  if(!Number.isSafeInteger(saved['version'])||Number(saved['version'])<1||
      !saved['snapshot']||typeof saved['snapshot']!=='object'||
      (saved['snapshot'] as RecordRow)['id']!==saved['record_id']||
      (saved['snapshot'] as RecordRow)['version']!==saved['version'])
