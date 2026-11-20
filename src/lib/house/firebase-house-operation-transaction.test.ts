@@ -117,7 +117,7 @@ describe('Item 4b, transação operacional por Casa',()=>{
   expect([...f.docs.keys()].filter(k=>k.includes('/houseOperationAudits/'))).toHaveLength(1);
   const repeated=await f.service().execute('valid-token-123',f.input());
   expect(repeated.duplicate).toBe(true);
-  expect(f.writes()).toBe(4);
+  expect(f.writes()).toBe(5);
   await denied(()=>f.service().execute('valid-token-123',f.input({
     args:{id:'11111111-1111-4111-8111-111111111111',name:'Ataque',notes:''},
   })),'house_operation_key_conflict',409);
@@ -183,7 +183,7 @@ describe('segunda fatia de operações Firebase',()=>{
    .court)).toHaveLength(0);
   expect((f.docs.get(f.sheet)?.['state'] as ReturnType<typeof newHouseState>)
    .court).toHaveLength(1);
-  expect(f.writes()).toBe(4);
+  expect(f.writes()).toBe(5);
  });
 });
 
@@ -214,7 +214,7 @@ describe('transação de economia com ledger completo',()=>{
    action:'donate_gold',args:{points:1},
   }));
   expect(repeat.duplicate).toBe(true);
-  expect(f.writes()).toBe(4);
+  expect(f.writes()).toBe(5);
  });
  it('não concede recursos por APIs narrativas a jogador',async()=>{
   const f=fixture();
@@ -222,6 +222,76 @@ describe('transação de economia com ledger completo',()=>{
    action:'treasury_deposit',args:{coins:500,source:'Recolhimento comprovado'},
    explanation:'Aprovação da receita pelo narrador',
   })),'house_operation_forbidden',403);
+  expect(f.writes()).toBe(0);
+ });
+});
+
+describe('histórico operacional e desfazer em rascunho',()=>{
+ it('mantém estado anterior em documento privado e não altera snapshot importado',async()=>{
+  const f=fixture(),before=structuredClone(f.docs.get(f.sheet));
+  await f.service().execute('valid-token-123',f.input());
+  const snapshots=[...f.docs].filter(([p])=>p.includes('/houseOperationSnapshots/'));
+  expect(snapshots).toHaveLength(1);
+  expect((snapshots[0]?.[1]?.['beforeState'] as Record<string,unknown>)['houseId'])
+   .toBe('house-a');
+  expect(f.docs.get(f.sheet)).toEqual(before);
+  expect(f.writes()).toBe(5);
+ });
+ it('restaura último estado de rascunho sem apagar lançamentos históricos',async()=>{
+  const f=fixture();
+  const sheet=structuredClone(f.docs.get(f.sheet)!);
+  const initial=sheet['state'] as ReturnType<typeof newHouseState>;
+  initial.phase='draft';
+  f.docs.set(f.sheet,sheet);
+  const oldEconomy=f.docs.get(f.economyPath)!;
+  const sourceHash=constructionStateHash(initial);
+  f.docs.set(f.economyPath,{...oldEconomy,state:structuredClone(initial),
+   stateHash:sourceHash,sourceStateHash:sourceHash});
+  const before=structuredClone(initial);
+  await f.service().execute('valid-token-123',f.input());
+  const undone=await f.service().execute('valid-token-123',f.input({
+   version:1,key:'55555555-5555-4555-8555-555555555555',
+   action:'undo',args:{},explanation:'Desfazer correção de nome no rascunho',
+  }));
+  expect(undone.version).toBe(2);
+  expect(f.docs.get(f.economyPath)?.['state']).toEqual(before);
+  expect(f.docs.get(f.sheet)?.['state']).toEqual(initial);
+  expect([...f.docs.keys()].filter(p=>p.includes('/houseOperationAudits/')))
+   .toHaveLength(2);
+  const again=await f.service().execute('valid-token-123',f.input({
+   version:1,key:'55555555-5555-4555-8555-555555555555',
+   action:'undo',args:{},explanation:'Desfazer correção de nome no rascunho',
+  }));
+  expect(again.duplicate).toBe(true);
+  expect(f.writes()).toBe(10);
+ });
+ it('rejeita desfazer Casa ativa sem gravar nada',async()=>{
+  const f=fixture();
+  await denied(()=>f.service().execute('valid-token-123',f.input({
+   action:'undo',args:{},
+  })),'house_undo_requires_draft',409);
+  expect(f.writes()).toBe(0);
+ });
+ it('não permite desfazer sorteio auditado de rascunho',async()=>{
+  const f=fixture();
+  const sheet=structuredClone(f.docs.get(f.sheet)!);
+  const initial=sheet['state'] as ReturnType<typeof newHouseState>;
+  initial.phase='draft';
+  f.docs.set(f.sheet,sheet);
+  const old=f.docs.get(f.economyPath)!;
+  const hashState=constructionStateHash(initial);
+  const event='b'.repeat(64);
+  f.docs.set(f.economyPath,{...old,state:structuredClone(initial),
+   stateHash:hashState,sourceStateHash:hashState,
+   lastHouseOperationId:event,version:1});
+  f.docs.set(root('campaignCloudRuntime')+'/houseOperationSnapshots/'+event,{
+   eventId:event,houseId:'house-a',sourceSnapshotId:snapshot,version:1,
+   action:'history_roll',beforeState:structuredClone(initial),
+   beforeStateHash:hashState,afterStateHash:hashState,previousEventId:null,
+  });
+  await denied(()=>f.service().execute('valid-token-123',f.input({
+   version:1,action:'undo',args:{},
+  })),'house_undo_action_protected',409);
   expect(f.writes()).toBe(0);
  });
 });

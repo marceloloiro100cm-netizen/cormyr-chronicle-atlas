@@ -33,8 +33,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS]);
-const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS]);
+const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo']);
+const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo']);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -51,7 +51,7 @@ type SourceSheet={houseId?:string;version?:number;
 type EconomyDoc={houseId?:string;status?:string;private?:boolean;
  sourceSnapshotId?:string;sourceReconciled?:boolean;seedVerified?:boolean;
  sourceSheetVersion?:number;sourceStateHash?:string;stateHash?:string;
- version?:number;state?:Record<string,unknown>};
+ version?:number;state?:Record<string,unknown>;lastHouseOperationId?:string|null};
 type PriorReceipt={requestFingerprint?:string;actorUid?:string;houseId?:string;
  action?:string;version?:number;ledgerId?:string};
 export class HouseOperationError extends Error{
@@ -288,9 +288,43 @@ export function createFirebaseHouseOperation({
      if(item.id!==purchaseItemId)fail('house_catalog_integrity_failed',503);
     }catch{fail('house_item_not_found',409);}
    }
+   let undoPreviousEventId:string|null=null;
+   let undoSnapshot:typeof state|null=null;
+   if(action==='undo'){
+    if(state.phase!=='draft')fail('house_undo_requires_draft',409);
+    const previousEventId=economy.lastHouseOperationId;
+    if(typeof previousEventId!=='string'||!SHA.test(previousEventId))
+     fail('house_undo_history_missing',404);
+    const previous=await tx.get(root.collection('houseOperationSnapshots')
+     .doc(previousEventId!));
+    if(!previous.exists)fail('house_undo_history_missing',404);
+    const row=previous.data();
+    const restored=row?.['beforeState'];
+    const prior=restored&&typeof restored==='object'&&!Array.isArray(restored)?
+     verifiedEconomicState(restored):null;
+    const previousLink=row?.['previousEventId'];
+    if(!prior||prior.houseId!==houseId||prior.phase!=='draft'||
+       row?.['eventId']!==previousEventId||row?.['houseId']!==houseId||
+       row?.['sourceSnapshotId']!==snapshotId||
+       row?.['afterStateHash']!==economy.stateHash||
+       row?.['beforeStateHash']!==constructionStateHash(prior)||
+       !integer(row?.['version'])||Number(row?.['version'])>economy.version||
+       (previousLink!==null&&typeof previousLink!=='string')||
+       (typeof previousLink==='string'&&!SHA.test(previousLink)))
+     fail('house_undo_history_invalid',409);
+    if(['roll','foundation_roll','history_roll','member_bonus',
+        'vassal_create','import','crest_import','submit','undo']
+       .includes(String(row?.['action'])))
+     fail('house_undo_action_protected',409);
+    undoPreviousEventId=typeof previousLink==='string'?previousLink:null;
+    undoSnapshot=prior;
+   }
    let candidate:{state:typeof state;rule:string;explanation?:string};
    try{
-    candidate=DOMAINS.has(action)
+    candidate=action==='undo'
+     ?{state:structuredClone(undoSnapshot!) as typeof state,
+       rule:'Cormyr · desfazer em pilha de rascunhos, histórico preservado'}
+     :DOMAINS.has(action)
      ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
      :ECONOMICS.has(action)
       ?HOUSE_LINK_ACTIONS.includes(action as HouseLinkAction)
@@ -350,12 +384,25 @@ export function createFirebaseHouseOperation({
    const updatedAt=clock();
    if(!Number.isFinite(Date.parse(updatedAt)))fail('invalid_server_clock',503);
    const nextVersion=economy.version+1;
+   const beforeBytes=Buffer.byteLength(JSON.stringify(state),'utf8');
+   if(beforeBytes>650_000)fail('house_undo_snapshot_too_large',413);
+   if(action==='undo'&&Object.values(after.balances.available).some(x=>x<0))
+    fail('house_operation_insufficient_resources',409);
    const ledgerId=eventId;
    const output:HouseOperationResult={houseId,version:nextVersion,
      action,duplicate:false,ledgerId};
    const campaignDate=harptosKey(c.year,c.month,c.day,c.festival??null);
-   tx.update(economyRef,{state:next,stateHash:constructionStateHash(next),
-     version:nextVersion,lastHouseOperationId:eventId,updatedAt});
+   const nextStateHash=constructionStateHash(next);
+   const eventSnapshotRef=root.collection('houseOperationSnapshots').doc(eventId);
+   const previousEventId=economy.lastHouseOperationId??null;
+   const lastOperationId=action==='undo'?undoPreviousEventId:eventId;
+   tx.update(economyRef,{state:next,stateHash:nextStateHash,
+     version:nextVersion,lastHouseOperationId:lastOperationId,updatedAt});
+   tx.create(eventSnapshotRef,{eventId,houseId,version:nextVersion,
+     actorUid:uid,action,sourceSnapshotId:snapshotId,
+     beforeState:JSON.parse(JSON.stringify(state)),
+     beforeStateHash:economy.stateHash,afterStateHash:nextStateHash,
+     previousEventId,createdAt:updatedAt});
    tx.create(ledgerRef,{id:ledgerId,houseId,action,actorUid:uid,
      version:nextVersion,explanation:candidate.explanation??explanation,rule:candidate.rule,
      campaignMonth:state.month,campaignDate,created_at:updatedAt,
