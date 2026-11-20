@@ -260,3 +260,57 @@ test('unpublished imported editions cannot receive operational read receipts',as
   'edition_unavailable',404);
  assert.equal([...f.records.keys()].some(p=>p.includes('newspaperReadReceipts')),false);
 });
+
+test('matéria contratada só é liquidada após publicação atômica na Redação',async()=>{
+  const f=fixture(),id='11111111-1111-4111-8111-111111111111';
+  f.records.set(f.runtime,{...f.records.get(f.runtime),
+    newspaperCommissionsReadApproved:true,
+    newspaperCommissionsWriteApproved:true});
+  const key=f.runtime+'/newspaperCommissions/'+id;
+  f.records.set(key,{id,houseId:'house-a',requestedBy:'alice',state:'pending',
+    sourceSnapshotId:snapshot,costWealth:1,
+    requestKey:'22222222-2222-4222-8222-222222222222'});
+  const client=f.service({env:{CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED:'true'}});
+  const draft={
+    action:'saveEdition',requestKey:'commissions-editor-001',
+    id:null,expectedVersion:0,state:'draft',
+    content:{title:'Notícias do Reino',subtitle:'',
+      blocks:[{id:'article1',type:'article',text:'A paz chegou a Cormyr',commissionId:id}]},
+  };
+  const created=await client.saveEdition(token,draft);
+  assert.equal(f.records.get(key).state,'pending');
+  const published=await client.saveEdition(token,{
+    ...draft,requestKey:'commissions-editor-002',id:created.id,
+    expectedVersion:1,state:'published'});
+  assert.equal(published.state,'published');
+  const paid=f.records.get(key);
+  assert.equal(paid.state,'published');
+  assert.equal(paid.newspaperId,created.id);
+  assert.equal((await client.saveEdition(token,{
+    ...draft,requestKey:'commissions-editor-002',id:created.id,
+    expectedVersion:1,state:'published'})).duplicate,true);
+  assert.equal([...f.records].filter(([k])=>
+    k.includes('/newspaperCommissionAudits/')).length,1);
+  await denied(()=>client.saveEdition(token,{
+    ...draft,requestKey:'commissions-editor-003',id:created.id,
+    expectedVersion:2,state:'published',
+    content:{title:'Notícias sem pedido',subtitle:'',
+      blocks:[{id:'article2',type:'article',text:'Texto sem vínculo'}]},
+  }),'published_commission_immutable',409);
+});
+
+test('edição não aceita encomenda forjada ou não homologada',async()=>{
+  const f=fixture(),id='11111111-1111-4111-8111-111111111111';
+  const draft={action:'saveEdition',requestKey:'commissions-unverified-001',
+    id:null,expectedVersion:0,state:'published',
+    content:{title:'Diário',subtitle:'',blocks:[
+      {id:'article1',type:'article',text:'Uma matéria encomendada',commissionId:id},
+    ]}};
+  const client=f.service({env:{CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED:'true'}});
+  await denied(()=>client.saveEdition(token,draft),'edition_commissions_not_approved',503);
+  f.records.set(f.runtime,{...f.records.get(f.runtime),
+    newspaperCommissionsReadApproved:true,newspaperCommissionsWriteApproved:true});
+  await denied(()=>client.saveEdition(token,draft),'edition_commission_invalid',409);
+  assert.equal([...f.records].filter(([k])=>
+    k.includes('/publishedNewspapers/')).length,0);
+});
