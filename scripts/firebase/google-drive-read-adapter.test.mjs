@@ -13,7 +13,7 @@ const envelope={schema:'cormyr-record-v1',entityType:'record',id:ID,
 const file={id:FILE,name:'cormyr-record-'+ID+'.json',mimeType:'application/json',
   size:'760',parents:[FOLDER],trashed:false};
 
-function mockDrive({metadata=file,payload=envelope}={}){
+function mockDrive({listedFile=file,metadata=listedFile,payload=envelope,metadataEtag='W/"rev-1"',mediaEtag='W/"rev-1"'}={}){
   const seen=[];
   const fetcher=async(url,options)=>{
     const u=new URL(url);seen.push({url:u.toString(),options});
@@ -22,12 +22,12 @@ function mockDrive({metadata=file,payload=envelope}={}){
     assert.equal(options.headers.Authorization,'Bearer fake-oauth-token');
     if(u.pathname==='/drive/v3/files'){
       assert.match(u.searchParams.get('q'),/in parents and trashed = false/);
-      return Response.json({files:[file]});
+      return Response.json({files:[listedFile]});
     }
     if(u.searchParams.get('alt')==='media')
-      return Response.json(payload,{headers:{etag:'W/"rev-1"'}});
+      return Response.json(payload,{headers:{etag:mediaEtag}});
     if(u.pathname.endsWith('/'+FILE))
-      return Response.json(metadata,{headers:{etag:'W/"rev-1"'}});
+      return Response.json(metadata,{headers:{etag:metadataEtag}});
     return new Response('unexpected',{status:404});
   };
   return {seen,fetcher};
@@ -76,4 +76,38 @@ test('Drive folder listing is bounded and never trusts repeated page tokens',asy
   const a=create(fetcher);
   await assert.rejects(a.list(FOLDER),DriveError);
   assert.throws(()=>createGoogleDriveReadAdapter({allowedFolderIds:[],getAccessToken:async()=> 'x'}));
+});
+
+test('never lists arbitrary JSON or file names outside the canonical campaign format',async()=>{
+ const renamed=mockDrive({listedFile:{...file,name:'private-notes.json'}});
+ const a=create(renamed.fetcher);
+ await assert.rejects(a.list(FOLDER),DriveError);
+ const foreign=mockDrive({metadata:{...file,name:'cormyr-record-22222222-2222-4222-8222-222222222222.json'}});
+ const b=create(foreign.fetcher);
+ await b.list(FOLDER);
+ await assert.rejects(b.read(FILE),DriveError);
+});
+test('metadata changes after listing never authorize importing a different file',async()=>{
+ for(const metadata of [
+  {...file,name:'cormyr-record-22222222-2222-4222-8222-222222222222.json'},
+  {...file,size:'761'},
+  {...file,mimeType:'text/html'},
+ ]){
+  const mock=mockDrive({metadata});
+  const a=create(mock.fetcher);
+  await a.list(FOLDER);
+  await assert.rejects(a.read(FILE),DriveError);
+ }
+});
+test('a different envelope or diverging provider revisions fail closed',async()=>{
+ const wrong=mockDrive({payload:{
+  ...envelope,id:'22222222-2222-4222-8222-222222222222',
+ }});
+ const a=create(wrong.fetcher);
+ await a.list(FOLDER);
+ await assert.rejects(a.read(FILE),DriveError);
+ const changed=mockDrive({metadataEtag:'"rev-2"',mediaEtag:'"rev-1"'});
+ const b=create(changed.fetcher);
+ await b.list(FOLDER);
+ await assert.rejects(b.read(FILE),DriveError);
 });

@@ -6,9 +6,10 @@
  * the real Google OAuth scope, conditional updates and account ownership have
  * been verified in isolated homologation. No client receives Drive tokens.
  */
-import {DriveError,validateEnvelope} from './drive-core.mjs';
+import {DriveError,validateEnvelope,filename} from './drive-core.mjs';
 
 const FILE_ID=/^[A-Za-z0-9_-]{10,256}$/;
+const NAME=/^cormyr-(?:record|letter|reply)-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\.json$/i;
 const BASE='https://www.googleapis.com/drive/v3/files';
 const SIZE_LIMIT=2_100_000;
 const FILE_LIMIT=5000;
@@ -59,7 +60,7 @@ export function createGoogleDriveReadAdapter({
       if(!body||!Array.isArray(body.files))throw unavailable();
       for(const f of body.files){
         if(!FILE_ID.test(f.id)||f.mimeType!=='application/json'||
-           typeof f.name!=='string'||f.name.length>256||
+           typeof f.name!=='string'||!NAME.test(f.name)||
            !Array.isArray(f.parents)||!f.parents.includes(folder)||
            (f.trashed!==undefined&&f.trashed!==false)||
            !/^(0|[1-9][0-9]*)$/.test(String(f.size))||
@@ -68,7 +69,7 @@ export function createGoogleDriveReadAdapter({
           throw unavailable();
         seen.add(f.id);
         files.push({id:f.id,name:f.name,parents:f.parents,size:String(f.size)});
-        listed.set(f.id,folder);
+        listed.set(f.id,{folder,name:f.name,size:String(f.size)});
         if(files.length>FILE_LIMIT)throw unavailable();
       }
       next=body.nextPageToken;
@@ -79,7 +80,8 @@ export function createGoogleDriveReadAdapter({
     return files;
   }
   async function read(fileId){
-    const folder=listed.get(fileId);
+    const listedFile=listed.get(fileId);
+    const folder=listedFile?.folder;
     if(!folder||!folders.has(folder)||!FILE_ID.test(fileId))throw denial();
     const headers=await auth();
     const metadataUrl=new URL(BASE+'/'+encodeURIComponent(fileId));
@@ -89,8 +91,11 @@ export function createGoogleDriveReadAdapter({
     const meta=await metaResponse.json().catch(()=>{throw unavailable();});
     if(!meta||meta.id!==fileId||meta.mimeType!=='application/json'||
        !Array.isArray(meta.parents)||!meta.parents.includes(folder)||
-       meta.trashed===true||!Number.isSafeInteger(Number(meta.size))||
-       Number(meta.size)>SIZE_LIMIT)throw denial();
+       meta.trashed===true||meta.name!==listedFile.name||
+       !/^(0|[1-9][0-9]*)$/.test(String(meta.size))||
+       !Number.isSafeInteger(Number(meta.size))||
+       Number(meta.size)>SIZE_LIMIT||String(meta.size)!==listedFile.size)
+      throw denial();
     const mediaUrl=new URL(BASE+'/'+encodeURIComponent(fileId));
     mediaUrl.searchParams.set('alt','media');
     mediaUrl.searchParams.set('supportsAllDrives','true');
@@ -101,8 +106,16 @@ export function createGoogleDriveReadAdapter({
     try{
       envelope=JSON.parse(text);
       validateEnvelope(envelope);
+      // A pasta autoriza o documento pelo nome canônico, não apenas pela
+      // extensão JSON. Um envelope de outra Casa/tipo nunca é aceito
+      // por reutilizar uma identidade de arquivo listado.
+      if(filename(envelope)!==listedFile.name)throw denial();
     }catch{throw unavailable();}
-    const etag=metaResponse.headers.get('etag')||media.headers.get('etag')||null;
+    const revisionMeta=metaResponse.headers.get('etag');
+    const revisionContent=media.headers.get('etag');
+    if(revisionMeta&&revisionContent&&revisionMeta!==revisionContent)
+      throw unavailable();
+    const etag=revisionMeta||revisionContent||null;
     return {envelope,etag};
   }
   return {

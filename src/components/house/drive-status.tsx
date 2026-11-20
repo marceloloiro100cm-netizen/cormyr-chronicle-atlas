@@ -4,15 +4,25 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CloudUpload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import { exportHouseToDrive } from '@/lib/house/drive.functions';
 
 export function HouseDriveStatus({ houseId, version, canEdit }: { houseId: string; version: number; canEdit: boolean }) {
+  const firebaseMode=firebaseWorkspaceClient()!==null;
   const send = useServerFn(exportHouseToDrive), qc = useQueryClient();
   const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
   const query = useQuery({ queryKey: ['house-drive', houseId, version], queryFn: async () => {
     const r = await supabase.from('noble_house_drive_exports').select('exported_version,status,error,last_synced_at').eq('house_id', houseId);
     if (r.error) throw new Error('Status do Drive indisponível.'); return r.data;
-  } });
+  }, enabled: !firebaseMode });
+  // O sincronizador Firebase ainda é somente auditoria. Não chamar RPC
+  // nem função legada da Ficha enquanto a escrita Drive não for homologada.
+  if(firebaseMode)return <div className="house-ledger" aria-label="Ficha no Google Drive">
+    <h4>Ficha no Google Drive</h4>
+    <p className="house-caption">A sincronização com o Google Drive ainda não está homologada no Firebase.</p>
+    <p role="status">As fichas e o histórico permanecem preservados no Atlas. Nenhuma exportação automática ou substituição de arquivo remoto foi executada nesta tela.</p>
+    <p className="house-caption">A exportação só será liberada após validar o vínculo da Casa, a pasta técnica, a identidade Google, a versão do arquivo e os conflitos de sincronização.</p>
+  </div>;
   return <div className="house-ledger"><h4>Ficha no Google Drive</h4>
     <p className="house-caption">Destino: pasta técnica existente · Site → Drive · Alterações no Drive não substituem compras no site.</p>
     {version === 0 && <p>Nenhuma Ficha estruturada salva; nenhuma exportação ou migração realizada.</p>}
