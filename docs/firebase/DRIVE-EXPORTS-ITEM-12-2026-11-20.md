@@ -13,3 +13,22 @@ O endpoint `POST /api/public/jobs/drive-sync` continua aceitando apenas auditori
 Não criar uma pasta nem copiar/reescrever arquivos automaticamente. Não publicar IDs de pastas, tokens OAuth, nomes de arquivos privados ou registros no GitHub e nos logs. Não usar Supabase, Lovable ou Vercel como destino operacional.
 
 **Aceite final pendente:** OAuth/conta de serviço conectada, prova das pastas e donos, invariantes do snapshot, importações de registros/cartas/respostas, escrita condicional testada em Drive real, exclusões e conflitos por Casa, Scheduler controlado e verificação do commit servido no Firebase App Hosting. Nenhuma execução do Drive real é afirmada neste documento.
+
+## Continuação — Histórico e relatórios locais
+
+A navegação da Ficha continha a seção `history` com os botões
+**Excel** e **Baixar PDF**, mas a filtrava da barra lateral.
+O menu agora torna **Histórico e documentos** acessível às Casas
+autorizadas e ao Narrador, inclusive quando a Ficha está em modo
+somente leitura. O acesso não habilita compras, edição, importações
+financeiras ou sincronização com Google Drive: essas operações
+continuam sujeitas às flags e permissões existentes.
+
+O relatório é gerado no navegador a partir da Ficha e do livro-razão
+que o servidor Firebase já permite consultar para a Casa. Os dados
+de outra Casa não podem ser solicitados pelo campo `houseId`.
+Para um histórico muito extenso, o leitor atual limita a prévia
+operacional a 100 lançamentos; o download não deve ser interpretado
+como prova de reconciliação integral de todas as entradas existentes
+fora desse limite. Expandir essa exportação requer paginação
+autorizada e validação do acervo em etapa posterior.
