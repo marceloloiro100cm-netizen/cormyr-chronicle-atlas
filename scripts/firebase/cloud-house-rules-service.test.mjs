@@ -91,3 +91,27 @@ test('bloqueia Casa inexistente e runtime sem autorização explícita',async()=
  await assert.rejects(()=>service.save('token-narrator-123',request),
   e=>e.code==='house_rules_not_approved');
 });
+
+test('leitura do catálogo recusa regra vinculada a outro snapshot',async()=>{
+ const f=fixture();
+ await f.service.save('token-narrator-123',request);
+ const docPath=root+'/houseRuleSets/'+h('house:house-a')+'/rules/'+h('rule:rule-a');
+ const rule=f.data.get(docPath);
+ assert.ok(rule);
+ f.data.set(docPath,{...rule,sourceSnapshotId:'b'.repeat(64)});
+ await assert.rejects(()=>readOperationalHouseRules(f.db,SNAP,'house-a'),
+  error=>error.code==='house_rules_integrity_failed');
+});
+test('catálogo operacional é somente leitura, independente da permissão de gravação',async()=>{
+ const f=fixture();
+ await f.service.save('token-narrator-123',request);
+ f.data.set(root,{...f.data.get(root),houseRulesWriteApproved:false});
+ const before=structuredClone(f.data);
+ const rules=await readOperationalHouseRules(f.db,SNAP,'house-a');
+ assert.equal(rules.length,1);
+ assert.equal(rules[0].version,1);
+ assert.deepEqual(f.data,before);
+ await assert.rejects(()=>f.service.save('token-narrator-123',{
+  ...request,requestKey:'another-rule-key-22',expectedVersion:1,
+ }),e=>e.code==='house_rules_not_approved');
+});
