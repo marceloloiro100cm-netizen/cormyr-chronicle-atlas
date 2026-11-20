@@ -7,6 +7,8 @@ type Review={status:string;houseId:string;sourceHash:string|null;preview:{
 }|null};
 const reasons:Record<string,string>={
   calendar_mismatch:'O mês da ficha importada não corresponde ao HUB. Confira a data e a ficha antes de ativar.',
+   source_draft_requires_review:'A ficha importada ainda é rascunho. Conclua e aprove-a antes de ativar a economia.',
+  source_review_pending:'A ficha aguarda a aprovação do Narrador.',
   source_unusable:'A ficha importada ainda tem dados incompletos ou saldos inconsistentes.',
   existing_document_requires_review:'Já existe um documento operacional. Nenhuma substituição foi realizada.',
   already_initialized:'A ficha já foi inicializada. Nenhum saldo foi reiniciado.',

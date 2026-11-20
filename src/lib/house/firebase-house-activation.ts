@@ -83,6 +83,12 @@ export function createFirebaseHouseActivation({db,auth,snapshotId,enabled=false,
           x.data()?.['houseId']===houseId&&x.data()?.['sourceSnapshotId']===snapshotId);
         return {status:complete?'already_initialized':'existing_document_requires_review',houseId,preview:null,sourceHash:null};
       }
+      // Rascunhos e fichas sob revisão não possuem economia oficialmente
+      // aprovada. Expor o estado ao Narrador sem promover nem gravar o acervo.
+      if(sheet['state']['phase']==='draft')
+        return {status:'source_draft_requires_review',houseId,preview:null,sourceHash:null};
+      if(sheet['state']['phase']==='review')
+        return {status:'source_review_pending',houseId,preview:null,sourceHash:null};
       const target=monthFromHarptosDate(calendar);
       const sheetMonth=sheet['state']['month'];
       // Seed at the sheet's own month; the canonical engine then advances it

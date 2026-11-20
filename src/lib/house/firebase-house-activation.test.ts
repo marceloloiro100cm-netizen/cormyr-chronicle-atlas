@@ -131,3 +131,30 @@ describe('Batch activation: Narrator authorization and bounded listing',()=>{
   expect(repeated.results).toEqual([{houseId:'house-a',status:'already_initialized'}]);
  });
 });
+
+
+describe('Fichas importadas ainda em rascunho ou revisão',()=>{
+ it('nunca ativa economia nem Tesouro de uma ficha draft',async()=>{
+  const f=fixture();
+  const source=f.docs.get(f.sheet);
+  source.state.phase='draft';
+  const before=structuredClone(f.docs);
+  const inspected=await f.inspect();
+  expect(inspected.status).toBe('source_draft_requires_review');
+  expect(inspected.preview).toBeNull();
+  expect(f.docs).toEqual(before);
+  const batch=await f.service.activateAll('synthetic-token');
+  expect(batch.results).toEqual([
+   {houseId:'house-a',status:'source_draft_requires_review'},
+  ]);
+  expect(f.docs.has(f.runtime+'/houseEconomies/'+hash('house:house-a'))).toBe(false);
+  expect(f.docs.has(f.runtime+'/houseTreasuries/'+hash('house:house-a'))).toBe(false);
+ });
+ it('uma ficha em review aguarda aprovação, sem alterar acervo',async()=>{
+  const f=fixture();
+  f.docs.get(f.sheet).state.phase='review';
+  const before=structuredClone(f.docs);
+  expect((await f.inspect()).status).toBe('source_review_pending');
+  expect(f.docs).toEqual(before);
+ });
+});
