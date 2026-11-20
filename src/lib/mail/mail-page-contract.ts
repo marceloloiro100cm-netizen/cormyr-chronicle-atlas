@@ -122,7 +122,7 @@ export function canReadLetterAs(ds: MailDataset, l: MailLetter, viewer: string):
     l.sender_user_id === viewer || (l.publication_state === 'delivered' && (
       // An imported Narrator-wide announcement has no individual recipient.
       // Only currently active House players may read it; it never grants edit.
-      (l.source === 'imported' && l.letter_kind === 'geral' &&
+      (l['source'] === 'imported' && l.letter_kind === 'geral' &&
        l.origin_house_id === null && l.recipient_house_id === null &&
        l.recipient_player_id === null && ds.memberships.some(m => m.player_id === p.id)) ||
       l.recipient_player_id === p.id || (l.recipient_player_id === null &&
