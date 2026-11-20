@@ -6,8 +6,8 @@ import {constructionStateHash} from '../house/firebase-construction-transaction'
 import {balances} from '../house/engine';
 import {resolveMission,advanceMissions,LINKS,normalizeRegion}
  from '../../../scripts/firebase/spy-missions-core.mjs';
-import {awardOnDecision,finalize,adminAction,knownCount,sourceItems,operationStatus,
- adminOptions} from '../../../scripts/firebase/spy-intel-core.mjs';
+import {awardOnDecision,finalize,adminAction,knownCount,sourceItems}
+ from '../../../scripts/firebase/spy-intel-core.mjs';
 import {readSpyTx,spyActor,spyDigest,spyUuid,spySafe,spyFail,asSpyError,
  setSpyPayload,spyRequestRef} from './operational-spy-context';
 import type {HouseState} from '../house/types';
