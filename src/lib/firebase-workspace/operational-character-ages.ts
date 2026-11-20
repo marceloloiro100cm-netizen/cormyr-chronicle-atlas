@@ -106,11 +106,14 @@ async function readVerifiedArchive(db:any,snapshot:string):Promise<AgeRegistry>{
  const {buildCharacterPlan}=await import('../../../scripts/firebase/stage-characters-emulator.mjs');
  const {archiveValues}=await import('../../../scripts/firebase/workspace-import.mjs');
  const source=db.collection('migrationPrivateSnapshots').doc(snapshot);
- const [marker,tables]=await Promise.all([source.get(),source.collection('tables').get()]);
+ const marker=await source.get();
  if(!marker.exists||marker.data()?.status!=='complete'||marker.data()?.private!==true||
-    !Number.isSafeInteger(marker.data().publicTablesExpected)||
-    tables.docs.length!==marker.data().publicTablesExpected)
+    !Number.isSafeInteger(marker.data().publicTablesExpected))
   fail('character_source_not_homologated');
+ const tables=await source.collection('tables').get();
+ if(!Array.isArray(tables.docs)||
+    tables.docs.length!==marker.data().publicTablesExpected)
+  fail('character_source_not_reconciled');
  const needed=['public.campaign_characters','public.character_source_links',
   'public.character_year_transitions','public.campaign_houses'];
  const selected=new Map<string,any>();
