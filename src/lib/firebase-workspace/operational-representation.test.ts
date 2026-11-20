@@ -87,6 +87,15 @@ describe('representação Firebase auditada',()=>{
   await expect(m.service().identity()).rejects.toMatchObject({
    code:'representation_access_denied'});
  });
+ it('permite encerrar uma sessão existente mesmo com a chave desativada',async()=>{
+  const m=memory();
+  await m.service().start('p1');
+  process.env['CORMYR_FIREBASE_REPRESENTATION_ENABLED']='false';
+  await expect(m.service().identity()).rejects.toMatchObject({
+   code:'representation_disabled'});
+  expect((await m.service().stop()).stopped).toBe(true);
+  expect(m.data.has(root+'/representationSessions/gm')).toBe(false);
+ });
  it('bloqueia início sem liberação expressa na raiz ou na configuração',async()=>{
   const m=memory();
   process.env['CORMYR_FIREBASE_REPRESENTATION_ENABLED']='false';
@@ -108,6 +117,6 @@ describe('representação Firebase auditada',()=>{
   const session=m.data.get(root+'/representationSessions/gm');
   session.representedUid='other';
   await expect(m.service().identity()).rejects.toMatchObject({
-   code:'representation_player_inactive'});
+   code:'representation_access_invalid'});
  });
 });
