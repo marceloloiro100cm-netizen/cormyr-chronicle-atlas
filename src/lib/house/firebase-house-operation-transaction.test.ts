@@ -3,8 +3,9 @@ import {describe,it,expect} from 'vitest';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {newHouseState} from './types';
+import {HOUSE_ACTIONS} from './operation-core';
 import {constructionStateHash} from './firebase-construction-transaction';
-import {createFirebaseHouseOperation,HouseOperationError}
+import {createFirebaseHouseOperation,HouseOperationError,FIREBASE_HOUSE_SUPPORTED_ACTIONS}
  from './firebase-house-operation-transaction';
 
 const snapshot='a'.repeat(64),uid='user-a';
@@ -73,8 +74,8 @@ function fixture(){
   if(revoke!==true)throw Error('revocation-not-checked');
   return {uid};
  },getUser:async(_uid:string)=>({uid,disabled:false})} as unknown as Auth;
- const service=()=>createFirebaseHouseOperation({db,auth,snapshotId:snapshot,
-  projectId:'cormyr',enabled:true,env:{},clock:()=> '2026-11-19T20:00:00Z'});
+ const service=(env:NodeJS.ProcessEnv={})=>createFirebaseHouseOperation({db,auth,snapshotId:snapshot,
+  projectId:'cormyr',enabled:true,env,clock:()=> '2026-11-19T20:00:00Z'});
  const input=(other:Record<string,unknown>={})=>({
   houseId:'house-a',version:0,key:'22222222-2222-4222-8222-222222222222',
   action:'domain_edit',args:{id:original.domains[0]!.id,name:'Vale Novo',notes:'Nota'},
@@ -293,5 +294,63 @@ describe('histórico operacional e desfazer em rascunho',()=>{
    version:1,action:'undo',args:{},
   })),'house_undo_action_protected',409);
   expect(f.writes()).toBe(0);
+ });
+});
+
+
+describe('paridade das 55 operações e brasão com manifesto privado',()=>{
+ const path='private/'+snapshot+'/'+uid+
+  '/11111111-1111-4111-8111-111111111111.png';
+ const env={CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED:'true'};
+ it('declara explicitamente cada ação da Ficha, sem ausência silenciosa',()=>{
+  expect(HOUSE_ACTIONS).toHaveLength(55);
+  expect([...FIREBASE_HOUSE_SUPPORTED_ACTIONS].sort()).toEqual([...HOUSE_ACTIONS].sort());
+ });
+ it('bloqueia o brasão enquanto o Storage privado está desativado',async()=>{
+  const f=fixture();
+  await denied(()=>f.service().execute('valid-token-123',f.input({
+   action:'crest_import',args:{path},
+  })),'house_crest_media_disabled',503);
+  expect(f.writes()).toBe(0);
+ });
+ it('recusa referência não aprovada, sem manifesto e de outra conta',async()=>{
+  const f=fixture();
+  const rootPath=root('campaignCloudRuntime');
+  f.docs.set(rootPath,{...f.docs.get(rootPath),
+   privateMediaReadApproved:true,privateMediaWriteApproved:true});
+  await denied(()=>f.service(env).execute('valid-token-123',f.input({
+   action:'crest_import',args:{path},
+  })),'house_crest_media_not_ready',409);
+  await denied(()=>f.service(env).execute('valid-token-123',f.input({
+   action:'crest_import',args:{path:path.replace('/'+uid+'/','/intruso/')},
+  })),'house_crest_path_invalid',400);
+  expect(f.writes()).toBe(0);
+ });
+ it('grava brasão sem alterar origem e sem duplicar auditoria',async()=>{
+  const f=fixture();
+  const rootPath=root('campaignCloudRuntime');
+  f.docs.set(rootPath,{...f.docs.get(rootPath),
+   privateMediaReadApproved:true,privateMediaWriteApproved:true});
+  const sheet=f.docs.get(f.sheet)!;
+  const state=structuredClone(sheet['state']) as ReturnType<typeof newHouseState>;
+  state.phase='draft';
+  f.docs.set(f.sheet,{...sheet,state:structuredClone(state)});
+  const previous=f.docs.get(f.economyPath)!;
+  const originalHash=constructionStateHash(state);
+  f.docs.set(f.economyPath,{...previous,state:structuredClone(state),
+   stateHash:originalHash,sourceStateHash:originalHash});
+  const manifest=rootPath+'/privateMedia/'+hash('private-media:'+path);
+  f.docs.set(manifest,{ownerUid:uid,path,sourceSnapshotId:snapshot,
+   status:'ready',contentType:'image/png',size:2048});
+  const data=f.input({action:'crest_import',args:{path}});
+  const result=await f.service(env).execute('valid-token-123',data);
+  expect(result).toMatchObject({action:'crest_import',version:1,duplicate:false});
+  const next=f.docs.get(f.economyPath)?.['state'] as ReturnType<typeof newHouseState>;
+  expect(next.identity.crestPath).toBe(path);
+  expect((f.docs.get(f.sheet)?.['state'] as ReturnType<typeof newHouseState>)
+   .identity.crestPath).toBe(state.identity.crestPath);
+  const repeated=await f.service(env).execute('valid-token-123',data);
+  expect(repeated.duplicate).toBe(true);
+  expect(f.writes()).toBe(5);
  });
 });
