@@ -127,7 +127,7 @@ export function createFirebaseHouseOperation({
      fail('house_not_available',404);
    if(!docs[8].exists||docs[8].data()?.['houseId']!==houseId||
      !integer(docs[8].data()?.['version'])||!docs[8].data()?.['state']||
-     docs[8].data()?.state.houseId!==houseId)
+     docs[8].data()?.['state']?.['houseId']!==houseId)
      fail('house_sheet_unavailable',503);
    const original=docs[8].data() as SourceSheet|undefined;
    const economy=docs[9].data() as EconomyDoc|undefined;
