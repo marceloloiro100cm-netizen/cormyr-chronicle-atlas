@@ -162,6 +162,12 @@ env:
     availability:
       - RUNTIME
 
+  # Item 9: idade derivada de cadastro canônico verificado.
+  - variable: CORMYR_FIREBASE_CHARACTER_AGES_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
   # Item 10: encomendas pagas somente após aceite da economia e Jornal.
   - variable: CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED
     value: "false"

@@ -287,6 +287,18 @@ export function createFirebaseNarratorWeekDraft({
         if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
         const calendar={...plan.date,version:plan.version};
         const pending=whole(live.pendingHouseEffectMonths,0,1200)?live.pendingHouseEffectMonths:0;
+        // Cada mudança de ano é auditada na mesma transação que o HUB oficial.
+        if(calendar.year!==effective.year){
+          const direction=calendar.year>effective.year?1:-1;
+          for(let year=effective.year;year!==calendar.year;year+=direction){
+            const id=newId(),to=year+direction;
+            tx.create(cloud.collection('characterYearTransitions')
+              .doc('year-'+plan.version+'-'+year+'-'+to),{
+              id,sourceSnapshotId:snapshotId,calendarVersion:plan.version,
+              fromYear:year,toYear:to,actor:uid,createdAt:at,
+            });
+          }
+        }
         tx.set(cloud,{...live,calendar,calendarVersion:plan.version,openRound:plan.openRound,
           publishedTimeVersion:plan.version,
           pendingHouseEffectMonths:pending+plan.monthsCrossed,

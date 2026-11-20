@@ -35,6 +35,7 @@ import {commitOperationalRecord,RecordWriteError} from './operational-record-wri
 import {representationRpc,RepresentationRpcError} from './representation-rpc';
 import {createFirebaseCommissions,readFirebaseCommissions,FirebaseCommissionError}
  from '../newspaper/firebase-news-commissions.server';
+import {readAgeRegistry,projectAgeDashboard,projectHouseAges,listAgeTransitions,CharacterAgesError} from './operational-character-ages';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -446,13 +447,13 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='campaign_newspapers')return (await rows(name)).filter(r=>editor||['published','archived'].includes(r['state']));
    if(name==='campaign_newspaper_reads')return (await rows(name)).filter(r=>editor||r['user_id']===scope.uid);
    if(name==='campaign_newspaper_commissions'){
-    const original=(await rows(name)).filter(r=>editor||houseAllowed(r['house_id']));
-    const operational=await readFirebaseCommissions(db,snapshotId,scope);
-    const ids=new Set(original.map(r=>r['id']));
-    if(operational.some((r:Row)=>ids.has(r['id'])))
-     throw new CloudAccessError('newspaper_commission_source_conflict',503);
-    return [...original,...operational];
-   }
+     const original=(await rows(name)).filter(r=>editor||houseAllowed(r['house_id']));
+     const operational=await readFirebaseCommissions(db,snapshotId,scope);
+     const ids=new Set(original.map(r=>r['id']));
+     if(operational.some((r:Row)=>ids.has(r['id'])))
+      throw new CloudAccessError('newspaper_commission_source_conflict',503);
+     return [...original,...operational];
+    }
    if(name==='campaign_newspaper_staff')return rows(name);
    if(['campaign_newspaper_story_models','campaign_newspaper_engravings','campaign_newspaper_settings','campaign_newspaper_revisions'].includes(name)){
     if(!editor)return [];
@@ -483,7 +484,6 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      throw e;
     }
    }
-
    if(['start_campaign_representation','stop_campaign_representation',
        'campaign_representation_action'].includes(name)){
     try{return await representationRpc({
@@ -501,12 +501,41 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      expectedVersion:args['p_version'],title:args['p_title'],
      content:args['p_content'],requestKey:args['p_request_key']});
    }
-   // Galeria e idades canônicas ainda não foram migradas (imagens dependem do
-   // Storage; idades, do motor de personagens). Responder vazio, depois de
-   // conferir a Casa, evita erro na tela sem inventar dados.
-   if(name==='house_gallery_mail_images'||name==='get_house_character_ages'){
-    checkHouse(args['p_house']);
-    return [];
+   if(['get_house_character_ages','get_character_age_dashboard',
+       'get_character_year_transitions'].includes(name)){
+    if(process.env['CORMYR_FIREBASE_CHARACTER_AGES_ENABLED']!=='true')
+     throw new CloudAccessError('character_ages_disabled',501);
+    try{
+     const calendar=await cloud.workspaceCalendar(token) as {year:number}|null;
+     if(!calendar||!Number.isSafeInteger(calendar.year))
+      throw new CharacterAgesError('character_calendar_unavailable');
+     const registry=await readAgeRegistry(db,snapshotId);
+     if(name==='get_house_character_ages'){
+      const houseId=args['p_house'];
+      checkHouse(houseId);
+      if(Object.keys(args).some(k=>k!=='p_house'))
+       throw new CharacterAgesError('character_request_invalid',400);
+      return projectHouseAges(scope,registry,await visible('campaign_records'),
+       houseId,calendar.year);
+     }
+     if(!admin)denied();
+     if(name==='get_character_year_transitions'){
+      if(Object.keys(args).some(k=>k!=='p_limit'))
+       throw new CharacterAgesError('character_request_invalid',400);
+      return listAgeTransitions(db,snapshotId,registry,args['p_limit']??30);
+     }
+     if(Object.keys(args).some(k=>!['p_year','p_target_year','p_limit'].includes(k)))
+      throw new CharacterAgesError('character_request_invalid',400);
+     return projectAgeDashboard(registry,args['p_year']??calendar.year,
+      args['p_target_year']??Math.min(calendar.year+1,9999),args['p_limit']??300);
+    }catch(e){
+     if(e instanceof CharacterAgesError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
+   // A galeria privada depende da implantação do Storage (item 11).
+   if(name==='house_gallery_mail_images'){
+    checkHouse(args['p_house']);return [];
    }
    if(name==='spy_narrator_house_defense'){
     if(!admin)denied();
