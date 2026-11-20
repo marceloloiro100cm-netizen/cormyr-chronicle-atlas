@@ -480,6 +480,8 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    if(['get_house_character_ages','get_character_age_dashboard',
        'get_character_year_transitions'].includes(name)){
+    if(process.env['CORMYR_FIREBASE_CHARACTER_AGES_ENABLED']!=='true')
+     throw new CloudAccessError('character_ages_disabled',501);
     try{
      const calendar=await cloud.workspaceCalendar(token);
      if(!calendar||!Number.isSafeInteger(calendar.year))
