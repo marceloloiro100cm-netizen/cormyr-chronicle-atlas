@@ -5,12 +5,16 @@ const bad=()=>{throw Error('Consulta não suportada pelo Firebase.');};
 export function queryRows(source:Row[],steps:QueryStep[]){
  if(!Array.isArray(steps)||steps.length>40)bad();
  let rows=[...source],mode='many',head=false,wantCount=false;
+ let selection='*';
  const orders:{key:string;asc:boolean}[]=[];
  let start=0,end:number|undefined,limit:number|undefined;
  for(const step of steps){
   const [key,value]=step.args;
   switch(step.op){
-   case 'select':head=Boolean(value?.head);wantCount=Boolean(value?.count);break;
+   case 'select':
+    if(typeof key!=='string')bad();
+    selection=key;
+    head=Boolean(value?.head);wantCount=Boolean(value?.count);break;
    case 'eq':rows=rows.filter(r=>r[key]===value);break;
    case 'neq':rows=rows.filter(r=>r[key]!==null&&r[key]!==value);break;
    case 'is':rows=rows.filter(r=>(r[key]??null)===value);break;
@@ -33,5 +37,15 @@ export function queryRows(source:Row[],steps:QueryStep[]){
  for(const {key,asc} of orders.reverse())rows.sort((a,b)=>a[key]===b[key]?0:((a[key]??'')<(b[key]??'')?-1:1)*(asc?1:-1));
  rows=rows.slice(start,end);if(limit!==undefined)rows=rows.slice(0,limit);
  if(mode!=='many'&&(rows.length>1||(mode==='single'&&rows.length!==1)))throw Error('Registro não encontrado ou ambíguo.');
+ // Apply column projection only after access filtering, sorting and pagination.
+ // Older forms still use relation expressions (foo(*)), JSON paths or aliases;
+ // preserve their old contract until each one has an explicit implementation.
+ // Simple selections are common on the landing page and avoid sending the
+ // full contents of every historical letter on an index-only query.
+ const fields=selection.split(',').map(x=>x.trim());
+ if(selection!=='*'&&fields.every(x=>/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(x))){
+  rows=rows.map(row=>Object.fromEntries(fields.filter(field=>field in row)
+   .map(field=>[field,row[field]])));
+ }
  return {data:head?null:mode==='many'?rows:rows[0]??null,error:null,count:wantCount?count:null};
 }
