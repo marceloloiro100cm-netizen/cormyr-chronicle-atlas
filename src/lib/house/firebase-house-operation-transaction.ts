@@ -130,6 +130,8 @@ export function createFirebaseHouseOperation({
   const economyRef=root.collection('houseEconomies').doc(hash('house:'+houseId));
   const eventId=hash('house-operation:'+uid+':'+key);
   const crestRef=typeof crestPath==='string'?privateMediaRef(root,crestPath):null;
+  const crestLinkRef=typeof crestPath==='string'?root.collection('privateMediaHouseLinks')
+   .doc(hash('house-crest:'+crestPath)):null;
   const eventRef=root.collection('houseOperationRequests').doc(eventId);
   const ledgerRef=root.collection('houseOperationLedger').doc(eventId);
   const auditRef=root.collection('houseOperationAudits').doc(eventId);
@@ -457,6 +459,9 @@ export function createFirebaseHouseOperation({
      previousVersion:economy.version,nextVersion,
      beforeStateHash:economy.stateHash,afterStateHash:constructionStateHash(next),
      requestFingerprint,sourceSnapshotId:snapshotId,createdAt:updatedAt});
+   if(action==='crest_import')
+    tx.create(crestLinkRef!,{path:crestPath,houseId,ownerUid:uid,
+     version:nextVersion,sourceSnapshotId:snapshotId,createdAt:updatedAt});
    if(candidate.archive)
     tx.create(root.collection('houseOperationImports').doc(eventId),{
      eventId,actorUid:uid,houseId,version:nextVersion,
