@@ -39,6 +39,11 @@ export function canAcknowledgeMail(actor,record,source,id){
       record.recipientPlayerId.length>0;
     const house=typeof record.recipientHouseId==='string'&&
       record.recipientHouseId.length>0;
+    // A narrator-wide historical announcement has no recipient. An active
+    // verified House member may acknowledge their own reading of it.
+    if(record.letterKind==='geral'&&record.originHouseId===null&&
+       !direct&&!house&&actor.role==='jogador')
+      return Array.isArray(actor.memberHouses)&&actor.memberHouses.length>0;
     // A historical mail addressed explicitly to the Narrator has neither a
     // player nor House recipient. Only the verified Narrator may acknowledge it.
     if(record.recipientKind==='narrator'&&
