@@ -923,6 +923,9 @@ test('Representação Cloud: responde às missivas autorizadas, sem token do jog
   requestKey:'narrator-letter-1234',originHouseId:null,
   recipientKind:'house',recipientHouseId:'house-a',
  }));
+ await rejects(()=>svc.cancelRepresented(sampleToken,{
+  letterId:incoming.id,expectedVersion:1,
+ }),'cancel_not_allowed');
  const response=await svc.replyRepresented(sampleToken,{
   letterId:incoming.id,requestKey:'represented-reply-12',
   content:'Resposta legitimamente autorizada',
