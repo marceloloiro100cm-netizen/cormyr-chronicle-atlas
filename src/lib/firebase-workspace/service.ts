@@ -21,6 +21,7 @@ import {spyLawDifficulty} from '../espionage/spy-law-difficulty';
 import type {HouseState} from '../house/types';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
+import {houseReleaseReadiness} from '../house/firebase-house-release-readiness';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
 import {constructionStateHash} from '../house/firebase-construction-transaction';
 import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/firebase-letter-consequences';
@@ -972,17 +973,25 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   else if(input?.kind==='rpc')result=await rpc(String(input.name),input.args??{});
   else if(input?.kind==='house'){
    const id=input.houseId;checkHouse(id);
-   const [sheet,ledger,houses,overrides,operational]=await Promise.all([
+   const [sheet,ledger,houses,overrides,live,economyMap]=await Promise.all([
     sheetFor(id),visible('noble_house_ledger'),
     visible('campaign_houses'),visible('noble_house_rule_overrides'),
-    process.env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true'
-      ?readOperationalHouseRules(db,snapshotId,id):Promise.resolve([]),
+    db.collection('campaignCloudRuntime').doc(snapshotId).get(),economies(),
    ]);
+   const readiness=houseReleaseReadiness({
+    root:live.exists?live.data():null,snapshotId,
+    houseEconomyReconciled:economyMap.has(id),
+    narrator:admin,env:process.env,
+   });
+   const operational=readiness.houseRulesReadable
+      ?await readOperationalHouseRules(db,snapshotId,id):[];
    const definitions=overrides.map(r=>r['definition']) as any[];
    const catalog=mergeHouseRuleCatalog(definitions,operational as any);
    result={state:(sheet as any).state,version:(sheet as any).version,
     catalog,houses,ledger:mergeHouseLedger(ledger,[],id),
     admin,canEditAttributes:admin,
+    houseOperationsWritable:readiness.houseOperationsWritable,
+    houseRulesWritable:readiness.houseRulesWritable,
     syncState:'synced'};
   }else if(input?.kind==='record'){
    checkHouse(input.houseId);

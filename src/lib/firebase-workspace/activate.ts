@@ -75,7 +75,7 @@ export function activateFirebaseWorkspace(){
   const result=await saveFirebaseHouseRule({
    houseId,requestKey,expectedVersion,definition,
   });
-  return {message:result.message};
+  return {message:result.message,version:result.version};
  });
  for(const fn of [readCourtMember,readVassalNpc])registerWorkspaceFunction(fn,input=>workspaceRequest({kind:'record',houseId:input?.data?.houseId,id:input?.data?.id}));
  const spyCall=(name:string,args:Record<string,unknown>)=>
