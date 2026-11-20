@@ -1,0 +1,69 @@
+name: Firebase House Rules 5 — integridade e liberação (read-only)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/firebase/house-rules-cloud-acceptance*.mjs'
+      - 'scripts/firebase/cloud-house-rules-service*.mjs'
+      - 'src/lib/house/firebase-house-read-integrity*.ts'
+      - 'src/lib/firebase-workspace/service.ts'
+      - '.github/workflows/firebase-house-rules-readonly-acceptance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/house-rules-cloud-acceptance*.mjs'
+      - 'scripts/firebase/cloud-house-rules-service*.mjs'
+      - 'src/lib/house/firebase-house-read-integrity*.ts'
+      - 'src/lib/firebase-workspace/service.ts'
+      - '.github/workflows/firebase-house-rules-readonly-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: integrity-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate rules and read-only Cloud contracts
+        run: |
+          node --check scripts/firebase/house-rules-cloud-acceptance.mjs
+          node --test scripts/firebase/house-rules-cloud-acceptance.test.mjs
+          node --test scripts/firebase/cloud-house-rules-service.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  firestore-readonly:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Temporary OIDC-only Firestore reader
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Check current rule documents and runtime approvals
+        run: node scripts/firebase/house-rules-cloud-acceptance.mjs
+      - name: No write permission or feature activation
+        if: always()
+        run: |
+          echo 'No Firestore writes, no Auth operations, no usernames or rule descriptions in the logs.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'E2E with Narrator and unauthorized player and explicit runtime approval are required before write release.' >> "$GITHUB_STEP_SUMMARY"

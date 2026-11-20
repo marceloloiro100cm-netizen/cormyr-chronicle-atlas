@@ -32,7 +32,9 @@ export async function readOperationalHouseRules(db,snapshotId,houseId){
     !validId(d.itemId)||
     doc.id!==hash('rule:'+d.itemId)||
     !Number.isSafeInteger(d.version)||d.version<1||d.version>2147483646||
+    !validId(d.updatedBy)||
     !d.definition||d.definition.id!==d.itemId||
+    typeof d.definition.name!=='string'||!d.definition.name.trim()||
     d.definition.custom!==true||!live(root.data(),snapshotId))
    invalid('house_rules_integrity_failed',503);
   result.push({definition:d.definition,version:d.version});
