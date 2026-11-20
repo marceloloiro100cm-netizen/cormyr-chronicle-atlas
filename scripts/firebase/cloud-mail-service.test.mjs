@@ -1049,6 +1049,35 @@ test('Narrator can answer a historical reply, preserving its archived parent and
  }),'reply_not_authorized',403);
 });
 
+test('House answers a legacy Narrator reply to its originally addressed letter',async()=>{
+ const f=fixture(),id='root-house-to-narrator',replyId='reply-from-narrator';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ f.records.set(path,{sourceId:id,senderUid:'historical-house-author',
+  recipientKind:'narrator',recipientHouseId:null,recipientPlayerId:null,
+  originHouseId:'house-a',publicationState:'delivered',deletedAt:null,
+  subject:'Pedido da Casa',content:'Resposta pendente'});
+ const hist='migrationMailHistoryStage/'+snapshot;
+ f.records.set(hist,{status:'complete',private:true});
+ f.records.set(hist+'/replies/'+h('reply:'+replyId),{
+  sourceId:replyId,letterId:h('letter:'+id),authorUid:'historical-narrator',
+  recipientUid:'player-1',publicationState:'delivered',
+  deletedAt:null,content:'Ordem do Narrador',
+ });
+ const r=await f.service().reply(sampleToken,{
+  requestKey:'house-followup-on-historical-01',letterId:id,
+  replyId,content:'Resposta da Casa em aberto',
+ });
+ const cloud=f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+r.id);
+ assert.equal(cloud.originHouseId,'house-a');
+ assert.equal(cloud.recipientKind,'narrator');
+ assert.equal(cloud.threadRootId,id);
+ assert.equal(cloud.replyToId,replyId);
+ await rejects(()=>f.service().reply(sampleToken,{
+  requestKey:'house-historical-forged-id',letterId:id,
+  replyId:'reply-from-another-thread',content:'Outra Casa',
+ }),'reply_not_authorized',403);
+});
+
 test('Only Narrator moderates and restores imported letters via operational markers',async()=>{
  const gm=fixture('narrador'),id='legacy-for-moderation';
  const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
