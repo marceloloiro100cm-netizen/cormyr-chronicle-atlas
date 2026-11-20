@@ -29,7 +29,7 @@ const goodRoot={status:'active',private:true,sourceSnapshotId:snap,
  houseOpsWriteApproved:true,calendarVersion:5};
 const base='projects/cormyr/databases/(default)/documents/';
 function mock({denied=false,missing=false,corrupt=false,approved=true,
- partial=false,wrongMonth=false}={}){
+ partial=false,wrongMonth=false,sourcePhase='active'}={}){
  const docs=new Map([
   ['migrationDomainStage/'+snap,{status:'complete',private:true}],
   ['migrationAuthStage/'+snap,{status:'complete',private:true}],
@@ -39,7 +39,8 @@ function mock({denied=false,missing=false,corrupt=false,approved=true,
   ['migrationTimeEngineStage/'+snap+'/calendar/current',
    {year:1522,month:1,day:1,version:5}],
   ['migrationNobleHouseStage/'+snap+'/sheets/'+hash('noble-sheet:'+uid),
-   {houseId:uid,version:3,state:wrongMonth?{...state,month:18250}:state}],
+   {houseId:uid,version:3,state:{...state,phase:sourcePhase,
+     month:wrongMonth?18250:state.month}}],
   ...(!missing?[['campaignCloudRuntime/'+snap+'/houseEconomies/'+hash('house:'+uid),
    {houseId:uid,status:'active',private:true,
     sourceSnapshotId:snap,sourceReconciled:true,seedVerified:true,
@@ -121,6 +122,18 @@ describe('aceite Cloud da Ficha com escopo de leitura',()=>{
    const r=await auditHouseOpsCloud({tokenProvider:()=> 'temporary-oidc',fetcher:m.fetcher});
    assert.equal(r.missingEconomies,1);
    assert.equal(r.missingPreflight[kind],1);
+   assert.ok(m.calls.every(c=>c.method==='GET'));
+   assert.doesNotMatch(summarize(r),/house-a|temporary-oidc|a{64}/);
+  }
+ });
+ it('distingue rascunho e revisão de origem, sem divulgar identificação',async()=>{
+  for(const [sourcePhase,field] of [['draft','draft'],['review','review']]){
+   const m=mock({missing:true,sourcePhase});
+   const r=await auditHouseOpsCloud({fetcher:m.fetcher,
+    tokenProvider:()=> 'temporary-oidc'});
+   assert.equal(r.missingPreflight.sourceNotReady,1);
+   assert.equal(r.missingSourceReasons[field],1);
+   assert.equal(r.releaseDecision,'NO_GO');
    assert.ok(m.calls.every(c=>c.method==='GET'));
    assert.doesNotMatch(summarize(r),/house-a|temporary-oidc|a{64}/);
   }
