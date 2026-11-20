@@ -4,6 +4,9 @@
  */
 import {createHash} from 'node:crypto';
 import type {Scope} from './service';
+import type {RepresentationGate} from './operational-representation';
+import {chooseCurrentAccountAccess}
+ from '../../../scripts/firebase/operational-account-access.mjs';
 import {projectOperationalRecords,type RecordRow,type OperationalRecord} from './operational-records';
 
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -71,9 +74,10 @@ export function canonicalRecordRequest(actor:Scope,input:RecordWriteInput){
  return fail('record_invalid',400);
 }
 export async function commitOperationalRecord({
- db,snapshotId,actor,imported,input,
+ db,snapshotId,actor,imported,input,representation=null,
 }:{
  db:any;snapshotId:string;actor:Scope;imported:RecordRow[];input:RecordWriteInput;
+ representation?:RepresentationGate|null;
 }):Promise<RecordRow>{
  if(process.env['CORMYR_FIREBASE_RECORDS_ENABLED']!=='true')
   fail('record_write_disabled',501);
@@ -90,10 +94,40 @@ export async function commitOperationalRecord({
  const doc=root.collection('records').doc(sha('record:'+id));
  const request=root.collection('recordRequests').doc(sha('record-request:'+actor.uid+':'+requestDigest));
  return db.runTransaction(async(tx:any)=>{
-  const [rt,attempt,currentDoc]=await Promise.all([
+  const sessionRef=representation?root.collection('representationSessions')
+   .doc(representation.actorUid):null;
+  const [rt,attempt,currentDoc,sessionDoc,sourceAccess,liveAccess]=await Promise.all([
    tx.get(root),tx.get(request),tx.get(doc),
+   sessionRef?tx.get(sessionRef):Promise.resolve(null),
+   representation?tx.get(db.collection('migrationDomainStage').doc(snapshotId)
+    .collection('access').doc(actor.uid)):Promise.resolve(null),
+   representation?tx.get(root.collection('accountAccess').doc(actor.uid)):
+    Promise.resolve(null),
   ]);
   assertRuntime(rt.exists?rt.data():null,snapshotId);
+  if(representation){
+   const session=sessionDoc?.exists?sessionDoc.data():null;
+   if(process.env['CORMYR_FIREBASE_REPRESENTATION_ENABLED']!=='true'||
+      rt.data()?.representationReadApproved!==true||
+      rt.data()?.representationWriteApproved!==true||
+      !session||session.actor!==representation.actorUid||
+      session.representedUid!==actor.uid||session.playerId!==actor.playerId||
+      session.sessionId!==representation.sessionId||
+      !Number.isFinite(Date.parse(session.expiresAt))||
+      Date.parse(session.expiresAt)<=Date.now())
+     fail('representation_session_invalid',403);
+   let account:any;
+   try{account=chooseCurrentAccountAccess(actor.uid,
+    sourceAccess?.exists?sourceAccess.data():null,
+    liveAccess?.exists?liveAccess.data():null,rt.data());}
+   catch{fail('representation_access_invalid',403);}
+   if(!account||account.profile!=='jogador'||account.admin!==false||
+      account.active!==true||account.requirePasswordChange!==false||
+      account.playerId!==actor.playerId||
+      JSON.stringify(account.memberHouseIds)!==JSON.stringify(actor.memberHouseIds)||
+      JSON.stringify(account.editHouseIds)!==JSON.stringify(actor.editHouseIds))
+    fail('representation_access_changed',403);
+  }
   if(attempt.exists){
    const saved=attempt.data();
    if(saved?.actor!==actor.uid||saved?.digest!==requestDigest||!isRow(saved.record))
@@ -157,9 +191,19 @@ export async function commitOperationalRecord({
    author:actor.uid,created_at:next['updated_at'],sourceSnapshotId:snapshotId});
   tx.set(request,{actor:actor.uid,digest:requestDigest,record:next,
    recordId:id,version:next['version'],at:next['updated_at'],sourceSnapshotId:snapshotId});
-  tx.set(audit,{actor:actor.uid,recordId:id,previousVersion:prior?.['version']??0,
+  tx.set(audit,{actor:actor.uid,
+   ...(representation?{administrativeActorUid:representation.actorUid,
+    representationSessionId:representation.sessionId}:{}),
+   recordId:id,previousVersion:prior?.['version']??0,
    version:next['version'],action:input.action,at:next['updated_at'],
    sourceSnapshotId:snapshotId,requestDigest});
+  if(representation)tx.set(root.collection('representationAudits')
+   .doc(sha('representation-record:'+requestDigest)),{
+    actorUid:representation.actorUid,representedUid:actor.uid,
+    playerId:actor.playerId,sessionId:representation.sessionId,
+    action:'representation_save_record',recordId:id,version:next['version'],
+    requestDigest,at:next['updated_at'],sourceSnapshotId:snapshotId,
+   });
   return next;
  });
 }
