@@ -68,7 +68,7 @@ const officialProfile=(entry:DndUnitConversion):CrzCreature=>{
   traits:[],flags:{flying:false,ranged:attacks.length>1,caster:false,
    legendary:false,swarm:false},
   provenance:{origin:'manual',srd:false,license:'original-authorized',
-   attribution:'Perfis de combate simplificados e originais do Cormyr Chronicle Atlas.',
+   attribution:'Perfis de combate simplificados e originais do Atlas Cormyr.',
    permissionEvidence:'De/para criado para o próprio simulador Cormyr, sem reproduzir estatísticas de bestiários.'},
   warnings:[...(entry.requiresNarratorReview?[
    'Perfil especial genérico; o Narrador deve escolher a especialidade antes de confirmar o personagem.'

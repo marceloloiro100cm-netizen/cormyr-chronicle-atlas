@@ -303,7 +303,7 @@ describe('paridade das 55 operações e brasão com manifesto privado',()=>{
   '/11111111-1111-4111-8111-111111111111.png';
  const env={CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED:'true'};
  it('declara explicitamente cada ação da Ficha, sem ausência silenciosa',()=>{
-  expect(HOUSE_ACTIONS).toHaveLength(55);
+  expect(HOUSE_ACTIONS).toHaveLength(56);
   expect([...FIREBASE_HOUSE_SUPPORTED_ACTIONS].sort()).toEqual([...HOUSE_ACTIONS].sort());
  });
  it('bloqueia o brasão enquanto o Storage privado está desativado',async()=>{

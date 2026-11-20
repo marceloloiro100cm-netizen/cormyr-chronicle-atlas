@@ -35,7 +35,7 @@ export function CampaignShell({ children,publicTime=false,heraldry=null }: {
 
   return <div className="campaign-theme min-h-screen bg-background text-foreground" data-house-theme={heraldry??undefined}>
     <header className="campaign-top">
-      <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Cormyr <em>Chronicle</em>{publicTime?<PublicClock/>:<PrivateClock/>}</span></a>
+      <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Atlas <em>Cormyr</em>{publicTime?<PublicClock/>:<PrivateClock/>}</span></a>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
         <nav style={{display:'flex',gap:'0.8rem',alignItems:'center'}}>
           <a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a>

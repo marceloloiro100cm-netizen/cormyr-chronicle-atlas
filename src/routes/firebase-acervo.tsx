@@ -301,7 +301,7 @@ function FirebaseOriginalArchive(){
   const canView=session?.profile==='narrador'||session?.profile==='jogador';
   return <main className="mx-auto max-w-5xl space-y-6 p-5 md:p-8">
     <header className="space-y-2 border-b pb-4">
-      <p className="text-sm opacity-70">Cormyr Chronicle Atlas · Firebase</p>
+      <p className="text-sm opacity-70">Atlas Cormyr · Firebase</p>
       <h1 className="text-2xl font-semibold">Conferência do acervo original</h1>
       <p className="text-sm">Consulta privada dos dados reais importados. Somente leitura:
         nenhuma ação aqui altera missivas, fichas, versões, espiões ou o jornal.

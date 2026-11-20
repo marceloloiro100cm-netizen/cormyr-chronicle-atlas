@@ -451,3 +451,34 @@
   page-break-inside:avoid;
  }
 }
+
+/* ---- A Folha Sem Selo no site aberto (/jornal) ---- */
+.public-folha{min-height:100vh;background:#f3ecdd;color:#231d2a;padding:0 0 40px;font-family:Georgia,'Times New Roman',serif}
+.public-folha--embed{min-height:0;background:transparent;padding:0 0 24px}
+.public-folha-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:#241334;color:#fffdf7;border-bottom:2px solid #a98b54}
+.public-folha-top a{color:#fffdf7;text-decoration:none;font-family:system-ui,sans-serif;font-size:14px}
+.public-folha-brand{display:inline-flex;align-items:center;gap:10px;font:600 19px Georgia,serif}
+.public-folha-brand em{color:#dcc28f;font-style:normal}
+.public-folha-brand img{border-radius:4px;object-fit:cover}
+.public-folha-head{display:flex;align-items:center;gap:16px;max-width:1200px;margin:22px auto 8px;padding:0 20px}
+.public-folha-head h1{margin:2px 0;font:700 clamp(28px,4vw,40px)/1.1 "UnifrakturCook","Old English Text MT",Georgia,serif;color:#241334}
+.public-folha-head p{margin:0;color:#5b4f63}
+.public-folha-tabs{display:flex;gap:8px;max-width:1200px;margin:12px auto;padding:0 20px;flex-wrap:wrap}
+.public-folha-tabs button,.public-folha-pager button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid #c9b48a;border-left:3px solid #c9b48a;border-radius:8px;background:#fffdf8;color:#241334;font:600 14px system-ui,sans-serif;cursor:pointer}
+.public-folha-tabs button:hover,.public-folha-pager button:hover:not(:disabled){border-color:#a98b54;background:#f7f0e2}
+.public-folha-tabs button[aria-pressed=true]{background:#241334;color:#fffdf7;border-color:#a98b54}
+.public-folha-pager{display:flex;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.public-folha-pager button:disabled{opacity:.45;cursor:not-allowed}
+.public-folha-status{max-width:1200px;margin:24px auto;padding:0 20px;font-family:system-ui,sans-serif}
+.public-folha-layout{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:18px;max-width:1400px;margin:0 auto;padding:0 20px;align-items:start}
+.public-folha-list{position:sticky;top:12px;background:#fffdf8;border:1px solid #d9ccb2;border-radius:10px;padding:10px;max-height:calc(100vh - 40px);overflow:auto}
+.public-folha-list h2{margin:2px 4px 8px;font:700 12px system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6b5233}
+.public-folha-list ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.public-folha-list button{width:100%;display:grid;gap:2px;text-align:left;border:1px solid #e4dccd;border-left:3px solid #d8cdb8;border-radius:8px;background:#fff;padding:8px 10px;cursor:pointer;color:#231d2a}
+.public-folha-list button:hover{border-color:#a98b54}
+.public-folha-list button[aria-current=true]{background:#241334;color:#fffdf7;border-color:#a98b54}
+.public-folha-list span{font:600 11px system-ui,sans-serif;color:inherit;opacity:.8}
+.public-folha-list strong{font:600 15px/1.3 Georgia,serif}
+.public-folha-reader{min-width:0}
+.public-folha .folha-team{max-width:1100px;margin:16px auto}
+@media(max-width:860px){.public-folha-layout{grid-template-columns:minmax(0,1fr)}.public-folha-list{position:static;max-height:none}}

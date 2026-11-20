@@ -56,9 +56,9 @@ export function NarratorWorkspace({menu,extra,section,onSection,unread,openRound
  const inMore=secondary.some(([id])=>id===section);
  return <div className="campaign-theme nw-root">
   <header className="nw-top">
-   <button type="button" className="nw-brand" onClick={()=>go('painel')} aria-label="Cormyr Chronicle: abrir o Conselho das casas">
+   <button type="button" className="nw-brand" onClick={()=>go('painel')} aria-label="Atlas Cormyr: abrir o Conselho das casas">
     <img src={CORMYR_CREST} alt="" width={34} height={42}/>
-    <span><b>Cormyr <em>Chronicle</em></b>
+    <span><b>Atlas <em>Cormyr</em></b>
      <span className="nw-clock"><Suspense fallback={<small>Consultando data oficial…</small>}><PrivateClockBody/></Suspense></span></span>
    </button>
    <span className="nw-spacer"/>

@@ -66,7 +66,7 @@ export async function exportUnitPdf(unit:Unit,state:HouseState,houseName:string)
  if(bonuses.entries.length){if(y>245){pdf.addPage();y=15;}section('Bônus recebidos de instalações da Casa',y);const rows=bonuses.entries.map(b=>[b.source,b.description]);autoTable(pdf,{startY:y+11,body:rows.map(r=>r.map(safe)),theme:'grid',margin:{left:pad,right:pad},styles:{font:'helvetica',fontSize:8,cellPadding:2},columnStyles:{0:{fontStyle:'bold',cellWidth:52}}});}
 
  const pages=pdf.getNumberOfPages();
- for(let n=1;n<=pages;n++){pdf.setPage(n);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(100,87,95);pdf.text('Cormyr Chronicle · Casa '+safe(houseName)+' · '+n+' / '+pages,pad,289);}
+ for(let n=1;n<=pages;n++){pdf.setPage(n);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(100,87,95);pdf.text('Atlas Cormyr · Casa '+safe(houseName)+' · '+n+' / '+pages,pad,289);}
  const fileName=(safe(houseName)+'-'+safe(unit.name)).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9-]+/g,'-').replace(/^-|-$/g,'').slice(0,95);
  pdf.save('Ficha-Unidade-'+fileName+'.pdf');
 }

@@ -49,9 +49,13 @@ export type Fortune = { month: number; mode: 'roll' | 'alternative'; dice: numbe
 export type MailConsequence = {
  id: string; letterId: string; changes: Partial<Resources>; active: boolean; createdAt: string;
 };
+/** Imagens próprias da Casa: chave = id do espião ou da unidade. */
+export type CustomImages = { spies?: Record<string, string> | undefined; units?: Record<string, string> | undefined };
 export type HouseState = {
   schemaVersion: 1; houseId: string; phase: 'draft' | 'review' | 'active'; creationStep: number;
   identity: { region: string; motto: string; foundation?: number | undefined; history: string[]; notes: string; crestPath?: string | undefined };
+  /** Retratos enviados pela Casa (espiões e unidades), em miniatura WebP/JPEG embutida. */
+  customImages?: CustomImages | undefined;
   method: 'budget' | 'roll' | 'import'; budget: number | null; base: Resources; permanent: Resources;
   regionalApplied: boolean; rolls: number[][]; domains: Domain[]; holdings: Holding[]; units: Unit[]; projects: Project[]; court: CourtMember[];
   month: number; treasury: number; fortunes: Fortune[]; actions: { month: number; type: string; notes: string }[];

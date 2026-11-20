@@ -19,9 +19,9 @@ import {
 import './chancelaria-narrador.css';
 
 /**
- * Chancelaria de Missivas na visão do Narrador (layout v5): filas à esquerda,
- * lista e leitura lado a lado, painel de contexto da Casa e escrita no lugar
- * do leitor. Usa as mesmas RPCs e o mesmo modelo de filas da Chancelaria v4;
+ * Chancelaria de Missivas na visão do Narrador (layout v5): pastas à esquerda,
+ * lista e leitura lado a lado e escrita no lugar do leitor (sem Hub Temporal
+ * em miniatura nem painel de contexto, decisão de 20/11/2026). Usa as mesmas RPCs e o mesmo modelo de filas da Chancelaria v4;
  * toda permissão continua no servidor.
  */
 const loose=(name:string,args:Record<string,unknown>)=>
@@ -57,9 +57,9 @@ const plain=(text:string)=>text.replace(/!\[[^\]]*\]\([^)]*\)/g,'').replace(/\[(
 const str=(value:unknown)=>typeof value==='string'&&value?value:null;
 type Compose={subject:string;content:string}|null|false;
 
-export function ChancelariaNarrador({data,me,onSave,onError,onManage,onClassic,onOpenHub,initialHouse}:{
+export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,initialHouse}:{
   data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;
-  onManage?:((house:string)=>void)|undefined;onClassic?:(()=>void)|undefined;onOpenHub?:(()=>void)|undefined;
+  onManage?:((house:string)=>void)|undefined;onOpenHub?:(()=>void)|undefined;
   initialHouse?:string|undefined;
 }){
   const qc=useQueryClient();
@@ -224,25 +224,15 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onClassic,o
       </div></div>;
   });
   return <section className="chn" data-pane={pane} aria-label="Chancelaria de Missivas">
-    <aside className="chn-queues" aria-label="Filas da Chancelaria">
+    <aside className="chn-queues" aria-label="Pastas da Chancelaria">
       <section className="chn-panel">
-        <div className="chn-ph"><span className="chn-ph-t">Filas</span></div>
-        <nav className="chn-qlist" aria-label="Filas">
+        <div className="chn-ph"><span className="chn-ph-t">Pastas</span></div>
+        <nav className="chn-qlist" aria-label="Pastas">
           {NARRATOR_QUEUES.map(q=>{const n=queueCount(q);return <button type="button" key={q} className="chn-q"
             aria-current={queue===q?'true':undefined} title={QUEUE_TEXT[q][1]} onClick={()=>pickQueue(q)}>
             <Icon name={QUEUE_TEXT[q][2]}/><span className="chn-q-label">{QUEUE_TEXT[q][0]}<small>{QUEUE_TEXT[q][1]}</small></span>
             <span className={'chn-cnt'+(q==='attention'&&n!=='0'?' chn-cnt--hot':'')}>{n}</span></button>;})}
         </nav>
-      </section>
-      <section className="chn-panel chn-hubmini" aria-label="Hub Temporal">
-        <div className="chn-ph"><span className="chn-ph-t">Hub Temporal</span><span className="chn-spacer"/>{clock?<span>{clock.year} CV</span>:null}</div>
-        <div className="chn-hubmini-b">
-          <p className="chn-hubmini-wk"><Icon name="hour"/>{openRound!==null?`Semana ${openRound} · aberta`:'Nenhuma semana aberta'}</p>
-          <p className="chn-row-between"><span>Programadas para a Semana {nextWeek}</span><b>{scheduledNext}</b></p>
-          <p className="chn-row-between"><span>Rascunhos</span><b>{members('drafts').length}</b></p>
-          <p className="chn-hint">Abrir e encerrar semanas acontece só no Hub Temporal, com confirmação.</p>
-          {onOpenHub&&<button type="button" className="chn-link" onClick={onOpenHub}>Ir para o Hub Temporal →</button>}
-        </div>
       </section>
     </aside>
     <section className="chn-panel chn-toolbar" aria-label="Ferramentas da Chancelaria">
@@ -256,7 +246,6 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onClassic,o
         </div>
         <button type="button" className="chn-btn chn-filters-btn" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)}>
           <Icon name="filter" size={16}/>{activeFilters?`Filtros (${activeFilters})`:'Filtros'}</button>
-        {onClassic&&<button type="button" className="chn-btn chn-classic" onClick={onClassic}>Visão clássica</button>}
         <button type="button" className="chn-btn chn-btn--primary chn-new" onClick={()=>openCompose()}><Icon name="feather" size={16}/>Nova missiva</button>
       </div>
       <div className={'chn-filters'+(filtersOpen?' chn-filters--open':'')} role="group" aria-label="Filtros">
@@ -279,12 +268,12 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onClassic,o
     </section>
     <section className="chn-panel chn-list" aria-label="Conversas">
       <div className="chn-ph"><span className="chn-ph-t chn-qname">{QUEUE_TEXT[queue][0]}</span>
-        <select className="chn-qsel" aria-label="Fila" value={queue} onChange={e=>pickQueue(e.target.value as QueueId)}>
+        <select className="chn-qsel" aria-label="Pasta" value={queue} onChange={e=>pickQueue(e.target.value as QueueId)}>
           {NARRATOR_QUEUES.map(q=><option key={q} value={q}>{QUEUE_TEXT[q][0]} ({queueCount(q)})</option>)}</select>
         <span className="chn-spacer"/><span>{list.length} conversa{list.length===1?'':'s'}</span></div>
       <div className="chn-items" role="list">
         {list.length===0?<div className="chn-empty"><Icon name="inbox" size={28}/>
-          <p>Nada nesta fila{activeFilters?' com os filtros atuais':''}.</p>
+          <p>Nada nesta pasta{activeFilters?' com os filtros atuais':''}.</p>
           {activeFilters>0&&<button type="button" className="chn-btn" onClick={resetFilters}>Limpar filtros</button>}</div>:items}
       </div>
       <div className="chn-lfoot"><span>A leitura só conta quando você marca.</span>
@@ -302,26 +291,9 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onClassic,o
       :current?<NarratorReader key={current.root.id} c={current} data={data} uid={uid} admin={admin} today={today} openRound={openRound}
           editHouses={editHouses} houseName={houseName} houseOf={houseOf} trashMode={queue==='trash'} ctx={ctx}
           onBack={()=>setPane('list')} onRead={()=>void markRead(current)} onUnread={()=>void markUnread(current)}
-          onContext={drawerContext?()=>setContextOpen(true):undefined}
           onDone={refresh} onError={(m)=>{onError(m);setMessage(m);}}/>
       :<div className="chn-rbody"><div className="chn-empty"><Icon name="missivas" size={28}/><p>Selecione uma missiva para ler.</p></div></div>}
     </section>
-    <aside className={'chn-panel chn-ctx'+(contextOpen?' chn-ctx--open':'')} aria-label="Contexto da conversa">
-      <div className="chn-ph"><span className="chn-ph-t">Contexto</span><span className="chn-spacer"/>
-        {drawerContext&&<button type="button" className="chn-ctx-close" aria-label="Fechar contexto" onClick={()=>setContextOpen(false)}><Icon name="close" size={16}/></button>}</div>
-      <div className="chn-ctx-b">
-        {compose!==false?<ComposeHelp openRound={openRound}/>
-        :current?<ConversationContext key={current.root.id} c={current} data={data} uid={uid} trashMode={queue==='trash'}
-          houses={conversationHouses(current).map(id=>houseOf(id)).filter((h):h is NonNullable<typeof h>=>Boolean(h))}
-          related={(id)=>conversations.filter(o=>o.root.id!==current.root.id&&!o.root.deleted_at&&
-            [o.root.origin_house_id,o.root.recipient_house_id].includes(id)).slice(0,4)}
-          isUnread={(o)=>conversationUnread(o,ctx)} onSelect={(id)=>{setContextOpen(false);select(id);}}
-          onManage={onManage} onDone={refresh} onError={(m)=>{onError(m);setMessage(m);}}/>
-        :<div className="chn-box"><h5>{openRound!==null?`Semana ${openRound}`:'Campanha'} em números</h5>
-          {(['attention','yourturn','scheduled','drafts'] as QueueId[]).map(q=><p key={q} className="chn-row-between">
-            <span>{QUEUE_TEXT[q][0]}</span><b>{members(q).length}</b></p>)}</div>}
-      </div>
-    </aside>
     {((contextOpen&&drawerContext)||filtersOpen)&&<div className={'chn-scrim'+(filtersOpen&&!contextOpen?' chn-scrim--filters':'')} aria-hidden="true"
       onClick={()=>{setContextOpen(false);setFiltersOpen(false);}}/>}
     {pane==='list'&&compose===false&&<button type="button" className="chn-fab" aria-label="Escrever nova missiva" onClick={()=>openCompose()}><Icon name="feather" size={22}/></button>}

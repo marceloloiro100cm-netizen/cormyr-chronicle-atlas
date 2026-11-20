@@ -8,10 +8,10 @@ const RESET_CODE=/^[A-Za-z0-9_-]{8,4096}$/;
 
 export const Route=createFileRoute('/reset-password')({
   head:()=>({meta:[
-    {title:'Redefinir senha Firebase — Cormyr Chronicle'},
+    {title:'Redefinir senha · Atlas Cormyr'},
     {name:'description',content:'Recuperação segura da conta Firebase.'},
     {name:'referrer',content:'no-referrer'},
-    {property:'og:title',content:'Redefinir senha — Cormyr Chronicle'},
+    {property:'og:title',content:'Redefinir senha · Atlas Cormyr'},
     {property:'og:description',content:'Defina uma nova senha para sua conta Firebase.'},
     {property:'og:type',content:'website'},
     {name:'twitter:card',content:'summary'},

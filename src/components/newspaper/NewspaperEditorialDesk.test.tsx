@@ -58,6 +58,19 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getAllByRole('button',{name:'Publicar Edição'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
   expect(screen.getByText('Nenhuma edição publicada ainda')).toBeInTheDocument();
  });
+ it('Missivas do Editor-Chefe viram item do menu acima de Configurações',()=>{
+  render(<NewspaperEditorialDesk {...fixture()} missivas={<p>Leitor de missivas</p>}
+   publicReads={new Map([['e1',3]])}/>);
+  const nav=screen.getByRole('complementary',{name:'Menu de redação'});
+  const labels=[...nav.querySelectorAll('nav button')].map(b=>b.textContent?.trim());
+  expect(labels.indexOf('Missivas')).toBe(labels.indexOf('Configurações')-1);
+  fireEvent.click(screen.getByRole('button',{name:'Missivas'}));
+  expect(screen.getByText('Leitor de missivas')).toBeInTheDocument();
+ });
+ it('sem o leitor de missivas, o menu não mostra o item',()=>{
+  render(<NewspaperEditorialDesk {...fixture()}/>);
+  expect(screen.queryByRole('button',{name:'Missivas'})).toBeNull();
+ });
  it('abre a redação com um clique mas não concede navegação de Casas',()=>{
   const props=fixture();render(<NewspaperEditorialDesk {...props}/>);
   fireEvent.click(screen.getByRole('button',{name:'Escrever Matéria'}));

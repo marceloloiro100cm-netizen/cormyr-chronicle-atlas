@@ -5,13 +5,15 @@ import {newHouseState} from '@/lib/house/types';
 import {houseReport} from '@/lib/house/report';
 
 describe('Item 12: Histórico e documentos da Casa no Firebase',()=>{
- it('torna Histórico e documentos acessível ao jogador, sem liberar seções administrativas',()=>{
-  expect(houseNavigationVisible('history',false,true)).toBe(true);
-  expect(houseNavigationVisible('history',true,true)).toBe(true);
-  expect(houseNavigationVisible('history',false,false)).toBe(true);
-  for(const id of ['kingdom','reconciliation','coverage','rules'])
+ it('oculta Histórico e documentos e Regras e Tabelas do menu, sem liberar seções administrativas',()=>{
+  for(const admin of [false,true])for(const firebase of [false,true]){
+   expect(houseNavigationVisible('history',admin,firebase)).toBe(false);
+   expect(houseNavigationVisible('rules',admin,firebase)).toBe(false);
+  }
+  for(const id of ['kingdom','reconciliation','coverage'])
    expect(houseNavigationVisible(id,false,true)).toBe(false);
-  expect(houseNavigationVisible('rules',true,true)).toBe(true);
+  expect(houseNavigationVisible('overview',false,true)).toBe(true);
+  expect(houseNavigationVisible('vassals',false,true)).toBe(true);
  });
  it('mantém o acesso no menu real e exportações locais sem escrever no Drive',()=>{
   const src=readFileSync('src/components/house/hub.tsx','utf8');

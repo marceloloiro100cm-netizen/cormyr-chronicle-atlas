@@ -167,7 +167,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
         onBuy={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}}
         onCondition={(args,reason)=>run('condition',args,reason)}/>
       </>}
-      {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
+      {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onImage={args=>run('custom_image',args)} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
       {section==='spy'&&<>
        <div className="campaign-tabs" role="group" aria-label="Seções de Espionagem">
         <Button type="button" variant={spyView==='operations'?'default':'outline'}
@@ -179,7 +179,8 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
        </div>
        {spyView==='operations'?<>
         <SpyDefensePanel state={state} houseId={house.id}/>
-        <SpyAgentManagement houseId={house.id} canEdit={admin||playerCanEdit} admin={admin}/>
+        <SpyAgentManagement houseId={house.id} canEdit={admin||playerCanEdit} admin={admin}
+         customImages={state.customImages?.spies} onCustomImage={(agentId,image)=>run('custom_image',{target:'spy',id:agentId,image})}/>
         <SpyRegionalTurnsPanel houseId={house.id} admin={admin}/>
         <HouseAssetCatalog section="spy" state={state} catalog={catalog}
          canEdit={monthlyCanEdit} busy={busy}

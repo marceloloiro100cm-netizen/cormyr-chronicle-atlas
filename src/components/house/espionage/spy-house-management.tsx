@@ -18,6 +18,10 @@ import {SpyAgentPortraitControl} from './spy-agent-portrait-control';
 import {SpyRemoveAgentButton} from './spy-remove-agent-button';
 import {SpyCancelMissionButton} from './spy-cancel-mission-button';
 import './spy-agent-cards.css';
+import {isCustomImageDataUrl} from '@/lib/house/custom-images';
+const customPortrait=(images:Record<string,string>|undefined,id:string):string|null=>{
+ const value=images?.[id];return isCustomImageDataUrl(value)?value:null;
+};
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
 import {SpyHouseCounterintelligence} from './spy-house-counterintelligence';
 
@@ -133,9 +137,10 @@ export function SpyDefensePanel({state,houseId}:{state:HouseState;houseId:string
  </section>;
 }
 
-function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,houseVersion,availableWealth,portraits}:{agent:SpyManagement['agents'][number];
+function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,houseVersion,availableWealth,portraits,customImage,onCustomImage}:{agent:SpyManagement['agents'][number];
  operation:Mission|null;lastCompleted:Mission|null;houseId:string;canEdit:boolean;officialDate:string|null;
- houseVersion:number;availableWealth:number|null;portraits:SpyManagement['portraits']}){
+ houseVersion:number;availableWealth:number|null;portraits:SpyManagement['portraits'];
+ customImage:string|null;onCustomImage?:((agentId:string,image:string)=>Promise<boolean>)|undefined}){
  const [editing,setEditing]=useState(false),[name,setName]=useState(agent.codename);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const rename=useServerFn(renameSpyAgent);
@@ -176,17 +181,18 @@ function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,ho
     :null;
  return <article className="house-card spy-agent-card">
   <header className="spy-agent-card-heading">
-   <div className="spy-agent-identity">
-    <SpyAgentPortraitControl houseId={houseId} agent={agent}
-     portraits={portraits} canEdit={canEdit}/>
-    <div className="spy-agent-identity-text">
+   <SpyAgentPortraitControl houseId={houseId} agent={agent}
+    portraits={portraits} canEdit={canEdit} customUrl={customImage}
+    {...(onCustomImage?{onCustomImage:(image:string)=>onCustomImage(agent.id,image)}:{})}/>
+   <div className="spy-agent-identity-text">
+    <div className="spy-agent-kicker">
      <p className="campaign-eyebrow">AGENTE DE ESPIONAGEM</p>
-     <h4>{agent.codename}</h4>
-     <small>{agent.currentRegion?REGIONS[agent.currentRegion]?.name??agent.currentRegion:
-      'Localização não confirmada'}</small>
+     <span className="spy-agent-state" data-status={agent.status}>{status}</span>
     </div>
+    <h4>{agent.codename}</h4>
+    <small>{agent.currentRegion?REGIONS[agent.currentRegion]?.name??agent.currentRegion:
+     'Localização não confirmada'}</small>
    </div>
-   <span className="spy-agent-state" data-status={agent.status}>{status}</span>
   </header>
   {canEdit&&!editing&&<Button type="button" size="sm" variant="outline"
    className="spy-agent-rename" onClick={()=>{setName(agent.codename);setEditing(true);}}>
@@ -275,7 +281,10 @@ function AgentRow({agent,operation,lastCompleted,houseId,canEdit,officialDate,ho
  </article>
 }
 
-export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string;canEdit:boolean;admin?:boolean}){
+export function SpyAgentManagement({houseId,canEdit,admin=false,customImages,onCustomImage}:{houseId:string;canEdit:boolean;admin?:boolean;
+ /** Retratos enviados pela Casa (Ficha), por id do espião. */
+ customImages?:Record<string,string>|undefined;
+ onCustomImage?:((agentId:string,image:string)=>Promise<boolean>)|undefined}){
  const {data,isPending,isError,refetch}=useQuery({
   queryKey:['spy-house-management',houseId],
   queryFn:()=>readSpyHouseManagementBrowser(houseId),retry:false,staleTime:15_000,
@@ -311,6 +320,8 @@ export function SpyAgentManagement({houseId,canEdit,admin=false}:{houseId:string
      canEdit={canEdit} officialDate={officialDate}
      houseVersion={data.houseVersion} availableWealth={data.availableWealth}
      portraits={data.portraits}
+     customImage={customPortrait(customImages,agent.id)}
+     onCustomImage={onCustomImage}
      operation={pendingMission(data.operations,agent.id)}
      lastCompleted={latestCompletedSpyMission(data.operations,agent.id)}/>)}
   </div>}

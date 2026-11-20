@@ -20,6 +20,7 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   if(state.view==='nobreza'){const params=new URLSearchParams();for(const [key,value] of Object.entries(state.noble))if(value&&!(key==='page'&&value===1))params.set(key,String(value));return '#nobreza'+(params.size?'?'+params:'');}
   if(state.view==='constituicao'){const p=new URLSearchParams();if(lawState.query)p.set('busca',lawState.query);if(lawState.topic)p.set('tema',lawState.topic);if(lawState.page>1)p.set('pagina',String(lawState.page));if(lawState.article)p.set('artigo',String(lawState.article));return '#constituicao'+(p.size?'?'+p:'');}
   if(state.view==='musicas')return '#musicas';
+  if(state.view==='jornal')return '#jornal';
   return '#notebook-lm';
  }
  function writeRoute(push=false){const next=routeHash();if(location.hash!==next)history[push?'pushState':'replaceState'](null,'',next);}
@@ -27,7 +28,7 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   if(!h){state.view='reino';state.regionView='houses';}
   else if(h==='nobreza'){state.view='nobreza';state.noble={region:params.get('region')||'',name:params.get('name')||'',leader:params.get('leader')||'',castle:params.get('castle')||'',city:params.get('city')||'',page:Math.max(1,parseInt(params.get('page'),10)||1),house:params.get('house')||''};}
   else if(h==='eventos'){state.view='eventos';state.kind=params.get('tipo')==='misticos'?'misticos':'mundanos';state.query=params.get('busca')||'';state.theme=params.get('tema')||'';state.eventPage=Math.max(1,parseInt(params.get('pagina'),10)||1);}
-  else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas'){state.view=h;
+  else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas'||h==='jornal'){state.view=h;
     if(h==='constituicao'){lawState.query=params.get('busca')||'';lawState.topic=params.get('tema')||'';
      lawState.page=Math.max(1,parseInt(params.get('pagina'),10)||1);lawState.article=parseInt(params.get('artigo'),10)||null;}}
    else if(h.startsWith('adv-sec-')){state.view='aventura';}
@@ -43,7 +44,9 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   renderRegion();renderNobility();
  }).catch(()=>{});
 
- function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'Reino e regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas'}[view]||'Cormyr')+' · Cormyr Web';if(updateHash)writeRoute(true);}
+ function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'Reino e regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas',jornal:'Jornal'}[view]||'Cormyr')+' · Atlas Cormyr';
+  // O jornal só carrega quando o leitor abre a seção (a leitura é contada no próprio jornal).
+  if(view==='jornal'){const frame=document.getElementById('newspaper-frame');if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',frame.dataset.src||'/jornal?embed=1');}if(updateHash)writeRoute(true);}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
   // Choosing Nobreza in the main menu always opens the catalogue, never the previous noble sheet.
   // Direct #nobreza?house=... links and deliberate suzerain navigation still open an individual house.

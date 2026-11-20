@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight,EyeOff} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
  deleteNewspaperStaff,reorderNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,markNewspaperUnread,updateNewspaperEdition,uploadNewspaperAsset,
- getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,
+ getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,getPublicNewspaperReadCounts,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
 } from '@/lib/newspaper/data';
 import {
@@ -58,8 +58,10 @@ function cloneEditableEdition(edition:NewspaperEdition){
 function safeError(cause:unknown){
  return cause instanceof Error?cause.message:'Não foi possível concluir a operação.';
 }
-export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
+export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,missivas}:{
  userId:string;editor:boolean;editorial?:boolean;
+ /** Editor-Chefe: missivas entregues (somente leitura) como item do menu da Redação. */
+ missivas?:ReactNode;
  /** Casa do jogador: habilita "Contratar notícia" (1 de Riqueza). */
  houseId?:string;
  onSignout?:()=>void;
@@ -74,6 +76,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout}:{
  const settingsQuery=useQuery({queryKey:['campaign-newspaper-settings'],queryFn:getNewspaperSettings,
   enabled:editor,staleTime:60_000,retry:false});
  const settings=settingsQuery.data??DEFAULT_NEWSPAPER_SETTINGS;
+ // Leituras de visitantes do site aberto (sem conta), contadas para o Editor-Chefe.
+ const publicReadsQuery=useQuery({queryKey:['campaign-newspaper-public-reads'],queryFn:getPublicNewspaperReadCounts,
+  enabled:editor&&editorial,staleTime:30_000,refetchInterval:60_000,retry:false});
  const {count,editions,receipts}=useUnreadNewspaperCount(userId);
  const commissionsQuery=useQuery({queryKey:['campaign-newspaper-commissions',userId],
   queryFn:getNewspaperCommissions,refetchInterval:30_000});
@@ -736,6 +741,7 @@ const useStoryModel=async(model:StoryModel)=>{
  };
  if(editorial&&editor)return <NewspaperEditorialDesk
   userId={userId} current={current} history={history} reads={reads}
+  publicReads={publicReadsQuery.data} {...(missivas!==undefined?{missivas}:{})}
   loading={editions.isPending} editing={editing} busy={busy}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}

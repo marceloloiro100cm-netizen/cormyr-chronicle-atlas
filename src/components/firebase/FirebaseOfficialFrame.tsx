@@ -50,9 +50,9 @@ export function FirebaseOfficialFrame({
   return <div className="firebase-official">
     <header className="firebase-official-top">
       <a className="firebase-official-brand" href="/cormyr/index.html"
-        aria-label="Cormyr Chronicle — voltar ao reino">
+        aria-label="Atlas Cormyr: voltar ao reino">
         <img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr"/>
-        <span>Cormyr <em>Chronicle</em>
+        <span>Atlas <em>Cormyr</em>
           <small>Atlas das Casas Nobres · Segunda Temporada</small>
         </span>
       </a>
@@ -94,7 +94,7 @@ export function FirebaseOfficialFrame({
         <main className="firebase-official-main">
           <div className="firebase-official-pagehead">
             <p className="firebase-official-breadcrumb">
-              CORMYR CHRONICLE <span aria-hidden="true">/</span> {MODES[current].label.toUpperCase()}
+              ATLAS CORMYR <span aria-hidden="true">/</span> {MODES[current].label.toUpperCase()}
             </p>
             <h1>{MODES[current].label}</h1>
             <p>{subtitle}</p>

@@ -156,14 +156,10 @@ export function PlayersArea({onSignOut,hideBattle=false}:PlayersAreaProps={}){
 }
 function EditorialWorkspace({expectedUserId,onSignOut}:{expectedUserId:string;onSignOut:PlayersAreaProps['onSignOut']}){
   const signout=useAreaSignout(onSignOut);
-  // Editor-Chefe lê as missivas entregues (somente leitura) para escrever o Jornal.
-  const [view,setView]=useState<'jornal'|'missivas'>('jornal');
-  return <>
-    <nav className="campaign-tabs" aria-label="Área do Editor-Chefe">{([['jornal','Redação do Jornal'],['missivas','Missivas (somente leitura)']] as const).map(([id,label])=>
-      <Button key={id} variant={view===id?'default':'outline'} aria-pressed={view===id} onClick={()=>setView(id)}>{label}</Button>)}</nav>
-    {view==='missivas'?<CampaignShell publicTime><EditorMailReader userId={expectedUserId}/></CampaignShell>
-      :<NewspaperHub userId={expectedUserId} editor editorial onSignout={()=>{void signout();}}/>}
-  </>;
+  // Editor-Chefe lê as missivas entregues (somente leitura) para escrever o Jornal:
+  // um item do menu da Redação, acima de Configurações.
+  return <NewspaperHub userId={expectedUserId} editor editorial onSignout={()=>{void signout();}}
+    missivas={<EditorMailReader userId={expectedUserId}/>}/>;
 }
 function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:string;onSignOut:PlayersAreaProps['onSignOut'];hideBattle:boolean}){
   const qc=useQueryClient();
@@ -210,7 +206,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       {current&&<HouseIdentity house={current}/>}
       {data.admin&&<select aria-label="Selecionar casa para administração" value={current?.id??''} onChange={e=>{setHouse(e.target.value);sessionStorage.setItem('campaign-selected-house',e.target.value);}}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select>}
     </div>
-    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[]),...(data.admin?[['admin','Administração']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} aria-label={id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined} onClick={()=>setTab(id??'casa')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</Button>)}</nav>
+    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button key={id} variant={tab===id?'default':'outline'} aria-pressed={tab===id} aria-label={id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined} onClick={()=>setTab(id??'casa')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</Button>)}</nav>
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText></>}
     {tab==='galeria'&&current&&<GalleryTab key={current.id} houseId={current.id}
      houseName={current.name} records={data.records.filter(r=>r.house_id===current.id)}/>}
@@ -219,7 +215,6 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
     {tab==='jornal'&&!data.admin&&<NewspaperHub userId={data.user.id} editor={false} {...(current?{houseId:current.id}:{})}/>}
     {tab==='missivas'&&!data.admin&&<MissivasArea data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}} classic={<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}/>}
-    {tab==='admin'&&data.admin&&<AdminPanel data={data} onSave={afterSave}/>}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
     </>;
   if(data.admin&&representing)return <CampaignShell heraldry={representedTheme}><PlayerRepresentation onHouseTheme={setRepresentedTheme} onReturn={()=>{clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false);void refresh();}}/></CampaignShell>;
@@ -229,15 +224,19 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     const manage=(id:string)=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');setMailHouse('');setSection('painel');
       requestAnimationFrame(()=>document.getElementById('nw-house-admin')?.scrollIntoView({behavior:'smooth',block:'start'}));};
     const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
-    const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}>{section==='acessos-firebase'&&firebaseWorkspaceClient()!==null?
-      <div className="nw-page"><FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/></div>:
+    const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}>{section==='acessos-firebase'?
+      // Contas: revisão das contas Firebase pendentes e a administração (antes um botão dentro das fichas).
+      <div className="nw-page nw-accounts">
+        {firebaseWorkspaceClient()!==null&&<FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/>}
+        <section aria-label="Administração"><h2 className="nw-group-title">Administração</h2><AdminPanel data={data} onSave={afterSave}/></section>
+      </div>:
       section==='missivas'?<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}
         onOpenHub={()=>goSection('calendario')} initialHouse={mailHouse||undefined}
         classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>:
       <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
         <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>{setMailHouse(id);setSection('missivas');}} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</div>:null;
     return <NarratorWorkspace menu={NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)}
-      extra={firebaseWorkspaceClient()!==null?['acessos-firebase','Contas pendentes Firebase'] as const:null}
+      extra={['acessos-firebase','Contas e administração'] as const}
       section={section} onSection={goSection} unread={unread} openRound={openRound}
       represent={<select aria-label="Acessar como jogador" className="nw-represent" defaultValue="" onChange={async e=>{const select=e.currentTarget;if(!select.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:select.value});select.value='';if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option><RepresentationOptions players={data.players} houses={data.houses} selfUserId={data.user.id}/></select>}
       account={<><ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></>}

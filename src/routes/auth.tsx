@@ -14,9 +14,9 @@ export const Route = createFileRoute('/auth')({
   next: oauthReturnPath(search['next']),
  }),
  head: () => ({meta: [
-  {title: 'Entrar com Firebase — Cormyr Chronicle'},
+  {title: 'Entrar no Atlas Cormyr'},
   {name: 'description', content: 'Entrada segura pelo Firebase para jogadores da segunda temporada de Cormyr.'},
-  {property: 'og:title', content: 'Entrar — Cormyr Chronicle'},
+  {property: 'og:title', content: 'Entrar no Atlas Cormyr'},
   {property: 'og:description', content: 'Área reservada às casas e jogadores autorizados.'},
   {property: 'og:type', content: 'website'},
   {name: 'twitter:card', content: 'summary'},

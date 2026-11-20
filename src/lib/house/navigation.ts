@@ -1,10 +1,10 @@
 /** Navigation policy for the original House workspace.
- * History and local exports are read-only and available to each authorized House,
- * even when Firebase economy mutations and Google Drive synchronization are off.
+ * "Histórico e documentos" e "Regras e Tabelas" ficam ocultos do menu da Casa
+ * (decisão do proprietário, 20/11/2026); o código das seções continua no hub,
+ * pronto para voltar, e as exportações seguem disponíveis por outros caminhos.
  * Narrator-only panels remain outside the player menu.
  */
-export function houseNavigationVisible(id:string,admin:boolean,firebase:boolean):boolean{
- if(['reconciliation','coverage','kingdom'].includes(id))return false;
- if(id==='rules')return admin&&firebase;
- return true;
+export const HIDDEN_HOUSE_SECTIONS:readonly string[]=['reconciliation','coverage','kingdom','history','rules'];
+export function houseNavigationVisible(id:string,_admin:boolean,_firebase:boolean):boolean{
+ return !HIDDEN_HOUSE_SECTIONS.includes(id);
 }

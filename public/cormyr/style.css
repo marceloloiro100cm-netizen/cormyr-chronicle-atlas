@@ -432,3 +432,5 @@
 .region-list-bar .region-view-toolbar{padding:0;border:0;border-radius:0;background:none}
 .region-list-bar .region-download-bar{margin:0 0 0 auto;justify-content:flex-end}
 @media(max-width:600px){.region-list-bar{padding:10px}.region-list-bar #region-toolbar-slot{flex:1 1 100%}.region-list-bar .region-download-bar{margin:0;width:100%;justify-content:stretch}.region-list-bar .region-download{flex:1}}
+.newspaper-frame{display:block;width:100%;height:calc(100vh - 210px);min-height:640px;border:1px solid var(--line);border-radius:9px;background:#f3ecdd;box-shadow:0 4px 15px #21182e08}
+@media(max-width:600px){.newspaper-frame{height:calc(100vh - 160px);min-height:520px}}
