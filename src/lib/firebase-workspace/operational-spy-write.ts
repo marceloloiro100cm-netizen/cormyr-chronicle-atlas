@@ -24,7 +24,6 @@ const COLLECTIONS=[
  ['spyAgents','agent',500],['spyUpgrades','upgrade',1000],
  ['spyHistories','history',2000],['spyRemovals','removal',500],
 ] as const;
-const dataField=(o:any,k:string)=>o&&typeof o==='object'?o[k]:undefined;
 const validatedPayload=(docs:any[],kind:string,snapshotId:string)=>{
  if(!Array.isArray(docs))fail('spy_runtime_invalid',503);
  return docs.map(d=>{
@@ -236,16 +235,17 @@ export async function commitSpyAction({
   if(existsAgent?.portraitId&&resultingAgent&&
      existsAgent.portraitId!==resultingAgent.portraitId){
    const old=root.collection('spyPortraitClaims').doc(digest('portrait:'+existsAgent.portraitId));
-   // Sem leitura do dono do retrato antigo nesta transação, a liberação é
-   // feita somente por novo processo de reconciliação, nunca por exclusão cega.
-   void old;
+   const oldOwner=await tx.get(old);
+   if(oldOwner.exists&&oldOwner.data()?.agentId!==existsAgent.id)
+    fail('spy_portrait_claim_conflict',503);
+   if(oldOwner.exists)writes.push([old,null]);
   }
   const auditId=digest('spy-audit:'+scope.uid+':'+requestKey);
   const audit=root.collection('spyAgentAudits').doc(auditId);
   tx.set(houseControl,{houseId,lastRequest:requestKey,updatedBy:scope.uid,at:now,
    previousVersion:controlDoc.exists?controlDoc.data()?.version??0:0,
    version:(controlDoc.data()?.version??0)+1});
-  for(const [ref,payload] of writes)tx.set(ref,payload);
+  for(const [ref,payload] of writes){if(payload===null)tx.delete(ref);else tx.set(ref,payload);}
   tx.set(request,{actor:scope.uid,houseId,requestKey,fingerprint,
    result,action:name,at:now,sourceSnapshotId:snapshotId});
   tx.set(audit,{actor:scope.uid,houseId,requestKey,fingerprint,
