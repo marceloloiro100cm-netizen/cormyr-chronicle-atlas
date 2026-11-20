@@ -140,6 +140,12 @@ env:
     value: "false"
     availability:
       - RUNTIME
+  # Catálogo operacional legível pelas Casas autorizadas, sem permitir
+  # alteração de regras antes do aceite autenticado do Narrador.
+  - variable: CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
   - variable: CORMYR_FIREBASE_HOUSE_RULES_ENABLED
     value: "false"
     availability:
