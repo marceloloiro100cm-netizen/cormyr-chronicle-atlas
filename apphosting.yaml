@@ -149,6 +149,11 @@ env:
     value: "false"
     availability:
       - RUNTIME
+  # Item 7a: ações operacionais de espiões até aceite de isolamento por Casa.
+  - variable: CORMYR_FIREBASE_SPY_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
 
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
