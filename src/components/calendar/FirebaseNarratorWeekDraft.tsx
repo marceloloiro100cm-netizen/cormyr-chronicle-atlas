@@ -3,6 +3,8 @@ import {FESTIVALS,MONTHS,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {buildThirdTendayRequest} from '@/lib/calendar/firebase-third-tenday';
 import {nextTendayStart,crossesMonth} from '@/lib/calendar/firebase-next-tenday';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
+import {activateImportedHouses,HouseActivationClientError,houseActivationMessage}
+  from '@/lib/house/firebase-house-activation-client';
 
 type DateView={year:number;month:number;day:number;festival:string|null;};
 type WeekDraft={
@@ -123,20 +125,35 @@ function WeeklyAdvance({view,onDone}:{view:WeekView;onDone:()=>void}){
     </form>
     <div className="flex flex-wrap gap-2">
     <button type="button" disabled={busy} className="rounded border px-3 py-1 text-sm" onClick={async()=>{
-      if(!window.confirm('Ativar no Firebase todas as Casas da temporada que ainda não foram ativadas, usando as fichas importadas como base?'))return;
-      setBusy(true);setMessage('');
+      if(!window.confirm('Conferir e ativar individualmente as Casas da temporada no Firebase, preservando fichas e tesouros importados? Não será aberta outra semana.'))return;
+      setBusy(true);setMessage('Conferindo o catálogo de Casas no Firebase…');
       try{
-        const token=await firebasePilotAuth()?.getToken();
-        const r=await fetch('/api/firebase-house-activation',{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
-          headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action:'activateAll'})});
-        if(!r.ok)throw Error('Não foi possível ativar as Casas agora.');
-        const body=await r.json() as {result:{results:{houseId:string;status:string}[]}};
-        const label:Record<string,string>={activated:'ativada',already_initialized:'já ativa',
-          calendar_mismatch:'mês da ficha diferente do calendário',source_unusable:'ficha importada incompleta',
-          treasury_invalid:'tesouro inválido',existing_document_requires_review:'documento existente para revisão'};
-        setMessage('Casas: '+body.result.results.map(x=>x.houseId+' ('+(label[x.status]??x.status)+')').join(', ')+'.');
-      }catch(e){setMessage(e instanceof Error?e.message:'Falha ao ativar as Casas.');}
-      finally{setBusy(false);}}}>Ativar todas as Casas com as fichas importadas</button>
+        const auth=firebasePilotAuth(),uid=auth?.current()?.uid;
+        const token=await auth?.getToken();
+        if(!uid||!token||uid!==auth?.current()?.uid)
+          throw Error('Sua sessão Firebase expirou. Entre novamente como Narrador.');
+        const result=await activateImportedHouses({token,onProgress:p=>{
+          setMessage('Casas verificadas: '+p.processed+'/'+p.total+
+            ' · ativadas: '+p.activated+' · já existentes: '+p.alreadyInitialized+
+            ' · pendentes: '+p.needsReview+'.');
+        }});
+        if(uid!==auth?.current()?.uid)
+          throw Error('A sessão de Narrador mudou durante a operação. Recarregue antes de continuar.');
+        const pending=result.results.filter(x=>x.status!=='activated'&&x.status!=='already_initialized');
+        setMessage(result.total===0?'Nenhuma Casa ativa foi encontrada no catálogo. Nenhum registro foi criado.':
+          'Ativação concluída: '+result.activated+' Casa(s) inicializada(s), '+
+          result.alreadyInitialized+' já ativa(s), '+pending.length+' para revisão.'+
+          (pending.length?' Pendências: '+pending.map(x=>x.houseId+
+            ' ('+houseActivationMessage(x.status)+')').join('; ')+'.':''));
+        onDone();
+      }catch(e){
+        if(e instanceof HouseActivationClientError&&e.progress)
+          setMessage('Ativação interrompida depois de '+e.progress.processed+
+            ' de '+e.progress.total+' Casas: '+e.message+
+            ' Até aqui, '+e.progress.activated+' ativadas e '+
+            e.progress.alreadyInitialized+' já existentes. É seguro conferir e repetir: Casas existentes não são sobrescritas.');
+        else setMessage(e instanceof Error?e.message:'A ativação não foi confirmada pelo servidor.');
+      }finally{setBusy(false);}}}>Ativar todas as Casas com as fichas importadas</button>
     {(view.pendingHouseEffectMonths??0)>0&&<button type="button" disabled={busy} className="rounded border px-3 py-1 text-sm" onClick={async()=>{
       setBusy(true);setMessage('');
       try{const r=await requestWeek<{results:{status:string}[]}>('processHouseMonths');
