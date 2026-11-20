@@ -3,13 +3,14 @@
  * A API recusa TODAS as demais ações até existir paridade do motor 4a.
  * Nunca grava no snapshot importado ou modifica fichas de outra Casa.
  */
-import {createHash} from 'node:crypto';
+import {createHash,randomInt} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema} from './schemas';
 import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
  applyHouseEconomicOperation,applyHouseMilitaryOperation,
- applyHouseCreationOperation,HOUSE_CREATION_ACTIONS,
+ applyHouseCreationOperation,applyHouseDiceOperation,HOUSE_DICE_ACTIONS,
+ type HouseDiceAction,HOUSE_CREATION_ACTIONS,
  type HouseCreationAction,HOUSE_ECONOMIC_ACTIONS,
  HOUSE_MILITARY_ACTIONS,type HouseMilitaryAction,
  HOUSE_NON_ECONOMIC_ACTIONS,requireHouseOperationRole,requireHouseOperationPhase,
@@ -27,8 +28,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
-const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS]);
-const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS]);
+const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS]);
+const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS]);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -91,6 +92,9 @@ export function createFirebaseHouseOperation({
     fail('house_operation_not_implemented',501);
   if(Buffer.byteLength(JSON.stringify(args),'utf8')>14000)
     fail('house_operation_too_large',413);
+  // Gerado uma única vez por tentativa, fora do callback que o Firestore pode repetir.
+  const trustedDice=HOUSE_DICE_ACTIONS.includes(action as HouseDiceAction)
+   ?Array.from({length:100},()=>randomInt(1,7)):[];
   const requestFingerprint=constructionStateHash({uid,houseId,version,key,
     action,args,explanation});
   const houseRef=source.collection('houses').doc(hash('house:'+houseId));
@@ -188,11 +192,16 @@ export function createFirebaseHouseOperation({
     candidate=DOMAINS.has(action)
      ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
      :ECONOMICS.has(action)
-      ?HOUSE_CREATION_ACTIONS.includes(action as HouseCreationAction)
-       ?applyHouseCreationOperation(state,action as HouseCreationAction,args,
-         {admin:narrator,mayBuyAttributes:narrator||
-          Array.isArray(access?.attrHouseIds)&&access.attrHouseIds.includes(houseId),
-          explanation})
+      ?HOUSE_DICE_ACTIONS.includes(action as HouseDiceAction)
+       ?applyHouseDiceOperation(state,action as HouseDiceAction,args,{
+          admin:narrator,key,dice:trustedDice,
+          playerId:player&&valid(access?.playerId)?access.playerId:null,
+        })
+       :HOUSE_CREATION_ACTIONS.includes(action as HouseCreationAction)
+        ?applyHouseCreationOperation(state,action as HouseCreationAction,args,
+          {admin:narrator,mayBuyAttributes:narrator||
+           Array.isArray(access?.attrHouseIds)&&access.attrHouseIds.includes(houseId),
+           explanation})
        :HOUSE_MILITARY_ACTIONS.includes(action as HouseMilitaryAction)
         ?applyHouseMilitaryOperation(state,action as HouseMilitaryAction,args,
           {admin:narrator,key,explanation})

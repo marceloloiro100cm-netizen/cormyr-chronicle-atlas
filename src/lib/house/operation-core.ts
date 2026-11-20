@@ -18,7 +18,10 @@ import {alternativeFortune} from './engine';
 import {convertResources,confirmFortune} from './fortune';
 import {validateResources} from './engine';
 import {changeHoldingCondition,legacyEffectCandidates,legacyCatalogEffects} from './holding-accounting';
-import {historyAdjustments,memberBonusAdjustments} from './creation-history';
+import {historyAdjustments,memberBonusAdjustments,rollFoundation,
+ rollHistoricalEvent,historicalFoundationYear} from './creation-history';
+import {createVassal} from './vassals';
+import type {Resource} from './types';
 import {improveEquipment} from './equipment';
 import {trainUnit,endVassal} from './military';
 import {buySiege} from './siege';
@@ -550,4 +553,90 @@ export function applyHouseCreationOperation(
  }
  validateResources(next.base);validateResources(next.permanent);
  return {state:next,rule};
+}
+
+/**
+ * Sorteios servidor-side fornecidos como dados imutáveis da operação.
+ * A mesma matriz será reutilizada em cada retry da transação Firestore.
+ */
+export const HOUSE_DICE_ACTIONS=[
+ 'roll','foundation_roll','history_roll','member_bonus','vassal_create',
+] as const;
+export type HouseDiceAction=typeof HOUSE_DICE_ACTIONS[number];
+export type HouseDiceContext={admin:boolean;key:string;playerId:string|null;
+ dice:readonly number[]};
+export function applyHouseDiceOperation(
+ state:HouseState,action:HouseDiceAction,args:Record<string,unknown>,
+ ctx:HouseDiceContext,
+):{state:HouseState;rule:string}{
+ const next=structuredClone(state);
+ let cursor=0;
+ const die=()=>{
+  const value=ctx.dice[cursor++];
+  if(!Number.isInteger(value)||value===undefined||value<1||value>6)
+   throw Error('Sorteio do servidor não foi validado.');
+  return value;
+ };
+ if(action==='roll'){
+  if(state.phase!=='draft'||state.rolls.length||state.method==='import'||
+    state.importSources.length)
+   throw Error('Rolagens já registradas, importadas ou criação encerrada.');
+  if(!ctx.admin&&!(state.method==='roll'||(state.method==='budget'&&
+    state.budget===null&&RESOURCE_KEYS.every(r=>state.base[r]===0)&&
+    !state.holdings.length&&!state.units.length))
+   throw Error('Método por orçamento autorizado; somente o Narrador pode alterá-lo.');
+  next.method='roll';next.budget=null;
+  next.rolls=RESOURCE_KEYS.map(()=>Array.from({length:7},die));
+  RESOURCE_KEYS.forEach((r,i)=>{
+   next.base[r]=(next.rolls[i]??[]).reduce((a,b)=>a+b,0);
+  });
+  next.regionalApplied=true;
+  return {state:next,rule:'Livro básico · 7d6 por recurso, p. 126 · rolagem imutável'};
+ }
+ if(action==='foundation_roll'){
+  if(state.phase!=='draft'||state.method==='import'||
+    state.importSources.length||state.creationHistory)
+   throw Error('Fundação já registrada, importada ou criação encerrada.');
+  const history=rollFoundation(die);
+  next.creationHistory=history;
+  if(next.identity.foundation===undefined)
+   next.identity.foundation=historicalFoundationYear(history.foundationRoll);
+  return {state:next,rule:'Livro básico · tabela 6-3 · fundação e número de eventos registrados'};
+ }
+ if(action==='history_roll'){
+  const history=state.creationHistory;
+  if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+    !history||history.applied||history.events.length>=history.limit)
+   throw Error('Rolagem de evento indisponível, completa ou criação importada.');
+  const input=z.object({infrastructure:z.tuple([z.enum(RESOURCE_KEYS),
+    z.enum(RESOURCE_KEYS)])}).parse(args);
+  if(input.infrastructure[0]===input.infrastructure[1])
+   throw Error('Escolha dois recursos distintos para Infraestrutura.');
+  const result=rollHistoricalEvent(die,input.infrastructure,ctx.key);
+  next.creationHistory={...history,events:[...history.events,result]};
+  return {state:next,rule:'Livro básico · tabela 6-4 · 3d6 e modificadores por recurso (piso zero)'};
+ }
+ if(action==='member_bonus'){
+  if(state.phase!=='draft'||state.method==='import'||state.importSources.length||
+    state.creationBonusesApplied)
+   throw Error('Bônus pessoal disponível apenas durante a criação não importada.');
+  const {resource}=z.object({resource:z.enum(RESOURCE_KEYS)}).parse(args);
+  const playerId=ctx.playerId;
+  if(!playerId)throw Error('Somente um jogador cadastrado pode contribuir com o bônus.');
+  if((state.creationBonuses??[]).some(b=>b.playerId===playerId))
+   throw Error('Cada jogador pode aplicar seu bônus apenas uma vez.');
+  next.creationBonuses=[...(state.creationBonuses??[]),
+   {playerId,resource,die:die()}];
+  return {state:next,rule:'Livro básico · ajuste inicial de jogador vinculado, +1d6 auditado'};
+ }
+ if(action==='vassal_create'){
+  const input=z.object({id:z.string().uuid(),name:z.string().trim().min(1).max(160),
+   region:z.string().min(1).max(100),motto:z.string().max(500),
+   lordName:z.string().max(160)}).parse(args);
+  const rolls=Object.fromEntries(RESOURCE_KEYS.map(r=>[r,
+   Array.from({length:5},die)])) as Record<Resource,number[]>;
+  return {state:createVassal(state,input,rolls),
+   rule:'Vassala · cinco d6 registrados por recurso; custo 20/10/5 Poder da suserana'};
+ }
+ throw Error('Ação de sorteio não coberta.');
 }
