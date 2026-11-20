@@ -43,10 +43,10 @@ administrativo no histórico de alterações.
 
 ## Limites conservadores
 
-A representação de missivas aceita uma única Casa de origem com direito
-de edição. Contas que editam várias Casas precisam de um seletor de
-origem homologado antes de enviar. Respostas e baixas são admitidas apenas
-para missivas operacionais Firebase. A camada histórica importada continua
+A origem de cada missiva é a Casa escolhida no painel da representação.
+O servidor confere que a Casa está entre as Casas editáveis da conta
+representada, inclusive quando há múltiplas Casas autorizadas. Respostas
+e baixas são admitidas apenas para missivas operacionais Firebase. A camada histórica importada continua
 imutável; responder diretamente a uma conversa histórica importada ainda
 exige a migração de tópicos e respostas legadas.
 
