@@ -1,4 +1,4 @@
-import {describe,it,expect,vi} from 'vitest';
+import {describe,it,expect} from 'vitest';
 import {mediaUploadId} from './private-media-client';
 
 describe('ponte de imagens Firebase',()=>{
