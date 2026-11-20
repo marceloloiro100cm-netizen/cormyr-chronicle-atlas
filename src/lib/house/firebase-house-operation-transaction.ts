@@ -7,8 +7,9 @@ import {createHash} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema} from './schemas';
-import {applyHouseDomainOperation,requireHouseOperationRole,
- requireHouseOperationPhase,needsHouseOperationCalendar} from './operation-core';
+import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
+ HOUSE_NON_ECONOMIC_ACTIONS,requireHouseOperationRole,requireHouseOperationPhase,
+ needsHouseOperationCalendar,type HouseNonEconomicAction} from './operation-core';
 import {verifiedEconomicState,calculateFirebaseHouseEconomy}
  from './firebase-economic-readonly';
 import {constructionStateHash} from './firebase-construction-transaction';
@@ -20,7 +21,8 @@ import {monthFromHarptosDate} from '@/lib/calendar/house-time-impact';
 
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
-const OPERATIONS=new Set(['domain','domain_edit','domain_delete']);
+const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
+const OPERATIONS=new Set([...DOMAINS,...HOUSE_NON_ECONOMIC_ACTIONS]);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -175,10 +177,12 @@ export function createFirebaseHouseOperation({
    if(needsHouseOperationCalendar(state,action)&&
      state.month!==monthFromHarptosDate({year:c.year,month:c.month}))
       fail('house_calendar_conflict',409);
-   let candidate:ReturnType<typeof applyHouseDomainOperation>;
+   let candidate:{state:typeof state;rule:string;explanation?:string};
    try{
-    candidate=applyHouseDomainOperation(state,
-      action as 'domain'|'domain_edit'|'domain_delete',args);
+    candidate=DOMAINS.has(action)
+     ?applyHouseDomainOperation(state,action as 'domain'|'domain_edit'|'domain_delete',args)
+     :applyHouseNonEconomicOperation(state,action as HouseNonEconomicAction,
+       args,explanation);
    }catch{throw new HouseOperationError('house_rule_rejected',409);}
    const next=JSON.parse(JSON.stringify(candidate.state));
    if(!verifiedEconomicState(next))
@@ -198,7 +202,7 @@ export function createFirebaseHouseOperation({
    tx.update(economyRef,{state:next,stateHash:constructionStateHash(next),
      version:nextVersion,lastHouseOperationId:eventId,updatedAt});
    tx.create(ledgerRef,{id:ledgerId,houseId,action,actorUid:uid,
-     version:nextVersion,explanation,rule:candidate.rule,
+     version:nextVersion,explanation:candidate.explanation??explanation,rule:candidate.rule,
      campaignMonth:state.month,campaignDate,created_at:updatedAt,
      before:previous.balances.total,after:after.balances.total,
      requestKeyDigest:hash(key)});
