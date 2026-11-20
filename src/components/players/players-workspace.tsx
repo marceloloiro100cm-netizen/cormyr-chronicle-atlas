@@ -20,7 +20,7 @@ import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
 import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAccessScope,clearRevokedAccessCache} from '@/lib/auth/campaign-access-scope';
 import {NARRATOR_ACCESS_REVOKED_KEY,canReleaseNarratorLock,watchNarratorPrivateReadRevocations,type NarratorRevocationMarker} from '@/lib/auth/narrator-revocation';
-import { loadPanel } from '@/components/players/panel-data';
+import { loadPanel,loadFirebasePanelMail } from '@/components/players/panel-data';
 import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
 import { FichaTab } from '@/components/players/ficha-tab';
 import {GalleryTab} from '@/components/players/gallery-tab';
@@ -167,7 +167,16 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   const signout=useAreaSignout(onSignOut);
   // A área interna Firebase não exibe o módulo de batalha.
   const BATTLE_MODULE_ENABLED=BATTLE_MODULE_BUILD_ENABLED&&!hideBattle;
-  const {data,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
+  const firebaseMode=firebaseWorkspaceClient()!==null;
+  const {data:baseData,error,isPending}=useQuery({queryKey:['campaign-panel'],queryFn:loadPanel});
+  const mailbox=useQuery({
+    queryKey:['campaign-panel-mail',expectedUserId],
+    queryFn:loadFirebasePanelMail,
+    enabled:firebaseMode&&Boolean(baseData),
+    staleTime:30_000,
+    retry:1,
+  });
+  const data=baseData&&mailbox.data?{...baseData,...mailbox.data}:baseData;
   const {count:editionsUnread}=useUnreadNewspaperCount(expectedUserId);
   const commissionAnswers=useUnseenCommissionAnswers(expectedUserId);
   const newspaperUnread=editionsUnread+commissionAnswers;
@@ -175,7 +184,12 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   // Casa pré-selecionada ao abrir as Missivas a partir do Conselho das casas.
   const [mailHouse,setMailHouse]=useState('');
   const sync=useServerFn(syncPlayerFolder);
-  const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
+  const refresh=async()=>{
+    await Promise.all([
+      qc.invalidateQueries({queryKey:['campaign-panel']}),
+      ...(firebaseMode?[qc.invalidateQueries({queryKey:['campaign-panel-mail',expectedUserId]})]:[]),
+    ]);
+  };
   useEffect(()=>{if(data?.admin)setTab(previous=>previous==='missivas'?'casa':previous);},[data?.admin]);
   useEffect(()=>{
     setHouse(sessionStorage.getItem('campaign-selected-house')??'');
@@ -194,7 +208,25 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   },[qc]);
   if(isPending)return <CouncilOpening/>;
   if(data&&data.user.id!==expectedUserId)return <p role="status">Revalidando a identidade do acervo…</p>;
-  if(error||!data)return <CampaignShell><h1>Não foi possível consultar seu acervo</h1><p role="alert">{error?.message}</p><Button onClick={()=>refresh()}>Tentar novamente</Button></CampaignShell>;
+  if(error||!data){
+    const code=(error as {serverCode?:unknown}|null)?.serverCode;
+    return <CampaignShell><h1>Não foi possível consultar seu acervo</h1>
+      <p role="alert">{error?.message}</p>
+      {typeof code==='string'&&/^[a-z_]{3,60}$/.test(code)&&
+        <p className="text-xs">Diagnóstico Firebase: {code}</p>}
+      <Button onClick={()=>void refresh()}>Tentar novamente</Button>
+    </CampaignShell>;
+  }
+  const mailPanel=firebaseMode&&(mailbox.isPending||mailbox.isError)
+    ?<section role="status" className="campaign-form">
+      <p>{mailbox.isPending?'Carregando Missivas do Firebase…':
+        'As Missivas estão temporariamente indisponíveis. As demais áreas da campanha continuam acessíveis.'}</p>
+      {mailbox.isError&&<>
+        <Button variant="outline" onClick={()=>void mailbox.refetch()}>Tentar novamente as Missivas</Button>
+        {typeof (mailbox.error as {serverCode?:unknown}|null)?.serverCode==='string'&&
+         <p className="text-xs">Diagnóstico Firebase: {String((mailbox.error as {serverCode:string}).serverCode)}</p>}
+      </>}
+    </section>:null;
   const me=data.players.find(p=>p.user_id===data.user.id);
   if(me&&!data.admin&&(!me.active||me.require_password_change))return <CampaignShell><h1>{me.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>{me.require_password_change&&<ChangePassword/>}<Button variant="outline" onClick={signout}>Sair</Button></CampaignShell>;
   const authorized=data.admin?data.houses.filter(h=>h.active&&h.season===2):data.houses.filter(h=>data.members.some(m=>m.house_id===h.id&&m.player_id===me?.id));
@@ -215,7 +247,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     {tab==='ficha'&&current&&<FichaTab playerId={me?.id} admin={data.admin} npcManager={<NpcHub records={data.records.filter(r=>r.house_id===current.id)} houseId={current.id} playerId={me?.id} admin={data.admin} canEdit={canEdit} onSave={afterSave} renderEditor={row=><RecordEditor row={row} canEdit={canEdit} onSave={afterSave}/>}/>} current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
     {tab==='jornal'&&!data.admin&&<NewspaperHub userId={data.user.id} editor={false} {...(current?{houseId:current.id}:{})}/>}
-    {tab==='missivas'&&!data.admin&&<MissivasArea data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}} classic={<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}/>}
+    {tab==='missivas'&&!data.admin&&(mailPanel??<MissivasArea data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}} classic={<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');}}/>}/>)}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
     </>;
   if(data.admin&&representing)return <CampaignShell heraldry={representedTheme}><PlayerRepresentation onHouseTheme={setRepresentedTheme} onReturn={()=>{clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false);void refresh();}}/></CampaignShell>;
@@ -232,9 +264,9 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
         {firebaseWorkspaceClient()!==null&&<FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/>}
         <section aria-label="Administração"><h2 className="nw-group-title">Administração</h2><AdminPanel data={data} onSave={afterSave}/></section>
       </div>:
-      section==='missivas'?<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}
+      section==='missivas'?(mailPanel??<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}
         onOpenHub={()=>goSection('calendario')} initialHouse={mailHouse||undefined}
-        classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>:
+        classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>)):
       <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
         <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>{setMailHouse(id);setSection('missivas');}} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</div>:null;
     return <NarratorWorkspace menu={NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)}
