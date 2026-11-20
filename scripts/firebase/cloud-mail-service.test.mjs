@@ -867,3 +867,104 @@ test('signature is Narrator-only; court and unit links are player-House-only',as
   await rejects(()=>f.service().send(sampleToken,req({originHouseId:null,unitId:'u1',requestKey:'narrator-link-key'})),'links_not_allowed',400);
   await rejects(()=>f.service().send(sampleToken,req({originHouseId:null,courtMemberId:'c1',requestKey:'narrator-bad-key'})),'invalid_mail_request',400);
 });
+
+/** Item 8: o token pertence ao Narrador; o remetente e os direitos são do jogador. */
+function representedFixture(){
+ const f=fixture('narrador'),live='campaignCloudRuntime/'+snapshot;
+ f.records.set(live,{...f.records.get(live),
+   representationReadApproved:true,representationWriteApproved:true});
+ const access='migrationDomainStage/'+snapshot+'/access/represented-1';
+ f.records.set(access,{userId:'represented-1',profile:'jogador',admin:false,
+   active:true,requirePasswordChange:false,playerId:'represented-player',
+   memberHouseIds:['house-a'],editHouseIds:['house-a']});
+ const session=live+'/representationSessions/player-1';
+ f.records.set(session,{actor:'player-1',playerId:'represented-player',
+   representedUid:'represented-1',sessionId:'session-1',
+   expiresAt:new Date(Date.now()+60000).toISOString(),
+   sourceSnapshotId:snapshot});
+ return {...f,session,access,live};
+}
+
+test('representação: remessa auditada preserva identidade real e escopo da Casa',async()=>{
+ const old=process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED;
+ process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED='true';
+ try{
+  const f=representedFixture();
+  const result=await f.service().sendRepresented(sampleToken,req());
+  const row=f.records.get(f.live+'/letters/'+result.id);
+  assert.equal(row.senderUid,'represented-1');
+  assert.equal(row.senderPlayerId,'represented-player');
+  assert.equal(row.administrativeActorUid,'player-1');
+  assert.equal(row.representationSessionId,'session-1');
+  const audit=f.records.get(f.live+'/mailAudits/'+result.id);
+  assert.equal(audit.actorUid,'player-1');
+  assert.equal(audit.representedUid,'represented-1');
+  const actions=[...f.records.entries()].filter(([k])=>k.includes('/representationAudits/'));
+  assert.equal(actions.length,1);
+  assert.equal(actions[0][1].action,'representation_send');
+  const retry=await f.service().sendRepresented(sampleToken,req());
+  assert.equal(retry.duplicate,true);
+  assert.equal(retry.id,result.id);
+  assert.equal([...f.records.keys()].filter(k=>k.includes('/representationAudits/')).length,1);
+ }finally{
+  if(old===undefined)delete process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED;
+  else process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED=old;
+ }
+});
+
+test('representação: sem sessão, permissão atual ou chave de ativação não há escrita',async()=>{
+ const old=process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED;
+ process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED='true';
+ try{
+  const f=representedFixture();
+  f.records.delete(f.session);
+  await rejects(()=>f.service().sendRepresented(sampleToken,req()),
+    'representation_session_invalid');
+  f.records.set(f.session,{actor:'player-1',playerId:'represented-player',
+   representedUid:'represented-1',sessionId:'session-1',
+   expiresAt:new Date(Date.now()-1000).toISOString(),
+   sourceSnapshotId:snapshot});
+  await rejects(()=>f.service().sendRepresented(sampleToken,req()),
+    'representation_session_invalid');
+  f.records.get(f.session).expiresAt=new Date(Date.now()+60000).toISOString();
+  const previous=f.records.get(f.access);
+  f.records.set(f.access,{...previous,editHouseIds:[]});
+  await rejects(()=>f.service().sendRepresented(sampleToken,req()),
+    'origin_house_not_authorized');
+  f.records.set(f.access,previous);
+  process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED='false';
+  await rejects(()=>f.service().sendRepresented(sampleToken,req()),
+    'representation_disabled',501);
+  assert.equal([...f.records.keys()].some(k=>k.includes('/letters/')),false);
+ }finally{
+  if(old===undefined)delete process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED;
+  else process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED=old;
+ }
+});
+
+test('representação: resposta vinculada à missiva e baixa preservam autor administrativo',async()=>{
+ const old=process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED;
+ process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED='true';
+ try{
+  const f=representedFixture();
+  const original=await f.service().send(sampleToken,req({
+   originHouseId:null,requestKey:'gm-original-1',
+  }));
+  const reply=await f.service().replyRepresented(sampleToken,{
+   requestKey:'rep-reply-key-1',letterId:original.id,content:'Resposta oficial',
+  });
+  const row=f.records.get(f.live+'/letters/'+reply.id);
+  assert.equal(row.replyToId,original.id);
+  assert.equal(row.senderUid,'represented-1');
+  assert.equal(row.administrativeActorUid,'player-1');
+  const cancelled=await f.service().cancelRepresented(sampleToken,{
+   letterId:reply.id,expectedVersion:1,
+  });
+  assert.equal(cancelled.removed,true);
+  assert.equal(f.records.get(f.live+'/letters/'+reply.id).removalKind,'cancelada');
+  assert.ok([...f.records.values()].some(x=>x?.action==='representation_delete'));
+ }finally{
+  if(old===undefined)delete process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED;
+  else process.env.CORMYR_FIREBASE_REPRESENTATION_ENABLED=old;
+ }
+});
