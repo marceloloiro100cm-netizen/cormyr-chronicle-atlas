@@ -23,8 +23,9 @@ const authorized=(scope:Scope,row:RecordRow)=>scope.profile==='narrador'||
    row['visibility']==='player'&&scope.playerId!==null&&
      row['player_id']===scope.playerId||
    row['visibility']==='house'&&scope.memberHouseIds.includes(row['house_id'] as string));
-const identity=(r:RecordRow)=>[r['house_id']??null,r['player_id']??null,
- r['visibility'],r['kind']].join('|');
+const sameIdentity=(a:RecordRow,b:RecordRow)=>
+ ['house_id','player_id','visibility','kind'].every(k=>
+  (a[k]??null)===(b[k]??null));
 const normalize=(v:unknown):RecordRow=>{
  if(!v||typeof v!=='object'||Array.isArray(v))fail('invalid_record_overlay');
  return v as RecordRow;
@@ -50,7 +51,7 @@ function validate(row:OperationalRecord):void{
  if(row.previous!==null){
   const previous=normalize(row.previous);
   if(previous['id']!==row.id||previous['version']!==row.version-1||
-     identity(previous)!==identity(r))fail('invalid_record_history');
+     !sameIdentity(previous,r))fail('invalid_record_history');
  }
 }
 export function projectOperationalRecords(
@@ -68,8 +69,8 @@ export function projectOperationalRecords(
   const archived=result.get(current.id);
   if(archived){
    if(archived['version']!==current.baseVersion||
-      identity(archived)!==identity(current.record)||
-      (current.previous&&identity(current.previous)!==identity(archived)))
+      !sameIdentity(archived,current.record)||
+      (current.previous&&!sameIdentity(current.previous,archived)))
      fail('record_overlay_source_conflict');
   }else if(current.baseVersion!==0||current.version<1)
     fail('record_overlay_source_missing');
