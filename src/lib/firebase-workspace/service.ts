@@ -23,6 +23,7 @@ import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/fire
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
 import {constructionStateHash} from '../house/firebase-construction-transaction';
+import {operationalHouseEconomyIsReconciled} from '../house/firebase-house-read-integrity';
 import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/firebase-letter-consequences';
 import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
@@ -302,23 +303,26 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   };
   // Operational House sheets (seeded from the imported sheet by owner
   // decision) supersede the immutable import once activated and verified.
-  let economiesPromise:Promise<Map<string,{state:Row;version:number}>>|undefined;
+  let economiesPromise:Promise<Map<string,Row>>|undefined;
   const economies=()=>economiesPromise??=(async()=>{
-   const snap=await db.collection('campaignCloudRuntime').doc(snapshotId).collection('houseEconomies').limit(51).get();
-   const out=new Map<string,{state:Row;version:number}>();
+   const snap=await db.collection('campaignCloudRuntime').doc(snapshotId)
+    .collection('houseEconomies').limit(51).get();
+   const out=new Map<string,Row>();
    for(const d of (snap.docs??[]) as any[]){
-    const v=d.data();
-    if(v?.status==='active'&&v.seedVerified===true&&v.sourceSnapshotId===snapshotId&&
-       typeof v.houseId==='string'&&Number.isSafeInteger(v.version)&&v.state&&typeof v.state==='object'&&
-       v.stateHash===constructionStateHash(v.state))out.set(v.houseId,{state:v.state,version:v.version});
+    // Preserve even invalid overlays for validation; never silently show
+    // stale imported balances in place of a corrupt operational document.
+    if(typeof d.id==='string')out.set(d.id,d.data());
    }
    return out;
   })();
   const sheets=async()=>{
    const [imported,live]=await Promise.all([rows('noble_house_sheets'),economies()]);
    return imported.filter(r=>houseAllowed(r['house_id'])).map(r=>{
-    const op=live.get(r['house_id']);
-    return op?{...r,state:op.state,version:op.version,operational:true}:r;
+    const op=live.get(spyDigest('house:'+r['house_id']));
+    if(!op)return r;
+    if(!operationalHouseEconomyIsReconciled(r,op,snapshotId))
+     throw new CloudAccessError('house_economy_unreconciled',503);
+    return {...r,state:op['state'],version:op['version'],operational:true};
    });
   };
   const sheetFor=async(id:string)=>{
