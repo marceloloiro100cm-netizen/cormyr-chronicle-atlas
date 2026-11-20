@@ -23,15 +23,15 @@ const fakeResponse=(fn:(body:Record<string,unknown>)=>Response)=>{
 describe('Narrator House batch client: one transaction per House',()=>{
  it('lists Houses then inspects and activates individually, reporting review failures',async()=>{
   const f=fakeResponse(p=>{
-   if(p.action==='list')return reply({houseIds:['house-a','house-b','house-c']});
-   if(p.action==='inspect'&&p.houseId==='house-a')
+   if(p['action']==='list')return reply({houseIds:['house-a','house-b','house-c']});
+   if(p['action']==='inspect'&&p['houseId']==='house-a')
     return reply({houseId:'house-a',status:'ready_for_operator_review',
      preview:{sourceSheetVersion:3},sourceHash:'a'.repeat(64)});
-   if(p.action==='activate'&&p.houseId==='house-a')
+   if(p['action']==='activate'&&p['houseId']==='house-a')
     return reply({houseId:'house-a',status:'activated'});
-   if(p.action==='inspect'&&p.houseId==='house-b')
+   if(p['action']==='inspect'&&p['houseId']==='house-b')
     return reply({houseId:'house-b',status:'already_initialized'});
-   if(p.action==='inspect'&&p.houseId==='house-c')
+   if(p['action']==='inspect'&&p['houseId']==='house-c')
     return reply({houseId:'house-c',status:'calendar_mismatch'});
    throw Error('unexpected request');
   });
@@ -46,12 +46,12 @@ describe('Narrator House batch client: one transaction per House',()=>{
    {houseId:'house-c',status:'calendar_mismatch'},
   ]);
   expect(ticks).toEqual([1,2,3]);
-  expect(f.requests.map(x=>x.action)).toEqual(['list','inspect','activate','inspect','inspect']);
+  expect(f.requests.map(x=>x['action'])).toEqual(['list','inspect','activate','inspect','inspect']);
   expect(f.requests[2]).toMatchObject({
    action:'activate',houseId:'house-a',
    expectedSourceVersion:3,expectedSourceHash:'a'.repeat(64),
   });
-  expect(f.requests.every(x=>x.action!=='activateAll')).toBe(true);
+  expect(f.requests.every(x=>x['action']!=='activateAll')).toBe(true);
  });
  it('decodes the precise safe server error and avoids starting House writes',async()=>{
   const f=fakeResponse(()=>reply('house_activation_disabled',503));
@@ -65,11 +65,11 @@ describe('Narrator House batch client: one transaction per House',()=>{
  });
  it('reports partial success when service goes down after one House',async()=>{
   const f=fakeResponse(p=>{
-   if(p.action==='list')return reply({houseIds:['house-a','house-b']});
-   if(p.houseId==='house-a'&&p.action==='inspect')
+   if(p['action']==='list')return reply({houseIds:['house-a','house-b']});
+   if(p['houseId']==='house-a'&&p['action']==='inspect')
     return reply({houseId:'house-a',status:'ready_for_operator_review',
      preview:{sourceSheetVersion:4},sourceHash:'b'.repeat(64)});
-   if(p.houseId==='house-a'&&p.action==='activate')
+   if(p['houseId']==='house-a'&&p['action']==='activate')
     return reply({houseId:'house-a',status:'activated'});
    return reply('house_catalog_unavailable',503);
   });
