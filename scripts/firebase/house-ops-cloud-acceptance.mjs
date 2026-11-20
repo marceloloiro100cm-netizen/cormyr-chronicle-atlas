@@ -42,7 +42,7 @@ const newReport=()=>({
  invalidEconomies:0,invalidSources:0,unknownHouses:0,
  runtimeApproved:false,calendarApproved:false,
  stageRootsVerified:false,snapshotDetected:false,
- cloudReadHttp:null,realRoleTestsVerified:false,
+ cloudReadHttp:null,databaseMetadataHttp:null,realRoleTestsVerified:false,
  releaseDecision:'NO_GO',blockingCodes:[],
 });
 const issue=(r,code)=>{if(!r.blockingCodes.includes(code))r.blockingCodes.push(code)};
@@ -93,6 +93,16 @@ export async function auditHouseOpsCloud({
   }
   return {status:null,docs:null};
  };
+ // Check database metadata separately from listDocuments: no private content is
+ // retrieved and only the HTTP status is retained in the report.
+ try{
+  const meta=await fetcher(
+   'https://firestore.googleapis.com/v1/projects/cormyr/databases/(default)',{
+    method:'GET',redirect:'error',credentials:'omit',cache:'no-store',
+    headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000),
+   });
+  r.databaseMetadataHttp=meta.status;
+ }catch{r.databaseMetadataHttp=null}
  const roots=await list('migrationDomainStage',['status','private'],2);
  r.cloudReadHttp=roots.status;
  if(roots.status!==200){
@@ -181,7 +191,8 @@ export async function auditHouseOpsCloud({
 export const summarize=r=>[
  '### Ficha da Casa 4b/4c: auditoria Cloud somente leitura',
  '| Verificação | Resultado |','|---|---|',
- '| Firestore HTTP | '+(r.cloudReadHttp??'indisponível')+' |',
+ '| Firestore documentos HTTP | '+(r.cloudReadHttp??'indisponível')+' |',
+ '| Firestore metadados HTTP | '+(r.databaseMetadataHttp??'indisponível')+' |',
  '| Snapshot único | '+r.snapshotDetected+' |',
  '| Estágios históricos | '+r.stageRootsVerified+' |',
  '| Runtime de escrita aprovado | '+r.runtimeApproved+' |',
