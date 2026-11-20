@@ -387,7 +387,7 @@ describe('real Firebase workspace boundary',()=>{
  });
  it('access check never fails on historical duplicate rows of the same login',async()=>{
   f.tables['campaign_players']!.push({id:'old-a',user_id:'a',roster_house_id:'ashkar'},{id:'old-gm',user_id:'gm'});
-  const own=await run({kind:'query',table:'campaign_players',steps:[{op:'select',args:['id']},{op:'eq',args:['user_id','a']},{op:'maybeSingle',args:[]}]});
+  const own=await run({kind:'query',table:'campaign_players',steps:[{op:'select',args:['id,active']},{op:'eq',args:['user_id','a']},{op:'maybeSingle',args:[]}]});
   expect(own.data).toMatchObject({id:'pa',active:true});
   f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
   const gm=await run({kind:'query',table:'campaign_players',steps:[{op:'eq',args:['user_id','gm']},{op:'maybeSingle',args:[]}]});
