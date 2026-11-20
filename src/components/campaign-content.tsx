@@ -246,12 +246,15 @@ export async function uploadImages(content: string, images: PendingImage[], muta
       } as Record<string, string>
     )[image.file.type];
     const path = `${user.id}/${mutation}/${i}.${ext}`;
-    const { error } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from("campaign-images")
       .upload(path, image.file, { contentType: image.file.type, upsert: false });
     if (error && error.message !== "The resource already exists" && error.statusCode !== "409")
       throw error;
-    tokens.push(imageToken(path, image.caption));
+    // No Firebase o servidor devolve um caminho opaco, vinculado ao UID real.
+    // O caminho sugerido pelo navegador nunca é usado como referência autoritativa.
+    const storedPath=typeof data?.path==='string'&&data.path?data.path:path;
+    tokens.push(imageToken(storedPath, image.caption));
   }
   return [content, ...tokens].join("\n\n");
 }

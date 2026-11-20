@@ -4,6 +4,7 @@
  */
 import {createHash,randomUUID} from 'node:crypto';
 import {chooseCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
+import {authorizeMediaTokens,PrivateMediaError} from './private-media-core';
 import {activeSeason2HouseScopeValid} from '../../../scripts/firebase/cloud-season2-house-scope.mjs';
 import type {Scope} from './service';
 import {projectOperationalRecords,type RecordRow,type OperationalRecord} from './operational-records';
@@ -181,6 +182,14 @@ export async function commitOperationalRecord({
   }
   if(!editable(actor,next))fail('access_denied',403);
   const prior=before?{...before}:null;
+  // Imagens antigas permanecem intactas. Imagens novas exigem upload
+  // vinculado ao autor Firebase, confirmado antes deste commit.
+  try{await authorizeMediaTokens(tx,root,snapshotId,actor.uid,
+   String(next['content']),typeof prior?.['content']==='string'?prior['content']:undefined);}
+  catch(e){
+   if(e instanceof PrivateMediaError)fail(e.code,e.status);
+   throw e;
+  }
   const overlay:OperationalRecord&{sourceSnapshotId:string}={
    id,baseVersion,version:next['version'] as number,record:next,
    previous:prior,updatedBy:actor.uid,

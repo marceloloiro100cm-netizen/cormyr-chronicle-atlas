@@ -1,4 +1,5 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
+import {verifyMediaReferences,MediaReferenceError} from './private-media-references.mjs';
 /**
  * Cormyr Firebase Cloud — fail-closed transactional mail.
  *
@@ -293,6 +294,10 @@ export function createFirebaseCloudMail({
           return {id,duplicate:true,state:previous.data().publicationState,
             deliveryRound:previous.data().deliveryRound};
         }
+        try{await verifyMediaReferences({tx,root:runtime,snapshotId,uid,
+          content:req.content});}
+        catch(e){if(e instanceof MediaReferenceError)
+          deny(e.code,e.status);throw e;}
         const n=counter.exists?counter.data()?.count:0;
         if(!Number.isInteger(n)||n<0||n>=MAX_MAIL_PER_ROUND)
           deny('mail_round_limit',429);
@@ -741,6 +746,12 @@ export function createFirebaseCloudMail({
             deny('request_key_conflict',409);
           return {ids,duplicate:true,state:existing[0].data().publicationState,
             deliveryRound:existing[0].data().deliveryRound};
+        }
+        for(const req of requests){
+          try{await verifyMediaReferences({tx,root:runtime,snapshotId,uid,
+            content:req.content});}
+          catch(e){if(e instanceof MediaReferenceError)
+            deny(e.code,e.status);throw e;}
         }
         const count=counter.exists?counter.data()?.count:0;
         if(!Number.isSafeInteger(count)||count<0||
