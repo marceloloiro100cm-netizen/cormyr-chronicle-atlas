@@ -32,6 +32,7 @@ import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-l
 import {readOperationalRecordDocs,projectOperationalRecords,
  projectOperationalVersions,readOperationalRecordVersionDocs} from './operational-records';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
+import {createRepresentationBridge} from './operational-representation-bridge';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -458,7 +459,21 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     throw e;
    }
   };
+  const representation=()=>createRepresentationBridge({
+   db,auth,snapshotId,actor:scope,token,players,
+   houses:()=>visible('campaign_houses'),
+   records:()=>visible('campaign_records'),
+   importedRecords:()=>rows('campaign_records'),
+   mail,calendar:()=>cloud.workspaceCalendar(token),cloudMail,
+  });
   const rpc=async(name:string,args:Row)=>{
+   if(name==='start_campaign_representation')return representation().start(args);
+   if(name==='stop_campaign_representation')return representation().stop(args);
+   if(name==='campaign_representation_action'){
+    if(Object.keys(args).some(k=>!['p_action','p_args'].includes(k)))
+     throw new CloudAccessError('representation_action_invalid',400);
+    return representation().action(args['p_action'],args['p_args']??{});
+   }
    if(name==='save_campaign_record'){
     if(!args||typeof args!=='object'||Array.isArray(args)||
       Object.keys(args).some(k=>!['p_id','p_version','p_title','p_content','p_request_key'].includes(k)))
@@ -567,6 +582,15 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    if(name.startsWith('spy_'))return readWorkspaceSpy({scope,name,args,rows,snapshotId,db,sheet:async(h:string)=>{checkHouse(h);const s=await sheetFor(h) as any;return {houseId:h,state:s.state,version:s.version};}});
    if(name==='dated_mail_action'){
+    if(args['p_action']==='representation'){
+     if(Object.keys(args).some(k=>!['p_action','p_args','p_date'].includes(k))||
+        !args['p_args']||typeof args['p_args']!=='object'||
+        Array.isArray(args['p_args'])||
+        Object.keys(args['p_args']).some(k=>!['p_action','p_args'].includes(k)))
+      throw new CloudAccessError('representation_action_invalid',400);
+     return representation().action(args['p_args']['p_action'],
+      args['p_args']['p_args']??{},args['p_date']);
+    }
     if(scope.profile==='editor')denied();
     if(process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']!=='true')
      throw new CloudAccessError('workspace_operation_not_implemented',501);
