@@ -18,6 +18,7 @@ import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
 import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
 import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
+import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-ledger';
 import {readOperationalRecordDocs,projectOperationalRecords,
  projectOperationalVersions} from './operational-records';
 
@@ -313,6 +314,9 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   let operationalRecordsPromise:ReturnType<typeof readOperationalRecordDocs>|undefined;
   const operationalRecords=()=>operationalRecordsPromise??=
     readOperationalRecordDocs(db,snapshotId);
+  let operationalLedgerPromise:ReturnType<typeof readOperationalHouseLedger>|undefined;
+  const operationalLedger=()=>operationalLedgerPromise??=
+    readOperationalHouseLedger(db,snapshotId);
   const visible=async(name:string):Promise<Row[]>=>{
    if(name==='campaign_access_profiles')return (await accessDocs()).filter((a:any)=>admin||a.userId===scope.uid).map((a:any)=>({user_id:a.userId,profile:a.profile}));
    // A conta pode ter linhas históricas (outra temporada ou outro jogador
@@ -337,7 +341,15 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    });
    if(name==='house_catalog')return (await rows(name)).filter(r=>admin||r['public_reviewed']===true);
    if(name==='noble_house_sheets')return sheets();
-   if(['noble_house_ledger','spy_agent_upgrades'].includes(name))return (await rows(name)).filter(r=>houseAllowed(r['house_id']??r['owner_house_id']));
+   if(name==='noble_house_ledger'){
+    const archived=(await rows(name)).filter(r=>houseAllowed(r['house_id']));
+    if(process.env['CORMYR_FIREBASE_HOUSE_OPS_ENABLED']!=='true')
+     return archived;
+    const operational=(await operationalLedger()).filter(r=>houseAllowed(r.house_id));
+    return [...archived,...operational] as Row[];
+   }
+   if(name==='spy_agent_upgrades')
+    return (await rows(name)).filter(r=>houseAllowed(r['owner_house_id']));
    if(name==='noble_house_rule_overrides')return scope.profile==='editor'?[]:rows(name);
    if(name==='campaign_records'){
     const archived=await rows(name);
@@ -736,7 +748,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const definitions=overrides.map(r=>r['definition']) as any[];
    const catalog=mergeHouseRuleCatalog(definitions,operational as any);
    result={state:(sheet as any).state,version:(sheet as any).version,
-    catalog,houses,ledger:ledger.filter(r=>r['house_id']===id),
+    catalog,houses,ledger:mergeHouseLedger(ledger,[],id),
     admin,canEditAttributes:admin,
     syncState:'synced'};
   }else if(input?.kind==='record'){
