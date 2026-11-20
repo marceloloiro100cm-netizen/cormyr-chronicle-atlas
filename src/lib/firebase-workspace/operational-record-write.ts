@@ -139,8 +139,18 @@ export async function commitOperationalRecord({
   const vkey=id+'|'+next['version'];
   const versionDoc=root.collection('recordVersions').doc(sha('record-version:'+vkey));
   const audit=root.collection('recordAudits').doc(sha('record-audit:'+requestDigest));
-  const existingVersion=await tx.get(versionDoc);
+  const originalVersion=source&&!current?root.collection('recordVersions')
+   .doc(sha('record-version:'+id+'|'+source['version'])):null;
+  const [existingVersion,existingOriginal]=await Promise.all([
+   tx.get(versionDoc),originalVersion?tx.get(originalVersion):Promise.resolve(null),
+  ]);
   if(existingVersion.exists)fail('record_version_conflict',409);
+  if(originalVersion&&!existingOriginal?.exists){
+   tx.set(originalVersion,{record_id:id,version:source!['version'],
+    snapshot:source,author:source!['updated_by']??null,
+    created_at:source!['updated_at']??source!['created_at']??null,
+    sourceSnapshotId:snapshotId});
+  }
   tx.set(doc,overlay);
   tx.set(versionDoc,{record_id:id,version:next['version'],snapshot:next,
    author:actor.uid,created_at:next['updated_at'],sourceSnapshotId:snapshotId});
