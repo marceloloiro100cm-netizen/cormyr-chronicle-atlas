@@ -32,6 +32,7 @@ import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-l
 import {readOperationalRecordDocs,projectOperationalRecords,
  projectOperationalVersions,readOperationalRecordVersionDocs} from './operational-records';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
+import {representationRpc,RepresentationRpcError} from './representation-rpc';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
 const denied=()=>{throw new CloudAccessError('access_denied',403);};
@@ -459,6 +460,15 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
   };
   const rpc=async(name:string,args:Row)=>{
+   if(['start_campaign_representation','stop_campaign_representation',
+       'campaign_representation_action'].includes(name)){
+    try{return await representationRpc({
+     db,snapshotId,actor:scope,token,name,args,players,rows,
+     operationalRecords,mail,cloudMail,
+    });}
+    catch(e){if(e instanceof RepresentationRpcError)
+      throw new CloudAccessError(e.code,e.status);throw e;}
+   }
    if(name==='save_campaign_record'){
     if(!args||typeof args!=='object'||Array.isArray(args)||
       Object.keys(args).some(k=>!['p_id','p_version','p_title','p_content','p_request_key'].includes(k)))

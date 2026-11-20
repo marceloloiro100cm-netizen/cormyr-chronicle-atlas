@@ -2,7 +2,9 @@
  * Escrita transacional do item 6. O snapshot migrado nunca é alterado.
  * A identidade do autor e as Casas editáveis são recebidas do Firebase Admin.
  */
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
+import {chooseCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
+import {activeSeason2HouseScopeValid} from '../../../scripts/firebase/cloud-season2-house-scope.mjs';
 import type {Scope} from './service';
 import {projectOperationalRecords,type RecordRow,type OperationalRecord} from './operational-records';
 
@@ -71,15 +73,19 @@ export function canonicalRecordRequest(actor:Scope,input:RecordWriteInput){
  return fail('record_invalid',400);
 }
 export async function commitOperationalRecord({
- db,snapshotId,actor,imported,input,
+ db,snapshotId,actor,imported,input,representation,
 }:{
  db:any;snapshotId:string;actor:Scope;imported:RecordRow[];input:RecordWriteInput;
+ representation?:{realActorUid:string;sessionNonce:string};
 }):Promise<RecordRow>{
  if(process.env['CORMYR_FIREBASE_RECORDS_ENABLED']!=='true')
   fail('record_write_disabled',501);
  if(!/^[a-f0-9]{64}$/.test(snapshotId)||!Array.isArray(imported))
   fail('record_source_unavailable',503);
- const requestDigest=canonicalRecordRequest(actor,input);
+ const requestDigest=representation
+  ?sha(canonicalRecordRequest(actor,input)+':representation:'+
+    representation.realActorUid+':'+representation.sessionNonce)
+  :canonicalRecordRequest(actor,input);
  const id=input.action==='create'?input.row['id'] as string:input.recordId;
  const matching=imported.filter(row=>row['id']===id);
  if(matching.length>1)fail('record_source_conflict',503);
@@ -94,6 +100,49 @@ export async function commitOperationalRecord({
    tx.get(root),tx.get(request),tx.get(doc),
   ]);
   assertRuntime(rt.exists?rt.data():null,snapshotId);
+  if(representation){
+   if(rt.data()?.representationReadApproved!==true||
+      rt.data()?.representationWriteApproved!==true)
+    fail('representation_write_not_approved',503);
+   if(actor.profile!=='jogador'||actor.uid===representation.realActorUid||
+     !validId(representation.realActorUid)||!uuid(representation.sessionNonce))
+    fail('representation_denied',403);
+   // Todas as leituras precedem a gravação. A permissão é revalidada na transação.
+   const stage=db.collection('migrationDomainStage').doc(snapshotId);
+   const [session,realAdmin,archive,accountOverlay]=await Promise.all([
+    tx.get(root.collection('representationSessions').doc(representation.realActorUid)),
+    tx.get(stage.collection('access').doc(representation.realActorUid)),
+    tx.get(stage.collection('access').doc(actor.uid)),
+    tx.get(root.collection('accountAccess').doc(actor.uid)),
+   ]);
+   const s=session.data(),gm=realAdmin.data();
+   if(!session.exists||s?.actorUid!==representation.realActorUid||
+     s?.representedUid!==actor.uid||s?.playerId!==actor.playerId||
+     s?.nonce!==representation.sessionNonce||
+     s?.sourceSnapshotId!==snapshotId||
+     !Number.isFinite(Date.parse(s?.expiresAt))||Date.parse(s.expiresAt)<=Date.now()||
+     gm?.userId!==representation.realActorUid||
+     gm?.profile!=='narrador'||gm?.admin!==true||
+     gm?.active!==true||gm?.requirePasswordChange!==false)
+    fail('representation_expired',403);
+   let effective:any;
+   try{effective=chooseCurrentAccountAccess(actor.uid,
+     archive.exists?archive.data():null,
+     accountOverlay.exists?accountOverlay.data():null,rt.data());}
+   catch{fail('representation_scope_invalid',403);}
+   if(effective?.profile!=='jogador'||effective?.admin!==false||
+     effective?.active!==true||effective?.requirePasswordChange!==false||
+     effective?.playerId!==actor.playerId||
+     JSON.stringify(effective.memberHouseIds)!==JSON.stringify(actor.memberHouseIds)||
+     JSON.stringify(effective.editHouseIds)!==JSON.stringify(actor.editHouseIds))
+    fail('representation_scope_invalid',403);
+   const houses=await Promise.all(actor.memberHouseIds.map(id=>
+    tx.get(stage.collection('houses').doc(sha('house:'+id)))));
+   if(!activeSeason2HouseScopeValid({
+    memberHouseIds:actor.memberHouseIds,editHouseIds:actor.editHouseIds,
+    houseDocuments:houses,
+   }))fail('representation_house_invalid',403);
+  }
   if(attempt.exists){
    const saved=attempt.data();
    if(saved?.actor!==actor.uid||saved?.digest!==requestDigest||!isRow(saved.record))
@@ -157,9 +206,18 @@ export async function commitOperationalRecord({
    author:actor.uid,created_at:next['updated_at'],sourceSnapshotId:snapshotId});
   tx.set(request,{actor:actor.uid,digest:requestDigest,record:next,
    recordId:id,version:next['version'],at:next['updated_at'],sourceSnapshotId:snapshotId});
-  tx.set(audit,{actor:actor.uid,recordId:id,previousVersion:prior?.['version']??0,
+  tx.set(audit,{actor:representation?.realActorUid??actor.uid,
+   representedUid:representation?actor.uid:null,
+   sessionNonce:representation?.sessionNonce??null,
+   recordId:id,previousVersion:prior?.['version']??0,
    version:next['version'],action:input.action,at:next['updated_at'],
    sourceSnapshotId:snapshotId,requestDigest});
+  if(representation)tx.create(root.collection('representationAudits').doc(randomUUID()),{
+   action:'representation_save_record',realActorUid:representation.realActorUid,
+   representedUid:actor.uid,playerId:actor.playerId,recordId:id,
+   recordVersion:next['version'],sessionNonce:representation.sessionNonce,
+   occurredAt:next['updated_at'],sourceSnapshotId:snapshotId,
+  });
   return next;
  });
 }

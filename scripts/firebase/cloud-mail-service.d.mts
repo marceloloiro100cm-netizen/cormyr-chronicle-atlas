@@ -19,6 +19,15 @@ export interface CloudMailMessageRequest {
   unitId?:string|null;
 }
 export interface CloudMailRuntime {
+  sendRepresented(idToken:string,input:unknown):Promise<{
+    id:string;duplicate:boolean;state:string;deliveryRound:number;
+  }>;
+  replyRepresented(idToken:string,input:unknown):Promise<{
+    id:string;duplicate:boolean;state:string;deliveryRound:number;
+  }>;
+  cancelRepresented(idToken:string,input:unknown):Promise<{
+    removed:boolean;alreadyRemoved:boolean;version:number;
+  }>;
   status(idToken:string):Promise<{
     enabled:boolean;canSend:boolean;originHouseIds:string[];readOnly:boolean;
   }>;
