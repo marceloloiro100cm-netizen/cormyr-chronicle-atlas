@@ -69,7 +69,7 @@ export async function readSpyTx({tx,root,snapshotId,source,calendar,write=true}:
   });
  }
  try{return {data:projectSpyOverlay(source,overlay),meta};}
- catch{spyFail('spy_archive_overlay_conflict',503);}
+ catch{return spyFail('spy_archive_overlay_conflict',503);}
 }
 export function spyRequestRef(root:any,namespace:string,uid:string,key:string){
  if(!spyUuid(key))spyFail('spy_request_invalid');
