@@ -224,7 +224,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       {mailbox.isError&&<>
         <Button variant="outline" onClick={()=>void mailbox.refetch()}>Tentar novamente as Missivas</Button>
         {typeof (mailbox.error as {serverCode?:unknown}|null)?.serverCode==='string'&&
-         <p className="text-xs">Diagnóstico Firebase: {String((mailbox.error as {serverCode:string}).serverCode)}</p>}
+         <p className="text-xs">Diagnóstico Firebase: {String((mailbox.error as unknown as {serverCode:string}).serverCode)}</p>}
       </>}
     </section>:null;
   const me=data.players.find(p=>p.user_id===data.user.id);
