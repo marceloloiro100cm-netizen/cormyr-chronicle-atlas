@@ -33,6 +33,7 @@ import {readOperationalRecordDocs,projectOperationalRecords,
  projectOperationalVersions,readOperationalRecordVersionDocs} from './operational-records';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
 import {representationRpc,RepresentationRpcError} from './representation-rpc';
+import {projectPrivateMailGallery} from './private-media-gallery';
 import {createFirebaseCommissions,readFirebaseCommissions,FirebaseCommissionError}
  from '../newspaper/firebase-news-commissions.server';
 import {readAgeRegistry,projectAgeDashboard,projectHouseAges,listAgeTransitions,CharacterAgesError} from './operational-character-ages';
@@ -500,6 +501,17 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     return writeRecord({action:'save',recordId:args['p_id'],
      expectedVersion:args['p_version'],title:args['p_title'],
      content:args['p_content'],requestKey:args['p_request_key']});
+   }
+   if(name==='house_gallery_mail_images'){
+    const id=args['p_house'];
+    checkHouse(id);
+    if(Object.keys(args).some(k=>k!=='p_house'))
+     throw new CloudAccessError('private_media_request_invalid',400);
+    if(process.env['CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED']!=='true')
+     return [];
+    const [letters,replies]=await Promise.all([
+     visible('campaign_letters'),visible('letter_replies')]);
+    return projectPrivateMailGallery(id,letters,replies,scope.uid);
    }
    if(['get_house_character_ages','get_character_age_dashboard',
        'get_character_year_transitions'].includes(name)){

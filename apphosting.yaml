@@ -174,6 +174,13 @@ env:
     availability:
       - RUNTIME
 
+  # Item 11: anexos privados em Storage. Nunca habilitar sem escopo,
+  # assinatura IAM e homologação de referências e bucket.
+  - variable: CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED

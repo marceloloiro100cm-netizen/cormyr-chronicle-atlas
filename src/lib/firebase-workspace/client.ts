@@ -30,6 +30,83 @@ export async function workspaceRequest(input:Record<string,unknown>):Promise<any
  return body.result;
 }
 const response=async(fn:()=>Promise<any>)=>{try{return {data:await fn(),error:null};}catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Firebase indisponível',code:(e as any)?.code,serverCode:(e as any)?.serverCode}};}};
+
+async function privateMediaRequest(input:Record<string,unknown>,binary=false){
+ const auth=firebasePilotAuth(),uid=auth?.current()?.uid,token=await auth?.getToken();
+ if(!token||!uid||auth?.current()?.uid!==uid)throw Error('Sessão Firebase inválida.');
+ const response=await fetch('/api/firebase-private-media',{
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+  headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+  body:JSON.stringify(input),
+ });
+ if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a leitura.');
+ if(!response.ok)throw Error(response.status===403?'Imagem não autorizada.':
+  response.status===404?'Imagem não localizada.':
+  response.status===413?'Imagem maior que o limite de 5 MB.':
+  response.status===501||response.status===503?
+   'Arquivos privados ainda não homologados no Firebase.':
+   'Não foi possível acessar o arquivo privado.');
+ if(binary)return response.blob();
+ const result:unknown=await response.json();
+ if(!result||typeof result!=='object'||!('result' in result))
+  throw Error('Resposta de arquivo inválida.');
+ return (result as {result:unknown}).result;
+}
+async function privateMediaUuid(path:string):Promise<string>{
+ const result=new Uint8Array(await crypto.subtle.digest('SHA-256',
+  new TextEncoder().encode(path)));
+ result[6]=(result[6]!&15)|64;result[8]=(result[8]!&63)|128;
+ const hex=[...result.slice(0,16)].map(b=>b.toString(16).padStart(2,'0')).join('');
+ return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),
+  hex.slice(16,20),hex.slice(20,32)].join('-');
+}
+function toBase64(file:Blob):Promise<string>{
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>{
+   const v=reader.result;
+   if(typeof v!=='string'||!v.startsWith('data:')||!v.includes(','))
+    reject(Error('Imagem inválida.'));
+   else resolve(v.slice(v.indexOf(',')+1));
+  };
+  reader.onerror=()=>reject(Error('Não foi possível ler a imagem.'));
+  reader.readAsDataURL(file);
+ });
+}
+function workspaceStorage(){
+ const upload=async(path:string,file:File|Blob)=>{
+  try{
+   if(!path||file.size>5*1024*1024||file.size===0)
+    throw Error('Imagem inválida ou maior que 5 MB.');
+   const id=await privateMediaUuid(path);
+   const data=await privateMediaRequest({action:'upload',id,
+    contentType:file.type,dataBase64:await toBase64(file)}) as
+      {path:string;duplicate:boolean};
+   return {data:{path:data.path},error:null};
+  }catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Falha no envio.'}};}
+ };
+ const download=async(path:string)=>{
+  try{
+   const data=await privateMediaRequest({action:'download',path},true) as Blob;
+   return {data,error:null};
+  }catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Arquivo indisponível.'}};}
+ };
+ const createSignedUrl=async(path:string,_expires?:number)=>{
+  try{
+   const data=await privateMediaRequest({action:'sign',path}) as {signedUrl:string};
+   return {data:{signedUrl:data.signedUrl},error:null};
+  }catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Arquivo indisponível.'}};}
+ };
+ return {upload,download,createSignedUrl,
+  createSignedUrls:async(paths:string[])=>{
+   const items=await Promise.all(paths.map(path=>createSignedUrl(path)));
+   return {data:items.map((item,i)=>({path:paths[i],
+    signedUrl:item.data?.signedUrl??null,error:item.error??null})),error:null};
+  },
+  remove:async()=>({data:null,error:{message:'Remoção de arquivos não autorizada no Firebase.'}}),
+ };
+}
+
 export function createWorkspaceClient(){
  const from=(table:string)=>{
   const steps:QueryStep[]=[];
@@ -50,6 +127,6 @@ export function createWorkspaceClient(){
    signOut:async()=>{firebasePilotAuth()?.signOut();return {error:null};},
    updateUser:unsupported,
   },channel,removeChannel:async()=>undefined,removeAllChannels:async()=>undefined,
-  storage:{from:()=>({createSignedUrl:unsupported,createSignedUrls:unsupported,download:unsupported,upload:unsupported,remove:unsupported})},
+  storage:{from:(bucket:string)=>bucket==='campaign-images'?workspaceStorage():({createSignedUrl:unsupported,createSignedUrls:unsupported,download:unsupported,upload:unsupported,remove:unsupported})},
  };
 }
