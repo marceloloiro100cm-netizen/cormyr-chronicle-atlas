@@ -70,8 +70,9 @@ export async function readSpyNarratorIncidentsBrowser():Promise<SpyNarratorIncid
  */
 export async function advanceSpyActiveMissionsBrowser(){
  const clock=await privateSpyRead('get_campaign_calendar',{});
- const version=clock&&typeof clock==='object'&&Number.isSafeInteger(clock.version)
-  ?clock.version:null;
+ const raw=clock as {version?:unknown}|null;
+ const version=raw&&Number.isSafeInteger(raw.version)
+  ?raw.version as number:null;
  if(version===null)throw new Error('Calendário oficial do HUB indisponível.');
  const response=await privateSpyRead('spy_advance_active_missions',{
   p_calendar_version:version,p_request_key:crypto.randomUUID(),
