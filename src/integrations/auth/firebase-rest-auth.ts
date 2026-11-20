@@ -24,6 +24,7 @@ interface Raw {
   error?: { message?: unknown };
   localId?: unknown; idToken?: unknown; refreshToken?: unknown; expiresIn?: unknown;
   user_id?: unknown; id_token?: unknown; refresh_token?: unknown; expires_in?: unknown;
+  needConfirmation?: unknown;
 }
 export class FirebaseAuthError extends Error {
   readonly code: string;
@@ -37,6 +38,7 @@ export function memoryStorage(): TokenStorage {
 
 export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthTokenProvider & {
   signInWithPassword(email: string, password: string): Promise<FirebaseSession>;
+  signInWithGoogleIdToken(googleIdToken: string, requestUri: string): Promise<FirebaseSession>;
   requestPasswordReset(email: string): Promise<void>;
   confirmPasswordReset(oobCode: string, newPassword: string): Promise<void>;
   signOut(): void;
@@ -128,6 +130,25 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email, password, returnSecureToken: true }),
       });
+      return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
+    },
+    async signInWithGoogleIdToken(googleIdToken, requestUri) {
+      // Exchange a Google Identity Services credential for a Firebase session.
+      // The Google ID token itself never becomes an Atlas bearer token.
+      if (!/^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$/.test(googleIdToken) ||
+          !/^https:\/\/[^/?#]+\/auth$/.test(requestUri))
+        throw new FirebaseAuthError('INVALID_GOOGLE_CREDENTIAL');
+      const version = ++sessionVersion;
+      inflight = null;
+      const b = await post(`${origin('identitytoolkit.googleapis.com')}/v1/accounts:signInWithIdp?key=${key}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          postBody: `id_token=${encodeURIComponent(googleIdToken)}&providerId=google.com`,
+          requestUri, returnSecureToken: true, returnIdpCredential: false,
+        }),
+      });
+      if (b.needConfirmation === true)
+        throw new FirebaseAuthError('ACCOUNT_LINK_REQUIRED');
       return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
     },
     async requestPasswordReset(email) {
