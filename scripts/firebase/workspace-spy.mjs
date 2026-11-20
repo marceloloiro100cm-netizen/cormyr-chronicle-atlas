@@ -1,7 +1,7 @@
 import {buildSpyAgentsPlan} from './stage-spy-emulator.mjs';
 import {houseManagement,recruitmentOptions} from './spy-agents-core.mjs';
 import {houseTimeline,counterintelligence,narratorOperations,incidentHistory} from './spy-missions-core.mjs';
-import {readDossiers,adminPending} from './spy-intel-core.mjs';
+import {readDossiers,adminPending,adminOptions,operationStatus} from './spy-intel-core.mjs';
 import {readSpyOverlay,projectSpyOverlay} from './workspace-spy-overlay.mjs';
 export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet,db}){
  if(scope.profile==='editor')throw Error('spy_access_denied');
@@ -22,7 +22,25 @@ export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet,db
  if(name==='spy_narrator_operations_dashboard'&&admin)return narratorOperations({...base,timelines:d.timeline,decisions:d.decisions,awards:d.awards});
  if(name==='spy_narrator_incident_history'&&admin)return incidentHistory(base);
  if(name==='spy_intelligence_admin_pending'&&admin)return adminPending({actor,awards:d.awards,dossiers:d.dossiers});
- if(name==='spy_public_noble_targets')return d.catalog.map(c=>({id:c.id,name:c.name,region:c.region}));
+ if(name==='spy_intelligence_admin_options'&&admin){
+  const dossier=d.dossiers.find(x=>x.id===args.p_dossier);
+  if(!dossier)throw Error('spy_dossier_not_found');
+  let targetSheet=null;
+  try{targetSheet=await sheet(dossier.targetHouseId);}
+  catch(e){if(e?.code!=='house_sheet_unavailable')throw e;}
+  return adminOptions({actor,dossier,sheet:targetSheet,
+   findings:d.findings.filter(x=>x.dossierId===dossier.id)});
+ }
+ if(name==='spy_intelligence_operation_status'&&admin){
+  const op=d.operations.find(x=>x.id===args.p_operation);
+  const decision=d.decisions.filter(x=>x.operationId===args.p_operation)
+   .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]??null;
+  return operationStatus({actor,operation:op,decision,
+   award:d.awards.find(x=>x.operationId===args.p_operation)??null});
+ }
+ if(name==='spy_public_noble_targets')return d.catalog
+  .filter(c=>c.publicReviewed===true)
+  .map(c=>({id:c.id,name:c.name,region:c.region}));
  throw Error('spy_operation_not_implemented');
 }
 
