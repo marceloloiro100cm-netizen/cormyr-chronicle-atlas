@@ -10,6 +10,15 @@ import {dateKey,parseDate} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy,loadImportedSpyData} from '../../../scripts/firebase/workspace-spy.mjs';
 import {commitSpyAction,SpyWriteError} from './operational-spy-write';
+import {readSpyOverlay,projectSpyOverlay} from '../../../scripts/firebase/workspace-spy-overlay.mjs';
+import {commitSpyMission,previewSpyMission,spyMissionMethod}
+ from './operational-spy-missions';
+import {SpyOperationError,spyDigest} from './operational-spy-context';
+import {commitSpyNarrator,spyNarratorMethod} from './operational-spy-narrator';
+import {resolveSpyHouseDefense} from '../espionage/spy-house-target-defense';
+import {calculateSpyDefense} from '../espionage/spy-defense';
+import {spyLawDifficulty} from '../espionage/spy-law-difficulty';
+import type {HouseState} from '../house/types';
 import {projectWorkspaceMailTables, type WorkspaceMailTables} from '../mail/firebase-workspace-mail';
 import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
@@ -313,6 +322,30 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(!sheet||!sheet['state']||typeof sheet['state']!=='object')throw new CloudAccessError('house_sheet_unavailable',404);
    return {state:sheet['state'],version:sheet['version']};
   };
+  // A ficha rival só é consultada no servidor, após validar o catálogo oficial.
+  // Economia operacional inconsistente bloqueia a prévia, sem fallback.
+  const privateTargetSheet=async(id:string)=>{
+   const archived=(await rows('noble_house_sheets')).filter(r=>r['house_id']===id);
+   if(archived.length>1)throw new CloudAccessError('target_sheet_ambiguous',503);
+   const doc=await db.collection('campaignCloudRuntime').doc(snapshotId)
+    .collection('houseEconomies').doc(spyDigest('house:'+id)).get();
+   if(doc.exists){
+    const v=doc.data();
+    if(!v||v.status!=='active'||v.seedVerified!==true||
+      v.sourceSnapshotId!==snapshotId||v.houseId!==id||
+      !Number.isSafeInteger(v.version)||v.version<1||
+      !v.state||typeof v.state!=='object'||
+      v.stateHash!==constructionStateHash(v.state))
+     throw new CloudAccessError('target_sheet_inconsistent',503);
+    return {state:v.state,version:v.version};
+   }
+   if(archived.length===0)return null;
+   const row=archived[0];
+   if(!row||!row['state']||typeof row['state']!=='object'||
+      !Number.isSafeInteger(row['version']))
+     throw new CloudAccessError('target_sheet_inconsistent',503);
+   return {state:row['state'],version:row['version']};
+  };
   let operationalRecordsPromise:ReturnType<typeof readOperationalRecordDocs>|undefined;
   const operationalRecords=()=>operationalRecordsPromise??=
     readOperationalRecordDocs(db,snapshotId);
@@ -351,8 +384,16 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     const operational=(await operationalLedger()).filter(r=>houseAllowed(r.house_id));
     return [...archived,...operational] as Row[];
    }
-   if(name==='spy_agent_upgrades')
-    return (await rows(name)).filter(r=>houseAllowed(r['owner_house_id']));
+   if(name==='spy_agent_upgrades'){
+    if(process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
+     return (await rows(name)).filter(r=>houseAllowed(r['owner_house_id']));
+    const imported=await loadImportedSpyData(rows,snapshotId);
+    const projected=projectSpyOverlay(imported,await readSpyOverlay(db,snapshotId));
+    return projected.upgrades.filter((u:any)=>houseAllowed(u.ownerHouseId))
+     .map((u:any)=>({agent_id:u.agentId,owner_house_id:u.ownerHouseId,
+      upgrade_code:u.upgradeCode,cost_wealth:u.costWealth,
+      purchased_at:u.purchasedAt,purchased_by:u.purchasedBy}));
+   }
    if(name==='noble_house_rule_overrides')return scope.profile==='editor'?[]:rows(name);
    if(name==='campaign_records'){
     const archived=await rows(name);
@@ -432,6 +473,81 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='house_gallery_mail_images'||name==='get_house_character_ages'){
     checkHouse(args['p_house']);
     return [];
+   }
+   if(name==='spy_narrator_house_defense'){
+    if(!admin)denied();
+    const id=args['p_house'],domain=args['p_domain'];
+    if(typeof id!=='string'||domain!==undefined&&typeof domain!=='string')
+     throw new CloudAccessError('spy_defense_invalid',400);
+    const source=await loadImportedSpyData(rows,snapshotId);
+    const target=source.catalog.find((x:any)=>x.id===id&&x.publicReviewed===true);
+    if(!target)throw new CloudAccessError('spy_target_not_found',404);
+    const official=source.nobleStats.find((s:any)=>s.houseId===id)??null;
+    const sheet=await privateTargetSheet(id);
+    let resolution:any,domains:any[]=[];
+    try{
+     if(sheet){
+      const state=sheet.state as HouseState;
+      resolution=resolveSpyHouseDefense({
+       kind:'with_sheet',state,region:target.region,
+       ...(domain?{domainId:domain}:{}),
+      });
+      const profile=calculateSpyDefense(state);
+      domains=profile.domains.map(d=>({domainId:d.domainId,
+       name:d.name,difficulty:d.difficulty}));
+     }else if(official){
+      if(!Number.isSafeInteger(official.law)||official.law<0)
+       throw new CloudAccessError('spy_defense_invalid',503);
+      const dc=spyLawDifficulty(official.law);
+      resolution={source:'imported_noble_sheet',law:official.law,
+       regionalLaw:null,baseDifficulty:dc,constructionBonus:0,
+       difficulty:dc,domainId:null,sources:[]};
+     }else resolution=resolveSpyHouseDefense({
+       kind:'without_sheet',region:target.region,
+      });
+    }catch(e){if(e instanceof CloudAccessError)throw e;
+     throw new CloudAccessError('spy_defense_invalid',503);}
+    return {houseId:target.id,houseName:target.name,region:target.region,
+     ...resolution,sourceSpreadsheetRow:null,domains};
+   }
+   if(name==='spy_player_mission_preview'){
+    const h=args['p_house'],id=args['p_target'];
+    checkHouse(h);
+    if(typeof id!=='string'||typeof args['p_agent']!=='string')
+     throw new CloudAccessError('spy_preview_invalid',400);
+    const archive=await loadImportedSpyData(rows,snapshotId);
+    const d=process.env['CORMYR_FIREBASE_SPY_ENABLED']==='true'
+     ?projectSpyOverlay(archive,await readSpyOverlay(db,snapshotId)):archive;
+    const target=d.catalog.find((t:any)=>t.id===id&&t.publicReviewed===true);
+    if(!target)throw new CloudAccessError('spy_target_not_found',404);
+    try{return previewSpyMission({scope,houseId:h,agentId:args['p_agent'],
+     targetHouseId:id,data:d,targetSheet:await privateTargetSheet(id)});}
+    catch(e){if(e instanceof SpyOperationError)
+      throw new CloudAccessError(e.code,e.status);throw e;}
+   }
+   if(spyNarratorMethod(name)){
+    if(!admin)denied();
+    if(process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
+     throw new CloudAccessError('spy_write_disabled',501);
+    try{return await commitSpyNarrator({
+     db,snapshotId,scope,name,args,
+     source:await loadImportedSpyData(rows,snapshotId),
+     calendar:await cloud.workspaceCalendar(token),
+     archivedSheets:await rows('noble_house_sheets'),
+    });}
+    catch(e){if(e instanceof SpyOperationError)
+     throw new CloudAccessError(e.code,e.status);throw e;}
+   }
+   if(spyMissionMethod(name)){
+    if(process.env['CORMYR_FIREBASE_SPY_ENABLED']!=='true')
+     throw new CloudAccessError('spy_write_disabled',501);
+    const h=args['p_house'];
+    if(typeof h!=='string'||(!admin&&!scope.editHouseIds.includes(h)))denied();
+    try{return await commitSpyMission({db,snapshotId,scope,name,args,
+     source:await loadImportedSpyData(rows,snapshotId),
+     calendar:await cloud.workspaceCalendar(token)});}
+    catch(e){if(e instanceof SpyOperationError)
+      throw new CloudAccessError(e.code,e.status);throw e;}
    }
    if(['spy_recruit_agent','spy_create_agent','spy_buy_agent_upgrade',
        'spy_assign_agent_portrait','spy_rename_agent','spy_remove_agent'].includes(name)){

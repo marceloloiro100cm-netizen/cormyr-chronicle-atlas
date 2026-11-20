@@ -23,6 +23,7 @@ const METHODS=new Set(['spy_recruit_agent','spy_create_agent','spy_buy_agent_upg
 const COLLECTIONS=[
  ['spyAgents','agent',500],['spyUpgrades','upgrade',1000],
  ['spyHistories','history',2000],['spyRemovals','removal',500],
+ ['spyOperations','operation',1000],['spyEvents','event',2000],
 ] as const;
 const validatedPayload=(docs:any[],kind:string,snapshotId:string)=>{
  if(!Array.isArray(docs))fail('spy_runtime_invalid',503);
