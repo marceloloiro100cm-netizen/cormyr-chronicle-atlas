@@ -60,6 +60,18 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(pathname + '/unexpected', 'router')).toBe(true);
   });
 
+  it('allows only the Firebase Narrator House-activation API through archive mode',()=>{
+    const endpoint='/api/firebase-house-activation';
+    for(const kind of ['router','api'])
+      expect(shouldBlockLegacyRequest(endpoint,kind)).toBe(false);
+    // Server functions and similarly named legacy APIs stay blocked.
+    expect(shouldBlockLegacyRequest(endpoint,'serverFn')).toBe(true);
+    for(const suffix of ['/','-old','/legacy','/extra'])
+      expect(shouldBlockLegacyRequest(endpoint+suffix,'router')).toBe(true);
+    expect(shouldBlockLegacyRequest('/api/firebase-cloud-construction','router')).toBe(true);
+    expect(shouldBlockLegacyRequest('/api/firebase-domain','router')).toBe(true);
+  });
+
   it.each([
     '/api/firebase-cloud-treasury',
     '/api/firebase-cloud-construction',

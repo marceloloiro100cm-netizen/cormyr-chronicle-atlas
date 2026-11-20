@@ -36,6 +36,10 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        pathname === '/api/firebase-cloud-mail' ||
        // Firebase narrator-only pending week proposal; never a calendar publish.
        pathname === '/api/firebase-narrator-week' ||
+       // Activation is its own Firebase-only, narrator-authenticated route.
+       // The route is gated in apphosting.yaml and revalidates the original
+       // House sheet inside Firestore before each create-only transaction.
+       pathname === '/api/firebase-house-activation' ||
        pathname === '/api/firebase-cloud-newspaper' ||
        // These four are READ ONLY, with separate runtime flags, Firebase
        // token validation, strict per-House access and deny-by-default rules.
