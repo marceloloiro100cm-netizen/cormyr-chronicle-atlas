@@ -64,7 +64,17 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        pathname === '/api/public/gm-content' ||
        // Public newspaper: published editions only, own feature flag and
        // anonymous per-device read counter; never drafts, mail or Houses.
-       pathname === '/api/public/newspaper') && handlerType !== 'serverFn') return false;
+       pathname === '/api/public/newspaper' ||
+       // 20/11/2026 (pedido do proprietário): rotas Firebase que já têm chave
+       // própria, Firebase Auth ou segredo do agendador. Cada uma continua
+       // falhando fechada (503) sem a chave, o runtime aprovado ou o bucket.
+       pathname === '/api/public/time' ||
+       pathname === '/api/public/catalog' ||
+       pathname === '/api/public/translations' ||
+       pathname === '/api/public/gallery-image' ||
+       pathname === '/api/public/jobs/drive-sync' ||
+       pathname === '/api/firebase-cloud-treasury' ||
+       pathname === '/api/firebase-cloud-construction') && handlerType !== 'serverFn') return false;
   return handlerType === 'serverFn' ||
     pathname === '/mcp' ||
     pathname === '/.well-known/oauth-protected-resource' ||

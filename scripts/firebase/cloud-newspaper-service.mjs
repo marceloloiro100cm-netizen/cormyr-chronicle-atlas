@@ -1,4 +1,5 @@
 import {validateEditorialContent} from './cloud-editorial-content.mjs';
+import {deletedNewspaperIds} from './newspaper-deleted.mjs';
 import {commissionIdsOf} from './newspaper-core.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {currentAccountAccess,chooseCurrentAccountAccess} from './operational-account-access.mjs';
@@ -238,8 +239,9 @@ export function createFirebaseCloudNewspaper({
         await readApproval(uid,tx);
         const docs=await tx.get(editions.limit(101));
         if(docs.docs.length>100)deny('editorial_response_too_large',503);
+        const removed=await deletedNewspaperIds(db,snapshotId);
         return {items:docs.docs.map(d=>d.data()).filter(v=>
-          v?.source==='firebase-cloud'&&v.sourceSnapshotId===snapshotId)
+          v?.source==='firebase-cloud'&&v.sourceSnapshotId===snapshotId&&!removed.has(v.id))
           .sort((a,b)=>b.editionNo-a.editionNo)
           .map(v=>({id:v.id,editionNo:v.editionNo,title:v.title,state:v.state,version:v.version}))};
       });

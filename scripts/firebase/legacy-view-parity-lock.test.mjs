@@ -56,6 +56,9 @@
  * (acima de Configurações) e as leituras do site aberto em Leitura e Alcance;
  * newspaper-editorial.css só ajusta a grade de estatísticas. Nenhum controle,
  * filtro ou RPC preexistente foi removido. Re-captured after review.
+ * 2026-11-20 (funções ligadas): players-workspace.tsx só acrescenta, em Contas,
+ * o painel de aprovações do runtime Firebase acima da revisão de contas.
+ * Re-captured after review.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -68,7 +71,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'1a70a48723747e47c223767f13029ee0d992d80a',
+  'src/components/players/players-workspace.tsx':'b3224841d3a7bb1baa0806453653ebd82592a410',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f97bb1c10b1ca77771ff1fdc786214c389f99e48',
