@@ -149,7 +149,40 @@ describe('Item 4b, transação operacional por Casa',()=>{
   })),'house_access_denied',403);
   await denied(()=>f.service().execute('valid-token-123',f.input({
    action:'approve'
-  })),'house_operation_not_implemented',501);
+  })),'house_operation_forbidden',403);
   expect(f.writes()).toBe(0);
+ });
+});
+
+describe('segunda fatia de operações Firebase',()=>{
+ it('recusa pendências inválidas sem criar qualquer lançamento',async()=>{
+  const f=fixture();
+  await denied(()=>f.service().execute('valid-token-123',f.input({
+   action:'clear_pending',args:{indices:[0]},
+  })),'house_operation_forbidden',403);
+  expect(f.writes()).toBe(0);
+ });
+ it('preserva saldos ao remover nomeações da Corte',async()=>{
+  const f=fixture();
+  const base=structuredClone(f.docs.get(f.sheet) as Record<string,unknown>);
+  const state=base['state'] as ReturnType<typeof newHouseState>;
+  state.court.push({id:'33333333-3333-4333-8333-333333333333',
+   npcId:'44444444-4444-4444-8444-444444444444',
+   name:'Arauto',role:'Administrador',notes:''});
+  f.docs.set(f.sheet,base);
+  const economy=f.docs.get(f.economyPath)!;
+  const sheetHash=constructionStateHash(state);
+  f.docs.set(f.economyPath,{...economy,state:structuredClone(state),
+   stateHash:sheetHash,sourceStateHash:sheetHash});
+  const result=await f.service().execute('valid-token-123',f.input({
+   action:'court_remove',
+   args:{id:'33333333-3333-4333-8333-333333333333'},
+  }));
+  expect(result.action).toBe('court_remove');
+  expect(((f.docs.get(f.economyPath)?.['state'] as ReturnType<typeof newHouseState>)
+   .court)).toHaveLength(0);
+  expect((f.docs.get(f.sheet)?.['state'] as ReturnType<typeof newHouseState>)
+   .court).toHaveLength(1);
+  expect(f.writes()).toBe(4);
  });
 });

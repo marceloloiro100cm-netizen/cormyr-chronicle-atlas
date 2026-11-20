@@ -1,4 +1,6 @@
 import {z} from 'zod';
+import {removeCourtAssignment} from './court';
+import {renameMilitaryHolding} from './unit-progression';
 import {operationSchema} from './schemas';
 import {isMonthSensitiveHouseAction} from './monthly-operation-policy';
 import type {HouseState} from './types';
@@ -70,4 +72,55 @@ export function applyHouseDomainOperation(
   rule='Exclusão de domínio vazio na criação';
  }
  return {state:next,rule};
+}
+
+/**
+ * Segunda fatia pura das operações da Casa.
+ * São apenas ações sem alteração econômica; compras e alterações de recursos
+ * continuam bloqueadas até o motor transacional ter paridade comprovada.
+ */
+export const HOUSE_NON_ECONOMIC_ACTIONS=[
+ 'military_rename','court_remove','return_to_draft','clear_pending','approve',
+] as const;
+export type HouseNonEconomicAction=typeof HOUSE_NON_ECONOMIC_ACTIONS[number];
+
+export function applyHouseNonEconomicOperation(
+ state:HouseState,action:HouseNonEconomicAction,
+ args:Record<string,unknown>,explanation:string,
+):{state:HouseState;rule:string;explanation:string}{
+ if(action==='military_rename'){
+  const input=z.object({holdingId:z.string(),
+   name:z.string().min(2).max(160)}).parse(args);
+  return {state:renameMilitaryHolding(state,input),
+   rule:'Cormyr · nome de instalação militar sem alteração de custo, efeitos ou alocações',
+   explanation};
+ }
+ if(action==='court_remove'){
+  const {id}=z.object({id:z.string().uuid()}).parse(args);
+  return {state:removeCourtAssignment(state,id),
+   rule:'Corte · vínculo removido; personagem e histórico preservados',
+   explanation};
+ }
+ if(action==='return_to_draft'){
+  if(state.phase!=='review')throw Error('A criação não está em revisão.');
+  if(explanation.trim().length<5)throw Error('Registre o motivo da devolução.');
+  return {state:{...structuredClone(state),phase:'draft'},
+   rule:'Cormyr · revisão devolvida para rascunho',explanation};
+ }
+ if(action==='clear_pending'){
+  const {indices}=z.object({indices:z.array(z.number().int().nonnegative()).min(1)}).parse(args);
+  if(explanation.trim().length<10)throw Error('Registre como as pendências foram resolvidas.');
+  if(indices.some(i=>i>=state.pending.length))throw Error('Pendência indisponível.');
+  const next=structuredClone(state);
+  next.pending=state.pending.filter((_,i)=>!indices.includes(i));
+  return {state:next,rule:'Cormyr · pendências de conciliação resolvidas',
+   explanation:explanation+' · Resolvidas: '+indices.map(i=>state.pending[i]).join('; ')};
+ }
+ if(action==='approve'){
+  if(state.phase!=='review')throw Error('Envie a criação para revisão primeiro.');
+  if(state.pending.length)throw Error('Resolva as pendências de conciliação.');
+  return {state:{...structuredClone(state),phase:'active'},
+   rule:'Cormyr · criação aprovada pelo Narrador',explanation};
+ }
+ throw Error('Ação não coberta pelo núcleo não econômico.');
 }
