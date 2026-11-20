@@ -20,6 +20,9 @@ describe('Item 12: Histórico e documentos da Casa no Firebase',()=>{
   expect(src).toContain('exportHouseExcel(state,house.name,catalog,full)');
   expect(src).toContain('exportHousePdf(state,house.name,catalog,full)');
   expect(src).toContain('fetchFullLedger()');
+  expect(src).toContain('Caderno reservado do Narrador ainda não homologado no Firebase');
+  expect(src).toContain('<GmHouseNotes houseId={house.id}/>');
+  expect(src).toContain('disabled={!houseOperationsWritable||busy');
   const activation=readFileSync('src/lib/firebase-workspace/activate.ts','utf8');
   expect(activation).toContain("kind:'houseLedgerExport'");
   expect(activation).toContain('registerWorkspaceFunction(loadHouseLedger');
