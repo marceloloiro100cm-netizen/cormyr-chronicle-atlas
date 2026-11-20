@@ -96,8 +96,36 @@ describe('Idade canônica ligada ao HUB, item 9',()=>{
    sourceSnapshotId:snapshot,sourceSnapshotReconciled:true,applicationEnabled:true});
   mem.values.set(root+'/characterYearTransitions/year-6-1522-1523',{
    id:'event-id',calendarVersion:6,fromYear:1522,toYear:1523,
+   sourceSnapshotId:snapshot,
    actor:'narrator',createdAt:'2026-11-20T00:00:00.000Z'});
   const list=await listAgeTransitions(mem.db,snapshot,registry,30);
   expect(list).toMatchObject([{from_year:1522,to_year:1523,calendar_version:6}]);
  });
+ it('deduplica a mesma virada importada e operacional, preferindo o recibo do Firebase',async()=>{
+  const mem=inMemory(),root='campaignCloudRuntime/'+snapshot;
+  mem.values.set(root,{status:'active',private:true,
+   sourceSnapshotId:snapshot,sourceSnapshotReconciled:true,applicationEnabled:true});
+  mem.values.set(root+'/characterYearTransitions/year-6-1522-1523',{
+   id:'operational-id',calendarVersion:6,fromYear:1522,toYear:1523,
+   sourceSnapshotId:snapshot,actor:'narrator',
+   createdAt:'2026-11-20T00:00:00.000Z'});
+  const imported={...registry,transitions:[{
+   id:'imported-id',calendarVersion:6,fromYear:1522,toYear:1523,
+   actor:'narrator',createdAt:'2026-11-19T00:00:00.000Z'}]};
+  const transitions=await listAgeTransitions(mem.db,snapshot,imported,30);
+  expect(transitions).toHaveLength(1);
+  expect(transitions[0].id).toBe('operational-id');
+ });
+ it('recusa uma transição de ano com vínculo de snapshot adulterado',async()=>{
+  const mem=inMemory(),root='campaignCloudRuntime/'+snapshot;
+  mem.values.set(root,{status:'active',private:true,
+   sourceSnapshotId:snapshot,sourceSnapshotReconciled:true,applicationEnabled:true});
+  mem.values.set(root+'/characterYearTransitions/year-6-1522-1523',{
+   id:'event-id',calendarVersion:6,fromYear:1522,toYear:1523,
+   sourceSnapshotId:'outro-snapshot',actor:'narrator',
+   createdAt:'2026-11-20T00:00:00.000Z'});
+  await expect(listAgeTransitions(mem.db,snapshot,registry,30))
+   .rejects.toThrow('character_transition_invalid');
+ });
+
 });
