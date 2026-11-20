@@ -24,6 +24,8 @@ import {mergeHouseRuleCatalog} from '../house/firebase-house-rules-core';
 import {houseReleaseReadiness} from '../house/firebase-house-release-readiness';
 import {readOperationalHouseRules} from '../../../scripts/firebase/cloud-house-rules-service.mjs';
 import {constructionStateHash} from '../house/firebase-construction-transaction';
+import {projectVerifiedHouseSheets,HouseEconomyReadError}
+ from './house-economy-integrity';
 import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/firebase-letter-consequences';
 import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
@@ -301,32 +303,33 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(r.unitId&&!units.some((u:any)=>u?.id===r.unitId&&u.destroyed!==true&&u.destroyed!=='true'))
     throw new CloudAccessError('unit_unavailable',400);
   };
-  // Operational House sheets (seeded from the imported sheet by owner
-  // decision) supersede the immutable import once activated and verified.
-  let economiesPromise:Promise<Map<string,{state:Row;version:number}>>|undefined;
+  // A missing operational economy remains the immutable import in read-only
+  // mode. An existing but inconsistent economy must never silently fall back
+  // to the source sheet (which could display stale balances).
+  let economiesPromise:Promise<any[]>|undefined;
   const economies=()=>economiesPromise??=(async()=>{
-   const snap=await db.collection('campaignCloudRuntime').doc(snapshotId).collection('houseEconomies').limit(51).get();
-   const out=new Map<string,{state:Row;version:number}>();
-   for(const d of (snap.docs??[]) as any[]){
-    const v=d.data();
-    if(v?.status==='active'&&v.seedVerified===true&&v.sourceSnapshotId===snapshotId&&
-       typeof v.houseId==='string'&&Number.isSafeInteger(v.version)&&v.state&&typeof v.state==='object'&&
-       v.stateHash===constructionStateHash(v.state))out.set(v.houseId,{state:v.state,version:v.version});
-   }
-   return out;
+   const snap=await db.collection('campaignCloudRuntime').doc(snapshotId)
+     .collection('houseEconomies').limit(51).get();
+   return (snap.docs??[]) as any[];
   })();
   const sheets=async()=>{
    const [imported,live]=await Promise.all([rows('noble_house_sheets'),economies()]);
-   return imported.filter(r=>houseAllowed(r['house_id'])).map(r=>{
-    const op=live.get(r['house_id']);
-    return op?{...r,state:op.state,version:op.version,operational:true}:r;
-   });
+   try{
+    return projectVerifiedHouseSheets(
+     imported.filter(r=>houseAllowed(r['house_id'])),live,snapshotId,
+    ) as Row[];
+   }catch(e){
+    if(e instanceof HouseEconomyReadError)
+     throw new CloudAccessError('house_economy_unreconciled',503);
+    throw e;
+   }
   };
   const sheetFor=async(id:string)=>{
    checkHouse(id);
    const sheet=(await sheets()).find(r=>r['house_id']===id);
    if(!sheet||!sheet['state']||typeof sheet['state']!=='object')throw new CloudAccessError('house_sheet_unavailable',404);
-   return {state:sheet['state'],version:sheet['version']};
+   return {state:sheet['state'],version:sheet['version'],
+    operational:sheet['operational']===true};
   };
   // A ficha rival só é consultada no servidor, após validar o catálogo oficial.
   // Economia operacional inconsistente bloqueia a prévia, sem fallback.
@@ -973,14 +976,14 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   else if(input?.kind==='rpc')result=await rpc(String(input.name),input.args??{});
   else if(input?.kind==='house'){
    const id=input.houseId;checkHouse(id);
-   const [sheet,ledger,houses,overrides,live,economyMap]=await Promise.all([
+   const [sheet,ledger,houses,overrides,live]=await Promise.all([
     sheetFor(id),visible('noble_house_ledger'),
     visible('campaign_houses'),visible('noble_house_rule_overrides'),
-    db.collection('campaignCloudRuntime').doc(snapshotId).get(),economies(),
+    db.collection('campaignCloudRuntime').doc(snapshotId).get(),
    ]);
    const readiness=houseReleaseReadiness({
     root:live.exists?live.data():null,snapshotId,
-    houseEconomyReconciled:economyMap.has(id),
+    houseEconomyReconciled:sheet.operational===true,
     narrator:admin,env:process.env,
    });
    const operational=readiness.houseRulesReadable
