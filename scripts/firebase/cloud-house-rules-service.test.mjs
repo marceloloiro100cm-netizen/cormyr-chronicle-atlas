@@ -115,3 +115,18 @@ test('catálogo operacional é somente leitura, independente da permissão de gr
   ...request,requestKey:'another-rule-key-22',expectedVersion:1,
  }),e=>e.code==='house_rules_not_approved');
 });
+
+test('não exibe regra com autoria ausente ou nome vazio',async()=>{
+ const f=fixture();
+ await f.service.save('token-narrator-123',request);
+ const item=root+'/houseRuleSets/'+h('house:house-a')+'/rules/'+h('rule:rule-a');
+ const original=structuredClone(f.data.get(item));
+ f.data.set(item,{...original,updatedBy:''});
+ await assert.rejects(()=>readOperationalHouseRules(f.db,SNAP,'house-a'),
+  e=>e.code==='house_rules_integrity_failed');
+ f.data.set(item,{...original,definition:{...original.definition,name:''}});
+ await assert.rejects(()=>readOperationalHouseRules(f.db,SNAP,'house-a'),
+  e=>e.code==='house_rules_integrity_failed');
+ f.data.set(item,original);
+ assert.equal((await readOperationalHouseRules(f.db,SNAP,'house-a'))[0].version,1);
+});
