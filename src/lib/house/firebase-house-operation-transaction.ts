@@ -1,15 +1,17 @@
 /**
- * Item 4b: gravação transacional da parte já pura de houseOperation.
- * A API recusa TODAS as demais ações até existir paridade do motor 4a.
+ * Itens 4a e 4b: gravação transacional das 55 ações da Ficha.
+ * Recursos, versão, permissão e auditoria são validados em cada operação.
  * Nunca grava no snapshot importado ou modifica fichas de outra Casa.
  */
 import {createHash,randomInt} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema,catalogSchema} from './schemas';
+import {privateMediaRef,validatePrivateMediaSource}
+ from '@/lib/firebase-workspace/private-media-core';
 import {applyHouseImportOperation,type HouseImportArchive} from './operation-import-core';
 import {CORE_CATALOG} from './catalog';
-import {applyHouseDomainOperation,applyHouseNonEconomicOperation,
+import {applyHouseCrestOperation,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  applyHouseEconomicOperation,applyHouseMilitaryOperation,
  applyHouseCreationOperation,applyHouseDiceOperation,
  applyHouseContextOperation,applyHousePurchaseOperation,
@@ -35,7 +37,7 @@ const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const DOMAINS=new Set(['domain','domain_edit','domain_delete']);
 const ECONOMICS=new Set<string>([...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
-const OPERATIONS=new Set([...DOMAINS,'advance',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
+export const FIREBASE_HOUSE_SUPPORTED_ACTIONS=new Set([...DOMAINS,'advance','crest_import',...HOUSE_NON_ECONOMIC_ACTIONS,...HOUSE_ECONOMIC_ACTIONS,...HOUSE_MILITARY_ACTIONS,...HOUSE_CREATION_ACTIONS,...HOUSE_DICE_ACTIONS,...HOUSE_CONTEXT_ACTIONS,...HOUSE_PURCHASE_ACTIONS,...HOUSE_LINK_ACTIONS,'undo','import']);
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
@@ -46,7 +48,9 @@ const ready=(doc:{exists:boolean;data:()=>Record<string,unknown>|undefined})=>
 
 type RuntimeRoot={status?:string;private?:boolean;sourceSnapshotId?:string;
  sourceSnapshotReconciled?:boolean;applicationEnabled?:boolean;
- houseOpsWriteApproved?:boolean;recordsReadApproved?:boolean;calendarVersion?:number};
+ houseOpsWriteApproved?:boolean;recordsReadApproved?:boolean;
+ privateMediaReadApproved?:boolean;privateMediaWriteApproved?:boolean;
+ calendarVersion?:number};
 type SourceSheet={houseId?:string;version?:number;
  state?:Record<string,unknown>};
 type EconomyDoc={houseId?:string;status?:string;private?:boolean;
@@ -94,11 +98,23 @@ export function createFirebaseHouseOperation({
   if(!parsed.success||!parsed.data||!valid(parsed.data.houseId))
     throw new HouseOperationError('invalid_house_operation',400);
   const {houseId,version,key,action,args,explanation}=parsed.data;
-  if(!OPERATIONS.has(action))
+  if(!FIREBASE_HOUSE_SUPPORTED_ACTIONS.has(action))
     fail('house_operation_not_implemented',501);
   if(Buffer.byteLength(JSON.stringify(args),'utf8')>
       (action==='import'?520_000:14_000))
     fail('house_operation_too_large',413);
+  const crestPath=action==='crest_import'?args['path']:null;
+  if(action==='crest_import'){
+   if(env['CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED']!=='true')
+    fail('house_crest_media_disabled',503);
+   if(typeof crestPath!=='string'||crestPath.length>400)
+    fail('house_crest_path_invalid',400);
+   try{
+    const matched=validatePrivateMediaSource(crestPath,snapshotId,uid);
+    if(!['png','jpg','webp'].includes(matched[4]?.toLowerCase()??''))
+     fail('house_crest_path_invalid',400);
+   }catch{fail('house_crest_path_invalid',400);}
+  }
   // Gerado uma única vez por tentativa, fora do callback que o Firestore pode repetir.
   const trustedDice=(HOUSE_DICE_ACTIONS.includes(action as HouseDiceAction)||
     action==='action'&&args['type']==='Torneio')
@@ -113,6 +129,7 @@ export function createFirebaseHouseOperation({
   const sheetRef=nobleStage.collection('sheets').doc(hash('noble-sheet:'+houseId));
   const economyRef=root.collection('houseEconomies').doc(hash('house:'+houseId));
   const eventId=hash('house-operation:'+uid+':'+key);
+  const crestRef=typeof crestPath==='string'?privateMediaRef(root,crestPath):null;
   const eventRef=root.collection('houseOperationRequests').doc(eventId);
   const ledgerRef=root.collection('houseOperationLedger').doc(eventId);
   const auditRef=root.collection('houseOperationAudits').doc(eventId);
@@ -208,6 +225,22 @@ export function createFirebaseHouseOperation({
    if(needsHouseOperationCalendar(state,action)&&
      state.month!==monthFromHarptosDate({year:c.year,month:c.month}))
       fail('house_calendar_conflict',409);
+   if(action==='crest_import'){
+    if(cfg.privateMediaReadApproved!==true||
+       cfg.privateMediaWriteApproved!==true)
+     fail('house_crest_media_not_approved',503);
+    const doc=await tx.get(crestRef!);
+    const meta=doc.data();
+    const extension=String(crestPath).split('.').pop()?.toLowerCase();
+    const mime=extension==='png'?'image/png':extension==='jpg'?'image/jpeg':
+     extension==='webp'?'image/webp':null;
+    if(!doc.exists||!mime||meta?.['ownerUid']!==uid||
+       meta?.['path']!==crestPath||meta?.['sourceSnapshotId']!==snapshotId||
+       meta?.['status']!=='ready'||meta?.['contentType']!==mime||
+       !Number.isSafeInteger(meta?.['size'])||
+       Number(meta?.['size'])<32||Number(meta?.['size'])>2*1024*1024)
+     fail('house_crest_media_not_ready',409);
+   }
    // Resolve os vínculos com registros da Casa sob a mesma transação.
    let npcIds:string[]=[];
    let linkRecords:Array<{id:string;house_id:string|null;kind:string;
@@ -324,7 +357,9 @@ export function createFirebaseHouseOperation({
    let candidate:{state:typeof state;rule:string;explanation?:string;
     archive?:HouseImportArchive};
    try{
-    candidate=action==='import'
+    candidate=action==='crest_import'
+     ?applyHouseCrestOperation(state,args,{admin:narrator,snapshotId,actorUid:uid})
+     :action==='import'
      ?applyHouseImportOperation(state,args,String(docs[7].data()?.['name']??''))
      :action==='undo'
      ?{state:structuredClone(undoSnapshot!) as typeof state,
