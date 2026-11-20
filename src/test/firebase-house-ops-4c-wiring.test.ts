@@ -23,7 +23,7 @@ describe('Ficha Firebase: contrato de integração 4c',()=>{
   expect(activation).toContain('return {message:result.message,version:result.version}');
   const yaml=source('apphosting.yaml');
   expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED\n\s+value: "true"/);
-  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "false"/);
+  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "true"/);
  });
  it('a cotação e a Ficha leem as mesmas regras mesmo sem habilitar gravações',()=>{
   const quote=source('src/routes/api/firebase-cloud-house-quote.ts');
@@ -33,14 +33,14 @@ describe('Ficha Firebase: contrato de integração 4c',()=>{
   expect(workspace).toContain('readiness.houseRulesReadable');
   const yaml=source('apphosting.yaml');
   expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED\n\s+value: "true"/);
-  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "false"/);
+  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "true"/);
  });
- it('inclui ledger operacional e mantém guardas desativadas na implantação',()=>{
+ it('inclui ledger operacional e liga as operações (20/11/2026), ainda sujeitas à aprovação do runtime',()=>{
   expect(source('src/lib/firebase-workspace/service.ts'))
    .toContain('readOperationalHouseLedger(db,snapshotId)');
   expect(source('src/lib/firebase-workspace/service.ts'))
    .toContain("process.env['CORMYR_FIREBASE_HOUSE_OPS_ENABLED']");
   const app=source('apphosting.yaml');
-  expect(app).toMatch(/CORMYR_FIREBASE_HOUSE_OPS_ENABLED\n\s+value: "false"/);
+  expect(app).toMatch(/CORMYR_FIREBASE_HOUSE_OPS_ENABLED\n\s+value: "true"/);
  });
 });

@@ -53,7 +53,7 @@ env:
   # Traduções en/es/de pertencem ao projeto posterior; nenhuma rota de
   # tradução pode ser liberada por ativação acidental do catálogo em português.
   - variable: CORMYR_FIREBASE_PUBLIC_TRANSLATIONS_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
   - variable: CORMYR_FIREBASE_PUBLIC_TIME_ENABLED
@@ -143,7 +143,7 @@ env:
   # Itens 4 e 5: nunca ativar mutações de Casas sem
   # reconciliação econômica e homologação por perfil no servidor.
   - variable: CORMYR_FIREBASE_HOUSE_OPS_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
   # Catálogo operacional legível pelas Casas autorizadas, sem permitir
@@ -153,24 +153,24 @@ env:
     availability:
       - RUNTIME
   - variable: CORMYR_FIREBASE_HOUSE_RULES_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
   # Item 6: leitura operacional versionada de registros só após aceite no Cloud.
   - variable: CORMYR_FIREBASE_RECORDS_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
   # Item 7a: ações operacionais de espiões até aceite de isolamento por Casa.
   - variable: CORMYR_FIREBASE_SPY_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
 
   # Item 8: representação exige Narrador real, sessão curta e auditoria.
   # Continua desativada até homologação do Firestore e das Casas.
   - variable: CORMYR_FIREBASE_REPRESENTATION_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
 
@@ -182,14 +182,14 @@ env:
 
   # Item 10: encomendas pagas somente após aceite da economia e Jornal.
   - variable: CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
 
   # Item 11: anexos privados em Storage. Nunca habilitar sem escopo,
   # assinatura IAM e homologação de referências e bucket.
   - variable: CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
 
@@ -202,7 +202,32 @@ env:
     availability:
       - RUNTIME
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED
-    value: "false"
+    value: "true"
     availability:
       - RUNTIME
 
+  # 20/11/2026: o proprietário pediu todas as funções ligadas. As chaves abaixo
+  # só liberam as rotas; cada gravação continua conferindo o Firebase Auth, o
+  # perfil e a aprovação correspondente no runtime (Contas > Aprovações).
+  - variable: CORMYR_FIREBASE_PRIVATE_GM_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_CLOUD_CONSTRUCTION_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_CLOUD_TREASURY_AUDIT_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  - variable: CORMYR_FIREBASE_DRIVE_AUDIT_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+  # Galeria pública: exige também o segredo CORMYR_FIREBASE_PUBLIC_GALLERY_BUCKET
+  # (nome do bucket cormyr-...). Sem ele a rota continua respondendo 503.
+  - variable: CORMYR_FIREBASE_PUBLIC_GALLERY_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME

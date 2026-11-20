@@ -41,6 +41,10 @@ import {createFirebaseCommissions,readFirebaseCommissions,FirebaseCommissionErro
 import {readNewspaperStaffOverlay,parseStaffOperation,commitNewspaperStaff,NewspaperStaffError}
  from '../newspaper/firebase-newspaper-staff.server';
 import {readPublicNewspaperReadCounts,PublicNewspaperError} from '../newspaper/firebase-public-newspaper.server';
+import {OVERLAY_TABLES,isOverlayTable,mergeOverlay,readOverlayRows,planOverlayMutation,commitOverlayPlan,
+ TableOverlayError} from './operational-table-overlay';
+import {deletedNewspaperIds,markNewspaperDeleted} from '../../../scripts/firebase/newspaper-deleted.mjs';
+import {readRuntimeApprovals,setRuntimeApprovals,RuntimeApprovalError} from './runtime-approvals';
 import {readAgeRegistry,projectAgeDashboard,projectHouseAges,listAgeTransitions,CharacterAgesError} from './operational-character-ages';
 
 export type Scope={uid:string;profile:'narrador'|'jogador'|'editor';playerId:string|null;memberHouseIds:string[];editHouseIds:string[]};
@@ -86,8 +90,20 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   const cache=new Map<string,Promise<Row[]>>();
   const rows=(name:string)=>{
    if(!cache.has(name))cache.set(name,(async()=>{
-    const original=cacheImportedTables?await cachedWorkspaceTable(db,snapshotId,name)
-     :await readWorkspaceTable(db,snapshotId,name) as Row[];
+    // Tabelas sem cópia no acervo (ex.: caderno do Narrador) começam vazias.
+    const importedTable=async()=>{
+     try{
+      return cacheImportedTables?await cachedWorkspaceTable(db,snapshotId,name)
+       :await readWorkspaceTable(db,snapshotId,name) as Row[];
+     }catch(e){
+      if(isOverlayTable(name)&&String((e as Error)?.message??e).includes('workspace_table_not_supported'))return [] as Row[];
+      throw e;
+     }
+    };
+    const original=await importedTable();
+    // Linhas gravadas pelas telas no Firebase (cópia operacional auditada).
+    if(isOverlayTable(name))
+     return mergeOverlay(original,await readOverlayRows(db,snapshotId,name),OVERLAY_TABLES[name]!.key);
     return original;
    })());
    return cache.get(name)!;
@@ -489,7 +505,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     }
     return rows(name);
    }
-   if(name==='campaign_newspapers')return (await rows(name)).filter(r=>editor||['published','archived'].includes(r['state']));
+   if(name==='campaign_newspapers'){
+    const removed=await deletedNewspaperIds(db,snapshotId);
+    return (await rows(name)).filter(r=>!removed.has(r['id'])&&(editor||['published','archived'].includes(r['state'])));
+   }
    if(name==='campaign_newspaper_reads')return (await rows(name)).filter(r=>editor||r['user_id']===scope.uid);
    if(name==='campaign_newspaper_commissions'){
      const original=(await rows(name)).filter(r=>editor||houseAllowed(r['house_id']));
@@ -502,6 +521,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(name==='campaign_newspaper_staff'){
     try{return (await readNewspaperStaffOverlay(db,snapshotId))??await rows(name);}
     catch(e){if(e instanceof NewspaperStaffError)throw new CloudAccessError(e.code,e.status);throw e;}
+   }
+   if(name==='noble_house_gm_notes'){
+    if(!admin)denied();
+    return rows(name);
    }
    if(['campaign_newspaper_story_models','campaign_newspaper_engravings','campaign_newspaper_settings','campaign_newspaper_revisions'].includes(name)){
     if(!editor)return [];
@@ -543,6 +566,42 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      if(e instanceof NewspaperStaffError)throw new CloudAccessError(e.code,e.status);
      throw e;
     }
+   }
+   // Aprovações do runtime: só o Narrador lê e liga (Contas > Aprovações).
+   if(name==='runtime_approvals'||name==='runtime_approvals_set'){
+    if(!admin)denied();
+    try{
+     return name==='runtime_approvals'?await readRuntimeApprovals(db,snapshotId)
+      :await setRuntimeApprovals(db,snapshotId,scope.uid,args['p_changes']);
+    }catch(e){
+     if(e instanceof RuntimeApprovalError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
+   // Excluir rascunho ou edição do Arquivo (Editor-Chefe e Narrador).
+   if(name==='delete_campaign_newspaper_draft'||name==='delete_campaign_newspaper'){
+    if(!editor)denied();
+    const id=args['p_newspaper'];
+    if(typeof id!=='string')throw new CloudAccessError('invalid_edition',400);
+    let state:string|null=null;
+    if(id.startsWith('cloud-')){
+     const doc=await db.collection('campaignCloudRuntime').doc(snapshotId).collection('publishedNewspapers').doc(id).get();
+     if(!doc.exists)throw new CloudAccessError('edition_unavailable',404);
+     state=String(doc.data()?.state??'');
+    }else{
+     const row=(await rows('campaign_newspapers')).find(r=>r['id']===id);
+     if(!row)throw new CloudAccessError('edition_unavailable',404);
+     state=String(row['state']??'');
+    }
+    try{return await markNewspaperDeleted(db,snapshotId,{id,actorUid:scope.uid,
+     draftOnly:name==='delete_campaign_newspaper_draft',state});}
+    catch(e){const status=(e as {status?:number}).status;
+     if(status)throw new CloudAccessError((e as Error).message,status);throw e;}
+   }
+   // Edições agendadas não existem no Firebase (a gravação recusa publish_on).
+   if(name==='publish_due_campaign_newspapers'){
+    if(!editor)denied();
+    return 0;
    }
    if(name==='newspaper_public_read_counts'){
     if(!editor)denied();
@@ -920,7 +979,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      title:e['draft'].title,description:e['draft'].description??'',deleted:e['draft'].deleted===true,
      version:e['version'],published:e['published']!==null}));
    }
-   if(name==='get_campaign_schedule_events'||name==='get_campaign_chronology'){
+   if(name==='get_campaign_schedule_events'||name==='get_campaign_chronology'||name==='get_newspaper_calendar_events'){
     const year=args['p_year'],month=args['p_month'];
     if(!Number.isSafeInteger(year)||!Number.isSafeInteger(month)||(month as number)<0||(month as number)>11)
      throw new CloudAccessError('invalid_calendar_request',400);
@@ -928,7 +987,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     const kingdom=(await cloudEvents()).filter(e=>e['published']&&inMonth(e['published'].date))
      .map(e=>({id:'evento-'+e['id'],date:e['published'].date,title:e['published'].title,kind:'kingdom' as const,
       ...(e['published'].description?{description:e['published'].description}:{})}));
-    if(name==='get_campaign_schedule_events')return kingdom;
+    if(name!=='get_campaign_chronology')return kingdom;
     // Chronology: published Kingdom events and delivered letters the viewer may read.
     const ds=await mail();
     const letters=ds.letters.filter(l=>l.publication_state==='delivered'&&l.deleted_at===null&&
@@ -1034,6 +1093,22 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    else if(mutations&&input.table==='narrator_mail_notes'&&steps.length===1&&steps[0]?.op==='upsert')
     result=await saveNarratorNote(steps[0].args?.[0]);
+   else if(mutations&&isOverlayTable(String(input.table))){
+    // Tabelas operacionais: gravação da tela original, transacional e auditada.
+    const table=String(input.table);
+    try{
+     const config=OVERLAY_TABLES[table]!;
+     if(!config.write(scope.profile))denied();
+     const now=new Date().toISOString();
+     const plan=planOverlayMutation(table,scope.profile,await rows(table),steps,now);
+     await commitOverlayPlan(db,snapshotId,table,scope.uid,plan,now);
+     cache.delete(table);
+     result=plan.result;
+    }catch(e){
+     if(e instanceof TableOverlayError)throw new CloudAccessError(e.code,e.status);
+     throw e;
+    }
+   }
    else if(mutations)throw new CloudAccessError('workspace_operation_not_implemented',501);
    else result=queryRows(await visible(String(input.table)),steps);
   }

@@ -1082,3 +1082,5 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .custom-image-upload{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .custom-image-upload small{flex-basis:100%;font-size:11px}
 .military-sheet-symbol{display:grid;justify-items:center;gap:6px}
+.nw-approvals{margin-bottom:28px}.nw-approvals-list{list-style:none;padding:0;margin:14px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.nw-approvals-list li{border:1px solid var(--border);border-left:3px solid var(--campaign-gold);border-radius:8px;padding:8px 12px;background:var(--campaign-paper)}

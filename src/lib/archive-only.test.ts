@@ -16,10 +16,6 @@ describe('Firebase archive-only cutover', () => {
   });
 
   it.each([
-    ['/api/public/catalog', 'router'],
-    ['/api/public/time', 'router'],
-    ['/api/public/translations', 'router'],
-    ['/api/public/jobs/drive-sync', 'router'],
     ['/api/firebase-auth-verify', 'router'],
     ['/api/firebase-domain', 'router'],
     ['/api/firebase-cloud-read', 'serverFn'],
@@ -45,6 +41,13 @@ describe('Firebase archive-only cutover', () => {
     ['/api/firebase-cloud-newspaper', 'router'],
     ['/api/public/gm-content', 'router'],
     ['/api/public/newspaper', 'router'],
+    ['/api/public/time', 'router'],
+    ['/api/public/catalog', 'router'],
+    ['/api/public/translations', 'router'],
+    ['/api/public/gallery-image', 'router'],
+    ['/api/public/jobs/drive-sync', 'router'],
+    ['/api/firebase-cloud-treasury', 'router'],
+    ['/api/firebase-cloud-construction', 'router'],
     ['/unrelated', 'router'],
   ])('keeps public static route %s reachable', (pathname, type) => {
     expect(shouldBlockLegacyRequest(pathname, type)).toBe(false);
@@ -69,13 +72,10 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(endpoint,'serverFn')).toBe(true);
     for(const suffix of ['/','-old','/legacy','/extra'])
       expect(shouldBlockLegacyRequest(endpoint+suffix,'router')).toBe(true);
-    expect(shouldBlockLegacyRequest('/api/firebase-cloud-construction','router')).toBe(true);
     expect(shouldBlockLegacyRequest('/api/firebase-domain','router')).toBe(true);
   });
 
   it.each([
-    '/api/firebase-cloud-treasury',
-    '/api/firebase-cloud-construction',
     '/api/firebase-domain',
     '/api/firebase-auth-verify',
   ])('continues to block non-approved Firebase route %s', pathname => {

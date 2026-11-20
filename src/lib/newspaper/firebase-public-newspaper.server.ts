@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- limite do Firebase Admin. */
 import {createHash} from 'node:crypto';
+import {deletedNewspaperIds} from '../../../scripts/firebase/newspaper-deleted.mjs';
 
 /**
  * Leitura PÚBLICA de A Folha Sem Selo (site aberto, sem conta).
@@ -60,6 +61,7 @@ export async function listPublicNewspapers(db:any,snapshotId:string){
  const snap=await db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).collection('editions').get();
  if(snap.size>100)fail('newspaper_response_too_large',503);
  const root=await cloudRoot(db,snapshotId);
+ const removed=await deletedNewspaperIds(db,snapshotId);
  let cloud:Row[]=[];
  if(root){
   const c=await root.collection('publishedNewspapers').get();
@@ -67,6 +69,7 @@ export async function listPublicNewspapers(db:any,snapshotId:string){
   cloud=c.docs.map((d:any)=>d.data()).filter((v:Row)=>cloudRow(v,snapshotId));
  }
  const items=[...snap.docs.map((d:any)=>d.data()).filter(publishedRow),...cloud]
+  .filter(v=>!removed.has(v['id']))
   .sort((a,b)=>b['editionNo']-a['editionNo'])
   .map(v=>({id:v['id'],title:v['title'],subtitle:v['subtitle']??'',editionNo:v['editionNo'],
    publishedAt:v['publishedAt'],campaignDate:v['campaignDate']??null}));
@@ -83,7 +86,8 @@ export async function getPublicNewspaper(db:any,snapshotId:string,editionId:unkn
  const snap=cloudId?await root.collection('publishedNewspapers').doc(id).get()
   :await db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).collection('editions').doc(id).get();
  const v:Row|undefined=snap.exists?snap.data():undefined;
- if(!v||!(cloudId?cloudRow(v,snapshotId):publishedRow(v))||v['id']!==id)
+ if(!v||!(cloudId?cloudRow(v,snapshotId):publishedRow(v))||v['id']!==id||
+    (await deletedNewspaperIds(db,snapshotId)).has(id))
   throw new PublicNewspaperError('edition_unavailable',404);
  const result={id,title:v['title'],subtitle:v['subtitle']??'',editionNo:v['editionNo'],
   template:v['template']??'classico',font_style:v['font_style']??'classico',

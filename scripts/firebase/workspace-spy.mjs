@@ -3,6 +3,27 @@ import {houseManagement,recruitmentOptions} from './spy-agents-core.mjs';
 import {houseTimeline,counterintelligence,narratorOperations,incidentHistory} from './spy-missions-core.mjs';
 import {readDossiers,adminPending,adminOptions,operationStatus} from './spy-intel-core.mjs';
 import {readSpyOverlay,projectSpyOverlay} from './workspace-spy-overlay.mjs';
+import {LINKS} from './spy-missions-core.mjs';
+import {createHash} from 'node:crypto';
+
+const REGIONAL_STATUSES=new Set(['available','assigned','traveling','operating','returning','missing',
+ 'captured','retired','lost','dead','pending_review']);
+const stableUuid=text=>{
+ const h=createHash('sha256').update(text).digest('hex');
+ return h.slice(0,8)+'-'+h.slice(8,12)+'-4'+h.slice(13,16)+'-8'+h.slice(17,20)+'-'+h.slice(20,32);
+};
+/** spy_get_regional_strategy no Firebase: agentes da Casa e ligações oficiais. */
+export function regionalStrategy({houseId,assets,locations}){
+ const locOf=id=>locations.find(l=>l.id===id)||null;
+ const agents=assets.filter(a=>a.ownerHouseId===houseId&&REGIONAL_STATUSES.has(a.status)).map(a=>{
+  const l=locOf(a.currentLocationId);
+  return {id:a.id,codename:a.codename,status:a.status,
+   currentRegion:l?(l.kind==='region'?l.refId:l.regionId??null):null};
+ });
+ const links=LINKS.map(([from,to,passage])=>({id:stableUuid('spy-link:'+from+':'+to+':'+passage),
+  fromRegion:from,toRegion:to,passage,bidirectional:true,version:1}));
+ return {houseId,agents,links};
+}
 export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet,db}){
  if(scope.profile==='editor')throw Error('spy_access_denied');
  const h=args.p_house??null,admin=scope.profile==='narrador';
@@ -37,6 +58,11 @@ export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet,db
    .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]??null;
   return operationStatus({actor,operation:op,decision,
    award:d.awards.find(x=>x.operationId===args.p_operation)??null});
+ }
+ if(name==='spy_get_regional_strategy'){
+  // Posição dos agentes da Casa e o grafo oficial de regiões (20/11/2026).
+  if(!h)throw Error('spy_access_denied');
+  return regionalStrategy({houseId:h,assets:d.assets,locations:d.locations});
  }
  if(name==='spy_public_noble_targets')return d.catalog
   .filter(c=>c.publicReviewed===true)

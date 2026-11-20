@@ -1,4 +1,5 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
+import {deletedNewspaperIds} from './newspaper-deleted.mjs';
 import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
 import {inspectWorkspaceLinks} from './workspace-link-audit.mjs';
 import {listWorkspaceRecords,getWorkspaceRecord,listWorkspaceRecordVersions,
@@ -569,8 +570,9 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
           typeof v.publishedAt==='string'&&v.cancelledAt===null
         );
       }
+      const removed=await deletedNewspaperIds(db,snapshotId);
       const items=[...snap.docs.map(d=>d.data()),...newEditions].filter(v=>
-        v&&['published','archived'].includes(v.state)&&
+        v&&!removed.has(v.id)&&['published','archived'].includes(v.state)&&
         typeof v.id==='string'&&typeof v.title==='string'&&
         Number.isInteger(v.editionNo)&&
         typeof v.publishedAt==='string'&&v.cancelledAt==null
@@ -593,6 +595,8 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
         :await get(db,'migrationNewspaperRuntimeStage',snapshotId,
           'editions',editionId);
       const v=snap.data();
+      if((await deletedNewspaperIds(db,snapshotId)).has(editionId))
+        deny('edition_unavailable',404);
       if(cloudId&&(!v||v.source!=='firebase-cloud'||
          v.sourceSnapshotId!==snapshotId||v.id!==editionId||
          !['published','archived'].includes(v.state)))

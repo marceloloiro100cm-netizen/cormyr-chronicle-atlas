@@ -30,6 +30,7 @@ import {EditorMailReader} from '@/components/players/editor-mail-reader';
 import {MissivasArea} from '@/components/players/chancelaria/MissivasArea';
 import {CouncilOpening} from '@/components/firebase/CouncilOpening';
 import {FirebaseCouncilAccessReview} from '@/components/firebase/FirebaseCouncilAccessReview';
+import {FirebaseRuntimeApprovals} from '@/components/firebase/FirebaseRuntimeApprovals';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
 import { HouseIdentity } from '@/components/players/house-identity';
@@ -227,6 +228,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}>{section==='acessos-firebase'?
       // Contas: revisão das contas Firebase pendentes e a administração (antes um botão dentro das fichas).
       <div className="nw-page nw-accounts">
+        {firebaseWorkspaceClient()!==null&&<FirebaseRuntimeApprovals/>}
         {firebaseWorkspaceClient()!==null&&<FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/>}
         <section aria-label="Administração"><h2 className="nw-group-title">Administração</h2><AdminPanel data={data} onSave={afterSave}/></section>
       </div>:
