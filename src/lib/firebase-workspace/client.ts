@@ -14,10 +14,10 @@ function workspaceError(status:number,input:Record<string,unknown>,serverCode?:s
    ?'Esta modalidade de missiva ainda não está disponível no Firebase (por exemplo, múltiplos destinatários, rascunho, agendamento ou vínculos). Nada foi enviado.'
    :'Esta função ainda não está disponível no Firebase. Nada foi alterado.'):
   status===400?'Dados da operação inválidos. Confira os campos da missiva.':
-  'Não foi possível acessar os dados operacionais do Firebase. Tente novamente após a homologação.';
+  'Não foi possível carregar os dados da campanha. Tente novamente.';
  // Only a fixed lowercase server code (never provider text) is kept for diagnosis.
  const code=typeof serverCode==='string'&&/^[a-z_]{3,60}$/.test(serverCode)?serverCode:undefined;
- return Object.assign(Error(message),{code:'FIREBASE_'+status,...(code?{serverCode:code}:{})});
+ return Object.assign(Error(message+(code?' Código: '+code+'.':'')),{code:'FIREBASE_'+status,...(code?{serverCode:code}:{})});
 }
 async function send(body:Record<string,unknown>):Promise<{ok:true;result:any}|{ok:false;status:number;serverCode?:string}>{
  const auth=firebasePilotAuth(),uid=auth?.current()?.uid;

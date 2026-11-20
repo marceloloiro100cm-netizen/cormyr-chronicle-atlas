@@ -7,6 +7,7 @@ import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { firebasePilotAuth } from '@/lib/auth/firebase-pilot-session';
 import { firebasePilotLoginFailure } from '@/lib/auth/firebase-pilot-login-feedback';
 import { loadFirebasePublicSeasonHouses } from '@/lib/auth/season-houses';
+import {prepareGoogleSignIn,googleRefreshToken,googleLoginMessage} from '@/lib/auth/firebase-google';
 import { takeLoginMessage } from '@/lib/auth/firebase-login-handoff';
 
 export const Route = createFileRoute('/auth')({
@@ -32,6 +33,7 @@ function Auth() {
  const [message,setMessage] = useState('');
  useEffect(()=>{const notice=takeLoginMessage();if(notice)setMessage(notice);},[]);
  const [busy,setBusy] = useState(false);
+ useEffect(()=>{void prepareGoogleSignIn().catch(()=>{});},[]);
 
  // A single Firebase session is shared with /firebase-access in this tab.
  // Never treat an old Supabase JWT or a House chosen on the login form
@@ -73,6 +75,22 @@ function Auth() {
   }finally{setBusy(false);}
  }
 
+ async function googleLogin(){
+  if(busy)return;
+  setBusy(true);setMessage('');
+  const auth=firebasePilotAuth();
+  let signedIn=false;
+  try{
+   if(!auth)throw Error('Firebase Auth indisponível');
+   await auth.signInWithGoogle(googleRefreshToken);
+   signedIn=true;
+   await navigate({to:'/firebase-access'});
+  }catch(error){
+   if(signedIn)auth?.signOut();
+   setMessage(googleLoginMessage(error));
+  }finally{setBusy(false);}
+ }
+
  async function requestPasswordReset(){
   if(busy || !email.trim()){
    if(!email.trim())setMessage('Informe seu e-mail para recuperar a senha.');
@@ -95,6 +113,9 @@ function Auth() {
   <div className="campaign-auth-layout">
    <section className="campaign-auth">
     <h2>Entrar com Firebase</h2>
+    <Button disabled={busy} type="button" variant="outline"
+     onClick={()=>void googleLogin()}>Entrar com Google</Button>
+    <p className="campaign-hint">Use a conta Google com o mesmo e-mail cadastrado na campanha.</p>
     <form onSubmit={submit} className="campaign-form">
      <label>E-mail
       <input type="email" required autoComplete="email" value={email}

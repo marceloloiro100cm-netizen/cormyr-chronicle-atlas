@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/firebase/workspace-link-audit-cli.mjs'
+      - 'scripts/firebase/workspace-login-diagnostic.mjs'
       - 'scripts/firebase/workspace-link-audit.mjs'
       - 'scripts/firebase/workspace-link-audit.test.mjs'
       - 'scripts/firebase/workspace-audit.mjs'
@@ -55,6 +56,8 @@ jobs:
           service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
           project_id: cormyr
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Diagnose private login projections and Google provider (read-only)
+        run: node scripts/firebase/workspace-login-diagnostic.mjs
       - name: Verify private import reference counts without modifying data
         run: node scripts/firebase/workspace-link-audit-cli.mjs
       - name: Verify actual imported module projections (read-only)

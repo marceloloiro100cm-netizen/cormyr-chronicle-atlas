@@ -35,6 +35,7 @@ export function memoryStorage(): TokenStorage {
 
 export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthTokenProvider & {
   signInWithPassword(email: string, password: string): Promise<FirebaseSession>;
+  signInWithGoogle(getRefreshToken: () => Promise<string>): Promise<FirebaseSession>;
   requestPasswordReset(email: string): Promise<void>;
   confirmPasswordReset(oobCode: string, newPassword: string): Promise<void>;
   signOut(): void;
@@ -109,6 +110,20 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
         body: JSON.stringify({ email, password, returnSecureToken: true }),
       });
       return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
+    },
+    async signInWithGoogle(getRefreshToken) {
+      const version = ++sessionVersion;
+      inflight = null;
+      const refreshToken = await getRefreshToken();
+      if (version !== sessionVersion) throw new FirebaseAuthError('STALE_SESSION');
+      if (typeof refreshToken !== 'string' || !refreshToken)
+        throw new FirebaseAuthError('BAD_RESPONSE');
+      // Secure Token verifies the SDK credential; no role or House is imported.
+      const b = await post(`${origin('securetoken.googleapis.com')}/v1/token?key=${key}`, {
+        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`,
+      });
+      return accept(b.user_id, b.id_token, b.refresh_token, b.expires_in, version);
     },
     async requestPasswordReset(email) {
       if (typeof email !== 'string' || email.length > 254 ||

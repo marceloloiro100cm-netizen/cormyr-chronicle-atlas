@@ -7,10 +7,20 @@ export function queryRows(source:Row[],steps:QueryStep[]){
  let rows=[...source],mode='many',head=false,wantCount=false;
  const orders:{key:string;asc:boolean}[]=[];
  let start=0,end:number|undefined,limit:number|undefined;
+ let columns:string[]|null=null;
  for(const step of steps){
   const [key,value]=step.args;
   switch(step.op){
-   case 'select':head=Boolean(value?.head);wantCount=Boolean(value?.count);break;
+   case 'select':{
+    head=Boolean(value?.head);wantCount=Boolean(value?.count);
+    if(key===undefined||key==='*'){columns=null;break;}
+    if(typeof key!=='string')bad();
+    const fields=key.split(',').map((field:string)=>field.trim());
+    // Keep the established compatibility behaviour for relationship selectors.
+    // Flat header queries can safely omit the large body fields.
+    columns=fields.length&&fields.every((field:string)=>/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(field))
+     ?[...new Set(fields)] as string[]:null;break;
+   }
    case 'eq':rows=rows.filter(r=>r[key]===value);break;
    case 'neq':rows=rows.filter(r=>r[key]!==null&&r[key]!==value);break;
    case 'is':rows=rows.filter(r=>(r[key]??null)===value);break;
@@ -33,5 +43,6 @@ export function queryRows(source:Row[],steps:QueryStep[]){
  for(const {key,asc} of orders.reverse())rows.sort((a,b)=>a[key]===b[key]?0:((a[key]??'')<(b[key]??'')?-1:1)*(asc?1:-1));
  rows=rows.slice(start,end);if(limit!==undefined)rows=rows.slice(0,limit);
  if(mode!=='many'&&(rows.length>1||(mode==='single'&&rows.length!==1)))throw Error('Registro não encontrado ou ambíguo.');
+ if(columns)rows=rows.map(row=>Object.fromEntries(columns!.map(key=>[key,row[key]??null])));
  return {data:head?null:mode==='many'?rows:rows[0]??null,error:null,count:wantCount?count:null};
 }
