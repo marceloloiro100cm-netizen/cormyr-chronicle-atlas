@@ -97,12 +97,65 @@ export function projectHouseAges(scope:Scope,registry:AgeRegistry,
      'O registro canônico exige revisão do Narrador',
    }));
 }
+/**
+ * Quando o estágio canônico ainda não foi copiado do arquivo imutável,
+ * reconstrói somente as tabelas verificadas no snapshot privado.
+ * Nenhum dado é inventado nem gravado, e nenhuma coleção fica pública.
+ */
+async function readVerifiedArchive(db:any,snapshot:string):Promise<AgeRegistry>{
+ const {buildCharacterPlan}=await import('../../../scripts/firebase/stage-characters-emulator.mjs');
+ const {archiveValues}=await import('../../../scripts/firebase/workspace-import.mjs');
+ const source=db.collection('migrationPrivateSnapshots').doc(snapshot);
+ const [marker,tables]=await Promise.all([source.get(),source.collection('tables').get()]);
+ if(!marker.exists||marker.data()?.status!=='complete'||marker.data()?.private!==true||
+    !Number.isSafeInteger(marker.data().publicTablesExpected)||
+    tables.docs.length!==marker.data().publicTablesExpected)
+  fail('character_source_not_homologated');
+ const needed=['public.campaign_characters','public.character_source_links',
+  'public.character_year_transitions','public.campaign_houses'];
+ const selected=new Map<string,any>();
+ for(const d of tables.docs){
+  const meta=d.data();
+  if(!needed.includes(meta?.sourceTable))continue;
+  if(selected.has(meta.sourceTable)||!Array.isArray(meta.columns)||
+     !Number.isSafeInteger(meta.rowCount)||meta.rowCount>5000||
+     meta.columns.length>200)
+   fail('character_source_not_reconciled');
+  selected.set(meta.sourceTable,d);
+ }
+ if(!selected.has('public.campaign_characters')||
+    !selected.has('public.campaign_houses'))
+  fail('character_source_not_homologated');
+ const input=[];
+ for(const name of needed){
+  const sourceDoc=selected.get(name);
+  if(!sourceDoc)continue;
+  const meta=sourceDoc.data(),docs=await sourceDoc.ref.collection('rows').get();
+  if(docs.docs.length!==meta.rowCount)fail('character_source_not_reconciled');
+  const entries=[];
+  for(const doc of docs.docs){
+   const values=await archiveValues(doc,meta.columns);
+   entries.push(Object.fromEntries(meta.columns.map((key:string,i:number)=>
+    [key,values[i]])));
+  }
+  input.push({table:name,rows:entries});
+ }
+ const plan=buildCharacterPlan(input,snapshot);
+ if(!plan.summary.planValid||plan.docs.characters.length>2000||
+    plan.docs.links.length>5000||plan.docs.transitions.length>2000)
+  fail('character_source_not_reconciled');
+ return {characters:plan.docs.characters.map((x:any)=>x.payload),
+  links:plan.docs.links.map((x:any)=>x.payload),
+  transitions:plan.docs.transitions.map((x:any)=>x.payload)};
+}
+
 export async function readAgeRegistry(db:any,snapshot:string):Promise<AgeRegistry>{
  if(!/^[a-f0-9]{64}$/.test(snapshot))
   fail('character_source_invalid');
  const root=db.collection('migrationCharacterStage').doc(snapshot);
  const stage=await root.get(),v=stage.data();
- if(!stage.exists||v?.status!=='complete'||v?.private!==true||
+ if(!stage.exists)return readVerifiedArchive(db,snapshot);
+ if(v?.status!=='complete'||v?.private!==true||
     v?.sourceSnapshotId!==undefined&&v.sourceSnapshotId!==snapshot)
   fail('character_source_not_homologated');
  const [characters,links,transitions]=await Promise.all([
