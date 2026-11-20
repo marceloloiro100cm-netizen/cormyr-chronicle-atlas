@@ -9,3 +9,18 @@ A recusa editorial exige justificativa e devolve 1 Riqueza, com lançamento econ
 O módulo usa `CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED=false` até homologação. Mesmo após alterar a flag, a raiz do Firestore deve ter `newspaperCommissionsReadApproved` e `newspaperCommissionsWriteApproved` verdadeiros e a economia operacional e o Jornal precisam estar aprovados. Imagens enviadas por Casas exigem o Storage do item 11 e não são descartadas sem aviso.
 
 Testes cobrem débito, reembolso, duplicidade, edição e liquidação. Publicação exclusivamente no GitHub e Firebase App Hosting.
+
+## Continuação de 20/11/2026
+
+A leitura das encomendas já pagas passa a depender da aprovação de
+consulta e da origem conciliada, sem exigir que a escrita editorial continue
+habilitada. Suspender novas encomendas não oculta o histórico pago nem
+permite débitos adicionais. O cadastro e o reembolso seguem exigindo
+`newspaperWriteApproved` e `newspaperCommissionsWriteApproved`.
+
+A interface Firebase não envia imagens ao bucket legado Supabase e não
+promete publicação automática: o Editor-Chefe pode aceitar, publicar ou recusar.
+O fluxo textual permanece preparado, mas a flag de contratação continua
+desativada até homologação real de economia, permissões e publicação.
+As imagens contratadas ficam bloqueadas até a vinculação aprovada do Storage
+privado e da Redação, sem cobrança parcial por upload.

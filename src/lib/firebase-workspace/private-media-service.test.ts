@@ -53,6 +53,7 @@ function fixture(afterSave?:(docs:Map<string,any>,blobs:Map<string,Buffer>,path:
   save:async(data:Buffer)=>{if(blobs.has(path))throw Error('duplicate');
    blobs.set(path,Buffer.from(data));afterSave?.(docs,blobs,path);},
   delete:async()=>{blobs.delete(path);},
+  exists:async()=>[blobs.has(path)],
   getSignedUrl:async()=>['https://storage.example/signed?exp=60'],
   download:async()=>[blobs.get(path)??Buffer.from('')],
  })};
@@ -127,7 +128,8 @@ describe('Item 11, gateway privado do Storage',()=>{
   await expect(f.api.upload('valid-token',body))
    .rejects.toThrow('private_media_integrity_failed');
   const path='private/'+snap+'/alice/'+body.id+'.png';
-  expect(f.blobs.has(path)).toBe(false);
+  // Os bytes órfãos seguem privados até a retentativa segura.
+  expect(f.blobs.has(path)).toBe(true);
   expect(f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path)))
    .toMatchObject({status:'pending'});
   expect(f.docs.has(root+'/privateMediaAudits/'+privateMediaHash('upload:'+path)))
@@ -142,7 +144,7 @@ describe('Item 11, gateway privado do Storage',()=>{
   await expect(f.api.upload('valid-token',body))
    .rejects.toThrow('private_media_upload_revoked');
   const path='private/'+snap+'/alice/'+body.id+'.png';
-  expect(f.blobs.has(path)).toBe(false);
+  expect(f.blobs.has(path)).toBe(true);
   expect(f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path)))
    .toMatchObject({status:'pending'});
   expect(f.docs.has(root+'/privateMediaAudits/'+privateMediaHash('upload:'+path)))
@@ -168,4 +170,41 @@ describe('Item 11, gateway privado do Storage',()=>{
   state.viewer={uid:'editor',profile:'editor',playerId:null,memberHouseIds:[],editHouseIds:[]};
   await expect(f.api.upload('valid-token',body)).rejects.toThrow('private_media_denied');
  });
+ it('retoma o mesmo upload após revogação temporária, sem apagar bytes nem duplicar auditoria',async()=>{
+  const f=fixture(docs=>docs.set(root,{
+   ...docs.get(root),privateMediaWriteApproved:false,
+  }));
+  const path='private/'+snap+'/alice/'+body.id+'.png';
+  await expect(f.api.upload('valid-token',body))
+   .rejects.toThrow('private_media_upload_revoked');
+  expect(f.blobs.get(path)).toEqual(image);
+  expect(f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path)))
+   .toMatchObject({status:'pending'});
+  f.docs.set(root,{...f.docs.get(root),privateMediaWriteApproved:true});
+  expect(await f.api.upload('valid-token',body))
+   .toMatchObject({path,duplicate:true});
+  expect(f.docs.get(root+'/privateMedia/'+privateMediaHash('private-media:'+path)))
+   .toMatchObject({status:'ready'});
+  expect([...f.docs.keys()].filter(k=>k.includes('/privateMediaAudits/'))).toHaveLength(1);
+ });
+ it('uma reserva pendente sem objeto reenvia sem sobrescrever outros arquivos',async()=>{
+  const f=fixture(),path='private/'+snap+'/alice/'+body.id+'.png';
+  f.blobs.set(path,Buffer.from(image));
+  await expect(f.api.upload('valid-token',body)).rejects.toThrow('duplicate');
+  f.blobs.delete(path);
+  expect(await f.api.upload('valid-token',body))
+   .toMatchObject({path,duplicate:true});
+  expect(f.blobs.get(path)).toEqual(image);
+ });
+ it('não confirma upload duplicado quando o objeto ready desaparece ou muda',async()=>{
+  const f=fixture(),{path}=await f.api.upload('valid-token',body);
+  f.blobs.delete(path);
+  await expect(f.api.upload('valid-token',body))
+   .rejects.toThrow('private_media_integrity_failed');
+  f.blobs.set(path,Buffer.alloc(image.length));
+  await expect(f.api.upload('valid-token',body))
+   .rejects.toThrow('private_media_integrity_failed');
+  expect([...f.docs.keys()].filter(k=>k.includes('/privateMediaAudits/'))).toHaveLength(1);
+ });
+
 });

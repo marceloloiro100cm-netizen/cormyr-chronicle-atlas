@@ -102,6 +102,10 @@ export async function getNewspaperCommissions():Promise<NewspaperCommission[]>{
  return (data??[]) as NewspaperCommission[];
 }
 export async function uploadCommissionImage(houseId:string,file:File):Promise<string>{
+ // O fluxo de comissões Firebase ainda não aceita imagem vinculada à
+ // despesa. Nunca usar o bucket legado nem cobrar Riqueza por um anexo órfão.
+ if(isFirebaseNewspaperWorkspace())
+  throw new Error('Imagens de encomendas ainda aguardam homologação no Firebase. Envie somente o texto.');
  if(file.size>5*1024*1024)throw new Error('A imagem deve ter no máximo 5 MB.');
  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
  if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
@@ -113,6 +117,8 @@ export async function uploadCommissionImage(houseId:string,file:File):Promise<st
  return path;
 }
 export async function signedCommissionImage(path:string):Promise<string>{
+ if(isFirebaseNewspaperWorkspace())
+  throw new Error('Imagem histórica de encomenda não reconciliada com o Firebase Storage.');
  const {data,error}=await db.storage.from(COMMISSION_BUCKET).createSignedUrl(path,3600);
  if(error||!data?.signedUrl)throw error??new Error('Imagem temporariamente indisponível.');
  return data.signedUrl;
@@ -133,6 +139,9 @@ export async function copyCommissionImageToEdition(editionId:string,commissionPa
  return copyBucketImageToEdition(COMMISSION_BUCKET,editionId,commissionPath);
 }
 export async function copyBucketImageToEdition(bucket:string,editionId:string,commissionPath:string):Promise<string>{
+ // Não copiar entre buckets antigos quando a Redação usa Firebase.
+ if(isFirebaseNewspaperWorkspace())
+  throw new Error('Cópia de imagens editoriais ainda não aprovada no Firebase Storage.');
  const {data,error}=await db.storage.from(bucket).download(commissionPath);
  if(error||!data)throw error??new Error('Não foi possível ler a imagem do pedido.');
  const extension=commissionPath.slice(commissionPath.lastIndexOf('.'));

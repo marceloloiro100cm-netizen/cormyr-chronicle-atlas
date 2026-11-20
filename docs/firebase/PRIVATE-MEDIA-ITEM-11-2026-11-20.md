@@ -13,3 +13,23 @@
 O recurso está atrás de `CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED=false`. Mesmo após alterar a flag, a raiz operacional exige `privateMediaReadApproved=true` para leitura e também `privateMediaWriteApproved=true` para upload. Não ativar sem homologar regras do bucket real, assinatura IAM e testes com contas de Casas diferentes. A vinculação de brasões e imagens contratadas ao editor depende da aceitação do fluxo visual e de reconciliação do Storage.
 
 Não alterar o acervo importado nem usar Supabase, Lovable ou Vercel.
+
+## Continuação de 20/11/2026
+
+Uploads interrompidos podem ser retomados com o mesmo identificador e
+o mesmo conteúdo, sem sobrescrever arquivos por geração. A retomada
+revalida a identidade Firebase e a aprovação operacional, verifica tamanho
+e checksum antes de marcar o manifesto como pronto e só registra a
+auditoria uma vez. Um recibo idempotente com Storage ausente ou corrompido
+passa a falhar em vez de declarar sucesso.
+
+Após um erro transacional, bytes ainda presentes no bucket não são apagados
+automaticamente: outra chamada simultânea pode ter confirmado o mesmo objeto.
+Um arquivo em estado `pending` continua inacessível pelo gateway, e uma
+retentativa íntegra pode terminá-lo sem perda de dados. A limpeza de arquivos
+que nunca serão recuperados precisa de auditoria separada, não de exclusão
+cega durante o upload.
+
+As variáveis de liberação do Storage não foram alteradas. A integração de
+imagens da Redação e encomendas permanece condicionada à homologação
+conjunta com o item 10.
