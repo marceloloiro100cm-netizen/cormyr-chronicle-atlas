@@ -15,7 +15,10 @@ import {resourcesSchema} from './schemas';
 import {depositGold,donateGold,donateGlory,spendInfluence,
  redeemIntrigueBonus} from './resource-transactions';
 import {alternativeFortune} from './engine';
-import {convertResources} from './fortune';
+import {convertResources,confirmFortune} from './fortune';
+import {validateResources} from './engine';
+import {changeHoldingCondition,legacyEffectCandidates,legacyCatalogEffects} from './holding-accounting';
+import {historyAdjustments,memberBonusAdjustments} from './creation-history';
 import {improveEquipment} from './equipment';
 import {trainUnit,endVassal} from './military';
 import {buySiege} from './siege';
@@ -409,4 +412,142 @@ export function applyHouseMilitaryOperation(
     'mudança de operadores')+' auditada'};
  }
  throw Error('Ação militar não coberta pelo núcleo.');
+}
+
+/**
+ * Criação e conciliação puras, sem I/O ou alteração do acervo histórico.
+ * Autorizações de atributos são resolvidas na transação, não pela interface.
+ */
+export const HOUSE_CREATION_ACTIONS=[
+ 'draft','admin_edit','condition','submit','fortune','restore_legacy_effects',
+] as const;
+export type HouseCreationAction=typeof HOUSE_CREATION_ACTIONS[number];
+export type HouseCreationContext={admin:boolean;mayBuyAttributes:boolean;
+ explanation:string};
+export function applyHouseCreationOperation(
+ state:HouseState,action:HouseCreationAction,args:Record<string,unknown>,
+ ctx:HouseCreationContext,
+):{state:HouseState;rule:string}{
+ const {admin,mayBuyAttributes,explanation}=ctx;
+ const next=structuredClone(state);
+ let rule='Cormyr · gestão auditada';
+ if(action==='draft'){
+  if(state.phase!=='draft')
+   throw Error('Ficha em revisão ou ativa exige edição auditada do Narrador.');
+  const values=resourcesSchema.parse(args['base']);validateResources(values);
+  const identity=z.object({region:z.string(),motto:z.string().max(500),
+   foundation:z.number().int().optional(),history:z.array(z.string()).max(100),
+   notes:z.string().max(10000),crestPath:z.string().max(600).optional()})
+   .parse(args['identity']);
+  if(identity.crestPath!==state.identity.crestPath)
+   throw Error('Importe a imagem do brasão pela ferramenta segura, não pela edição de identidade.');
+  const method=z.enum(['budget','roll','import']).parse(args['method']);
+  const pristine=state.phase==='draft'&&state.rolls.length===0&&
+   !state.importSources.length&&state.holdings.length===0&&state.units.length===0&&
+   RESOURCE_KEYS.every(r=>state.base[r]===0);
+  if(admin){
+   next.method=method;
+   next.budget=z.number().finite().nonnegative().nullable().parse(args['budget']);
+  }else if(method!==state.method){
+   if(!pristine||method==='import'||(method==='budget'&&!mayBuyAttributes))
+    throw Error('A escolha do método não está autorizada para esta Casa.');
+   next.method=method;next.budget=method==='budget'?210:null;
+  }else if(method==='budget'&&mayBuyAttributes&&state.budget===null&&pristine){
+   next.budget=210;
+  }
+  const changed=RESOURCE_KEYS.some(r=>state.base[r]!==values[r]);
+  if(changed){
+   if(!admin){
+    if(next.method!=='budget'||!mayBuyAttributes)
+     throw Error('Compra de atributos bloqueada pelo Narrador.');
+    if(state.rolls.length||state.importSources.length)
+     throw Error('Atributos rolados ou importados não podem ser redistribuídos.');
+    if(RESOURCE_KEYS.some(r=>!Number.isInteger(values[r])||values[r]<0))
+     throw Error('Point buy exige valores inteiros não negativos por atributo.');
+   }
+   next.base=values;
+  }
+  next.identity=identity;
+  next.creationStep=z.number().int().min(0).max(9).parse(args['creationStep']);
+  next.regionalApplied=next.method!=='import'&&next.importSources.length===0;
+  if(next.method==='budget'){
+   if(next.budget===null&&!admin&&changed)
+    throw Error('Orçamento não autorizado.');
+   if(next.budget!==null&&RESOURCE_KEYS.reduce((sum,r)=>sum+next.base[r],0)>next.budget)
+    throw Error('Pontos-base excedem a reserva de point buy autorizada.');
+  }
+  rule='Cormyr · criação tradicional/point buy · autorização de atributos conferida';
+ }
+ if(action==='admin_edit'){
+  if(!admin)throw Error('Somente o Narrador pode editar fichas sem restrições de fase.');
+  if(explanation.trim().length<10)
+   throw Error('Justifique a edição administrativa (mínimo 10 caracteres).');
+  const input=z.object({base:resourcesSchema,permanent:resourcesSchema,
+   identity:z.object({region:z.string().max(120),motto:z.string().max(500),
+    foundation:z.number().int().optional(),history:z.array(z.string()).max(100),
+    notes:z.string().max(10000)})}).parse(args);
+  validateResources(input.base);validateResources(input.permanent);
+  next.base=input.base;next.permanent=input.permanent;
+  next.identity={...state.identity,...input.identity};
+  rule='Cormyr · edição administrativa de ficha, auditoria e justificativa obrigatórias';
+ }
+ if(action==='condition'){
+  if(!admin&&state.phase==='active')
+   throw Error('A baixa em campanha exige decisão do Narrador.');
+  const input=z.object({id:z.string(),
+   status:z.enum(['destroyed','abandoned','sold','cancelled'])}).parse(args);
+  if(state.phase==='active'&&explanation.trim().length<10)
+   throw Error('O Narrador deve justificar a baixa em campanha.');
+  return {state:changeHoldingCondition(state,input.id,input.status),
+   rule:input.status==='destroyed'
+    ?'Livro básico · perda permanente do investimento na posse destruída (sem restituição)'
+    :'Livro básico · liberação da alocação por baixa auditada, sem reembolsar custos permanentes'};
+ }
+ if(action==='submit'){
+  if(state.phase!=='draft')throw Error('Criação já enviada.');
+  if(state.method==='budget'&&state.budget===null)
+   throw Error('Escolha o método tradicional (7d6) ou obtenha autorização para point buy.');
+  if(state.method==='roll'&&state.rolls.length!==RESOURCE_KEYS.length)
+   throw Error('Registre todas as sete rolagens iniciais da Casa.');
+  if(!state.domains.length)throw Error('Adicione ao menos um domínio.');
+  if(!state.regionalApplied&&state.method!=='import')
+   throw Error('Revise os recursos.');
+  if(state.creationHistory&&!state.creationHistory.applied&&
+   state.creationHistory.events.length!==state.creationHistory.limit)
+   throw Error('Registre todos os eventos históricos previstos antes de enviar.');
+  if(!state.creationHistory?.applied||!state.creationBonusesApplied){
+   const history=historyAdjustments(state),bonuses=memberBonusAdjustments(state);
+   for(const r of RESOURCE_KEYS)next.permanent[r]+=history[r]+bonuses[r];
+   if(state.creationHistory)
+    next.creationHistory={...state.creationHistory,applied:true};
+   next.creationBonusesApplied=true;
+  }
+  next.phase='review';
+ }
+ if(action==='fortune'){
+  const input=z.object({status:z.number().int(),
+   testDice:z.array(z.number().int()),bonusDice:z.array(z.number().int()),
+   modifier:z.number(),resource:z.enum(RESOURCE_KEYS),changes:resourcesSchema,
+   fortuneStackDice:z.array(z.number().int().min(1).max(6)).optional(),
+   resourceStackDice:z.record(z.enum(RESOURCE_KEYS),
+    z.array(z.number().int().min(1).max(6))).optional(),
+   justification:z.string().min(1)}).parse(args);
+  return {state:confirmFortune(state,input),rule:'Livro básico · tabela 6-18'};
+ }
+ if(action==='restore_legacy_effects'){
+  if(!admin)throw Error('A restauração dos benefícios legados exige o Narrador.');
+  if(explanation.trim().length<10)
+   throw Error('Justifique a conciliação dos benefícios legados.');
+  const ids=z.array(z.string().min(1)).min(1).max(500).parse(args['holdingIds']);
+  if(new Set(ids).size!==ids.length)
+   throw Error('Posse repetida na conciliação.');
+  const candidates=legacyEffectCandidates(state);
+  if(ids.some(id=>!candidates.some(h=>h.id===id)))
+   throw Error('Posse sem correspondência segura no catálogo: nenhuma ficha foi alterada.');
+  next.holdings=state.holdings.map(h=>ids.includes(h.id)
+   ?{...h,effects:structuredClone(legacyCatalogEffects(h))}:h);
+  rule='Conciliação de benefícios importados · correspondência explícita de itemId com catálogo versionado da aplicação';
+ }
+ validateResources(next.base);validateResources(next.permanent);
+ return {state:next,rule};
 }
