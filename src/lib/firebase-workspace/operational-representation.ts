@@ -100,10 +100,21 @@ export async function startRepresentation({db,snapshotId,actor,players}:Context,
   sourcePlayer(players,playerId,scope.uid);
   const ref=representationSessionDoc(db,snapshotId,actor.uid);
   const old=await tx.get(ref);
-  if(old.exists&&old.data()?.playerId!==playerId)
-   deny('representation_already_active',409);
-  if(old.exists&&Date.parse(old.data()?.expiresAt)>Date.now()){
-   return {playerId,expiresAt:old.data().expiresAt,alreadyActive:true};
+  if(old.exists){
+   const previous=old.data();
+   const expiresAt=Date.parse(previous?.expiresAt);
+   if(previous?.actorUid!==actor.uid||
+      previous?.sourceSnapshotId!==snapshotId||
+      !safe(previous?.representedUid)||!safe(previous?.playerId)||
+      !safe(previous?.nonce)||!Number.isFinite(expiresAt))
+    deny('representation_corrupted',503);
+   // Sessões ativas não podem mudar de jogador. As expiradas podem ser
+   // substituídas sem intervenção manual, mantendo o histórico de auditoria.
+   if(expiresAt>Date.now()){
+    if(previous.playerId!==playerId||previous.representedUid!==scope.uid)
+     deny('representation_already_active',409);
+    return {playerId,expiresAt:previous.expiresAt,alreadyActive:true};
+   }
   }
   const now=new Date(),session:Session={
    actorUid:actor.uid,representedUid:scope.uid,playerId,nonce:randomUUID(),
