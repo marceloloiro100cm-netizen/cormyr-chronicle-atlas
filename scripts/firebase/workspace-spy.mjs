@@ -2,7 +2,8 @@ import {buildSpyAgentsPlan} from './stage-spy-emulator.mjs';
 import {houseManagement,recruitmentOptions} from './spy-agents-core.mjs';
 import {houseTimeline,counterintelligence,narratorOperations,incidentHistory} from './spy-missions-core.mjs';
 import {readDossiers,adminPending} from './spy-intel-core.mjs';
-export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet}){
+import {readSpyOverlay,projectSpyOverlay} from './workspace-spy-overlay.mjs';
+export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet,db}){
  if(scope.profile==='editor')throw Error('spy_access_denied');
  const h=args.p_house??null,admin=scope.profile==='narrador';
  if(!admin&&(!h||!scope.memberHouseIds.includes(h)))throw Error('spy_access_denied');
@@ -17,7 +18,9 @@ export async function readWorkspaceSpy({scope,name,args,rows,snapshotId,sheet}){
  }));
  const plan=buildSpyAgentsPlan(tables,snapshotId);
  if(!plan.summary.planValid)throw Error('spy_import_invalid');
- const d=Object.fromEntries(Object.entries(plan.docs).map(([k,v])=>[k,v.map(x=>x.payload)]));
+ const imported=Object.fromEntries(Object.entries(plan.docs).map(([k,v])=>[k,v.map(x=>x.payload)]));
+ const d=process.env.CORMYR_FIREBASE_SPY_ENABLED==='true'
+  ?projectSpyOverlay(imported,await readSpyOverlay(db,snapshotId)):imported;
  const actor={uid:scope.uid,role:scope.profile,memberHouseIds:new Set(scope.memberHouseIds),editHouseIds:new Set(scope.editHouseIds)};
  const s=h?await sheet(h):null;
  const base={actor,houseId:h,assets:d.assets,allAssets:d.assets,operations:d.operations,segments:d.segments,
