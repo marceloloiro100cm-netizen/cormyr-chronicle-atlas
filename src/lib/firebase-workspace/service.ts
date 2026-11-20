@@ -320,7 +320,8 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    return imported.filter(r=>houseAllowed(r['house_id'])).map(r=>{
     const op=live.get(spyDigest('house:'+r['house_id']));
     if(!op)return r;
-    if(!operationalHouseEconomyIsReconciled(r,op,snapshotId))
+    if(!operationalHouseEconomyIsReconciled({house_id:r['house_id'],
+      version:r['version'],state:r['state']},op,snapshotId))
      throw new CloudAccessError('house_economy_unreconciled',503);
     return {...r,state:op['state'],version:op['version'],operational:true};
    });
