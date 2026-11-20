@@ -349,7 +349,7 @@ describe('real Firebase workspace boundary',()=>{
    p_args:{p_id:own,p_version:1,p_subject:'x',p_content:'y'}}})).rejects.toThrow('letter_version_conflict');
   await expect(run({kind:'rpc',name:'dated_mail_action',args:{p_action:'edit_campaign_letter',p_date:'1522-01-09',
    p_args:{p_id:own,p_version:2,p_subject:'x',p_content:'y'}}})).rejects.toThrow('workspace_operation_not_implemented');
-  await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:'mine'}})).rejects.toThrow('workspace_operation_not_implemented');
+  await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:'mine'}})).rejects.toThrow('access_denied');
   await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:'secret'}})).rejects.toThrow('access_denied');
   await expect(run({kind:'rpc',name:'restore_campaign_letter',args:{p_id:inbound}})).rejects.toThrow('access_denied');
   await expect(run({kind:'rpc',name:'delete_campaign_letter',args:{p_id:own,p_version:9}})).rejects.toThrow('invalid_mail_lifecycle_request');
