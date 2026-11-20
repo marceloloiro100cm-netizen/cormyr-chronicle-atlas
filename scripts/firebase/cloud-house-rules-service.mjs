@@ -30,8 +30,11 @@ export async function readOperationalHouseRules(db,snapshotId,houseId){
   const d=doc.data();
   if(!d||d.houseId!==houseId||!validId(d.itemId)||
     doc.id!==hash('rule:'+d.itemId)||
+    d.sourceSnapshotId!==snapshotId||
+    !validId(d.updatedBy)||
     !Number.isSafeInteger(d.version)||d.version<1||d.version>2147483646||
     !d.definition||d.definition.id!==d.itemId||
+    typeof d.definition.name!=='string'||!d.definition.name.trim()||
     d.definition.custom!==true||!live(root.data(),snapshotId))
    invalid('house_rules_integrity_failed',503);
   result.push({definition:d.definition,version:d.version});
