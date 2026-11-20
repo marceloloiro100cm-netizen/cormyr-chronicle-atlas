@@ -39,6 +39,10 @@ async function handle(request:Request):Promise<Response>{
   if(bytes>16000&&(!data||typeof data!=='object'||
       !('action' in data)||data.action!=='import'))
    return error(413,'body_too_large');
+  if(data&&typeof data==='object'&&'action' in data&&
+     data.action==='crest_import'&&
+     process.env['CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED']!=='true')
+   return error(503,'private_media_disabled');
   const [{getApps,initializeApp,applicationDefault},{getAuth},{getFirestore}]=
    await Promise.all([import('firebase-admin/app'),
     import('firebase-admin/auth'),import('firebase-admin/firestore')]);

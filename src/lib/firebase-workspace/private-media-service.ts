@@ -52,6 +52,21 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
   }
   return false;
  };
+ // Brasões: somente a Casa que ainda usa a imagem e seus integrantes.
+ const crestReferenced=async(viewer:{profile:string;memberHouseIds:string[]},
+  path:string,meta:Record<string,unknown>)=>{
+  const houseId=meta['linkedHouseId'];
+  if(typeof houseId!=='string'||!safe(houseId)||
+     viewer.profile!=='narrador'&&
+     (viewer.profile!=='jogador'||!viewer.memberHouseIds.includes(houseId)))
+   return false;
+  const house=await root.collection('houseEconomies')
+   .doc(privateMediaHash('house:'+houseId)).get();
+  const data=house.data();
+  return house.exists&&data?.houseId===houseId&&data?.status==='active'&&
+   data?.sourceSnapshotId===snapshotId&&data?.sourceReconciled===true&&
+   data?.state?.identity?.crestPath===path;
+ };
  const authorize=async(token:string,path:string)=>{
   if(typeof path!=='string')privateMediaFail('private_media_path_invalid',400);
   validatePrivateMediaSource(path,snapshotId);
@@ -65,6 +80,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
      !Number.isSafeInteger(meta.size)||meta.size>PRIVATE_MEDIA_LIMIT)
    privateMediaFail('private_media_not_found',404);
   if(viewer.uid!==meta.ownerUid&&
+     !(await crestReferenced(viewer,path,meta))&&
      !(await visibleReference(token,path)))
    privateMediaFail('private_media_denied');
   const after=await scope(token);
