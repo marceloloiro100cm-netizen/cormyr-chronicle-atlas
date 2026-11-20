@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const valid=x=>typeof x==='string'&&x.length>0&&x.length<=160&&!/[\/\u0000-\u001f\u007f]/.test(x);
 const deny=(code='spy_overlay_invalid')=>{throw Error(code);};
+const isFindingSnapshot=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 export const SPY_OVERLAY_COLLECTIONS={
  spyAgents:{type:'agent',limit:500},spyUpgrades:{type:'upgrade',limit:1000},
  spyHistories:{type:'history',limit:2000},spyRemovals:{type:'removal',limit:500},
@@ -97,7 +98,7 @@ export function projectSpyOverlay(source,overlay){
     opIndex.get(x.operationId).assetId===x.agentId&&
     (!old||old.agentId===x.agentId&&old.destinationRegion===x.destinationRegion));
  const events=merge('events',overlay.spyEvents,x=>x.requestKey,null,
-  x=>valid(x.id)&&valid(x.requestKey)&&
+  (x,old)=>!old&&valid(x.id)&&valid(x.requestKey)&&
    (x.operationId==null||opIndex.has(x.operationId)));
  const decisions=merge('decisions',overlay.spyDecisions,x=>x.id,null,
   (x,old)=>valid(x.id)&&opIndex.has(x.operationId)&&!old);
@@ -107,10 +108,27 @@ export function projectSpyOverlay(source,overlay){
  const dossierIndex=new Map(dossiers.map(x=>[x.id,x]));
  const pairIds=new Set(dossiers.map(x=>x.ownerHouseId+':'+x.targetHouseId));
  if(pairIds.size!==dossiers.length)deny('spy_dossier_pair_duplicate');
- const findings=merge('findings',overlay.spyFindings,x=>x.id,null,
-  (x,old)=>valid(x.id)&&dossierIndex.has(x.dossierId)&&
-   (!old||old.dossierId===x.dossierId&&old.objective===x.objective&&
-    old.subjectKey===x.subjectKey));
+ const findingMap=new Map((source.findings||[]).map(x=>[x.id,x]));
+ if(findingMap.size!==(source.findings||[]).length)deny('spy_findings_duplicate');
+ for(const x of overlay.spyFindings||[]){
+  const old=findingMap.get(x.id);
+  if(!valid(x.id)||!dossierIndex.has(x.dossierId)||
+    (old&&(old.dossierId!==x.dossierId||old.objective!==x.objective||
+      old.subjectKey!==x.subjectKey)))
+    deny('spy_finding_identity_conflict');
+  if(x.deleted===true){
+   if(!old)deny('spy_finding_absent');
+   findingMap.delete(x.id);
+  }else{
+   if(!valid(x.subjectKey)||!isFindingSnapshot(x.valueSnapshot))
+    deny('spy_finding_invalid');
+   findingMap.set(x.id,x);
+  }
+ }
+ const findings=[...findingMap.values()];
+ const uniqueFindings=new Set(findings.map(x=>
+  x.dossierId+'|'+x.objective+'|'+x.subjectKey));
+ if(uniqueFindings.size!==findings.length)deny('spy_finding_key_conflict');
  const awards=merge('awards',overlay.spyAwards,x=>x.operationId,null,
   x=>opIndex.has(x.operationId)&&dossierIndex.has(x.dossierId));
  const intelEvents=merge('intelEvents',overlay.spyIntelEvents,x=>x.id,null,
