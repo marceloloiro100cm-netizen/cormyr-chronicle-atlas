@@ -27,8 +27,11 @@ continuam sujeitas às flags e permissões existentes.
 O relatório é gerado no navegador a partir da Ficha e do livro-razão
 que o servidor Firebase já permite consultar para a Casa. Os dados
 de outra Casa não podem ser solicitados pelo campo `houseId`.
-Para um histórico muito extenso, o leitor atual limita a prévia
-operacional a 100 lançamentos; o download não deve ser interpretado
-como prova de reconciliação integral de todas as entradas existentes
-fora desse limite. Expandir essa exportação requer paginação
-autorizada e validação do acervo em etapa posterior.
+A prévia operacional na tela permanece limitada aos 100 lançamentos
+mais recentes; os botões PDF e Excel agora usam uma **consulta separada
+autorizada por Casa** (kind `houseLedgerExport`) que busca o histórico
+importado e operacional disponível até 1.000 lançamentos. Acima desse
+limite, a API retorna HTTP 413 e nenhum relatório parcial é baixado.
+Para históricos maiores, será necessária paginação autorizada e
+conciliação do acervo. A sincronização Drive não é acionada pelo
+download de arquivos locais.
