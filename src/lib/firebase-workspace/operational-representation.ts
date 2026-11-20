@@ -82,20 +82,21 @@ function validSession(value:any,actor:Scope,snapshot:string){
   !safe(session.representedUid)||!safe(session.nonce)||
   !Number.isFinite(Date.parse(session.expiresAt))||
   Date.parse(session.expiresAt)<=Date.now())
-  deny('representation_expired',409);
+  return deny('representation_expired',409);
  return session;
 }
 export async function startRepresentation({db,snapshotId,actor,players}:Context,playerId:unknown){
  narrator(actor);
  if(process.env['CORMYR_FIREBASE_REPRESENTATION_ENABLED']!=='true')
   deny('representation_disabled',501);
- if(!safe(playerId))deny('representation_player_invalid',400);
+ if(!safe(playerId))return deny('representation_player_invalid',400);
  const row=players.find(p=>p['id']===playerId);
- if(!row||!safe(row['user_id'])||row['user_id']===actor.uid)
-  deny('representation_player_inactive',404);
+ const targetUid=row?.['user_id'];
+ if(!safe(targetUid)||targetUid===actor.uid)
+  return deny('representation_player_inactive',404);
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
  return db.runTransaction(async(tx:any)=>{
-  const scope=await proof(tx,db,root,snapshotId,actor,row['user_id'],playerId);
+  const scope=await proof(tx,db,root,snapshotId,actor,targetUid,playerId);
   sourcePlayer(players,playerId,scope.uid);
   const ref=representationSessionDoc(db,snapshotId,actor.uid);
   const old=await tx.get(ref);
