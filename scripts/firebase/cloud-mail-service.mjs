@@ -263,6 +263,9 @@ export function createFirebaseCloudMail({
     if(LETTER_HASH.test(input.letterId)){
       const existing=await tx.get(letters.doc(input.letterId));
       if(existing.exists){
+        if(existing.data()?.source!=='firebase-cloud'||
+           existing.data()?.sourceSnapshotId!==snapshotId)
+          deny('reply_not_authorized',403);
         if(input.replyId!==undefined)deny('invalid_reply_request',400);
         const parent=effectiveCloudMail(existing.data(),round);
         const route=cloudReplyRoute(actor,parent,snapshotId);
