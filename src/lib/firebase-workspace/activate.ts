@@ -1,6 +1,7 @@
 import {createWorkspaceClient,workspaceRequest} from './client';
 import {setFirebaseWorkspaceClient,registerWorkspaceFunction,clearWorkspaceFunctions} from './state';
-import {loadHouseHub,loadHouseLedger,readCourtMember,readVassalNpc,saveHouseRule} from '../house/house.functions';
+import {loadHouseHub,loadHouseLedger,houseOperation,readCourtMember,readVassalNpc,saveHouseRule} from '../house/house.functions';
+import {submitFirebaseHouseOperation} from '../house/firebase-house-operation-client';
 import {saveFirebaseHouseRule} from '../house/firebase-house-rules-client';
 import {managePlayerAccount,manageEditorialAccount,
   inspectLeonardoAccess,completePasswordChange} from '../player-admin.functions';
@@ -47,6 +48,14 @@ export function activateFirebaseWorkspace(){
  setFirebaseWorkspaceClient(createWorkspaceClient());
  registerWorkspaceFunction(loadHouseHub,input=>workspaceRequest({kind:'house',houseId:input?.data?.houseId}));
  registerWorkspaceFunction(loadHouseLedger,async input=>(await workspaceRequest({kind:'house',houseId:input?.data?.houseId})).ledger);
+ registerWorkspaceFunction(houseOperation,async input=>{
+  const data=input?.data??{};
+  if(typeof data.houseId!=='string'||typeof data.key!=='string'||
+     typeof data.action!=='string'||!Number.isSafeInteger(data.version))
+   throw Error('Operação de Casa incompleta. Recarregue a ficha.');
+  return submitFirebaseHouseOperation(data as Parameters<
+   typeof submitFirebaseHouseOperation>[0]);
+ });
  registerWorkspaceFunction(saveHouseRule,async input=>{
   const raw=input?.data??{};
   const {houseId,requestKey,expectedVersion,operationalRuleVersion,...definition}=raw;
