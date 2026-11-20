@@ -126,7 +126,7 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
    if(actor.profile==='editor'||!clean(args)||Object.keys(args).some(k=>
       !['p_house','p_title','p_body','p_image_path','p_key'].includes(k)))
     fail('newspaper_request_invalid',400);
-   const h=args['p_house'],key=args['p_key'];
+   const h=args['p_house'] as string,key=args['p_key'] as string;
    if(!valid(h)||!UUID.test(String(key)))fail('newspaper_request_invalid',400);
    if(args['p_image_path']!==null&&args['p_image_path']!==undefined)
     fail('newspaper_image_storage_pending',501);
@@ -238,7 +238,7 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
   async markSeen(args:Record<string,unknown>){
    if(!clean(args)||Object.keys(args).some(k=>k!=='p_house')||
      !valid(args['p_house']))fail('newspaper_request_invalid',400);
-   const h=args['p_house'];
+   const h=args['p_house'] as string;
    if(actor.profile==='editor')fail('newspaper_scope_invalid');
    return db.runTransaction(async(tx:any)=>{
     await currentActor(tx,db,root,snapshotId,actor);
