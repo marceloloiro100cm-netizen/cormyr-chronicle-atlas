@@ -932,7 +932,9 @@ test('Representação Cloud: responde às missivas autorizadas, sem token do jog
  assert.equal(letter.senderUid,'player-2');
  assert.equal(letter.administrativeActorUid,'player-1');
  assert.equal(letter.replyToId,incoming.id);
- assert.equal(letter.recipientHouseId,'house-a'===letter.originHouseId?null:letter.recipientHouseId);
+ assert.equal(letter.originHouseId,'house-a');
+ assert.equal(letter.recipientKind,'narrator');
+ assert.equal(letter.recipientHouseId,null);
 });
 
 test('Representação Cloud: gates, expiração e revogação negam toda escrita',async()=>{
