@@ -161,7 +161,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    if(Object.keys(request).some(k=>!['action','path'].includes(k))||
       input['action']!=='sign'||typeof input['path']!=='string')
     privateMediaFail('private_media_request_invalid',400);
-   const {file}=await authorize(token,input['path']);
+   const {file}=await authorize(token,input['path'] as string);
    const expires=Date.now()+60_000;
    const [url]=await file.getSignedUrl({version:'v4',action:'read',expires});
    if(typeof url!=='string'||!url.startsWith('https://'))
@@ -174,7 +174,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    if(Object.keys(request).some(k=>!['action','path'].includes(k))||
       input['action']!=='download'||typeof input['path']!=='string')
     privateMediaFail('private_media_request_invalid',400);
-   const {file,meta}=await authorize(token,input['path']);
+   const {file,meta}=await authorize(token,input['path'] as string);
    const [bytes]=await file.download();
    if(bytes.length!==meta.size||
       privateMediaHash(bytes.toString('base64'))!==meta.digest)
