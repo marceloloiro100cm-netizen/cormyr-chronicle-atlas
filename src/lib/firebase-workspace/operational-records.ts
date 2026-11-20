@@ -58,8 +58,9 @@ export function projectOperationalRecords(
 ):RecordRow[]{
  const result=new Map<string,RecordRow>();
  for(const row of imported){
-  if(!safe(row['id'])||result.has(row['id']))fail('invalid_imported_records');
-  result.set(row['id'],row);
+  const id=row['id'];
+  if(!safe(id)||result.has(id))fail('invalid_imported_records');
+  result.set(id,row);
  }
  for(const current of operational){
   validate(current);
