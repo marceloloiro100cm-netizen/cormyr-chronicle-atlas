@@ -31,23 +31,6 @@ function runtime(v:any,snapshot:string){
  v.sourceSnapshotReconciled!==true||v.representationReadApproved!==true)
   deny('representation_not_approved',503);
 }
-async function verifiedScope(tx:any,root:any,snapshot:string,uid:string){
- const imported=dbDomain(root.firestore??null,snapshot);
- // Stage ref is built from root's own Firestore parent.
- const stage=root.parent.parent.firestore.collection('migrationDomainStage')
-  .doc(snapshot).collection('access').doc(uid);
- const [archived,overlay]=await Promise.all([
-  tx.get(stage),tx.get(root.collection('accountAccess').doc(uid)),
- ]);
- let access:any;
- try{access=chooseCurrentAccountAccess(uid,
-  archived.exists?archived.data():null,
-  overlay.exists?overlay.data():null,
-  (await tx.get(root)).data());}
- catch{deny('representation_scope_invalid',403);}
- return access;
-}
-const dbDomain=(_unused:any,_snapshot:string)=>undefined;
 async function proof(tx:any,db:any,root:any,snapshot:string,
  actor:Scope,targetUid:string,playerId:string){
  const archived=db.collection('migrationDomainStage').doc(snapshot).collection('access');
