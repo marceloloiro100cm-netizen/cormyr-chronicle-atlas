@@ -97,8 +97,7 @@ export function projectOperationalVersions(
      (saved['snapshot'] as RecordRow)['version']!==saved['version'])
     fail('record_version_invalid');
   const existing=ids.get(key);
-  if(existing&&JSON.stringify(existing['snapshot'])!==JSON.stringify(saved['snapshot']))
-    fail('record_version_conflict');
+  // Histórico da origem já homologado prevalece, sem sobrescrever a versão importada.
   if(!existing){list.push(saved);ids.set(key,saved);}
  }
  for(const next of operational){
