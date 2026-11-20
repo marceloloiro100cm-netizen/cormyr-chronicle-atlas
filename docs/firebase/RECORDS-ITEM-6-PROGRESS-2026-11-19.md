@@ -35,3 +35,24 @@ independente de sessão, Narrador e jogador.
 A flag permanece false e exige `recordsReadApproved=true` e
 `recordsWriteApproved=true` no runtime. Testes com Firestore simulado
 não comprovam aprovação nem funcionamento em produção.
+
+## Incidente de abertura do Conselho — 20/11/2026
+
+O sinalizador de build/runtime `CORMYR_FIREBASE_RECORDS_ENABLED` foi
+ativado no App Hosting antes de a liberação independente dos registros
+operacionais ser confirmada. Isso pode fazer uma consulta de registros
+interromper a abertura de todas as Casas, mesmo com importações íntegras.
+
+A leitura agora conserva a autorização original e distingue dois casos:
+
+- Raiz operacional ativa, privada e reconciliada, mas
+  `recordsReadApproved` pendente **e** coleções `records` e
+  `recordVersions` comprovadamente vazias: devolve o acervo histórico
+  autorizado, sem criar ou liberar registros operacionais.
+- Há qualquer documento/versão operacional, ou a raiz não está íntegra:
+  mantém a resposta bloqueada com o código seguro
+  `record_runtime_not_approved`; nunca esconde um registro existente.
+
+A aprovação de escrita continua exigindo `recordsWriteApproved` e todas
+as verificações transacionais. A homologação de leitura/escrita segue
+pendente; este ajuste não altera as flags nem concede novos privilégios.

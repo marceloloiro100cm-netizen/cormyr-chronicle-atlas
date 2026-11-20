@@ -126,17 +126,34 @@ export function projectOperationalVersions(
  }
  return list;
 }
+/**
+ * A feature flag alone does not approve the operational archive. While the
+ * runtime's read gate is pending, an entirely empty operational collection can
+ * safely project the already-verified immutable import. Never silently hide
+ * operational records or revisions, and never grant write permission here.
+ */
+async function operationalRecordReadGate(root:any,snapshotId:string):Promise<boolean>{
+ const live=await root.get(),v=live.data();
+ if(!live.exists||v?.status!=='active'||v?.private!==true||
+    v?.applicationEnabled!==true||v?.sourceSnapshotId!==snapshotId||
+    v?.sourceSnapshotReconciled!==true)
+   fail('record_runtime_not_approved');
+ if(v.recordsReadApproved===true)return true;
+ const [current,versions]=await Promise.all([
+   root.collection('records').limit(1).get(),
+   root.collection('recordVersions').limit(1).get(),
+ ]);
+ if(!Array.isArray(current.docs)||!Array.isArray(versions.docs)||
+    current.docs.length!==0||versions.docs.length!==0)
+   fail('record_runtime_not_approved');
+ return false;
+}
+
 export async function readOperationalRecordDocs(db:any,snapshotId:string):
  Promise<OperationalRecord[]>{
  if(!/^[a-f0-9]{64}$/.test(snapshotId))fail('record_source_unavailable');
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
- const live=await root.get();
- if(!live.exists||live.data()?.status!=='active'||
-   live.data()?.private!==true||live.data()?.applicationEnabled!==true||
-   live.data()?.sourceSnapshotId!==snapshotId||
-   live.data()?.sourceSnapshotReconciled!==true||
-   live.data()?.recordsReadApproved!==true)
-   fail('record_runtime_not_approved');
+ if(!(await operationalRecordReadGate(root,snapshotId)))return [];
  const snap=await root.collection('records').limit(501).get();
  if(!Array.isArray(snap.docs)||snap.docs.length>500)
    fail('record_collection_too_large');
@@ -154,11 +171,7 @@ export async function readOperationalRecordVersionDocs(db:any,snapshotId:string)
  Promise<RecordRow[]>{
  if(!/^[a-f0-9]{64}$/.test(snapshotId))fail('record_source_unavailable');
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
- const meta=await root.get();
- if(!meta.exists||meta.data()?.status!=='active'||meta.data()?.private!==true||
-    meta.data()?.applicationEnabled!==true||meta.data()?.sourceSnapshotId!==snapshotId||
-    meta.data()?.sourceSnapshotReconciled!==true||meta.data()?.recordsReadApproved!==true)
-   fail('record_runtime_not_approved');
+ if(!(await operationalRecordReadGate(root,snapshotId)))return [];
  const docs=await root.collection('recordVersions').limit(5001).get();
  if(!Array.isArray(docs.docs)||docs.docs.length>5000)
    fail('record_history_too_large');

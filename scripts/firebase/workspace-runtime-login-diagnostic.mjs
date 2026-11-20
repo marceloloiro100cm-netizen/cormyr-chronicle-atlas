@@ -60,6 +60,23 @@ if(snapshot){
     if(!Array.isArray(rows))throw Error('workspace_archive_integrity_failed');
    });
  }
+ await check('records_runtime_gate_and_storage',async()=>{
+  const root=db.collection('campaignCloudRuntime').doc(snapshot);
+  const [meta,records,versions]=await Promise.all([
+   root.get(),root.collection('records').limit(1).get(),
+   root.collection('recordVersions').limit(1).get(),
+  ]);
+  const m=meta.data();
+  if(!meta.exists||m?.status!=='active'||m?.private!==true||
+     m?.applicationEnabled!==true||
+     m?.sourceSnapshotId!==snapshot||
+     m?.sourceSnapshotReconciled!==true)
+    throw Error('record_runtime_root_not_ready');
+  // Print only booleans; no identifiers, documents, paths or private content.
+  console.log('DIAGNOSTIC records_read_approved '+(m.recordsReadApproved===true?'YES':'NO'));
+  console.log('DIAGNOSTIC records_operational_content '+
+    (records.docs.length===0&&versions.docs.length===0?'EMPTY':'PRESENT'));
+ });
  await check('workspace_house_overlay',async()=>{
   const d=await db.collection('campaignCloudRuntime').doc(snapshot)
    .collection('workspaceTableRows').limit(5001).get();
