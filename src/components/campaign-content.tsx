@@ -2,6 +2,9 @@ import { Fragment, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ImagePlus, X, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {firebaseWorkspaceClient} from "@/lib/firebase-workspace/state";
+import {downloadFirebasePrivateImage,uploadFirebasePrivateImage,
+ mediaUploadId,mediaFileBase64} from "@/lib/firebase-workspace/private-media-client";
 import { Button } from "@/components/ui/button";
 import { contentParts, campaignMediaParts, imageToken, validateImage } from "@/lib/campaign-content";
 import { ImageViewer } from "@/components/image-viewer";
@@ -31,8 +34,13 @@ function CampaignMedia({kind,id,title}:{kind:'youtube'|'drive';id:string;title:s
 }
 export function PrivateImage({ path, caption, thumbnail = false, zoomable = false, onUnavailable }: { path: string; caption: string; thumbnail?: boolean; zoomable?: boolean; onUnavailable?: () => void }) {
   const { data, error } = useQuery({
-    queryKey: ["private-image", path],
+    queryKey: ["private-image", Boolean(firebaseWorkspaceClient()), path],
     queryFn: async () => {
+      if(firebaseWorkspaceClient()){
+        if(!path.startsWith('private/'))
+          throw Error('Imagem histórica ainda não conciliada no Firebase.');
+        return downloadFirebasePrivateImage(path);
+      }
       const result = await supabase.storage.from("campaign-images").download(path);
       if (result.error) throw result.error;
       return result.data;
@@ -230,6 +238,17 @@ export function ImagePicker({
 }
 export async function uploadImages(content: string, images: PendingImage[], mutation: string) {
   if (!images.length) return content;
+  if(firebaseWorkspaceClient()){
+    const tokens:string[]=[];
+    for(const [i,image] of images.entries()){
+      validateImage(image.file);
+      const id=await mediaUploadId(mutation,i);
+      const upload=await uploadFirebasePrivateImage(id,
+        image.file.type,await mediaFileBase64(image.file));
+      tokens.push(imageToken(upload.path,image.caption));
+    }
+    return [content,...tokens].join("\n\n");
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();
