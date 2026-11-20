@@ -54,7 +54,7 @@ describe('núcleo puro de operações da Ficha',()=>{
 });
 
 describe('segunda fatia de ações puras da Ficha',()=>{
- it('isola os cinco atos não econômicos do estado de entrada',()=>{
+ it('isola sete atos não econômicos do estado de entrada',()=>{
   expect(HOUSE_NON_ECONOMIC_ACTIONS).toHaveLength(7);
   const review={...newHouseState('house-a'),phase:'review' as const,
    pending:['Conferir domínio','Validar herdeiro']};
@@ -65,7 +65,9 @@ describe('segunda fatia de ações puras da Ficha',()=>{
   expect(cleared.explanation).toContain('Conferir domínio');
   expect(()=>applyHouseNonEconomicOperation(review,'approve',{},''))
    .toThrow(/pendências/);
-  const approved=applyHouseNonEconomicOperation(cleared.state,'approve',{},'');
+  const allClear=applyHouseNonEconomicOperation(cleared.state,'clear_pending',
+   {indices:[0]},'A segunda pendência foi resolvida com documentação');
+  const approved=applyHouseNonEconomicOperation(allClear.state,'approve',{},'');
   expect(approved.state.phase).toBe('active');
   const returned=applyHouseNonEconomicOperation(review,'return_to_draft',{},
    'Faltou documento');
