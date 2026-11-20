@@ -61,7 +61,7 @@ export function FirebaseGoogleSignIn({onCredential,disabled}:{
   Acesso com Google aguardando ativação do provedor e do identificador OAuth do projeto.
  </p>;
  return <div aria-label="Entrar com Google" aria-disabled={disabled||undefined}>
-  <div ref={mount} style={{pointerEvents:disabled?'none':'auto',opacity:disabled?.55:1}}/>
+  <div ref={mount} style={{pointerEvents:disabled?'none':'auto',opacity:disabled ? 0.55 : 1}}/>
   {error&&<p role="status">{error}</p>}
  </div>;
 }
