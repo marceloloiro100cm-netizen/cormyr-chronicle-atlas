@@ -372,6 +372,71 @@ export function createFirebaseCloudMail({
   }
 
   return {
+
+    async sendRepresented(idToken,input){
+      const realUid=await uidFromToken(idToken),req=validateRequest(input);
+      if(req.recipientKind==='narrator'&&req.originHouseId===null)
+        deny('invalid_origin_house',400);
+      return db.runTransaction(async tx=>{
+        const ctx=await represented(tx,realUid);
+        return persist(tx,{...ctx,req});
+      });
+    },
+    async replyRepresented(idToken,raw){
+      const realUid=await uidFromToken(idToken);
+      const input=validateRepresentedReply(raw);
+      return db.runTransaction(async tx=>{
+        const {actor,uid,date,round,realActorUid,sessionNonce}=await represented(tx,realUid);
+        if(input.expectedCampaignDate!==undefined&&input.expectedCampaignDate!==date)
+          deny('campaign_date_changed',409);
+        const original=await tx.get(letters.doc(input.letterId));
+        const parent=original.exists?effectiveCloudMail(original.data(),round):null;
+        const route=parent?cloudReplyRoute(actor,parent,snapshotId):null;
+        if(!route||parent.id!==input.letterId)
+          deny('reply_not_authorized',403);
+        const prefix=/^Re:\s/i.test(parent.subject)?'':'Re: ';
+        const chars=Array.from(parent.subject);
+        while(chars.length&&Buffer.byteLength(prefix+chars.join(''),'utf8')>
+              MAX_SUBJECT_BYTES)chars.pop();
+        const req=validateRequest({
+          requestKey:input.requestKey,...route,
+          subject:prefix+chars.join(''),content:input.content,
+          ...(input.draft===true?{draft:true}:{}),
+          ...(input.expectedCampaignDate!==undefined?
+            {expectedCampaignDate:input.expectedCampaignDate}:{}),
+        });
+        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId,
+          realActorUid,sessionNonce});
+      });
+    },
+    async cancelRepresented(idToken,input){
+      const realUid=await uidFromToken(idToken);
+      const {letterId,expectedVersion}=lifecycleInput(input,
+        ['letterId','expectedVersion']);
+      return db.runTransaction(async tx=>{
+        const {actor,uid,round,sessionNonce}=await represented(tx,realUid);
+        const v=cloudLetterOf(await tx.get(letters.doc(letterId)),letterId,round);
+        if(v.deletedAt!==null)return {removed:true,alreadyRemoved:true,version:v.version};
+        checkVersion(v,expectedVersion);
+        if(!authorInOpenWeek(actor,uid,v,round))
+          deny('cancel_not_allowed',403);
+        const at=serverTime(),version=v.version+1;
+        tx.update(letters.doc(letterId),{deletedAt:at,deletedByUid:uid,
+          removalKind:'cancelada',version,updatedAt:at,
+          administrativeActorUid:realUid});
+        tx.create(audits.doc(hash('mail-remove:'+letterId+':'+version)),{
+          action:'cancel',actorUid:realUid,representedUid:uid,
+          sessionNonce,letterId,version,occurredAt:at,
+        });
+        tx.create(runtime.collection('representationAudits')
+          .doc(hash('representation-mail-cancel:'+letterId+':'+version)),{
+            action:'representation_delete',realActorUid:realUid,
+            representedUid:uid,playerId:actor.playerId,
+            letterId,sessionNonce,occurredAt:at,sourceSnapshotId:snapshotId,
+          });
+        return {removed:true,alreadyRemoved:false,version};
+      });
+    },
     async status(idToken){
       const uid=await uidFromToken(idToken);
       const [effective,domain,authRoot,temporal,cal,live,mailGate]=await Promise.all([
