@@ -28,9 +28,20 @@ const valid=(v:unknown):v is string=>typeof v==='string'&&ID.test(v);
 const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&
  (v as number)>=0&&(v as number)<2147483647;
 const fail=(code:string,status=403):never=>{throw new HouseOperationError(code,status);};
-const ready=(doc:{exists:boolean;data:()=>any})=>
- doc.exists&&doc.data()?.status==='complete'&&doc.data()?.private===true;
+const ready=(doc:{exists:boolean;data:()=>Record<string,unknown>|undefined})=>
+ doc.exists&&doc.data()?.['status']==='complete'&&doc.data()?.['private']===true;
 
+type RuntimeRoot={status?:string;private?:boolean;sourceSnapshotId?:string;
+ sourceSnapshotReconciled?:boolean;applicationEnabled?:boolean;
+ houseOpsWriteApproved?:boolean;calendarVersion?:number};
+type SourceSheet={houseId?:string;version?:number;
+ state?:Record<string,unknown>};
+type EconomyDoc={houseId?:string;status?:string;private?:boolean;
+ sourceSnapshotId?:string;sourceReconciled?:boolean;seedVerified?:boolean;
+ sourceSheetVersion?:number;sourceStateHash?:string;stateHash?:string;
+ version?:number;state?:Record<string,unknown>};
+type PriorReceipt={requestFingerprint?:string;actorUid?:string;houseId?:string;
+ action?:string;version?:number;ledgerId?:string};
 export class HouseOperationError extends Error{
  constructor(readonly code:string,readonly status=403){super(code);this.name='HouseOperationError';}
 }
@@ -94,7 +105,7 @@ export function createFirebaseHouseOperation({
     tx.get(sheetRef),tx.get(economyRef),tx.get(eventRef),tx.get(calendarRef),
    ]);
    if(!docs.slice(0,4).every(ready))fail('house_stage_unavailable',503);
-   const cfg=docs[4].data();
+   const cfg=docs[4].data() as RuntimeRoot|undefined;
    if(!docs[4].exists||cfg?.status!=='active'||cfg?.private!==true||
      cfg?.sourceSnapshotId!==snapshotId||cfg?.sourceSnapshotReconciled!==true||
      cfg?.applicationEnabled!==true||cfg?.houseOpsWriteApproved!==true)
@@ -111,26 +122,29 @@ export function createFirebaseHouseOperation({
    if(access?.userId!==uid||access?.active!==true||
      access?.requirePasswordChange!==false||
      !(narrator||player))fail('house_access_denied',403);
-   if(!docs[7].exists||docs[7].data()?.sourceId!==houseId||
-     docs[7].data()?.active!==true||docs[7].data()?.season!==2)
+   if(!docs[7].exists||docs[7].data()?.['sourceId']!==houseId||
+     docs[7].data()?.['active']!==true||docs[7].data()?.['season']!==2)
      fail('house_not_available',404);
-   if(!docs[8].exists||docs[8].data()?.houseId!==houseId||
-     !integer(docs[8].data()?.version)||!docs[8].data()?.state||
+   if(!docs[8].exists||docs[8].data()?.['houseId']!==houseId||
+     !integer(docs[8].data()?.['version'])||!docs[8].data()?.['state']||
      docs[8].data()?.state.houseId!==houseId)
      fail('house_sheet_unavailable',503);
-   const original=docs[8].data();
-   const economy=docs[9].data();
-   if(!docs[9].exists||economy?.houseId!==houseId||
+   const original=docs[8].data() as SourceSheet|undefined;
+   const economy=docs[9].data() as EconomyDoc|undefined;
+   if(!original||!original.state||!integer(original.version))
+     fail('house_sheet_unavailable',503);
+   if(!docs[9].exists||!economy||economy.houseId!==houseId||
      economy.status!=='active'||economy.private!==true||
      economy.sourceSnapshotId!==snapshotId||
      economy.sourceReconciled!==true||economy.seedVerified!==true||
      economy.sourceSheetVersion!==original.version||
      economy.sourceStateHash!==constructionStateHash(original.state)||
      !integer(economy.version)||!economy.state||
-     economy.state.houseId!==houseId||
+     economy.state?.['houseId']!==houseId||
      economy.stateHash!==constructionStateHash(economy.state)||
      (economy.version===0&&economy.stateHash!==economy.sourceStateHash))
       fail('house_economy_unreconciled',503);
+   if(!cfg)fail('house_operations_not_approved',503);
    const c=effectiveCloudCalendar(docs[11].data(),cfg,snapshotId);
    if(!integer(c?.version)||c.version<1||
      !Number.isSafeInteger(c?.year)||!Number.isSafeInteger(c?.month)||
@@ -139,8 +153,8 @@ export function createFirebaseHouseOperation({
      cfg.calendarVersion!==c.version)
       fail('house_calendar_unavailable',503);
    if(docs[10].exists){
-    const old=docs[10].data();
-    if(old?.requestFingerprint!==requestFingerprint||
+    const old=docs[10].data() as PriorReceipt|undefined;
+    if(!old||old.requestFingerprint!==requestFingerprint||
       old.actorUid!==uid||old.houseId!==houseId||old.action!==action)
       fail('house_operation_key_conflict',409);
     if(!integer(old.version)||!valid(old.ledgerId))
@@ -148,10 +162,12 @@ export function createFirebaseHouseOperation({
     return {houseId,version:old.version,action,
       duplicate:true,ledgerId:old.ledgerId};
    }
+   if(!economy||!economy.state||!integer(economy.version))
+     fail('house_economy_unreconciled',503);
    if(version!==economy.version)
     fail('house_version_conflict',409);
    const state=verifiedEconomicState(economy.state);
-   if(!state)fail('house_economy_unreconciled',503);
+   if(!state)return fail('house_economy_unreconciled',503);
    try{
     requireHouseOperationRole(action,narrator);
     requireHouseOperationPhase(state,action);
@@ -159,7 +175,7 @@ export function createFirebaseHouseOperation({
    if(needsHouseOperationCalendar(state,action)&&
      state.month!==monthFromHarptosDate({year:c.year,month:c.month}))
       fail('house_calendar_conflict',409);
-   let candidate;
+   let candidate:ReturnType<typeof applyHouseDomainOperation>;
    try{
     candidate=applyHouseDomainOperation(state,
       action as 'domain'|'domain_edit'|'domain_delete',args);
@@ -169,8 +185,8 @@ export function createFirebaseHouseOperation({
     fail('house_operation_result_invalid',503);
    const previous=calculateFirebaseHouseEconomy(state);
    const after=calculateFirebaseHouseEconomy(next);
-   if(!previous||!after||
-      JSON.stringify(previous.balances)!==JSON.stringify(after.balances))
+   if(!previous||!after)return fail('house_operation_balance_mismatch',503);
+   if(JSON.stringify(previous.balances)!==JSON.stringify(after.balances))
      fail('house_operation_balance_mismatch',503);
    const updatedAt=clock();
    if(!Number.isFinite(Date.parse(updatedAt)))fail('invalid_server_clock',503);
