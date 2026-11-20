@@ -131,54 +131,79 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
      if(prev?.ownerUid!==viewer.uid||prev?.path!==path||
         prev?.digest!==digest||prev?.contentType!==input['contentType'])
       privateMediaFail('private_media_request_conflict',409);
-     if(prev?.status==='ready')return {duplicate:true,path};
+     if(prev?.status==='ready')return {duplicate:true,path,resume:false};
+     // Uma tentativa interrompida pode ser retomada apenas com o mesmo
+     // arquivo, UID, tipo e identificador. Nunca sobrescrever um objeto.
+     if(prev?.status==='pending'&&prev?.size===data.length&&
+        prev?.sourceSnapshotId===snapshotId)
+      return {duplicate:false,path,resume:true};
      privateMediaFail('private_media_incomplete',409);
     }
     tx.create(key,{path,ownerUid:viewer.uid,sourceSnapshotId:snapshotId,
      status:'pending',contentType:input['contentType'],size:data.length,
      digest,createdAt:at,updatedAt:at});
-    return {duplicate:false,path};
+    return {duplicate:false,path,resume:false};
    });
-   if(reserve.duplicate)return {path,duplicate:true};
-   let savedByThisRequest=false;
-   try{
-    await file.save(data,{resumable:false,
-      preconditionOpts:{ifGenerationMatch:0},
-      metadata:{contentType:input['contentType'],
-       cacheControl:'private,max-age=0,no-store'},
-    });
-    savedByThisRequest=true;
-    // Confirmar os bytes persistidos antes de tornar a referência utilizável.
-    const [persisted]=await file.download();
+   // A resposta idempotente nunca mascara perda ou corrupção do objeto.
+   const verifyStored=async()=>{
+    let persisted:Buffer;
+    try{[persisted]=await file.download();}
+    catch{privateMediaFail('private_media_integrity_failed',503);}
     if(persisted.length!==data.length||
        privateMediaHash(persisted.toString('base64'))!==digest)
      privateMediaFail('private_media_integrity_failed',503);
-    const again=await scope(token);
-    if(JSON.stringify(viewer)!==JSON.stringify(again))
-     privateMediaFail('private_media_denied');
-    await db.runTransaction(async(tx:any)=>{
-     const [runtime,current]=await Promise.all([tx.get(root),tx.get(key)]);
-     const m=current.data();
-     if(!runtimeApproved(runtime,true)||
-        m?.status!=='pending'||m?.ownerUid!==viewer.uid||
-        m?.digest!==digest||m?.path!==path)
-      privateMediaFail('private_media_upload_revoked',403);
-     const now=new Date().toISOString();
-     tx.update(key,{status:'ready',updatedAt:now});
-     tx.create(root.collection('privateMediaAudits').doc(privateMediaHash('upload:'+path)),{
-      action:'private_media_upload',ownerUid:viewer.uid,path,
-      contentType:input['contentType'],size:data.length,occurredAt:now,
-      sourceSnapshotId:snapshotId,
-     });
-    });
-    return {path,duplicate:false};
-   }catch(error){
-    // Nunca apagar objeto preexistente após falha por geração duplicada.
-    if(savedByThisRequest){
-     try{await file.delete();}catch{/* cleanup best effort */}
-    }
-    throw error;
+   };
+   if(reserve.duplicate){
+    await verifyStored();
+    return {path,duplicate:true};
    }
+   if(reserve.resume){
+    // 404 significa que a primeira tentativa caiu antes de salvar.
+    // Outros erros do Storage não podem ser confundidos com objeto ausente.
+    let exists=false;
+    try{const [found]=await file.exists();exists=found;}
+    catch{privateMediaFail('private_media_unavailable',503);}
+    if(exists)await verifyStored();
+    else await file.save(data,{resumable:false,
+     preconditionOpts:{ifGenerationMatch:0},
+     metadata:{contentType:input['contentType'],
+      cacheControl:'private,max-age=0,no-store'},
+    });
+   }else{
+    await file.save(data,{resumable:false,
+     preconditionOpts:{ifGenerationMatch:0},
+     metadata:{contentType:input['contentType'],
+      cacheControl:'private,max-age=0,no-store'},
+    });
+   }
+   await verifyStored();
+   const again=await scope(token);
+   if(JSON.stringify(viewer)!==JSON.stringify(again))
+    privateMediaFail('private_media_denied');
+   const committed=await db.runTransaction(async(tx:any)=>{
+    const [runtime,current]=await Promise.all([tx.get(root),tx.get(key)]);
+    const m=current.data();
+    if(!runtimeApproved(runtime,true))
+     privateMediaFail('private_media_upload_revoked',403);
+    if(m?.status==='ready'&&m?.ownerUid===viewer.uid&&
+       m?.digest===digest&&m?.path===path&&
+       m?.sourceSnapshotId===snapshotId)return false;
+    if(m?.status!=='pending'||m?.ownerUid!==viewer.uid||
+       m?.digest!==digest||m?.path!==path||
+       m?.sourceSnapshotId!==snapshotId)
+     privateMediaFail('private_media_upload_revoked',403);
+    const now=new Date().toISOString();
+    tx.update(key,{status:'ready',updatedAt:now});
+    tx.create(root.collection('privateMediaAudits').doc(privateMediaHash('upload:'+path)),{
+     action:'private_media_upload',ownerUid:viewer.uid,path,
+     contentType:input['contentType'],size:data.length,occurredAt:now,
+     sourceSnapshotId:snapshotId,
+    });
+    return true;
+   });
+   // Não apagar bytes após falha transacional: outro envio pode ter
+   // confirmado o mesmo objeto. O manifesto pending nunca autoriza leitura.
+   return {path,duplicate:reserve.resume||!committed};
   },
   async signed(token:string,request:unknown){
    if(!isObj(request))return privateMediaFail('private_media_request_invalid',400);
