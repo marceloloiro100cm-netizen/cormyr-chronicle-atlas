@@ -18,8 +18,6 @@ const id=(v:unknown):v is string=>typeof v==='string'&&
  v.length>0&&v.length<=128&&!/[\/\u0000-\u001f\u007f]/.test(v);
 const count=(v:unknown):v is number=>Number.isSafeInteger(v)&&
  typeof v==='number'&&v>=0;
-const number=(v:unknown)=>v===null||v===undefined?null:
- count(v)?v:fail('invalid_character_registry');
 
 type CanonicalPerson={
  id:string;displayName:string;houseId:string|null;nobleRoles:string[];
@@ -122,7 +120,7 @@ export async function readAgeRegistry(db:any,snapshot:string):Promise<AgeRegistr
  const people=characters.docs.map((d:any)=>d.data());
  const identifiers=new Set<string>();
  for(const p of people){
-  if(!p||!id(p.id)||differ(p.id)||identifiers.has(p.id)||
+  if(!p||!id(p.id)||identifiers.has(p.id)||
     typeof p.displayName!=='string'||p.displayName.length>180||
     !Array.isArray(p.nobleRoles)||p.nobleRoles.some((r:unknown)=>typeof r!=='string')||
     !['gm','house','player'].includes(p.visibility)||
@@ -136,7 +134,6 @@ export async function readAgeRegistry(db:any,snapshot:string):Promise<AgeRegistr
     fail('character_source_invalid');
   identifiers.add(p.id);
  }
- function differ(_id:string){return false;}
  const linkList=links.docs.map((d:any)=>d.data());
  const used=new Set<string>();
  for(const l of linkList){
