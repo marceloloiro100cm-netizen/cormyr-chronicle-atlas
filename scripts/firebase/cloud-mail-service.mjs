@@ -253,7 +253,7 @@ export function createFirebaseCloudMail({
 
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
-  async function persist(tx,{uid,actor,date,round,req,replyToId=null}){
+  async function persist(tx,{uid,actor,date,round,req,replyToId=null,realActorUid=null,sessionNonce=null}){
     // Original composer submits an explicit campaign date. Compare it inside
     // the same transaction to prevent a clock rollover from misdating a letter.
     if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
@@ -303,6 +303,7 @@ export function createFirebaseCloudMail({
           id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
           requestKey:req.requestKey,requestFingerprint:fingerprint,
           senderUid:uid,senderPlayerId:actor.playerId,
+          ...(realActorUid?{administrativeActorUid:realActorUid}:{}),
           senderName:actor.role==='narrador'?'Narrador':'Jogador',
           originHouseId:req.originHouseId,
           recipientKind:req.recipientKind,
@@ -315,9 +316,17 @@ export function createFirebaseCloudMail({
           campaignDate:date,creationRound:round,deliveryRound:plan.deliveryRound,
           publicationState:plan.state,deletedAt:null,version:1,
         });
-        tx.create(audit,{action:replyToId?'reply':'send',actorUid:uid,letterId:id,
+        tx.create(audit,{action:replyToId?'reply':'send',actorUid:realActorUid??uid,
+          ...(realActorUid?{representedUid:uid,sessionNonce}:{}),letterId:id,
           ...(replyToId?{replyToId}:{}),
           requestFingerprint:fingerprint,occurredAt:timestamp});
+        if(realActorUid)tx.create(runtime.collection('representationAudits')
+          .doc(hash('representation-mail:'+uid+':'+req.requestKey)),{
+           action:'representation_'+(replyToId?'reply':'send'),
+           realActorUid,representedUid:uid,playerId:actor.playerId,
+           letterId:id,sessionNonce,sourceSnapshotId:snapshotId,
+           occurredAt:timestamp,
+          });
         if(counter.exists)tx.update(limitRef,{count:n+1});
         else tx.create(limitRef,{count:1,round,actorUid:uid});
         return {id,duplicate:false,state:plan.state,deliveryRound:plan.deliveryRound};
