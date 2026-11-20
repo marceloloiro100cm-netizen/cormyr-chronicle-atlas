@@ -48,7 +48,7 @@ describe('Ficha Firebase: upload privado do brasão antes de alterar a Casa',()=
   expect(fetchMock).toHaveBeenCalledTimes(1);
  });
  it('não exige upload separado para as outras ações',async()=>{
-  const fetchMock=vi.fn(async()=>Response.json({result:{houseId:'house-a',
+  const fetchMock=vi.fn(async(_input:RequestInfo|URL)=>Response.json({result:{houseId:'house-a',
    action:'domain_edit',version:1,duplicate:false,ledgerId:'hash'}}));
   vi.stubGlobal('fetch',fetchMock);
   await submitFirebaseHouseOperation({...request,action:'domain_edit',
