@@ -14,7 +14,7 @@ type GoogleIdentity={
  }};
 };
 type GoogleWindow=Window&{google?:GoogleIdentity};
-const googleClientId=String(import.meta.env.VITE_CORMYR_GOOGLE_CLIENT_ID??'').trim();
+const googleClientId=String(import.meta.env['VITE_CORMYR_GOOGLE_CLIENT_ID']??'').trim();
 const supported=/^[0-9]+-[a-zA-Z0-9_-]+[.]apps[.]googleusercontent[.]com$/;
 
 export function FirebaseGoogleSignIn({onCredential,disabled}:{
