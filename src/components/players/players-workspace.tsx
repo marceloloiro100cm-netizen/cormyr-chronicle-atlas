@@ -35,6 +35,8 @@ import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@
 import { HouseIdentity } from '@/components/players/house-identity';
 import {heraldicHouseKey,type HeraldicHouse} from '@/lib/house/heraldry';
 import { NarratorMissivasHub, NARRATOR_MENU } from '@/components/players/narrator-missives-hub';
+import {NarratorWorkspace,RepresentationOptions} from '@/components/players/narrator/NarratorWorkspace';
+import {NarratorCouncil} from '@/components/players/narrator/NarratorCouncil';
 import {SpyNarratorDossiers} from '@/components/house/espionage/spy-dossier-panel';
 import {BATTLE_MODULE_ENABLED as BATTLE_MODULE_BUILD_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
 import {BattleNarratorHub} from '@/components/battle/BattleNarratorHub';
@@ -173,7 +175,8 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   const commissionAnswers=useUnseenCommissionAnswers(expectedUserId);
   const newspaperUnread=editionsUnread+commissionAnswers;
   const [tab,setTab]=useState('missivas'),[house,setHouse]=useState(''),[message,setMessage]=useState(''),[section,setSection]=useState('painel'),[representing,setRepresenting]=useState(false),[representedTheme,setRepresentedTheme]=useState<HeraldicHouse|null>(null);
-  const [mailFilterHost,setMailFilterHost]=useState<HTMLDivElement|null>(null);
+  // Casa pré-selecionada ao abrir as Missivas a partir do Conselho das casas.
+  const [mailHouse,setMailHouse]=useState('');
   const sync=useServerFn(syncPlayerFolder);
   const refresh=async()=>{await qc.invalidateQueries({queryKey:['campaign-panel']});};
   useEffect(()=>{if(data?.admin)setTab(previous=>previous==='missivas'?'casa':previous);},[data?.admin]);
@@ -220,15 +223,28 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
     </>;
   if(data.admin&&representing)return <CampaignShell heraldry={representedTheme}><PlayerRepresentation onHouseTheme={setRepresentedTheme} onReturn={()=>{clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false);void refresh();}}/></CampaignShell>;
-  return <CampaignShell heraldry={!data.admin&&current?heraldicHouseKey(current.name):null}><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??(data.admin?'Conselho do mestre':'Área dos jogadores')}</h1></div><div className="campaign-actions">{data.admin&&<select aria-label="Acessar como jogador" defaultValue="" onChange={async e=>{if(!e.target.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:e.target.value});if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option>{data.players.filter(p=>p.active&&p.user_id!==data.user.id&&p.user_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}<ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
+  if(data.admin){
+    // Visão do Narrador (layout v5): cabeçalho de uma linha, rail de módulos e área do módulo em tela cheia.
+    const goSection=(id:string)=>{setMailHouse('');setSection(id);};
+    const manage=(id:string)=>{setHouse(id);sessionStorage.setItem('campaign-selected-house',id);setTab('ficha');setMailHouse('');setSection('painel');
+      requestAnimationFrame(()=>document.getElementById('nw-house-admin')?.scrollIntoView({behavior:'smooth',block:'start'}));};
+    const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
+    const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}>{section==='acessos-firebase'&&firebaseWorkspaceClient()!==null?
+      <div className="nw-page"><FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/></div>:
+      section==='missivas'?<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}
+        onOpenHub={()=>goSection('calendario')} initialHouse={mailHouse||undefined}
+        classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>:
+      <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
+        <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>{setMailHouse(id);setSection('missivas');}} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</div>:null;
+    return <NarratorWorkspace menu={NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)}
+      extra={firebaseWorkspaceClient()!==null?['acessos-firebase','Contas pendentes Firebase'] as const:null}
+      section={section} onSection={goSection} unread={unread} openRound={openRound}
+      represent={<select aria-label="Acessar como jogador" className="nw-represent" defaultValue="" onChange={async e=>{const select=e.currentTarget;if(!select.value)return;const r=await supabase.rpc('start_campaign_representation',{p_player:select.value});select.value='';if(r.error)setMessage(r.error.message);else {clearRepresentationQueryCache(qc);setRepresenting(true);}}}><option value="">Acessar como jogador…</option><RepresentationOptions players={data.players} houses={data.houses} selfUserId={data.user.id}/></select>}
+      account={<><ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></>}
+      message={message} onDismissMessage={()=>setMessage('')}>{narratorSection}</NarratorWorkspace>;
+  }
+  return <CampaignShell heraldry={!data.admin&&current?heraldicHouseKey(current.name):null}><div className="campaign-heading"><div><p className="campaign-eyebrow">SEGUNDA TEMPORADA · CONSELHO</p><h1>{me?.name??'Área dos jogadores'}</h1></div><div className="campaign-actions"><ChangePasswordButton/><Button variant="outline" onClick={signout}>Sair</Button></div></div>
     {message&&<div className="campaign-status-banner" role="status" aria-live="polite">{message}</div>}
-    {data.admin?<div className={'campaign-layout'+(section==='missivas'?' campaign-layout--mail':'')}><div className="campaign-side-column"><aside className="campaign-side" aria-label="Menu do Narrador"><p className="campaign-eyebrow">NARRADOR</p>{NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED).map(([id,label])=><button key={id} type="button" className={section===id?'ativo':''} aria-pressed={section===id} aria-label={id==='missivas'&&unread>0?`${label}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:undefined} onClick={()=>setSection(id??'painel')}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}</button>)}{firebaseWorkspaceClient()!==null&&<button type="button"
-      className={section==='acessos-firebase'?'ativo':''}
-      aria-pressed={section==='acessos-firebase'}
-      onClick={()=>setSection('acessos-firebase')}>
-      Contas pendentes Firebase
-    </button>}</aside>{section==='missivas'&&<div className="narrator-mail-filter-slot" id="narrator-mail-filter-slot" ref={setMailFilterHost}/>}</div><div>{section==='acessos-firebase'&&firebaseWorkspaceClient()!==null?
-      <FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/>:
-      section==='missivas'?<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}} classic={<NarratorMissivasHub filterHost={mailFilterHost} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={id=>{setHouse(id);setTab('ficha');setSection('painel');}}/>}/>:section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:conselho}</div></div>:conselho}
+    {conselho}
   </CampaignShell>;
 }
