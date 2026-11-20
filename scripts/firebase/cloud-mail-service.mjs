@@ -704,6 +704,84 @@ export function createFirebaseCloudMail({
       });
     },
 
+    async sendRepresented(idToken,input){
+      const actorUid=await uidFromToken(idToken);
+      const req=validateRequest(input);
+      if(req.recipientKind==='narrator'&&req.originHouseId===null)
+        deny('invalid_origin_house',400);
+      return db.runTransaction(async tx=>{
+        const {uid,actor,date,round,administrativeActorUid,
+          representationSessionId}=await readyRepresented(tx,actorUid);
+        return persist(tx,{uid,actor,date,round,req,
+          administrativeActorUid,representationSessionId});
+      });
+    },
+
+    async replyRepresented(idToken,input){
+      const actorUid=await uidFromToken(idToken);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+        Object.keys(input).some(k=>!['requestKey','letterId','content',
+          'expectedCampaignDate','draft'].includes(k))||
+        typeof input.letterId!=='string'||!SNAPSHOT.test(input.letterId)||
+        typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
+        !validText(input.content,MAX_CONTENT_BYTES))
+        deny('invalid_reply_request',400);
+      return db.runTransaction(async tx=>{
+        const {uid,actor,date,round,administrativeActorUid,
+          representationSessionId}=await readyRepresented(tx,actorUid);
+        if(input.expectedCampaignDate!==undefined&&
+           input.expectedCampaignDate!==date)deny('campaign_date_changed',409);
+        const original=await tx.get(letters.doc(input.letterId));
+        const parent=original.exists?effectiveCloudMail(original.data(),round):null;
+        const route=parent?cloudReplyRoute(actor,parent,snapshotId):null;
+        if(!route||parent.id!==input.letterId)
+          deny('reply_not_authorized',403);
+        const prefix=/^Re:\s/i.test(parent.subject)?'':'Re: ';
+        const chars=Array.from(parent.subject);
+        while(chars.length&&Buffer.byteLength(prefix+chars.join(''),'utf8')>
+          MAX_SUBJECT_BYTES)chars.pop();
+        const req=validateRequest({
+          requestKey:input.requestKey,...route,
+          subject:prefix+chars.join(''),content:input.content,
+          ...(input.draft!==undefined?{draft:input.draft}:{}),
+          ...(input.expectedCampaignDate!==undefined?
+            {expectedCampaignDate:input.expectedCampaignDate}:{}),
+        });
+        return persist(tx,{uid,actor,date,round,req,replyToId:input.letterId,
+          administrativeActorUid,representationSessionId});
+      });
+    },
+
+    async cancelRepresented(idToken,input){
+      const actorUid=await uidFromToken(idToken);
+      const {letterId,expectedVersion}=lifecycleInput(input,
+        ['letterId','expectedVersion']);
+      const ref=letters.doc(letterId);
+      return db.runTransaction(async tx=>{
+        const {uid,actor,round,representationSessionId}=
+          await readyRepresented(tx,actorUid);
+        const v=cloudLetterOf(await tx.get(ref),letterId,round);
+        if(v.deletedAt!==null)return {removed:true,alreadyRemoved:true,
+          version:v.version,removalKind:v.removalKind??null};
+        checkVersion(v,expectedVersion);
+        if(!authorInOpenWeek(actor,uid,v,round))
+          deny('cancel_not_allowed',403);
+        const at=serverTime(),version=v.version+1;
+        tx.update(ref,{deletedAt:at,deletedByUid:uid,
+          administrativeActorUid:actorUid,removalKind:'cancelada',
+          version,updatedAt:at});
+        tx.create(audits.doc(hash('mail-remove:'+letterId+':'+version)),{
+          action:'cancel',actorUid,representedUid:uid,
+          representationSessionId,letterId,version,occurredAt:at});
+        tx.create(runtime.collection('representationAudits')
+          .doc(hash('representation-remove:'+letterId+':'+version)),{
+          actorUid,representedUid:uid,playerId:actor.playerId,
+          sessionId:representationSessionId,action:'representation_delete',
+          entity:letterId,version,at,sourceSnapshotId:snapshotId});
+        return {removed:true,alreadyRemoved:false,version,removalKind:'cancelada'};
+      });
+    },
+
     async send(idToken,input){
       const uid=await uidFromToken(idToken);
       const req=validateRequest(input);
