@@ -13,7 +13,7 @@ const envelope={schema:'cormyr-record-v1',entityType:'record',id:ID,
 const file={id:FILE,name:'cormyr-record-'+ID+'.json',mimeType:'application/json',
   size:'760',parents:[FOLDER],trashed:false};
 
-function mockDrive({metadata=file,payload=envelope,metadataEtag='W/"rev-1"',mediaEtag='W/"rev-1"'}={}){
+function mockDrive({listedFile=file,metadata=listedFile,payload=envelope,metadataEtag='W/"rev-1"',mediaEtag='W/"rev-1"'}={}){
   const seen=[];
   const fetcher=async(url,options)=>{
     const u=new URL(url);seen.push({url:u.toString(),options});
@@ -22,7 +22,7 @@ function mockDrive({metadata=file,payload=envelope,metadataEtag='W/"rev-1"',medi
     assert.equal(options.headers.Authorization,'Bearer fake-oauth-token');
     if(u.pathname==='/drive/v3/files'){
       assert.match(u.searchParams.get('q'),/in parents and trashed = false/);
-      return Response.json({files:[file]});
+      return Response.json({files:[listedFile]});
     }
     if(u.searchParams.get('alt')==='media')
       return Response.json(payload,{headers:{etag:mediaEtag}});
@@ -79,7 +79,7 @@ test('Drive folder listing is bounded and never trusts repeated page tokens',asy
 });
 
 test('never lists arbitrary JSON or file names outside the canonical campaign format',async()=>{
- const renamed=mockDrive({metadata:{...file,name:'private-notes.json'}});
+ const renamed=mockDrive({listedFile:{...file,name:'private-notes.json'}});
  const a=create(renamed.fetcher);
  await assert.rejects(a.list(FOLDER),DriveError);
  const foreign=mockDrive({metadata:{...file,name:'cormyr-record-22222222-2222-4222-8222-222222222222.json'}});
