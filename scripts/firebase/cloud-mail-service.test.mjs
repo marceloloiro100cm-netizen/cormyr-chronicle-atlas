@@ -948,7 +948,7 @@ test('representação: resposta vinculada à missiva e baixa preservam autor adm
  try{
   const f=representedFixture();
   const original=await f.service().send(sampleToken,req({
-   originHouseId:null,requestKey:'gm-original-1',
+   originHouseId:null,recipientHouseId:'house-a',requestKey:'gm-original-1',
   }));
   const reply=await f.service().replyRepresented(sampleToken,{
    requestKey:'rep-reply-key-1',letterId:original.id,content:'Resposta oficial',
