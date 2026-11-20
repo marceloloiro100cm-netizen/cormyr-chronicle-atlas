@@ -8,7 +8,7 @@ import {HOUSE_ACTIONS,applyHouseDomainOperation,applyHouseNonEconomicOperation,
  HOUSE_DICE_ACTIONS,applyHouseContextOperation,
  HOUSE_CONTEXT_ACTIONS,applyHousePurchaseOperation,
  HOUSE_PURCHASE_ACTIONS,applyHouseLinkOperation,
- HOUSE_LINK_ACTIONS,needsHouseOperationCalendar,
+ HOUSE_LINK_ACTIONS,applyHouseCrestOperation,needsHouseOperationCalendar,
  requireHouseOperationPhase,requireHouseOperationRole} from './operation-core';
 
 const ID='11111111-1111-4111-8111-111111111111';
@@ -292,5 +292,40 @@ describe('Corte e vassalagem com escopo de NPCs',()=>{
   const state=newHouseState('house-a');
   expect(()=>applyHouseLinkOperation(state,'vassal_approve',{
    id:ID,influencePenalty:0},ctx)).toThrow(/Proposta/);
+ });
+});
+
+
+describe('brasão da Casa como operação pura Firebase',()=>{
+ const snapshotId='a'.repeat(64),actorUid='player-a';
+ const path='private/'+snapshotId+'/'+actorUid+'/'+ID+'.png';
+ const context={admin:false,snapshotId,actorUid};
+ it('troca apenas o caminho validado e preserva a ficha de origem',()=>{
+  const state=newHouseState('house-a'),before=structuredClone(state);
+  const result=applyHouseCrestOperation(state,{path},context);
+  expect(result.state.identity.crestPath).toBe(path);
+  expect(state).toEqual(before);
+  expect(result.rule).toMatch(/brasão/);
+ });
+ it('rejeita caminhos públicos, de outra conta e base64 não conciliado',()=>{
+  const state=newHouseState('house-a');
+  for(const invalid of ['house-crests/casa-a/brasao.png',
+   'private/'+snapshotId+'/other/'+ID+'.png',
+   'private/'+'b'.repeat(64)+'/'+actorUid+'/'+ID+'.png',
+   'private/'+snapshotId+'/'+actorUid+'/'+ID+'.gif']){
+   expect(()=>applyHouseCrestOperation(state,{path:invalid},context))
+    .toThrow(/privado/);
+  }
+  expect(()=>applyHouseCrestOperation(state,{base64:'AA=='},context))
+   .toThrow();
+ });
+ it('exige Narrador para ficha ativa ou importada',()=>{
+  const state=newHouseState('house-a');
+  state.phase='active';
+  expect(()=>applyHouseCrestOperation(state,{path},context)).toThrow(/Narrador/);
+  state.phase='draft';state.importSources.push('arquivo');
+  expect(()=>applyHouseCrestOperation(state,{path},context)).toThrow(/Narrador/);
+  expect(applyHouseCrestOperation(state,{path},{...context,admin:true})
+   .state.identity.crestPath).toBe(path);
  });
 });

@@ -42,6 +42,28 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
    privateMediaFail('private_media_not_approved',503);
  };
  const visibleReference=async(token:string,path:string)=>{
+  // Um brasão importado pertence à Casa. Seus membros e o Narrador
+  // podem lê-lo, sem transferir o acesso a jogadores de outra Casa.
+  const link=await root.collection('privateMediaHouseLinks')
+   .doc(privateMediaHash('house-crest:'+path)).get();
+  if(link.exists){
+   const value=link.data(),houseId=value?.houseId;
+   if(value?.path===path&&value?.sourceSnapshotId===snapshotId&&
+      safe(houseId)){
+    const viewer=await scope(token);
+    if(viewer.profile==='narrador'||
+       viewer.profile==='jogador'&&viewer.memberHouseIds.includes(houseId)){
+     const economy=await root.collection('houseEconomies')
+      .doc(privateMediaHash('house:'+houseId)).get();
+     const state=economy.data();
+     if(economy.exists&&state?.houseId===houseId&&
+        state?.sourceSnapshotId===snapshotId&&
+        state?.sourceReconciled===true&&state?.status==='active'&&
+        state?.state?.houseId===houseId&&
+        state?.state?.identity?.crestPath===path)return true;
+    }
+   }
+  }
   const service=createWorkspaceService({db,auth,snapshotId,cacheImportedTables:true});
   for(const table of ['campaign_records','campaign_letters','letter_replies']){
    const result=await service.execute(token,{kind:'query',table,steps:[]});

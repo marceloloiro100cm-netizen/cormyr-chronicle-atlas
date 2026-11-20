@@ -92,6 +92,36 @@ describe('Item 11, gateway privado do Storage',()=>{
   expect((await f.api.signed('valid-token',{action:'sign',path})).signedUrl)
    .toContain('signed');
  });
+
+ it('brasão da Casa fica visível aos membros autorizados e ao Narrador',async()=>{
+  const f=fixture(),{path}=await f.api.upload('valid-token',body);
+  f.docs.set(root+'/privateMediaHouseLinks/'+
+   privateMediaHash('house-crest:'+path),{
+   path,sourceSnapshotId:snap,houseId:'h1',ownerUid:'alice',version:1,
+  });
+  f.docs.set(root+'/houseEconomies/'+privateMediaHash('house:h1'),{
+   houseId:'h1',sourceSnapshotId:snap,sourceReconciled:true,status:'active',
+   state:{houseId:'h1',identity:{crestPath:path}},
+  });
+  state.viewer={uid:'bob',profile:'jogador',playerId:'p2',
+   memberHouseIds:['h2'],editHouseIds:['h2']};
+  await expect(f.api.signed('valid-token',{action:'sign',path}))
+   .rejects.toThrow('private_media_denied');
+  state.viewer={uid:'clara',profile:'jogador',playerId:'p3',
+   memberHouseIds:['h1'],editHouseIds:['h1']};
+  expect((await f.api.signed('valid-token',{action:'sign',path})).signedUrl)
+   .toContain('signed');
+  state.viewer={uid:'narrator',profile:'narrador',playerId:null,
+   memberHouseIds:[],editHouseIds:[]};
+  expect((await f.api.signed('valid-token',{action:'sign',path})).signedUrl)
+   .toContain('signed');
+  f.docs.set(root+'/houseEconomies/'+privateMediaHash('house:h1'),{
+   houseId:'h1',sourceSnapshotId:snap,sourceReconciled:true,status:'active',
+   state:{houseId:'h1',identity:{crestPath:'arquivo-substituido'}},
+  });
+  await expect(f.api.signed('valid-token',{action:'sign',path}))
+   .rejects.toThrow('private_media_denied');
+ });
  it('não apaga objeto já existente após falha por geração duplicada',async()=>{
   const f=fixture(),path='private/'+snap+'/alice/'+body.id+'.png';
   const original=Buffer.from(image);

@@ -12,10 +12,38 @@ export async function submitFirebaseHouseOperation(
  const token=await auth?.getToken();
  if(!uid||!token||uid!==auth?.current()?.uid)
   throw Error('Sessão Firebase encerrada. Entre novamente.');
+ let confirmedRequest=request;
+ if(request.action==='crest_import'){
+  const {base64,mime}=request.args;
+  if(typeof base64!=='string'||base64.length<16||
+     base64.length>Math.ceil(2*1024*1024*4/3)+8||
+     !/^[a-zA-Z0-9+/]+={0,2}$/.test(base64)||
+     !['image/png','image/jpeg','image/webp'].includes(String(mime)))
+   throw Error('Escolha um brasão PNG, JPEG ou WebP de até 2 MB.');
+  // A chave da operação também identifica o upload. Repetir a mesma
+  // tentativa não gera um segundo arquivo nem uma segunda compra.
+  const upload=await fetch('/api/firebase-private-media',{
+   method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+   body:JSON.stringify({action:'upload',id:request.key,contentType:mime,
+    dataBase64:base64}),
+  });
+  if(uid!==auth?.current()?.uid)
+   throw Error('Sua sessão mudou durante o upload. Nenhuma operação foi confirmada.');
+  if(!upload.ok)
+   throw Error('O Storage privado ainda não está homologado para importar brasões. A ficha não foi alterada.');
+  const reply:unknown=await upload.json();
+  const path=reply&&typeof reply==='object'&&'result' in reply&&
+    reply.result&&typeof reply.result==='object'&&'path' in reply.result?
+     reply.result.path:null;
+  if(typeof path!=='string'||!path.startsWith('private/')||path.length>400)
+   throw Error('O Storage não confirmou o arquivo do brasão. A ficha não foi alterada.');
+  confirmedRequest={...request,args:{path}};
+ }
  const response=await fetch('/api/firebase-house-operation',{
   method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-  body:JSON.stringify(request),
+  body:JSON.stringify(confirmedRequest),
  });
  if(uid!==auth?.current()?.uid)
   throw Error('A sessão mudou durante a operação. Recarregue a Ficha.');
