@@ -7,7 +7,7 @@ import {createHash,randomInt} from 'node:crypto';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema,catalogSchema} from './schemas';
-import {privateMediaRef,validatePrivateMediaSource}
+import {validatePrivateMediaSource}
  from '@/lib/firebase-workspace/private-media-core';
 import {applyHouseImportOperation,type HouseImportArchive} from './operation-import-core';
 import {CORE_CATALOG} from './catalog';
@@ -103,7 +103,8 @@ export function createFirebaseHouseOperation({
   if(Buffer.byteLength(JSON.stringify(args),'utf8')>
       (action==='import'?520_000:14_000))
     fail('house_operation_too_large',413);
-  const crestPath=action==='crest_import'?args['path']:null;
+  const crestPath=action==='crest_import'&&typeof args['path']==='string'?
+   args['path']:null;
   if(action==='crest_import'){
    if(env['CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED']!=='true')
     fail('house_crest_media_disabled',503);
@@ -129,7 +130,8 @@ export function createFirebaseHouseOperation({
   const sheetRef=nobleStage.collection('sheets').doc(hash('noble-sheet:'+houseId));
   const economyRef=root.collection('houseEconomies').doc(hash('house:'+houseId));
   const eventId=hash('house-operation:'+uid+':'+key);
-  const crestRef=typeof crestPath==='string'?privateMediaRef(root,crestPath):null;
+  const crestRef=typeof crestPath==='string'?root.collection('privateMedia')
+   .doc(hash('private-media:'+crestPath)):null;
   const crestLinkRef=typeof crestPath==='string'?root.collection('privateMediaHouseLinks')
    .doc(hash('house-crest:'+crestPath)):null;
   const eventRef=root.collection('houseOperationRequests').doc(eventId);
