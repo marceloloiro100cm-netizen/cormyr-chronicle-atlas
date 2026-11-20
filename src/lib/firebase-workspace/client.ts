@@ -20,8 +20,9 @@ function workspaceError(status:number,input:Record<string,unknown>,serverCode?:s
  return Object.assign(Error(message),{code:'FIREBASE_'+status,...(code?{serverCode:code}:{})});
 }
 async function send(body:Record<string,unknown>):Promise<{ok:true;result:any}|{ok:false;status:number;serverCode?:string}>{
- const auth=firebasePilotAuth(),uid=auth?.current()?.uid;
+ const auth=firebasePilotAuth();
  const token=await auth?.getToken();
+ const uid=auth?.current()?.uid;
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a consulta.');
  if(!token||!uid)throw Error('Entre novamente com sua conta Firebase.');
  const r=await fetch('/api/firebase-workspace',{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
@@ -79,7 +80,7 @@ export function workspaceRequest(input:Record<string,unknown>):Promise<any>{
 const response=async(fn:()=>Promise<any>)=>{try{return {data:await fn(),error:null};}catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Firebase indisponível',code:(e as any)?.code,serverCode:(e as any)?.serverCode}};}};
 
 async function privateMediaRequest(input:Record<string,unknown>,binary=false){
- const auth=firebasePilotAuth(),uid=auth?.current()?.uid,token=await auth?.getToken();
+ const auth=firebasePilotAuth(),token=await auth?.getToken(),uid=auth?.current()?.uid;
  if(!token||!uid||auth?.current()?.uid!==uid)throw Error('Sessão Firebase inválida.');
  const response=await fetch('/api/firebase-private-media',{
   method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
