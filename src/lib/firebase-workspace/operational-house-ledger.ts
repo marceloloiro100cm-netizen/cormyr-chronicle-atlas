@@ -27,9 +27,9 @@ export function mergeHouseLedger(
   String(a['created_at']))).slice(0,100);
 }
 export async function readOperationalHouseLedger(
- db:any,snapshotId:string,houseId:string,
+ db:any,snapshotId:string,houseId?:string,
 ):Promise<HouseLedgerRow[]>{
- if(!/^[a-f0-9]{64}$/.test(snapshotId)||!ID.test(houseId))
+ if(!/^[a-f0-9]{64}$/.test(snapshotId)||(houseId!==undefined&&!ID.test(houseId)))
   throw new OperationalLedgerError('invalid_house');
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
  const live=await root.get();
@@ -52,7 +52,7 @@ export async function readOperationalHouseLedger(
      typeof d.created_at!=='string'||
      !Number.isFinite(Date.parse(d.created_at)))
    throw new OperationalLedgerError('invalid_ledger_document');
-  if(d.houseId===houseId)selected.push({
+  if(houseId===undefined||d.houseId===houseId)selected.push({
    id:d.id,house_id:d.houseId,action:d.action,
    explanation:d.explanation,rule:d.rule,created_at:d.created_at,
    actor:d.actorUid,version:d.version,campaign_month:d.campaignMonth,
