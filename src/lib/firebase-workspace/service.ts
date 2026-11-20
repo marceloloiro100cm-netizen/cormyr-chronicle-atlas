@@ -976,6 +976,16 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    else result=queryRows(await visible(String(input.table)),steps);
   }
   else if(input?.kind==='rpc')result=await rpc(String(input.name),input.args??{});
+  else if(input?.kind==='houseLedgerExport'){
+   // Exportação explícita, somente leitura e autorizada pela Casa. A
+   // prévia normal permanece limitada a 100 itens para não inflar a UI.
+   const id=input.houseId;checkHouse(id);
+   const ledger=await visible('noble_house_ledger');
+   const selected=ledger.filter(r=>r['house_id']===id);
+   if(selected.length>1000)
+    throw new CloudAccessError('house_ledger_export_too_large',413);
+   result=mergeHouseLedger(selected,[],id,1000);
+  }
   else if(input?.kind==='house'){
    const id=input.houseId;checkHouse(id);
    const [sheet,ledger,houses,overrides,live,economyMap]=await Promise.all([

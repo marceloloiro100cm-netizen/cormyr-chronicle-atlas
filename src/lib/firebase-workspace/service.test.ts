@@ -463,4 +463,27 @@ describe('real Firebase workspace boundary',()=>{
   await expect(run({kind:'rpc',name:'get_house_character_ages',args:{p_house:'ashkar'}})).rejects.toThrow('character_ages_disabled');
   await expect(run({kind:'rpc',name:'house_gallery_mail_images',args:{p_house:'other'}})).rejects.toThrow('access_denied');
  });
+ it('exporta até 1000 lançamentos reais da Casa, sem truncar nem vazar histórico alheio',async()=>{
+  const own=Array.from({length:125},(_,i)=>({
+   id:'a-'+i,house_id:'ashkar',action:'purchase',
+   created_at:new Date(Date.UTC(2026,10,20,0,i%60)).toISOString(),
+   explanation:'Compra '+i,rule:'Regra oficial',version:i+1,campaign_month:24300,
+  }));
+  f.tables['noble_house_ledger']=[...own,{
+   id:'foreign',house_id:'other',action:'purchase',
+   created_at:'2026-11-20T00:00:00Z',explanation:'SEGREDO DA CASA ESTRANGEIRA',
+  }];
+  const full=await run({kind:'houseLedgerExport',houseId:'ashkar'});
+  expect(full).toHaveLength(125);
+  expect(full.every((r:any)=>r.house_id==='ashkar')).toBe(true);
+  expect(JSON.stringify(full)).not.toContain('SEGREDO DA CASA ESTRANGEIRA');
+  await expect(run({kind:'houseLedgerExport',houseId:'other'}))
+   .rejects.toThrow('access_denied');
+  f.tables['noble_house_ledger']=Array.from({length:1001},(_,i)=>({
+   ...own[0],id:'entry-'+i,version:i+1,
+  }));
+  await expect(run({kind:'houseLedgerExport',houseId:'ashkar'}))
+   .rejects.toThrow('house_ledger_export_too_large');
+ });
+
 });
