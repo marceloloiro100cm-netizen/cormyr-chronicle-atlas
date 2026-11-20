@@ -106,11 +106,11 @@ export function createRepresentationService({db,auth,snapshotId,actor,importedPl
  return {
   async start(playerId:unknown){
    requireActor();
-   if(!valid(playerId))deny('representation_player_invalid',400);
+   if(!valid(playerId))return deny('representation_player_invalid',400);
    // Não basta confiar na lista exibida no navegador.
    const fromArchive=importedPlayers.find(p=>p.id===playerId);
    const uid=fromArchive?.user_id;
-   if(!valid(uid))deny('representation_player_invalid',404);
+   if(!valid(uid))return deny('representation_player_invalid',404);
    await verifiedUser(uid);
    return db.runTransaction(async(tx:any)=>{
     const rt=await tx.get(root);
