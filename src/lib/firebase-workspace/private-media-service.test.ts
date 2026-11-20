@@ -137,7 +137,7 @@ describe('Item 11, gateway privado do Storage',()=>{
   ['status','inactive'],['private',false],['sourceSnapshotId','b'.repeat(64)],
   ['sourceSnapshotReconciled',false],['applicationEnabled',false],
   ['privateMediaReadApproved',false],['privateMediaWriteApproved',false],
- ])('nega confirmação se %s for revogado durante o envio',async(field,value)=>{
+ ] as const)('nega confirmação se %s for revogado durante o envio',async(field,value)=>{
   const f=fixture(docs=>docs.set(root,{...docs.get(root),[field]:value}));
   await expect(f.api.upload('valid-token',body))
    .rejects.toThrow('private_media_upload_revoked');
