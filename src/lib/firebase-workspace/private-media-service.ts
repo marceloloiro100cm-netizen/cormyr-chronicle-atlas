@@ -119,12 +119,14 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
     return {duplicate:false,path};
    });
    if(reserve.duplicate)return {path,duplicate:true};
+   let savedByThisRequest=false;
    try{
     await file.save(data,{resumable:false,
       preconditionOpts:{ifGenerationMatch:0},
       metadata:{contentType:input['contentType'],
        cacheControl:'private,max-age=0,no-store'},
     });
+    savedByThisRequest=true;
     const again=await scope(token);
     if(JSON.stringify(viewer)!==JSON.stringify(again))
      privateMediaFail('private_media_denied');
@@ -146,7 +148,10 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
     });
     return {path,duplicate:false};
    }catch(error){
-    try{await file.delete();}catch{/* cleanup best effort */}
+    // Nunca apagar objeto preexistente após falha por geração duplicada.
+    if(savedByThisRequest){
+     try{await file.delete();}catch{/* cleanup best effort */}
+    }
     throw error;
    }
   },
