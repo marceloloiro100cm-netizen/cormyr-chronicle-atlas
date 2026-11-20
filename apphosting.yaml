@@ -162,6 +162,12 @@ env:
     availability:
       - RUNTIME
 
+  # Item 9: idade derivada de cadastro canônico verificado.
+  - variable: CORMYR_FIREBASE_CHARACTER_AGES_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
+
   # Gestão de contas: ativar somente depois de aceitar isolamento entre
   # Casas, sincronização das permissões e troca de senha no primeiro acesso.
   - variable: CORMYR_FIREBASE_ACCOUNTS_ENABLED

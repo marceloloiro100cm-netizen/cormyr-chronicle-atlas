@@ -4,3 +4,5 @@ export const workspaceTables:ReadonlySet<string>;
 export function readWorkspaceTable(
   db:unknown,snapshotId:string,table:string
 ):Promise<Record<string,unknown>[]>;
+
+export function archiveValues(rowDoc:any,columns:string[]):Promise<(string|null)[]>;

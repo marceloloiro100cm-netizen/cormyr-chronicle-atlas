@@ -291,3 +291,29 @@ test('opening the week publishes pending calendar events; explicit publish also 
   assert.equal((await service.publishEvents('valid-token')).published,1);
   assert.equal(data.get(ev).published,null);
 });
+
+test('virada anual gera uma auditoria por ano e retry não duplica eventos',async()=>{
+ const {service,data}=await launched();
+ const root='campaignCloudRuntime/'+HASH;
+ const live=data.get(root);
+ data.set(root,{...live,
+  calendar:{year:1522,month:11,day:20,festival:null,version:5},
+  calendarVersion:5});
+ const request={expectedCalendarVersion:5,expectedOpenRound:3,
+  proposedDate:{year:1523,month:0,day:1,festival:null},
+  reason:'Abertura do novo ano do calendário oficial',
+  requestKey:'year-turn-1523-0001',acknowledgeHouseEffectsPending:true};
+ const advanced=await service.advance('valid-token',request);
+ assert.equal(advanced.calendar.year,1523);
+ const prefix=root+'/characterYearTransitions/';
+ const before=[...data].filter(([path])=>path.startsWith(prefix));
+ assert.equal(before.length,1);
+ assert.equal(before[0][1].fromYear,1522);
+ assert.equal(before[0][1].toYear,1523);
+ assert.equal(before[0][1].calendarVersion,6);
+ assert.equal(before[0][1].actor,'narrator-1');
+ const retry=await service.advance('valid-token',request);
+ assert.equal(retry.duplicate,true);
+ assert.equal([...data].filter(([path])=>path.startsWith(prefix)).length,1);
+ assert.equal(data.get('migrationTimeEngineStage/'+HASH+'/calendar/current').year,1522);
+});
