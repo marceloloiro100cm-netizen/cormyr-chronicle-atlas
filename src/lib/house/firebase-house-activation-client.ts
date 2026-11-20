@@ -26,6 +26,8 @@ export const HOUSE_ACTIVATION_MESSAGES:Record<string,string>={
  source_review_required:'Confira novamente a versão e os dados da ficha importada.',
  source_version_conflict:'A ficha mudou desde a conferência. Revise antes de ativar.',
  calendar_mismatch:'O mês da ficha não corresponde ao calendário homologado.',
+ source_draft_requires_review:'A ficha desta Casa ainda é rascunho. Conclua e aprove a Ficha antes de ativar a economia.',
+ source_review_pending:'A ficha foi enviada para revisão e aguarda aprovação do Narrador.',
  source_unusable:'A ficha importada tem campos ou saldos incompatíveis com o motor de regras.',
  treasury_invalid:'O Tesouro da ficha importada não passou na conferência.',
  state_exceeds_firestore_budget:'A ficha excede o limite seguro de armazenamento.',
