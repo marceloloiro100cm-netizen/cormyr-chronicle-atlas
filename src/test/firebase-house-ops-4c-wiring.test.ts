@@ -10,6 +10,21 @@ describe('Ficha Firebase: contrato de integração 4c',()=>{
   expect(component).toContain('retry.current.key');
   expect(component).toContain("qc.invalidateQueries({queryKey:['noble-house',props.house.id]})");
  });
+ it('usa capacidade emitida pelo Firebase para deixar compras e regras em consulta',()=>{
+  const backend=source('src/lib/firebase-workspace/service.ts');
+  expect(backend).toContain('houseReleaseReadiness({');
+  expect(backend).toContain('houseOperationsWritable:readiness.houseOperationsWritable');
+  expect(backend).toContain('houseRulesWritable:readiness.houseRulesWritable');
+  const hub=source('src/components/house/hub.tsx');
+  expect(hub).toContain('if(!houseOperationsWritable)');
+  expect(hub).toContain('const canEdit=houseOperationsWritable&&(admin||playerCanEdit)');
+  expect(hub).toContain('Adaptações do Narrador disponíveis para consulta');
+  const activation=source('src/lib/firebase-workspace/activate.ts');
+  expect(activation).toContain('return {message:result.message,version:result.version}');
+  const yaml=source('apphosting.yaml');
+  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED\n\s+value: "true"/);
+  expect(yaml).toMatch(/CORMYR_FIREBASE_HOUSE_RULES_ENABLED\n\s+value: "false"/);
+ });
  it('inclui ledger operacional e mantém guardas desativadas na implantação',()=>{
   expect(source('src/lib/firebase-workspace/service.ts'))
    .toContain('readOperationalHouseLedger(db,snapshotId)');
