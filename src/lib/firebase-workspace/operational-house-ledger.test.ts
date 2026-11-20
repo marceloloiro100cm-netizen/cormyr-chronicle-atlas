@@ -22,4 +22,17 @@ describe('Livro-razão Firebase por Casa',()=>{
   expect(()=>mergeHouseLedger([first],[first],'house-a'))
    .toThrow('invalid_house_ledger');
  });
+ it('mantém prévia pequena e entrega exportação íntegra, sem truncamento silencioso',()=>{
+  const rows=Array.from({length:120},(_,i)=>row(
+   'history-'+i,'house-a',i+1,'2026-11-19T10:00:00Z',
+  ));
+  expect(mergeHouseLedger(rows,[],'house-a')).toHaveLength(100);
+  expect(mergeHouseLedger(rows,[],'house-a',1000)).toHaveLength(120);
+  expect(()=>mergeHouseLedger(rows,[],'house-a',1001))
+   .toThrow('invalid_ledger_limit');
+  expect(()=>mergeHouseLedger([...rows,...Array.from({length:881},
+   (_,i)=>row('extra-'+i,'house-a',i+121,'2026-11-19T10:00:00Z'))],
+   [],'house-a',1000)).toThrow('house_ledger_export_too_large');
+ });
+
 });
