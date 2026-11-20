@@ -133,7 +133,7 @@ const content=(v:DraftInput)=>({
 });
 export async function createFirebaseNewspaperEdition(input:DraftInput):Promise<NewspaperEdition>{
  if(!isFirebaseNewspaperWorkspace())throw Error('Área Firebase não está ativa.');
- if(!input.blocks.length||input.blocks.some(b=>b.imagePath||b.commissionId))
+ if(!input.blocks.length||input.blocks.some(b=>b.imagePath))
   throw Error(prohibited);
  const saved=await request<CloudEdition>({action:'saveEdition',requestKey:crypto.randomUUID(),
   id:null,expectedVersion:0,state:'draft',content:content(input)});
@@ -169,7 +169,7 @@ export async function updateFirebaseNewspaperEdition(
  if(!isFirebaseNewspaperWorkspace()||!CLOUD.test(current.id))
   throw Error('Edições históricas importadas são somente leitura no Firebase.');
  if(input.pdf_path!==null||input.publish_on!=null||
-    input.blocks.some(b=>b.imagePath||b.commissionId))
+    input.blocks.some(b=>b.imagePath))
   throw Error(prohibited);
  const saved=await request<CloudEdition>({action:'saveEdition',requestKey:crypto.randomUUID(),
   id:current.id,expectedVersion:current.version,state:input.state,
