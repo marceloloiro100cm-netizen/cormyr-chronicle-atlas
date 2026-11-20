@@ -227,11 +227,23 @@ export async function listAgeTransitions(db:any,snapshot:string,registry:AgeRegi
    .map(toHistoric);
  const docs=await root.collection('characterYearTransitions').limit(1001).get();
  if(docs.docs.length>1000)fail('character_transitions_too_many');
- const ops=docs.docs.map((d:any)=>d.data());
- if(!ops.every(validatedTransition))fail('character_transition_invalid');
- const historical=registry.transitions.filter(validatedTransition);
- return [...ops,...historical].sort((a,b)=>
-  String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,limit)
+ const ops=docs.docs.map((d:any)=>{
+  const event=d.data();
+  if(!validatedTransition(event)||
+     event.sourceSnapshotId!==snapshot||
+     d.id!==`year-${event.calendarVersion}-${event.fromYear}-${event.toYear}`)
+   fail('character_transition_invalid');
+  return event as Record<string,unknown>;
+ });
+ // O mesmo evento pode existir no arquivo importado e no livro operacional.
+ // A transição do Firebase tem precedência, mas é mostrada apenas uma vez.
+ const byBoundary=new Map<string,Record<string,unknown>>();
+ for(const event of [...registry.transitions.filter(validatedTransition),...ops]){
+  const boundary=`${event['calendarVersion']}:${event['fromYear']}:${event['toYear']}`;
+  byBoundary.set(boundary,event);
+ }
+ return [...byBoundary.values()].sort((a,b)=>
+  String(b['createdAt']).localeCompare(String(a['createdAt']))).slice(0,limit)
   .map(toHistoric);
 }
 function toHistoric(t:Record<string,any>){

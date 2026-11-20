@@ -78,6 +78,34 @@ describe('Item 8, representação sem troca de credenciais',()=>{
   expect([...data.values()].filter(x=>x?.action==='representation_stop'))
    .toHaveLength(1);
  });
+ it('substitui sessão expirada, mas nunca troca jogador em sessão ativa',async()=>{
+  const m=memory(),other={id:'p2',user_id:'playerTwoUid',
+   name:'Jogador Dois',active:true,require_password_change:false};
+  m.data.set('migrationDomainStage/'+snapshot+'/access/playerTwoUid',
+   {...access,userId:'playerTwoUid',playerId:'p2'});
+  const ctx={db:m.db,snapshotId:snapshot,actor:gm,players:[player,other]};
+  await startRepresentation(ctx,'p1');
+  await expect(startRepresentation(ctx,'p2')).rejects.toMatchObject({
+   code:'representation_already_active',status:409});
+  const sessionPath='campaignCloudRuntime/'+snapshot+'/representationSessions/'+gm.uid;
+  const old=m.data.get(sessionPath);
+  m.data.set(sessionPath,{...old,expiresAt:'2020-01-01T00:00:00.000Z'});
+  const replaced=await startRepresentation(ctx,'p2');
+  expect(replaced.alreadyActive).toBe(false);
+  const current=await loadRepresentation(ctx);
+  expect(current.scope.uid).toBe('playerTwoUid');
+  expect(current.session.nonce).not.toBe(old.nonce);
+  expect([...m.data.values()].filter(x=>x?.action==='representation_start'))
+   .toHaveLength(2);
+ });
+ it('recusa metadados corrompidos antes de reutilizar sessão',async()=>{
+  const m=memory(),ctx={db:m.db,snapshotId:snapshot,actor:gm,players:[player]};
+  await startRepresentation(ctx,'p1');
+  const key='campaignCloudRuntime/'+snapshot+'/representationSessions/'+gm.uid;
+  m.data.set(key,{...m.data.get(key),sourceSnapshotId:'outro-snapshot'});
+  await expect(startRepresentation(ctx,'p1')).rejects.toMatchObject({
+   code:'representation_corrupted',status:503});
+ });
  it('recusa jogador alheio, narrador falso, conta desativada e troca de Casa',async()=>{
   const m=memory(),ctx={db:m.db,snapshotId:snapshot,actor:gm,players:[player]};
   await expect(startRepresentation({...ctx,actor:{...gm,profile:'jogador'}},
