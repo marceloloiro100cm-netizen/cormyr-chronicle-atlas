@@ -197,7 +197,7 @@ export async function commitOperationalRecord({
    recordId:id,previousVersion:prior?.['version']??0,
    version:next['version'],action:input.action,at:next['updated_at'],
    sourceSnapshotId:snapshotId,requestDigest});
-  if(representation)tx.set(root.collection('representationAudits')
+  if(representation)tx.create(root.collection('representationAudits')
    .doc(sha('representation-record:'+requestDigest)),{
     actorUid:representation.actorUid,representedUid:actor.uid,
     playerId:actor.playerId,sessionId:representation.sessionId,
