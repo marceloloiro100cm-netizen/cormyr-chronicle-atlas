@@ -26,9 +26,9 @@ afterEach(()=>{cleanup();mock.rpc.mockReset();});
 describe('Visão do Narrador v5: casca', () => {
  it('o rail, a semana e o selo de missivas levam aos módulos', () => {
   const onSection=vi.fn();
-  render(<I18nProvider><NarratorWorkspace menu={[['painel','Conselho das casas'],['missivas','Missivas'],['calendario','Hub Temporal']]}
+  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><I18nProvider><NarratorWorkspace menu={[['painel','Conselho das casas'],['missivas','Missivas'],['calendario','Hub Temporal']]}
    section="painel" onSection={onSection} unread={2} openRound={3} represent={<span/>}
-   account={<button type="button">Sair</button>} message="" onDismissMessage={()=>{}}><p>conteúdo</p></NarratorWorkspace></I18nProvider>);
+   account={<button type="button">Sair</button>} message="" onDismissMessage={()=>{}}><p>conteúdo</p></NarratorWorkspace></I18nProvider></QueryClientProvider>);
   expect(screen.getByRole('navigation',{name:'Menu do Narrador'})).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Conselho das casas'})).toHaveAttribute('aria-current','page');
   fireEvent.click(screen.getByRole('button',{name:'Missivas: 2 conversas com correspondência não lida'}));
