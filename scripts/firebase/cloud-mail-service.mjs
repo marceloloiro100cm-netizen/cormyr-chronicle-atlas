@@ -314,8 +314,9 @@ export function createFirebaseCloudMail({
       const fromOriginal=old.authorUid===root.senderUid;
       const receivingHouse=root.recipientKind==='player'
         ?recipientPersonHouseId:root.recipientHouseId;
-      if(!fromOriginal&&(!validId(receivingHouse)||
-         !validId(root.originHouseId)&&root.originHouseId!==null))
+      if(!fromOriginal&&
+         (root.recipientKind!=='narrator'&&!validId(receivingHouse)||
+          root.originHouseId!==null&&!validId(root.originHouseId)))
         deny('reply_not_authorized',403);
       parent={
         ...parent,senderUid:old.authorUid,
