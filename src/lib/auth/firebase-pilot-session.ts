@@ -14,9 +14,21 @@ export function firebasePilotAuth():Auth|null{
   if(!key||FIREBASE_PUBLIC_CONFIG.projectId!=='cormyr')return null;
   if(singleton)return singleton;
   const storageKey='cormyr:firebase-cloud-pilot:refresh';
+  const idTokenKey='cormyr:firebase-cloud-pilot:id-token';
   let memory:string|null=null;
+  let idTokenMemory:string|null=null;
   singleton=createFirebaseRestAuth({
     apiKey:key,
+    idTokenStorage:{
+      get(){try{return window.sessionStorage.getItem(idTokenKey);}catch{return idTokenMemory;}},
+      set(value){
+        idTokenMemory=value;
+        try{
+          if(value===null)window.sessionStorage.removeItem(idTokenKey);
+          else window.sessionStorage.setItem(idTokenKey,value);
+        }catch{/* Memory fallback only. */}
+      },
+    },
     storage:{
       get(){try{return window.sessionStorage.getItem(storageKey);}catch{return memory;}},
       set(value){
