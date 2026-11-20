@@ -16,7 +16,7 @@ A sessão de representação preserva o login Firebase do Narrador. Não emite J
 
 ## Homologação e ativação
 
-1. Confirmar `campaignCloudRuntime/{snapshot}`: `status=active`, `private=true`, `applicationEnabled=true`, `sourceSnapshotReconciled=true` e `representationReadApproved=true`.
+1. Confirmar `campaignCloudRuntime/{snapshot}`: `status=active`, `private=true`, `applicationEnabled=true`, `sourceSnapshotReconciled=true` e `representationReadApproved=true` e, para gravações, `representationWriteApproved=true`.
 2. Confirmar a integridade de `accountAccess` e a existência de cada Casa ativa no `migrationDomainStage`.
 3. Validar, com Narrador e dois jogadores de Casas distintas, leitura isolada, envio e cancelamento com data oficial do HUB, edição de registro, expiração, revogação e reinício de sessão.
 4. Não ativar `CORMYR_FIREBASE_REPRESENTATION_ENABLED` antes da homologação acima. Não ativar `CORMYR_FIREBASE_RECORDS_ENABLED` somente para liberar esta funcionalidade: a escrita exige sua aprovação específica.
