@@ -64,6 +64,27 @@ export function needsHouseOperationCalendar(state:HouseState,action:HouseAction)
  return state.phase==='active'&&isMonthSensitiveHouseAction(action);
 }
 
+/** 4a: associação pura de brasão previamente validado pelo Storage Firebase.
+ * O envio da imagem é externo à transação e a autorização do manifesto
+ * é verificada novamente pelo servidor antes de gravar na Ficha. */
+export function applyHouseCrestOperation(
+ state:HouseState,args:Record<string,unknown>,
+ context:{admin:boolean;snapshotId:string;actorUid:string},
+):{state:HouseState;rule:string}{
+ const {path}=z.object({path:z.string().min(1).max(400)}).parse(args);
+ const match=/^private\/([a-f0-9]{64})\/([^/\u0000-\u001f\u007f]{1,128})\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$/i.exec(path);
+ if(!match||match[1]!==context.snapshotId||match[2]!==context.actorUid)
+  throw Error('Brasão privado não pertence à sessão Firebase atual.');
+ if(state.phase!=='draft'&&!context.admin)
+  throw Error('Brasão de casa ativa exige edição do Narrador.');
+ if(!context.admin&&state.importSources.length)
+  throw Error('Brasão de ficha importada exige revisão do Narrador.');
+ const next=structuredClone(state);
+ next.identity={...state.identity,crestPath:path};
+ return {state:next,
+  rule:'Cormyr · importação de imagem de brasão (privada, vinculada à ficha e auditada)'};
+}
+
 /** Primeira extração de transições puras, sem I/O nem estado compartilhado.
  * A implementação original ainda mantém os demais grupos de ações. */
 export function applyHouseDomainOperation(
