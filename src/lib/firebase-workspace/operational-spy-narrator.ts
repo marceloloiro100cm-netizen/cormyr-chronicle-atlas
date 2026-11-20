@@ -1,3 +1,4 @@
+import {assertTransactionActor} from './transaction-actor';
 /* eslint-disable @typescript-eslint/no-explicit-any -- Firestore Admin e motor puro legado. */
 /** Item 7c. Decisões e inteligência com o Narrador autenticado. */
 import {randomUUID} from 'node:crypto';
@@ -87,6 +88,8 @@ export async function commitSpyNarrator({
   const [state,attempt]=await Promise.all([
    readSpyTx({tx,root,snapshotId,source,calendar}),tx.get(request),
   ]);
+  await assertTransactionActor({tx,db,snapshotId,scope,runtime:state.meta,
+   deny:()=>spyFail('access_denied',403)});
   if(attempt.exists){
    const old=attempt.data();
    if(old?.fingerprint!==fingerprint||old?.actor!==scope.uid||

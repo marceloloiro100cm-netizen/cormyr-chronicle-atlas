@@ -1,3 +1,4 @@
+import {assertTransactionActor} from './transaction-actor';
 /**
  * Escrita transacional do item 6. O snapshot migrado nunca é alterado.
  * A identidade do autor e as Casas editáveis são recebidas do Firebase Admin.
@@ -101,6 +102,10 @@ export async function commitOperationalRecord({
    tx.get(root),tx.get(request),tx.get(doc),
   ]);
   assertRuntime(rt.exists?rt.data():null,snapshotId);
+  if(!representation)await assertTransactionActor({
+   tx,db,snapshotId,scope:actor,runtime:rt.data(),
+   deny:()=>fail('access_denied',403),
+  });
   if(representation){
    if(rt.data()?.representationReadApproved!==true||
       rt.data()?.representationWriteApproved!==true)

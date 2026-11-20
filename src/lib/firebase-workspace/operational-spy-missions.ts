@@ -1,3 +1,4 @@
+import {assertTransactionActor} from './transaction-actor';
 /* eslint-disable @typescript-eslint/no-explicit-any -- transações e regras puras no servidor. */
 /** Missões do jogador no Firebase, item 7b. */
 import {randomUUID} from 'node:crypto';
@@ -77,6 +78,8 @@ export async function commitSpyMission({
   const [state,attempt]=await Promise.all([
    readSpyTx({tx,root,snapshotId,source,calendar}),tx.get(request),
   ]);
+  await assertTransactionActor({tx,db,snapshotId,scope,runtime:state.meta,
+   deny:()=>spyFail('access_denied',403)});
   if(attempt.exists){
    const old=attempt.data();
    if(old.actor!==scope.uid||old.fingerprint!==fingerprint||

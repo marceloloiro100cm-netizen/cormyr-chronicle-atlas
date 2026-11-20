@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {describe,it,expect,beforeEach,afterEach} from 'vitest';
 import {commitSpyNarrator} from './operational-spy-narrator';
 import {spyDigest} from './operational-spy-context';
@@ -36,6 +37,14 @@ function memory(){
   sourceSnapshotId:snapshot,sourceSnapshotReconciled:true,
   spyReadApproved:true,spyWriteApproved:true,calendarVersion:4,
  }]]);
+ data.set('migrationDomainStage/'+snapshot+'/access/'+scope.uid,{
+  userId:scope.uid,profile:scope.profile,admin:scope.profile==='narrador',
+  active:true,requirePasswordChange:false,playerId:scope.playerId,
+  memberHouseIds:scope.memberHouseIds,editHouseIds:scope.editHouseIds,
+ });
+ for(const id of scope.memberHouseIds)data.set(
+  'migrationDomainStage/'+snapshot+'/houses/'+createHash('sha256').update('house:'+id).digest('hex'),
+  {sourceId:id,active:true,season:2});
  const ref=(path:string):any=>({path,collection:(name:string)=>col(path+'/'+name)});
  const col=(path:string):any=>({doc:(id:string)=>ref(path+'/'+id),
   limit:(n:number)=>({query:path,max:n})});
@@ -117,5 +126,20 @@ describe('7c: jornadas, decisão e sigilo dos dossiês',()=>{
    p_request_key:'55555555-5555-4555-8555-555555555555',
    p_to:'volkumburgh'}})).rejects.toMatchObject({
     code:'spy_route_not_in_official_graph'});
+ });
+ it('recusa comando e recibo se o Narrador perdeu a autorização',async()=>{
+  const m=memory(),input={db:m.db,snapshotId:snapshot,scope,source,calendar,
+   archivedSheets:[],name:'spy_advance_active_missions',
+   args:{p_calendar_version:4,p_request_key:key}};
+  await commitSpyNarrator(input);
+  const access='migrationDomainStage/'+snapshot+'/access/'+uid;
+  m.data.set(access,{...m.data.get(access),admin:false});
+  const before=structuredClone([...m.data]);
+  await expect(commitSpyNarrator(input))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  await expect(commitSpyNarrator({...input,args:{...input.args,
+   p_request_key:'55555555-5555-4555-8555-555555555555'}}))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  expect([...m.data]).toEqual(before);
  });
 });

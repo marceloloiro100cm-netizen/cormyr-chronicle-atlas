@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
 import type {Scope} from './service';
@@ -14,6 +15,14 @@ const root={status:'active',private:true,applicationEnabled:true,
 
 function fakeDb(){
  const data=new Map<string,any>([['campaignCloudRuntime/'+snap,root]]);
+ data.set('migrationDomainStage/'+snap+'/access/'+actor.uid,{
+  userId:actor.uid,profile:actor.profile,admin:actor.profile==='narrador',
+  active:true,requirePasswordChange:false,playerId:actor.playerId,
+  memberHouseIds:actor.memberHouseIds,editHouseIds:actor.editHouseIds,
+ });
+ for(const id of actor.memberHouseIds)data.set(
+  'migrationDomainStage/'+snap+'/houses/'+createHash('sha256').update('house:'+id).digest('hex'),
+  {sourceId:id,active:true,season:2});
  const ref=(path:string):any=>({path,
   collection:(name:string)=>collection(path+'/'+name)});
  const collection=(path:string):any=>({doc:(id:string)=>ref(path+'/'+id)});
@@ -104,5 +113,33 @@ describe('registros operacionais: transação, histórico e autorização',()=>{
    db:f.db,snapshotId:snap,actor,imported:[source],
    input:{action:'save',recordId:source.id,expectedVersion:1,title:'X',content:'Y'},
   })).rejects.toBeInstanceOf(RecordWriteError);
+ });
+ it.each([
+  {active:false},{requirePasswordChange:true},{playerId:'other'},
+  {memberHouseIds:[],editHouseIds:[]},{editHouseIds:[]},{admin:true},
+ ])('recusa escopo revogado depois da autenticação: %j',async(patch)=>{
+  const f=fakeDb(),access='migrationDomainStage/'+snap+'/access/'+actor.uid;
+  f.data.set(access,{...f.data.get(access),...patch});
+  const before=structuredClone([...f.data]);
+  await expect(commitOperationalRecord({db:f.db,snapshotId:snap,actor,
+   imported:[source],input:{action:'save',recordId:source.id,expectedVersion:1,
+    title:'Não gravar',content:'Permissão antiga'},
+  })).rejects.toMatchObject({code:'access_denied',status:403});
+  expect([...f.data]).toEqual(before);
+ });
+ it('não retorna recibo antigo após revogação e não grava em Casa inativa',async()=>{
+  const f=fakeDb(),input={action:'save' as const,recordId:source.id,
+   expectedVersion:1,title:'Título',content:'Texto'};
+  const ctx={db:f.db,snapshotId:snap,actor,imported:[source],input};
+  await commitOperationalRecord(ctx);
+  const house='migrationDomainStage/'+snap+'/houses/'+
+   createHash('sha256').update('house:h1').digest('hex');
+  f.data.set(house,{sourceId:'h1',active:false,season:2});
+  const before=structuredClone([...f.data]);
+  await expect(commitOperationalRecord(ctx))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  await expect(commitOperationalRecord({...ctx,input:{...input,expectedVersion:2}}))
+   .rejects.toMatchObject({code:'access_denied',status:403});
+  expect([...f.data]).toEqual(before);
  });
 });

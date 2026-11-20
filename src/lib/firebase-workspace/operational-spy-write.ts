@@ -1,3 +1,4 @@
+import {assertTransactionActor} from './transaction-actor';
 /* eslint-disable @typescript-eslint/no-explicit-any -- limite do Firebase Admin e das regras puras de espionagem. */
 /** Item 7a: operações do jogador, transação única, acervo importado imutável. */
 import {createHash,randomUUID} from 'node:crypto';
@@ -104,6 +105,8 @@ export async function commitSpyAction({
    ...COLLECTIONS.map(([col,,max])=>tx.get(root.collection(col).limit(max+1))),
   ]);
   runtimeReady(rootDoc.data(),snapshotId,calendar);
+  await assertTransactionActor({tx,db,snapshotId,scope,runtime:rootDoc.data(),
+   deny:()=>fail('access_denied',403)});
   if(requestDoc.exists){
    const old=requestDoc.data();
    if(old.actor!==scope.uid||old.houseId!==houseId||old.fingerprint!==fingerprint)
