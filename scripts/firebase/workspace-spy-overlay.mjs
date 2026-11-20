@@ -117,7 +117,8 @@ export function projectSpyOverlay(source,overlay){
       old.subjectKey!==x.subjectKey)))
     deny('spy_finding_identity_conflict');
   if(x.deleted===true){
-   if(!old)deny('spy_finding_absent');
+   // O achado pode ter sido criado apenas na camada operacional. A ação
+   // que produziu o marcador já conferiu sua existência e a Casa titular.
    findingMap.delete(x.id);
   }else{
    if(!valid(x.subjectKey)||!isFindingSnapshot(x.valueSnapshot))
