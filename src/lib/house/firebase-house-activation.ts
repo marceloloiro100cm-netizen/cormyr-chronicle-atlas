@@ -128,17 +128,55 @@ export function createFirebaseHouseActivation({db,auth,snapshotId,enabled=false,
     });
   }
   /**
-   * Owner decision (19/11/2026): every active season-2 House starts from its
-   * imported sheet. Each House uses the same reviewed inspect/activate path,
-   * in its own transaction; existing documents are never reseeded.
+   * The catalogue must never be read before a verified Narrator identity.
+   * This guard also protects the bounded list endpoint used by the client to
+   * process each House separately without one long Cloud Run request.
+   */
+  async function requireNarrator(token:string):Promise<void>{
+    let uid:string;
+    try{
+      if(typeof token!=='string'||token.length<10||token.length>10000)
+        return fail('authentication_required',401);
+      const decoded=await auth.verifyIdToken(token,true);
+      if(!id(decoded.uid))return fail('authentication_required',401);
+      const person=await auth.getUser(decoded.uid);
+      if(person.uid!==decoded.uid||person.disabled)
+        return fail('authentication_required',401);
+      uid=decoded.uid;
+    }catch{return fail('authentication_required',401);}
+    let actor:Record<string,unknown>|undefined;
+    try{
+      const access=await domain.collection('access').doc(uid).get();
+      actor=access.data();
+    }catch{return fail('house_access_unavailable',503);}
+    if(actor?.['userId']!==uid||actor['active']!==true||
+       actor['admin']!==true||actor['profile']!=='narrador'||
+       actor['requirePasswordChange']!==false||
+       !Array.isArray(actor['memberHouseIds'])||actor['memberHouseIds'].length||
+       !Array.isArray(actor['editHouseIds'])||actor['editHouseIds'].length)
+      return fail('narrator_required',403);
+  }
+  async function listHouses(token:string){
+    await requireNarrator(token);
+    let houses;
+    try{houses=await domain.collection('houses').get();}
+    catch{return fail('house_catalog_unavailable',503);}
+    const ids=houses.docs.map(d=>d.data())
+      .filter(h=>h?.['active']===true&&h['season']===2&&id(h['sourceId']))
+      .map(h=>h['sourceId'] as string).sort();
+    if(ids.length>50||new Set(ids).size!==ids.length)
+      return fail('house_catalog_unavailable',503);
+    return {houseIds:ids};
+  }
+  /**
+   * Backwards-compatible server batch. The browser now uses listHouses,
+   * then inspect/activate per House: smaller requests and visible progress.
+   * Every mutation still requires fresh transaction-time authorization.
    */
   async function activateAll(token:string){
-    const houses=await domain.collection('houses').get();
-    const ids=houses.docs.map(d=>d.data()).filter(h=>h?.['active']===true&&h['season']===2&&id(h['sourceId']))
-      .map(h=>h['sourceId'] as string).sort();
-    if(ids.length>50)return fail('too_many_houses',503);
+    const {houseIds}=await listHouses(token);
     const results:{houseId:string;status:string}[]=[];
-    for(const houseId of ids){
+    for(const houseId of houseIds){
       try{
         const inspected=await execute(token,{action:'inspect',houseId}) as {status:string;preview:{sourceSheetVersion:number}|null;sourceHash:string|null};
         if(inspected.status!=='ready_for_operator_review'||!inspected.preview||!inspected.sourceHash){
@@ -155,6 +193,6 @@ export function createFirebaseHouseActivation({db,auth,snapshotId,enabled=false,
     }
     return {results};
   }
-  return {execute,activateAll};
+  return {execute,activateAll,listHouses};
 }
 
