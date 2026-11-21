@@ -5,7 +5,7 @@
 import {firebaseWorkspaceClient} from '../firebase-workspace/state';
 import {workspaceRequest} from '../firebase-workspace/client';
 import {firebasePilotAuth} from '../auth/firebase-pilot-session';
-import {safeNewspaperBlocks,type NewspaperEdition,type NewspaperBlock,
+import {safeNewspaperBlocks,type NewspaperEdition,type NewspaperBlock,type NewspaperRevision,
  type NewspaperState,type NewspaperTemplate,type NewspaperFont} from './model';
 
 const CLOUD=/^cloud-[a-f0-9]{64}$/;
@@ -227,4 +227,14 @@ export async function updateFirebaseNewspaperEdition(
   id:current.id,expectedVersion:current.version,state:input.state,
   content:content(input)});
  return originalNewspaperEdition(saved);
+}
+
+/** Versions created by Cloud writes; previous immutable snapshots stay intact. */
+export async function loadFirebaseNewspaperRevisions(id:string):Promise<NewspaperRevision[]>{
+ if(!CLOUD.test(id))return [];
+ const result=await request<{items:NewspaperRevision[]}>({action:'listRevisions',id});
+ if(!Array.isArray(result.items)||result.items.length>40)
+  throw Error('Histórico editorial inválido.');
+ return result.items.map(r=>({...r,snapshot:{...r.snapshot,
+  blocks:safeNewspaperBlocks(r.snapshot?.blocks)}}));
 }
