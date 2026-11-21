@@ -303,7 +303,8 @@ export function SpyNarratorOperationsCenter(){
          ?'Prêmio sem confirmação: revisar integridade':
        'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
      </div>
-     <div className="spy-operation-actions">\n     {o.status==='pending_narrator_review'&&<Button type="button"
+     <div className="spy-operation-actions">
+     {o.status==='pending_narrator_review'&&<Button type="button"
       disabled={query.isError} variant={selectedReview?.operationId===o.operationId?'default':'outline'}
       className="spy-operation-resolve-button"
       aria-pressed={selectedReview?.operationId===o.operationId}
