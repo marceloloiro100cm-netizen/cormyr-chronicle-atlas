@@ -1,5 +1,11 @@
-import {describe,it,expect} from 'vitest';
-import {mediaUploadId} from './private-media-client';
+import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
+const session=vi.hoisted(()=>({token:vi.fn()}));
+vi.mock('@/lib/auth/firebase-pilot-session',()=>({
+ firebasePilotAuth:()=>({current:()=>({uid:'player'}),getToken:session.token}),
+}));
+import {mediaUploadId,downloadFirebasePrivateImage} from './private-media-client';
+beforeEach(()=>session.token.mockReset().mockResolvedValue('verified-token'));
+afterEach(()=>vi.useRealTimers());
 
 describe('ponte de imagens Firebase',()=>{
  it('gera UUID estável por tentativa e diferencia posições',async()=>{
@@ -14,4 +20,13 @@ describe('ponte de imagens Firebase',()=>{
   await expect(mediaUploadId('11111111-1111-4111-8111-111111111111',-1))
    .rejects.toThrow(/Identificador/);
  });
+ it('não deixa imagem da galeria em carregamento eterno quando token não responde',async()=>{
+  vi.useFakeTimers();
+  session.token.mockImplementation(()=>new Promise(()=>{}));
+  const pending=downloadFirebasePrivateImage('historico/retrato.png');
+  const check=expect(pending).rejects.toThrow('A imagem demorou além do limite');
+  await vi.advanceTimersByTimeAsync(18_001);
+  await check;
+ });
+
 });
