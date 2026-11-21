@@ -1,5 +1,3 @@
-import {createHash} from 'node:crypto';
-
 /** Only images named in a published, independently reviewed edition may be served. */
 const SNAP=/^[a-f0-9]{64}$/;
 const ID=/^[A-Za-z0-9_-]{1,128}$/;
