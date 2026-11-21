@@ -96,11 +96,105 @@ async function flush(){
   })();
  }
 }
-export function workspaceRequest(input:Record<string,unknown>):Promise<any>{
+function enqueue(input:Record<string,unknown>):Promise<any>{
  return new Promise((resolve,reject)=>{
   queue.push({input,resolve,reject});
   if(!scheduled){scheduled=true;queueMicrotask(()=>{void flush();});}
  });
+}
+/**
+ * Cache curto de leituras no navegador. Vários painéis da mesma ficha pedem
+ * as mesmas tabelas; trocar de seção e voltar repetia todo o caminho até o
+ * Firestore. Regras:
+ * - só leituras conhecidas (consultas sem gravação, a ficha da Casa e RPCs de
+ *   leitura listadas) entram no cache, por conta (uid) e por pedido exato;
+ * - erros nunca ficam guardados: "Tentar novamente" sempre vai ao servidor;
+ * - qualquer outra chamada (gravação, ação, RPC desconhecida) apaga o cache
+ *   ao começar e ao terminar, para nenhuma tela mostrar dado anterior a ela;
+ * - cada chamador recebe uma cópia própria do resultado.
+ * A autorização continua inteira no servidor; o cache só evita repetir.
+ */
+const WORKSPACE_READ_TTL_MS=20_000;
+const MUTATING_QUERY_STEPS=new Set(['insert','update','upsert','delete']);
+const READ_RPCS=new Set([
+ 'is_campaign_admin','runtime_approvals','vassal_workbook',
+ 'get_newspaper_calendar_events',
+ 'spy_house_management','spy_recruitment_options','spy_house_mission_timeline',
+ 'spy_house_counterintelligence','spy_intelligence_read','spy_get_regional_strategy',
+ 'spy_public_noble_targets','spy_player_mission_preview',
+ 'spy_narrator_operations_dashboard','spy_narrator_incident_history',
+ 'spy_intelligence_admin_pending','spy_intelligence_admin_options',
+ 'spy_intelligence_operation_status','spy_narrator_noble_defense_source',
+]);
+export function isCacheableWorkspaceRead(input:Record<string,unknown>):boolean{
+ if(input['kind']==='house')return true;
+ if(input['kind']==='rpc')return typeof input['name']==='string'&&READ_RPCS.has(input['name']);
+ if(input['kind']!=='query')return false;
+ const steps=input['steps'];
+ return Array.isArray(steps)&&steps.every((s:any)=>
+  typeof s?.op==='string'&&!MUTATING_QUERY_STEPS.has(s.op));
+}
+const NEUTRAL_KINDS=new Set(['auth','record','houseLedgerExport']);
+const readCache=new Map<string,{at:number;generation:number;value:Promise<any>}>();
+let readGeneration=0;
+/** Descarta todas as leituras guardadas (gravação, troca de conta, teste). */
+export function invalidateWorkspaceReads(){readGeneration++;readCache.clear();}
+const copyOf=<T,>(value:T):T=>{
+ try{return typeof structuredClone==='function'?structuredClone(value):value;}
+ catch{return value;}
+};
+/**
+ * Gravações que não passam por workspaceRequest (operações da Casa, missivas,
+ * jornal, obras, tesouro, envio de imagem, funções do servidor) também
+ * descartam o cache, antes e depois da resposta. Instalado uma vez, só no
+ * navegador, quando o workspace Firebase é ativado.
+ */
+let writeGuardInstalled=false;
+export function installWorkspaceWriteInvalidation(){
+ if(writeGuardInstalled||typeof window==='undefined'||typeof window.fetch!=='function')return;
+ writeGuardInstalled=true;
+ const original=window.fetch.bind(window);
+ window.fetch=((input:RequestInfo|URL,init?:RequestInit)=>{
+  let path='',method='GET';
+  try{
+   const raw=typeof input==='string'?input:input instanceof URL?input.href:input.url;
+   const url=new URL(raw,window.location.href);
+   path=url.origin===window.location.origin?url.pathname:'';
+   method=String(init?.method??(input instanceof Request?input.method:'GET')).toUpperCase();
+  }catch{/* endereço inválido: o fetch original decide */}
+  const readOnlyMedia=path==='/api/firebase-private-media'&&
+   !(typeof init?.body==='string'&&init.body.includes('"action":"upload"'));
+  const writes=path!==''&&method!=='GET'&&method!=='HEAD'&&
+   path!=='/api/firebase-workspace'&&!readOnlyMedia;
+  if(!writes)return original(input,init);
+  invalidateWorkspaceReads();
+  return original(input,init).finally(invalidateWorkspaceReads);
+ }) as typeof window.fetch;
+}
+export function workspaceRequest(input:Record<string,unknown>):Promise<any>{
+ // Leituras que não entram no cache e também não alteram nada.
+ if(NEUTRAL_KINDS.has(String(input['kind'])))return enqueue(input);
+ if(!isCacheableWorkspaceRead(input)){
+  invalidateWorkspaceReads();
+  return enqueue(input).finally(invalidateWorkspaceReads);
+ }
+ const uid=firebasePilotAuth()?.current()?.uid;
+ if(!uid)return enqueue(input);
+ let key:string;
+ try{key=uid+'|'+JSON.stringify(input);}catch{return enqueue(input);}
+ const now=Date.now(),hit=readCache.get(key);
+ if(hit&&hit.generation===readGeneration&&now-hit.at<WORKSPACE_READ_TTL_MS)
+  return hit.value.then(copyOf);
+ const generation=readGeneration;
+ const entry={at:now,generation,value:enqueue(input)};
+ readCache.set(key,entry);
+ entry.value.then(()=>{
+  // Uma gravação terminou enquanto esta leitura viajava: não reaproveitar.
+  if(readGeneration!==generation&&readCache.get(key)===entry)readCache.delete(key);
+ },()=>{if(readCache.get(key)===entry)readCache.delete(key);});
+ if(readCache.size>400)for(const [k,v] of readCache)
+  if(now-v.at>=WORKSPACE_READ_TTL_MS||v.generation!==readGeneration)readCache.delete(k);
+ return entry.value.then(copyOf);
 }
 const response=async(fn:()=>Promise<any>)=>{try{return {data:await fn(),error:null};}catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Firebase indisponível',code:(e as any)?.code,serverCode:(e as any)?.serverCode}};}};
 

@@ -7,10 +7,15 @@ scripts:
   buildCommand: npm run build
   runCommand: node dist/server/index.mjs
 
+# minInstances 1: mantém uma instância aquecida. Com 0, a primeira visita
+# depois de um período parado esperava a partida do servidor e a releitura
+# de todo o acervo (cache por instância), o que deixava fichas e o
+# "Abrindo conselho" lentos. 1 GiB evita reinícios por falta de memória
+# com o acervo em cache.
 runConfig:
   cpu: 1
-  memoryMiB: 512
-  minInstances: 0
+  memoryMiB: 1024
+  minInstances: 1
   maxInstances: 3
   concurrency: 80
 
