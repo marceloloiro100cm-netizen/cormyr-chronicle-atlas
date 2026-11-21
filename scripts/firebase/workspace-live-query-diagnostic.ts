@@ -33,6 +33,16 @@ if(roots.size>6||snapshots.length!==1){
 }
 const snapshotId=snapshots[0]!.id;
 const accounts=await listCurrentAccountAccess(db,snapshotId);
+// Read-only, bounded readiness facts explain failed House reads without
+// printing any private ledger entries, users or source snapshot identifiers.
+const liveRoot=await db.collection('campaignCloudRuntime').doc(snapshotId).get();
+const readiness=liveRoot.data()??{};
+console.log('HOUSE_PROBE runtime_active '+(
+ liveRoot.exists&&readiness.status==='active'?'YES':'NO'));
+for(const key of ['private','sourceSnapshotReconciled','applicationEnabled',
+                  'houseOpsWriteApproved']){
+ console.log('HOUSE_PROBE runtime_'+key+' '+(readiness[key]===true?'YES':'NO'));
+}
 process.env['CORMYR_FIREBASE_RECORDS_ENABLED']='true';
 process.env['CORMYR_FIREBASE_CLOUD_MAIL_ENABLED']='true';
 process.env['CORMYR_FIREBASE_HOUSE_OPS_ENABLED']='true';
