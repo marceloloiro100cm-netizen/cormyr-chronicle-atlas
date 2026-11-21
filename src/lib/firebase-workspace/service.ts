@@ -1101,10 +1101,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     const key=(d:any)=>d&&Number.isSafeInteger(d.year)&&Number.isSafeInteger(d.month)&&Number.isSafeInteger(d.day)
      ?dateKey({year:d.year,month:d.month,day:d.day,festival:d.festival??null}):null;
     return (docs.docs??[]).map((d:any)=>({id:d.id,...d.data()}))
-     .filter((a:any)=>a.action==='advance_week'||a.action==='launch_firebase_campaign')
+     .filter((a:any)=>['advance_week','launch_firebase_campaign','set_calendar_date'].includes(a.action))
      .sort((a:any,b:any)=>String(b.at).localeCompare(String(a.at))).slice(0,limit as number)
      .map((a:any)=>({id:a.id,from:key(a.from)??'',to:key(a.to??a.calendar)??'',
-      mode:a.action==='launch_firebase_campaign'?'set':'advance',
+      mode:a.action==='advance_week'?'advance':'set',
       reason:typeof a.reason==='string'?a.reason:'Lançamento da campanha no Firebase',
       created_at:a.at}));
    }
