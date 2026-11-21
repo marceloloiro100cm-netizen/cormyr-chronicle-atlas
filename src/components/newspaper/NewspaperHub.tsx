@@ -253,6 +253,10 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
     ...(current.publish_on!==undefined?{publish_on:state==='draft'?current.publish_on:null}:{}),
    });
    setDraft(cloneEditableEdition(result));
+   // The imported archive remains immutable. Keep the operational copy in the
+   // editor's query cache until the fresh Firebase overlay list is reloaded.
+   qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
+    rows?.map(e=>e.id===result.id?result:e)??[result]);
    setSaveStatus('saved');setSavedAt(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
    if(state!=='draft'){setEditing(false);setBlockId(null);}
    await refresh();
@@ -402,17 +406,28 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
     template:draft.template,font_style:draft.font_style,blocks:draft.blocks,
     pdf_path:draft.pdf_path,state:'draft',
    }).then(result=>{
-    // Só atualiza a versão: o que foi digitado durante o envio continua no rascunho.
+    // Preserve edits typed DURING the network request. The cached row is the
+    // snapshot actually saved, so unsaved changes still appear as dirty.
+    qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
+     rows?.map(e=>e.id===result.id?result:e)??[result]);
     setDraft(old=>old&&old.id===result.id?{...old,version:result.version}:old);
     const at=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     setSaveStatus('saved');setSavedAt(at);
     setMessage('Rascunho salvo automaticamente às '+at+'.');
     return Promise.all([refresh(),qc.invalidateQueries({queryKey:['campaign-newspaper-revisions',result.id]})]);
-   }).catch(()=>{
-    // Falha visível e nova tentativa em 20 s (enquanto houver alterações não salvas).
+   }).catch(cause=>{
     setSaveStatus('failed');
     window.clearTimeout(retryTimer.current);
-    retryTimer.current=window.setTimeout(()=>setRetryTick(tick=>tick+1),20_000);
+    const status=(cause as {status?:unknown}|null)?.status;
+    const permanent=typeof status==='number'&&status>=400&&status<500||
+     cause instanceof Error&&/somente leitura|rascunho histórico|edição histórica|Anexos e publicação/i.test(cause.message);
+    // Do not endlessly retry a permission, data-shape or revision conflict.
+    // Keep every unsaved block visible until the editor resolves the issue.
+    if(permanent){
+     setError('O rascunho continua nesta tela, sem perdas: '+safeError(cause));
+    }else{
+     retryTimer.current=window.setTimeout(()=>setRetryTick(tick=>tick+1),20_000);
+    }
    }).finally(()=>{autosaving.current=false;});
   },8000);
   return()=>window.clearTimeout(timer);
