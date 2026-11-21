@@ -138,7 +138,7 @@ export async function commitNewspaperStaffPhoto({db,snapshotId,actorUid,imported
  const saveOp=parseStaffOperation('newspaper_staff_save',{
   p_id:input.id??null,p_name:input.name,p_specialty:input.specialty,
   p_bio:input.bio,p_photo_path:null,p_sort_order:input.sortOrder??null,
- });
+ }) as Extract<StaffOperation,{action:'save'}>;
  if(saveOp.action!=='save')fail('invalid_staff');
  const ref=staffDoc(db,snapshotId);
  const audits=db.collection('campaignCloudRuntime').doc(snapshotId).collection('newspaperStaffAudits');
