@@ -4,6 +4,7 @@
  */
 import {createHash} from 'node:crypto';
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
+// @ts-expect-error -- Legacy temporal runtime has no global declaration (same as House consumers).
 import {validateHarptosDate,harptosKey} from '../../../scripts/firebase/stage-temporal-emulator.mjs';
 import {validateEditorialContent} from '../../../scripts/firebase/cloud-editorial-content.mjs';
 import {commissionIdsOf} from '../../../scripts/firebase/newspaper-core.mjs';
