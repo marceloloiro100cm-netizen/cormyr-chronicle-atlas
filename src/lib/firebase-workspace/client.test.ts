@@ -60,7 +60,7 @@ describe('Firebase identity boundary',()=>{
  it('aborts a hung HTTP request without replaying the operation',async()=>{
   vi.useFakeTimers();
   let signal:AbortSignal|undefined;
-  vi.mocked(fetch).mockImplementation((_,options)=>new Promise((_resolve,reject)=>{
+  vi.mocked(fetch).mockImplementation((_,options)=>new Promise<Response>((_resolve,reject)=>{
    signal=options?.signal as AbortSignal;
    signal.addEventListener('abort',()=>reject(Error('Aborted')),{once:true});
   }));
