@@ -25,6 +25,13 @@ for(const key of ['privateMediaReadApproved','publicGalleryApproved','publicGall
  console.log('MEDIA_DIAG flag_'+key+' '+enabled);
 }
 const stage=await db.collection('migrationStorageStage').doc(snapshot).get();
+console.log('MEDIA_DIAG storage_stage_exists '+(stage.exists?'YES':'NO'));
+const stageData=stage.data()??{};
+console.log('MEDIA_DIAG storage_stage_status '+(
+ ['complete','pending','staged','active','ready'].includes(stageData.status)
+  ?stageData.status.toUpperCase():'OTHER'));
+console.log('MEDIA_DIAG storage_stage_private '+(stageData.private===true?'YES':'NO'));
+console.log('MEDIA_DIAG storage_stage_snapshot_match '+(stageData.sourceSnapshotId===snapshot?'YES':'NO'));
 console.log('MEDIA_DIAG storage_stage_complete '+
   (stage.exists&&stage.data()?.status==='complete'&&stage.data()?.private===true&&
    stage.data()?.sourceSnapshotId===snapshot?'YES':'NO'));
