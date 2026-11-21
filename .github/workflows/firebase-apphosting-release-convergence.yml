@@ -20,6 +20,7 @@ on:
       - 'src/lib/newspaper/**'
       # CSS/React da Redação também altera o bundle servido: verificar o SHA.
       - 'src/components/newspaper/**'
+      - 'src/components/players/editor-mail-reader.tsx'
       - 'src/lib/drive/**'
       # A interface de exportação e o adaptador Google também afetam o
       # build servido, embora não estejam no diretório src/lib/drive.
