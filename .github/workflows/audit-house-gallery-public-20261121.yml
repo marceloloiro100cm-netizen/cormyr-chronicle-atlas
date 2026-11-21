@@ -34,6 +34,17 @@ jobs:
             try{
               const r=await fetch(url,{signal:AbortSignal.timeout(20000),headers:{Accept:'application/json'}});
               status=r.status;health=r.headers.get('x-cormyr-gallery-health')||'none';
+              if(status===503){
+                const raw=await r.text(),type=r.headers.get('content-type')||'';
+                const bodyCategory=raw.trim()==='{"error":"Galeria indisponível"}'
+                  ?'APP_GALLERY_JSON':raw.includes('Service Unavailable')
+                  ?'GENERIC_SERVICE_UNAVAILABLE':raw.includes('<html')
+                  ?'HTML_ERROR':'OTHER';
+                console.log('PUBLIC_HOUSE_RESPONSE '+house+' content_type_class='+
+                  (type.includes('application/json')?'JSON':type.includes('text/html')?'HTML':'OTHER')+
+                  ' error_body_class='+bodyCategory+
+                  ' has_phase_header='+(health!=='none'));
+              }
               if(r.status===200){
                 const json=await r.json();
                 if(json.houseId!==house||!Array.isArray(json.images)||json.images.length===0||
