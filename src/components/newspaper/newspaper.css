@@ -636,3 +636,69 @@
 
 /* Abas e edições como links (botão direito > abrir em nova guia). */
 .public-folha-tabs a,.public-folha-list a{text-decoration:none}
+
+/* Navigation placed in the masthead itself, as requested in the video. */
+.public-folha-head{grid-template-columns:clamp(140px,13vw,200px) minmax(0,1fr) auto;gap:clamp(12px,1.8vw,22px)}
+.public-folha-head-copy h1{overflow-wrap:break-word}
+.public-folha-head .public-folha-tabs{
+ display:flex;flex-wrap:wrap;align-items:center;align-content:center;
+ justify-content:flex-end;align-self:stretch;gap:9px;
+ width:auto;min-width:0;max-width:350px;margin:0;padding:16px 0;
+ border:0;background:transparent;border-radius:0;
+}
+.public-folha-head .public-folha-tabs a{white-space:nowrap}
+.public-folha-edition-nav{
+ display:flex;align-items:center;justify-content:center;gap:clamp(8px,2vw,20px);
+ min-height:72px;padding:10px 15px;
+ background:#221227;border:1px solid rgba(201,154,82,.45);border-top:0;
+ border-radius:0 0 12px 12px;
+}
+.public-folha-edition-nav button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:40px;padding:7px 14px;
+ border:1px solid #987752;border-radius:7px;background:#38223c;color:#f9ebd3;
+ font:600 .85rem system-ui,sans-serif;cursor:pointer;
+}
+.public-folha-edition-nav button:hover:not(:disabled){background:#614054;color:#fff4df}
+.public-folha-edition-nav button:disabled{opacity:.4;cursor:not-allowed}
+.public-folha-current-edition{
+ min-width:155px;text-align:center;color:#f9e4ae;
+ font:700 1.06rem Georgia,serif;
+}
+.public-folha-current-edition small{
+ display:block;margin-top:3px;color:#d8c5a7;
+ font:500 .72rem system-ui,sans-serif;
+}
+/* Keep the published page typography within the available reader width.
+   Long mastheads and images must not stretch or clip the edition grid. */
+.public-folha-reader .newspaper-page{box-sizing:border-box;min-width:0;max-width:100%}
+.public-folha-reader .newspaper-page-masthead{min-width:0;max-width:100%;gap:clamp(5px,1.2vw,12px)}
+.public-folha-reader .newspaper-page-masthead h1{
+ flex:1 1 auto;min-width:0;
+ font-size:clamp(1.55rem,3.4vw,3.7rem);
+ overflow-wrap:break-word;word-break:normal;
+}
+.public-folha-reader .newspaper-page-masthead .newspaper-crest{
+ flex:0 1 auto;max-width:clamp(32px,7vw,90px);height:auto;max-height:90px;
+ object-fit:contain;
+}
+.public-folha-reader .newspaper-grid,.public-folha-reader .newspaper-story{min-width:0;max-width:100%}
+.public-folha-reader .newspaper-page :is(img,iframe,video){max-width:100%}
+@media(max-width:1080px){
+ .public-folha-head{grid-template-columns:clamp(110px,16vw,170px) minmax(0,1fr)}
+ .public-folha-head .public-folha-tabs{
+  grid-column:1/-1;justify-content:center;max-width:none;width:100%;
+  padding:0 0 14px;
+ }
+}
+@media(max-width:520px){
+ .public-folha-head{grid-template-columns:clamp(102px,29vw,140px) minmax(0,1fr)}
+ .public-folha-head .public-folha-tabs{gap:7px}
+ .public-folha-head .public-folha-tabs a{padding:0 11px;font-size:.78rem}
+ .public-folha-edition-nav{gap:7px;padding:8px;min-height:61px}
+ .public-folha-edition-nav button{padding:7px 9px;min-width:43px}
+ .public-folha-edition-nav button span{display:none}
+ .public-folha-current-edition{min-width:0;font-size:.94rem}
+ .public-folha-reader .newspaper-page-masthead h1{font-size:clamp(1.25rem,5vw,2.1rem)}
+ .public-folha-reader .newspaper-page-masthead .newspaper-crest{max-width:34px}
+}
