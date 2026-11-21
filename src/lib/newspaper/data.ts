@@ -186,8 +186,17 @@ export async function deleteNewspaperDraft(id:string):Promise<void>{
 }
 /** Histórico de versões salvas desta edição (mais recentes primeiro). */
 export async function getNewspaperRevisions(id:string):Promise<NewspaperRevision[]>{
- if(isFirebaseNewspaperWorkspace()&&/^cloud-[a-f0-9]{64}$/.test(id))
-  return loadFirebaseNewspaperRevisions(id);
+ if(isFirebaseNewspaperWorkspace()){
+  const live=await loadFirebaseNewspaperRevisions(id);
+  const {data,error}=await db.from('campaign_newspaper_revisions')
+   .select('id,newspaper_id,previous_version,changed_at,snapshot')
+   .eq('newspaper_id',id).order('previous_version',{ascending:false}).limit(40);
+  if(error)throw error;
+  return [...live,...(data??[] as NewspaperRevision[])]
+   .sort((a,b)=>b.previous_version-a.previous_version)
+   .filter((row,index,all)=>all.findIndex(x=>x.previous_version===row.previous_version)===index)
+   .slice(0,40);
+ }
  const {data,error}=await db.from('campaign_newspaper_revisions')
   .select('id,newspaper_id,previous_version,changed_at,snapshot')
   .eq('newspaper_id',id).order('previous_version',{ascending:false}).limit(40);
