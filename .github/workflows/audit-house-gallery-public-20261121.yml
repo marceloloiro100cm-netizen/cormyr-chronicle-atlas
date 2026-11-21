@@ -26,6 +26,14 @@ jobs:
               console.log('PUBLIC_BASELINE '+endpoint+' status='+r.status);
             }catch(e){console.log('PUBLIC_BASELINE '+endpoint+' request_error='+e.name);}
           }
+          // Invalid requests must be rejected before any Firebase read. If
+          // even these return 503, the handler is not being reached.
+          for(const path of ['/api/public/house-gallery','/api/public/house-gallery?house=BAD',
+            '/api/public/gallery-image?path=BAD']){
+            const res=await fetch('https://atlas.cormyr.com.br'+path,{signal:AbortSignal.timeout(20000)});
+            console.log('PUBLIC_ROUTE_PROBE '+path.split('?')[0]+
+              ' has_query='+path.includes('?')+' status='+res.status);
+          }
           const houses=['phelles','evenhand','goldfin','blester','axehand','silversword'];
           let ready=0;
           for(const house of houses){
@@ -49,6 +57,10 @@ jobs:
                     err==='Internal Server Error'?'INTERNAL_ERROR_JSON':
                     err==='Service Unavailable'?'SERVICE_UNAVAILABLE_JSON':
                     'JSON_KEYS_'+(keys==='error'?'ERROR_ONLY':keys==='error,message'?'ERROR_MESSAGE':'OTHER');
+                  const allowedValue=v=>typeof v==='string'&&v.length<=100&&
+                    /^[A-Za-zÀ-ÿ _-]+$/.test(v)?v:'REDACTED';
+                  console.log('PUBLIC_HOUSE_SAFE_FIELDS '+house+
+                    ' error='+allowedValue(err)+' message='+allowedValue(parsed?.message));
                   console.log('PUBLIC_HOUSE_JSON '+house+' keys_class='+
                     (keys==='error'?'ERROR_ONLY':keys==='error,message'?'ERROR_MESSAGE':'OTHER')+
                     ' error_type='+typeof err+' code_type='+typeof code+
