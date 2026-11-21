@@ -658,6 +658,12 @@ const useStoryModel=async(model:StoryModel)=>{
   // Gravura original do Reino: arquivo fixo do site, sem cópia no armazenamento.
   if(item.public_src){useEngraving(item.public_src,item.name);return;}
   if(!item.image_path){setError('Esta gravura não tem imagem.');return;}
+  if(isFirebaseNewspaperWorkspace()){
+   // Never create a new draft before discovering that this migrated bucket
+   // cannot be copied. The approved static engravings still work.
+   setError('Gravuras enviadas anteriormente ainda não podem ser copiadas no Firebase. Selecione uma gravura original do Reino; nenhum rascunho foi criado.');
+   return;
+  }
   setBusy(true);setError('');
   try{
    let base=current;
