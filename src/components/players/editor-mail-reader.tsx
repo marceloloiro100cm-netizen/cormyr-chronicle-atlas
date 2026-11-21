@@ -46,7 +46,7 @@ const when=(v:string|null|undefined)=>{
 export function EditorMailReader({userId}:{userId:string}){
   const qc=useQueryClient();
   const firebase=firebaseWorkspaceClient()!==null;
-  const [filters,setFilters]=useState({text:'',number:'',kind:'',read:'',group:'',origin:''});
+  const [filters,setFilters]=useState({text:'',number:'',kind:'',read:'',group:'',house:'',origin:''});
   const [search,setSearch]=useState('');
   const [page,setPage]=useState(0);
   const [open,setOpen]=useState<Set<string>>(new Set());
@@ -65,14 +65,14 @@ export function EditorMailReader({userId}:{userId:string}){
   };
   const [message,setMessage]=useState('');
   useEffect(()=>{const t=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(t);},[filters.text]);
-  useEffect(()=>{setPage(0);},[filters.number,filters.kind,filters.read,filters.group,filters.origin,search]);
+  useEffect(()=>{setPage(0);},[filters.number,filters.kind,filters.read,filters.group,filters.house,filters.origin,search]);
   const houses=useQuery({queryKey:['editor-mail-houses'],enabled:firebase,queryFn:async()=>{
     const r=await supabase.from('campaign_houses').select('id,name');
     if(r.error)throw r.error;return (r.data??[]) as unknown as {id:string;name:string}[];
   }});
   const houseName=(id:string|null)=>id?houses.data?.find(h=>h.id===id)?.name??'Casa':'Narrador';
   const requestFilters=useMemo(()=>{
-    const f:Record<string,unknown>={text:search,number:filters.number,kind:filters.kind,read:filters.read,origin:filters.origin};
+    const f:Record<string,unknown>={text:search,number:filters.number,kind:filters.kind,read:filters.read,house:filters.house,origin:filters.origin};
     if(filters.group)f['group_house_ids']=narrationHouseIds(filters.group,(houses.data??[]).map(h=>h.id));
     return f;
   },[search,filters,houses.data]);
@@ -134,11 +134,12 @@ export function EditorMailReader({userId}:{userId:string}){
               onChange={e=>setFilters({...filters,text:e.target.value})}
               placeholder="Nome, assunto, local, rumor…"/></label>
             {sel('Grupo de narração','group',[['','Todos os territórios'],...NARRATION_GROUPS.map(g=>[g.id,g.label] as [string,string])])}
-            {sel('Casa de origem','origin',[['','Todas as Casas'],['none','Narrador / sem vínculo'],...(houses.data??[]).map(h=>[h.id,h.name] as [string,string])])}
+            {sel('Casa envolvida','house',[['','Todas as Casas'],...(houses.data??[]).map(h=>[h.id,h.name] as [string,string])])}
+            {sel('Casa remetente (opcional)','origin',[['','Todas as origens'],['none','Narrador / sem vínculo'],...(houses.data??[]).map(h=>[h.id,h.name] as [string,string])])}
             {sel('Período','number',[['','Todas as semanas'],...[1,2,3,4,5,6,7,8].map(n=>[String(n),'Semana '+n] as [string,string])])}
             {sel('Circulação','kind',[['','Todos os informes'],['geral','Geral'],['reservada','Reservada']])}
             {sel('Estado da leitura','read',[['','Todos'],['no','Não lidos'],['yes','Lidos']])}
-            <Button variant="outline" onClick={()=>setFilters({text:'',number:'',kind:'',read:'',group:'',origin:''})}>Limpar investigação</Button>
+            <Button variant="outline" onClick={()=>setFilters({text:'',number:'',kind:'',read:'',group:'',house:'',origin:''})}>Limpar investigação</Button>
           </div>
         </div>
         <div className="folha-intel-panel folha-intel-notebook" aria-label="Caderno de pautas">
