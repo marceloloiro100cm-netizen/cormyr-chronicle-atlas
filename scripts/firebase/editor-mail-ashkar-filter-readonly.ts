@@ -37,7 +37,7 @@ const roster=await service.execute('authorized-editor-filter-audit',{kind:'query
  table:'campaign_houses',steps:[{op:'select',args:['id,name']}]});
 if(!Array.isArray(roster))throw Error('audit_catalog_unavailable');
 const ashkar=roster.filter(h=>typeof h?.name==='string'&&
- /(?:^|\\s)ashkar(?:$|\\s)/i.test(h.name));
+ /ashkar/i.test(h.name));
 if(ashkar.length!==1||typeof ashkar[0]?.id!=='string')
  throw Error('audit_ashkar_catalog_ambiguous');
 const houseId=ashkar[0].id;
