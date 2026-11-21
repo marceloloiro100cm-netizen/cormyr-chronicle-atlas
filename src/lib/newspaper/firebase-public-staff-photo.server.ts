@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Firebase Admin boundary. */
 /* Fotografia pública apenas dos funcionários presentes na Redação do Jornal. */
 import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs';
 import {readNewspaperStaffOverlay} from './firebase-newspaper-staff.server';
