@@ -139,6 +139,7 @@ export async function commitNewspaperStaffPhoto({db,snapshotId,actorUid,imported
   p_id:input.id??null,p_name:input.name,p_specialty:input.specialty,
   p_bio:input.bio,p_photo_path:null,p_sort_order:input.sortOrder??null,
  });
+ if(op.action!=='save')fail('invalid_staff');
  const ref=staffDoc(db,snapshotId);
  const audits=db.collection('campaignCloudRuntime').doc(snapshotId).collection('newspaperStaffAudits');
  return db.runTransaction(async(tx:any)=>{
