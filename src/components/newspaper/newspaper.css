@@ -503,6 +503,7 @@
    Previously the header was limited to 1400px but the grid to 1500px. */
 .public-folha-masthead{
  box-sizing:border-box;
+ position:relative;
  width:100%;
  max-width:1500px;
  margin:18px auto 22px;
@@ -518,8 +519,8 @@
  min-height:clamp(170px,16vw,220px);
  width:100%;
  margin:0;
- padding:0 clamp(18px,4vw,42px) 0 0;
- gap:clamp(14px,2vw,26px);
+ padding:0;
+ gap:0;
  background:linear-gradient(110deg,rgba(26,11,33,.8),rgba(91,51,70,.4));
  border:1px solid #8e6a49;
  border-bottom:3px solid #c99a52;
@@ -536,9 +537,10 @@
  filter:drop-shadow(0 6px 6px #130619);
 }
 .public-folha-head-copy{
- display:flex;flex-direction:column;justify-content:center;
- min-width:0;padding:18px 0;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ min-width:0;padding:18px 8px;text-align:center;
 }
+.public-folha-head-balance{min-width:0;pointer-events:none}
 .public-folha-head .newspaper-kicker{font:700 .72rem system-ui,sans-serif;letter-spacing:.23em;color:#e8c785}
 .public-folha-head h1{
  color:#f9e4ae;
@@ -565,9 +567,9 @@
 .public-folha-tabs button[aria-pressed=true],.public-folha-tabs a[aria-current=page]{background:#ad7b3c;color:#170d1e;border-color:#efc986}
 .public-folha-tabs button:hover,.public-folha-tabs a:hover{background:#654456;color:#fff7e5}
 .public-folha-layout{
- box-sizing:border-box;width:100%;max-width:1500px;margin:0 auto;
- gap:22px;padding:0 var(--public-folha-inset);
- grid-template-columns:minmax(210px,270px) minmax(0,1fr);
+ display:block;box-sizing:border-box;
+ width:100%;max-width:1500px;margin:0 auto;
+ padding:0 var(--public-folha-inset);
 }
 .public-folha-list{
  background:#27152f;color:#f6e7d1;border:1px solid #84613c;border-radius:10px;
@@ -578,7 +580,16 @@
 .public-folha-list button:hover,.public-folha-list a:hover{background:#51314e;border-color:#bb9258}
 .public-folha-list button[aria-current=true],.public-folha-list a[aria-current=true]{background:#72513c;border-color:#deb878;color:#fff6e6}
 .public-folha-list button strong,.public-folha-list a strong{font-size:1.05rem}
-.public-folha-reader{background:#201126;border:1px solid #926f48;border-radius:10px;padding:clamp(8px,1.5vw,20px);box-shadow:0 14px 38px #0a031433}
+.public-folha-reader{
+ box-sizing:border-box;width:100%;min-width:0;
+ background:#201126;border:1px solid #926f48;border-radius:10px;
+ padding:clamp(8px,1.5vw,20px);box-shadow:0 14px 38px #0a031433;
+}
+/* O pergaminho ocupa integralmente a largura disponível, sem o limite
+   de 1000px aplicado ao canvas em seu uso interno pelo Editor-Chefe. */
+.public-folha-reader > .newspaper-page{
+ box-sizing:border-box;width:100%;max-width:none;margin:0;
+}
 .public-folha-pager{align-items:center}
 .public-folha-pager button{background:#38223c;color:#f9ebd3;border:1px solid #987752;border-left:3px solid #c39a57}
 .public-folha-pager button:hover:not(:disabled){background:#614054;color:#fff4df}
@@ -647,7 +658,10 @@
 /* A single bar, attached edge-to-edge to the newspaper masthead.
    At desktop widths the issue pager is exactly centered, with equal
    flexible side columns; links to Edições and A Redação remain on the left. */
-.public-folha-head{grid-template-columns:clamp(140px,13vw,200px) minmax(0,1fr);gap:clamp(12px,1.8vw,22px)}
+.public-folha-head{
+ grid-template-columns:clamp(140px,13vw,200px) minmax(0,1fr) clamp(140px,13vw,200px);
+ gap:0;
+}
 .public-folha-head-copy h1{overflow-wrap:break-word}
 .public-folha-toolbar{
  box-sizing:border-box;
@@ -708,7 +722,9 @@
 .public-folha-reader .newspaper-grid,.public-folha-reader .newspaper-story{min-width:0;max-width:100%}
 .public-folha-reader .newspaper-page :is(img,iframe,video){max-width:100%}
 @media(max-width:1080px){
- .public-folha-head{grid-template-columns:clamp(110px,16vw,170px) minmax(0,1fr)}
+ .public-folha-head{
+  grid-template-columns:clamp(105px,15vw,170px) minmax(0,1fr) clamp(105px,15vw,170px);
+ }
 }
 /* On narrow screens preserve one single logical row by scrolling the toolbar
    horizontally rather than putting Redação and the pager on separate lines. */
@@ -722,7 +738,13 @@
  .public-folha-toolbar-balance{display:none}
 }
 @media(max-width:520px){
- .public-folha-head{grid-template-columns:clamp(102px,29vw,140px) minmax(0,1fr)}
+ .public-folha-head{
+  grid-template-columns:clamp(64px,22vw,96px) minmax(0,1fr) clamp(64px,22vw,96px);
+  min-height:128px;padding:0;gap:0;
+ }
+ .public-folha-head-copy{padding:12px 4px}
+ .public-folha-head h1{font-size:clamp(1.35rem,5.5vw,2rem)}
+ .public-folha-head p:last-child{font-size:.76rem;line-height:1.25}
  .public-folha-toolbar{gap:9px;padding:9px 8px;min-height:58px}
  .public-folha-toolbar .public-folha-tabs{gap:6px}
  .public-folha-toolbar .public-folha-tabs a{padding:0 9px;font-size:.74rem;min-height:36px}
@@ -733,4 +755,42 @@
  .public-folha-current-edition small{font-size:.63rem}
  .public-folha-reader .newspaper-page-masthead h1{font-size:clamp(1.25rem,5vw,2.1rem)}
  .public-folha-reader .newspaper-page-masthead .newspaper-crest{max-width:34px}
+}
+
+/* Arquivo sob demanda: o botão Edições abre este painel sem retirar
+   largura do leitor. Ele é irmão da barra, não filho da área rolável:
+   assim não é cortado mesmo em celulares. */
+.public-folha-editions-menu{
+ position:absolute;z-index:40;top:100%;
+ left:var(--public-folha-inset);
+ box-sizing:border-box;
+ width:min(430px,calc(100% - 2 * var(--public-folha-inset)));
+ max-height:min(65vh,570px);overflow-y:auto;
+ background:#28152f;color:#f6e7d1;
+ border:1px solid #ad8652;border-top:3px solid #c99a52;
+ border-radius:0 0 12px 12px;padding:13px;
+ box-shadow:0 18px 38px #0a0314aa;
+}
+.public-folha-editions-menu ul{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+.public-folha-editions-menu li{min-width:0}
+.public-folha-editions-menu a{
+ display:grid;gap:4px;width:100%;padding:12px 14px;
+ border:1px solid #735349;border-left:4px solid #a47d48;
+ border-radius:8px;background:#38243c;color:#f6e7d1;
+ text-decoration:none;
+}
+.public-folha-editions-menu a:hover,
+.public-folha-editions-menu a:focus-visible{background:#52344c;border-color:#deb878}
+.public-folha-editions-menu a[aria-current=page]{
+ background:#74513b;border-color:#e2bb77;color:#fff6e6;
+}
+.public-folha-editions-menu a span{font:600 .76rem system-ui,sans-serif;opacity:.88}
+.public-folha-editions-menu a strong{font:600 1.05rem/1.3 Georgia,serif}
+.public-folha-editions-menu p{margin:4px;color:#f5e2c6}
+.public-folha-toolbar .public-folha-tabs button[aria-expanded=true]{
+ background:#ad7b3c;color:#170d1e;border-color:#efc986;
+}
+@media(max-width:520px){
+ .public-folha-editions-menu{padding:9px;max-height:60vh}
+ .public-folha-editions-menu a{padding:10px}
 }

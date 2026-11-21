@@ -1,7 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {useEffect,useMemo,useRef} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {Newspaper,UsersRound,ChevronLeft,ChevronRight} from 'lucide-react';
+import {Newspaper,UsersRound,ChevronLeft,ChevronRight,ChevronDown} from 'lucide-react';
 import {NewspaperCanvas} from '@/components/newspaper/NewspaperCanvas';
 import {NewspaperTeam} from '@/components/newspaper/NewspaperTeam';
 import {formatDate} from '@/lib/calendar/harptos';
@@ -66,6 +66,27 @@ function PublicNewspaper(){
   const selected=selectedParam||null;
   const [viewParam]=useUrlParam('ver','edicoes');
   const view:'edicoes'|'redacao'=viewParam==='redacao'?'redacao':'edicoes';
+  const [editionsOpen,setEditionsOpen]=useState(false);
+  const editionsTrigger=useRef<HTMLButtonElement>(null);
+  const editionsMenu=useRef<HTMLElement>(null);
+  // O arquivo é acessado pelo botão Edições: clique fora ou Escape fecha
+  // o menu sem perder a edição atualmente aberta.
+  useEffect(()=>{
+    if(!editionsOpen)return;
+    const outside=(event:PointerEvent)=>{
+      if(!(event.target instanceof Node))return;
+      if(!editionsTrigger.current?.contains(event.target)&&!editionsMenu.current?.contains(event.target)){
+        setEditionsOpen(false);
+      }
+    };
+    const escape=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){setEditionsOpen(false);editionsTrigger.current?.focus();}
+    };
+    document.addEventListener('pointerdown',outside);
+    document.addEventListener('keydown',escape);
+    return ()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
+  },[editionsOpen]);
+  useEffect(()=>{if(view==='redacao')setEditionsOpen(false);},[view]);
 
   const list=useQuery({queryKey:['public-newspaper-list'],queryFn:()=>getJson<ListReply>('/api/public/newspaper'),
     staleTime:60_000,retry:1});
@@ -88,7 +109,7 @@ function PublicNewspaper(){
   const index=items.findIndex(i=>i.id===currentId);
   // Dentro do Atlas a página vem embutida (?embed=1); em nova guia ela abre inteira.
   const newTabHref=(changes:Record<string,string|null>)=>hrefWithParams({...changes,embed:null});
-  const go=(id:string)=>{setUrlParams({edicao:id,ver:null});window.scrollTo?.({top:0,behavior:'smooth'});};
+  const go=(id:string)=>{setEditionsOpen(false);setUrlParams({edicao:id,ver:null});window.scrollTo?.({top:0,behavior:'smooth'});};
   const staff=(list.data?.staff??[]).map(m=>({...m,photo_path:null,created_at:'',updated_at:''}));
 
   return <div className={'public-folha'+(embed?' public-folha--embed':'')}>
@@ -103,14 +124,19 @@ function PublicNewspaper(){
           <img src="/newspaper/brasao_folha.webp" alt="" width={220} height={220}/>
         </div>
         <div className="public-folha-head-copy">
-          <p className="newspaper-kicker">A IMPRENSA DO REINO</p>
           <h1>A Folha Sem Selo</h1>
           <p>As notícias que atravessam Cormyr, abertas a todos os leitores.</p>
         </div>
+        <div className="public-folha-head-balance" aria-hidden="true"/>
       </div>
       <div className="public-folha-toolbar">
         <nav className="public-folha-tabs" aria-label="Jornal">
-          <a aria-current={view==='edicoes'?'page':undefined} {...urlLinkProps({ver:null})} href={newTabHref({ver:null})}><Newspaper size={16}/> Edições</a>
+          <button type="button" ref={editionsTrigger} aria-expanded={editionsOpen}
+            aria-controls="public-folha-editions-menu" aria-haspopup="true"
+            aria-pressed={view==='edicoes'}
+            onClick={()=>{if(view!=='edicoes')setUrlParams({ver:null});setEditionsOpen(open=>!open);}}>
+            <Newspaper size={16}/> Edições <ChevronDown size={15} aria-hidden="true"/>
+          </button>
           <a aria-current={view==='redacao'?'page':undefined} {...urlLinkProps({ver:'redacao'})} href={newTabHref({ver:'redacao'})}><UsersRound size={16}/> A Redação</a>
         </nav>
         {view==='edicoes'&&items.length>0&&<nav className="public-folha-edition-nav" aria-label="Navegar entre edições">
@@ -129,6 +155,20 @@ function PublicNewspaper(){
         </nav>}
         {view==='edicoes'&&items.length>0&&<span className="public-folha-toolbar-balance" aria-hidden="true"/>}
       </div>
+      {editionsOpen&&view==='edicoes'&&<nav
+        ref={editionsMenu} id="public-folha-editions-menu"
+        className="public-folha-editions-menu" aria-label="Selecionar edição publicada">
+        {list.isPending&&<p role="status">Carregando edições…</p>}
+        {list.isError&&<p role="alert">Não foi possível carregar o arquivo.</p>}
+        {list.data&&(items.length>0?<ul>{items.map(item=><li key={item.id}>
+          <a aria-current={item.id===currentId?'page':undefined}
+            href={newTabHref({edicao:item.id,ver:null})}
+            onClick={event=>{if(!isPlainLeftClick(event))return;event.preventDefault();go(item.id);}}>
+            <span>Nº {item.editionNo}{item.campaignDate?' · '+formatDate(item.campaignDate):''}</span>
+            <strong>{item.title}</strong>
+          </a>
+        </li>)}</ul>:<p>Nenhuma edição publicada.</p>)}
+      </nav>}
     </div>
     {list.isPending&&<p role="status" className="public-folha-status">Abrindo o arquivo do jornal…</p>}
     {list.isError&&<p role="alert" className="public-folha-status">{list.error instanceof Error?list.error.message:'Jornal indisponível.'}</p>}
@@ -136,14 +176,6 @@ function PublicNewspaper(){
       <p className="public-folha-status">A Redação ainda não apresentou sua equipe.</p>)}
     {list.data&&view==='edicoes'&&(items.length===0?<p className="public-folha-status">Nenhuma edição publicada ainda.</p>:
       <div className="public-folha-layout">
-        <aside className="public-folha-list" aria-label="Edições publicadas">
-          <h2>Edições</h2>
-          <ul>{items.map(item=><li key={item.id}>
-            <a aria-current={item.id===currentId?'true':undefined} href={newTabHref({edicao:item.id,ver:null})}
-              onClick={e=>{if(!isPlainLeftClick(e))return;e.preventDefault();go(item.id);}}>
-              <span>Nº {item.editionNo}{item.campaignDate?' · '+formatDate(item.campaignDate):''}</span>
-              <strong>{item.title}</strong></a></li>)}</ul>
-        </aside>
         <main className="public-folha-reader">
           {edition.isPending&&<p role="status" className="public-folha-status">Abrindo a edição…</p>}
           {edition.isError&&<p role="alert" className="public-folha-status">{edition.error instanceof Error?edition.error.message:'Edição indisponível.'}</p>}
