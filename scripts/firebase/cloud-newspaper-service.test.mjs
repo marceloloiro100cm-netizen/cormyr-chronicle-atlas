@@ -396,6 +396,58 @@ test('classico template can create a draft containing an empty image slot withou
  assert.equal(stored.blocks[2].imageSrc,undefined);
 });
 
+test('publishing an imported draft includes unsaved canvas changes atomically',async()=>{
+ const f=fixture(),srv=f.service();
+ const id='abababab-abab-4aba-8aba-abababababab';
+ const stage=path('migrationNewspaperRuntimeStage',snapshot,'editions',id);
+ const source={id,editionNo:2,version:3,state:'draft',title:'Folha original',
+  subtitle:'',template:'classico',font_style:'classico',campaignDate:'1522-01-01',
+  pdfPath:null,blocks:[{id:'legacy-article',type:'article',
+   text:'Matéria original do acervo',span:12,height:190}]};
+ f.records.set(stage,structuredClone(source));
+ const firstDraft=await srv.saveHistoricalDraft(token,{
+  action:'saveHistoricalDraft',id,expectedVersion:3,requestKey:'draft-prepublish-01',
+  content:{title:'Folha original',subtitle:'',template:'classico',font_style:'classico',
+   campaignDate:'1522-01-01',blocks:[{id:'legacy-article',type:'article',
+    text:'Texto salvo anteriormente',span:12,height:190}]},
+ });
+ assert.equal(firstDraft.version,4);
+ const live={title:'Folha original',subtitle:'',template:'classico',font_style:'classico',
+  campaignDate:'1522-01-01',blocks:[{id:'legacy-article',type:'article',
+   text:'Texto que está no canvas agora',span:12,height:190}]};
+ const args={action:'publishHistoricalDraft',id,expectedVersion:4,
+  requestKey:'publish-live-canvas-01',content:live};
+ await denied(()=>srv.publishHistoricalDraft(token,{...args,expectedVersion:3,
+  requestKey:'publish-stale-canvas-01'}),'historical_draft_conflict',409);
+ assert.equal([...f.records].filter(([k])=>k.includes('/publishedNewspapers/')).length,0);
+ const published=await srv.publishHistoricalDraft(token,args);
+ assert.equal(published.state,'published');
+ assert.equal(published.blocks[0].text,'Texto que está no canvas agora');
+ assert.equal(published.editionNo,13);
+ assert.deepEqual(f.records.get(stage),source,'imported historical source stays immutable');
+ assert.equal(f.records.get(path('campaignCloudRuntime',snapshot,'newspaperHistoricalDrafts',id))
+  .blocks[0].text,'Texto salvo anteriormente');
+ assert.equal((await srv.publishHistoricalDraft(token,args)).duplicate,true);
+ assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,14);
+});
+
+test('live historical publishing rejects forged media without changing the archive',async()=>{
+ const f=fixture(),srv=f.service(),id='cdcdcdcd-cdcd-4cdc-8cdc-cdcdcdcdcdcd';
+ const stage=path('migrationNewspaperRuntimeStage',snapshot,'editions',id);
+ const source={id,editionNo:2,version:1,state:'draft',title:'Folha antiga',
+  subtitle:'',template:'classico',font_style:'classico',campaignDate:'1522-01-01',
+  blocks:[{id:'text-1',type:'article',text:'Texto original',span:12,height:190}]};
+ f.records.set(stage,structuredClone(source));
+ await denied(()=>srv.publishHistoricalDraft(token,{action:'publishHistoricalDraft',id,
+  expectedVersion:1,requestKey:'publish-forged-image-01',content:{
+   title:'Folha antiga',subtitle:'',template:'classico',font_style:'classico',
+   campaignDate:'1522-01-01',blocks:[{id:'image-1',type:'image',
+    imagePath:'outros/documentos/roubados.png',text:'',span:12,height:190}]}}),
+  'historical_draft_invalid',400);
+ assert.deepEqual(f.records.get(stage),source);
+ assert.equal([...f.records].filter(([k])=>k.includes('/publishedNewspapers/')).length,0);
+});
+
 test('publishing a historical draft creates a separate Cloud copy without touching the imported row',async()=>{
  const f=fixture(),service=f.service();
  const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

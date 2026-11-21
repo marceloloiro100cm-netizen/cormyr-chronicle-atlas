@@ -354,7 +354,7 @@ export function createFirebaseCloudNewspaper({
     async publishHistoricalDraft(token,input){
       const uid=await actorId(token);
       if(!input||typeof input!=='object'||Array.isArray(input)||
-         Object.keys(input).some(k=>!['action','id','requestKey','expectedVersion'].includes(k))||
+         Object.keys(input).some(k=>!['action','id','requestKey','expectedVersion','content'].includes(k))||
          input.action!=='publishHistoricalDraft'||!historicalDraftId(input.id)||
          typeof input.requestKey!=='string'||!KEY.test(input.requestKey)||
          !number(input.expectedVersion,1,2147483646))
@@ -386,12 +386,17 @@ export function createFirebaseCloudNewspaper({
        if(auditDoc.exists)deny('historical_publish_conflict',409);
        // The draft was validated against imported source on its last save;
        // recheck its exact image provenance before public circulation.
-       let approved;
-       try{approved=validateHistoricalDraft(source,{
+       // The current editor canvas may be newer than the last autosave.
+       // Validate its exact content inside this same publishing transaction,
+       // without modifying the imported historical record or staging state.
+       const requestedContent=Object.hasOwn(input,'content')?input.content:{
         title:draft.title,subtitle:draft.subtitle,
         template:draft.template,font_style:draft.font_style,
         blocks:draft.blocks,campaignDate:draft.campaignDate,
-       });}catch{deny('historical_draft_invalid',400);}
+       };
+       let approved;
+       try{approved=validateHistoricalDraft(source,requestedContent);}
+       catch{deny('historical_draft_invalid',400);}
        if(!approved.blocks.some(b=>b.type==='article'||b.type==='headline'||b.imagePath||b.imageSrc))
         deny('historical_draft_incomplete',400);
        if(commissionIdsOf(approved.blocks).length)
