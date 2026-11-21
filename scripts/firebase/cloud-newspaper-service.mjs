@@ -182,7 +182,7 @@ export function createFirebaseCloudNewspaper({
   }
   const editorialView=v=>({
     id:v.id,editionNo:v.editionNo,title:v.title,subtitle:v.subtitle??'',
-    blocks:v.blocks,version:v.version,state:v.state,
+    blocks:v.blocks,pdfPath:v.pdfPath??null,version:v.version,state:v.state,
     ...(v.template?{template:v.template}:{}),
     ...(v.font_style?{font_style:v.font_style}:{}),
     campaignDate:v.campaignDate,publishedAt:v.publishedAt,
@@ -371,10 +371,25 @@ export function createFirebaseCloudNewspaper({
           deny('edition_commissions_not_approved',503);
         const commissionRefs=commissionIds.map(cid=>
           runtime.collection('newspaperCommissions').doc(cid));
-        const [oldDoc,auditDoc,commissionDocs]=await Promise.all([
+        const imagePaths=[...new Set(content.blocks.map(b=>b.imagePath).filter(Boolean))];
+        const paths=[...imagePaths,...(content.pdfPath?[content.pdfPath]:[])];
+        const mediaRefs=paths.map(path=>runtime.collection('newspaperMedia')
+         .doc(digest('newspaper-media:'+path)));
+        const [oldDoc,auditDoc,commissionDocs,mediaDocs]=await Promise.all([
          tx.get(ref),tx.get(audit),
          Promise.all(commissionRefs.map(doc=>tx.get(doc))),
+         Promise.all(mediaRefs.map(doc=>tx.get(doc))),
         ]);
+        for(let i=0;i<paths.length;i++){
+         const entry=mediaDocs[i].data(),path=paths[i];
+         if(!mediaDocs[i].exists||entry?.state!=='ready'||
+            entry.path!==path||entry.sourceSnapshotId!==snapshotId||
+            entry.editionId!==id||
+            entry.kind!==(path===content.pdfPath?'editionPdf':'editionImage')||
+            !number(entry.bytes,1,15*1024*1024)||
+            typeof entry.sha256!=='string'||!/^[a-f0-9]{64}$/.test(entry.sha256))
+           deny('unverified_editorial_media',409);
+        }
         if(auditDoc.exists){
           const prior=auditDoc.data();
           if(prior.actorUid!==uid||prior.requestFingerprint!==fingerprint)
