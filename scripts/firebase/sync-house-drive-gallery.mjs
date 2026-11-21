@@ -125,12 +125,16 @@ async function publish(){
   /^[a-f0-9]{64}$/.test(d.id)&&d.data()?.status==='complete'&&d.data()?.private===true&&d.data()?.sourceSnapshotId===d.id);
  if(snapshots.length!==1)throw Error('snapshot_not_unique');
  const snap=snapshots[0].id,rref=db.collection('campaignCloudRuntime').doc(snap),
-  stage=db.collection('migrationPublicContentStage').doc(snap);
+  // Image-only review: never write the separately reviewed public catalog stage.
+  stage=db.collection('migrationPublicHouseGalleryStage').doc(snap);
  const [rDoc,sDoc]=await Promise.all([rref.get(),stage.get()]);
  const r=rDoc.data()||{},s=sDoc.data()||{};
  if(r.status!=='active'||r.private!==true||r.sourceSnapshotId!==snap||r.sourceSnapshotReconciled!==true||
-    r.applicationEnabled!==true||s.status!=='complete'||s.private!==true||s.sourceSnapshotId!==snap||
+    r.applicationEnabled!==true||
     (r.publicGalleryBucket&&r.publicGalleryBucket!==bucketName))throw Error('publication_prerequisites_missing');
+ // Refuse to modify a gallery stage with a different publication scope.
+ if(sDoc.exists&&(s.status!=='complete'||s.private!==true||s.sourceSnapshotId!==snap||
+   s.reviewScope!=='house-gallery-only'))throw Error('gallery_review_stage_conflict');
  const version=Number.isSafeInteger(r.galleryVersion)&&r.galleryVersion>0&&r.galleryVersion===r.publishedGalleryVersion?
   r.galleryVersion:Math.max(0,Number(r.galleryVersion)||0)+1;
  const bucket=getStorage(app).bucket(bucketName);
@@ -169,11 +173,27 @@ async function publish(){
   const batch=db.batch();for(const [ref,values] of refs.slice(x,x+350))batch.set(ref,values);
   await batch.commit();
  }
+ // Only publish after every image has been checksum-verified and all House
+ // gallery documents exist. The root and runtime flag commit atomically.
+ const reviewDigest=digest(JSON.stringify(docs.map(f=>[f.house,f.path,f.sha,f.size,f.mime])
+   .sort((a,b)=>String(a[1]).localeCompare(String(b[1])))));
  await db.runTransaction(async t=>{
-  const fresh=(await t.get(rref)).data()||{};
-  if(fresh.status!=='active'||fresh.sourceSnapshotId!==snap||
-     fresh.galleryVersion!==r.galleryVersion||fresh.publishedGalleryVersion!==r.publishedGalleryVersion)
+  const [freshDoc,stageDoc]=await Promise.all([t.get(rref),t.get(stage)]);
+  const fresh=freshDoc.data()||{},before=stageDoc.data()||{};
+  if(fresh.status!=='active'||fresh.private!==true||fresh.sourceSnapshotId!==snap||
+     fresh.sourceSnapshotReconciled!==true||fresh.applicationEnabled!==true||
+     fresh.galleryVersion!==r.galleryVersion||fresh.publishedGalleryVersion!==r.publishedGalleryVersion||
+     (fresh.publicGalleryBucket&&fresh.publicGalleryBucket!==bucketName))
    throw Error('concurrent_publication_blocked');
+  if(stageDoc.exists&&(before.reviewScope!=='house-gallery-only'||
+     before.sourceSnapshotId!==snap||before.private!==true||before.status!=='complete'))
+   throw Error('gallery_review_stage_conflict');
+  t.set(stage,{
+   status:'complete',private:true,sourceSnapshotId:snap,
+   reviewScope:'house-gallery-only',publicReviewApproved:true,
+   reviewDigest,galleryVersion:version,
+   reviewedHouses:houses.length,reviewedImages:docs.length,
+  });
   t.update(rref,{publicGalleryApproved:true,publicGalleryBucket:bucketName,
    galleryVersion:version,publishedGalleryVersion:version});
  });

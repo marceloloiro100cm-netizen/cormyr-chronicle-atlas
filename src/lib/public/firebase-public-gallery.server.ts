@@ -86,10 +86,16 @@ export async function readApprovedPublicGalleryImage(
      typeof runtime['galleryVersion']!=='number'||runtime['galleryVersion']<1||
      runtime['galleryVersion']!==runtime['publishedGalleryVersion'])return unavailable();
 
-  const stageRef=db.collection('migrationPublicContentStage').doc(snapshotId);
+  // The reviewed image inventory is independent from the public catalog
+  // (whose editorial stage may not yet exist). No historical records leak.
+  const stageRef=db.collection('migrationPublicHouseGalleryStage').doc(snapshotId);
   const stage=(await stageRef.get()).data();
   if(!record(stage)||stage['status']!=='complete'||stage['private']!==true||
-     stage['sourceSnapshotId']!==snapshotId)return unavailable();
+     stage['sourceSnapshotId']!==snapshotId||
+     stage['reviewScope']!=='house-gallery-only'||
+     stage['publicReviewApproved']!==true||
+     typeof stage['reviewDigest']!=='string'||!SHA.test(stage['reviewDigest'])||
+     stage['galleryVersion']!==runtime['galleryVersion'])return unavailable();
 
   const imageRef=stageRef.collection('gallery').doc(galleryDocId(path));
   const image=(await imageRef.get()).data();

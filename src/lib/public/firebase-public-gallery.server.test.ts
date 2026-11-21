@@ -16,7 +16,7 @@ const B=Buffer.from(
 );
 const DIGEST=createHash('sha256').update(B).digest('hex');
 const runtime='campaignCloudRuntime/'+SNAP;
-const stage='migrationPublicContentStage/'+SNAP;
+const stage='migrationPublicHouseGalleryStage/'+SNAP;
 const image=stage+'/gallery/'+galleryDocId(PATH);
 
 type FixtureChanges={
@@ -36,7 +36,9 @@ function fixture(changes:FixtureChanges={}){
       galleryVersion:3,publishedGalleryVersion:3,
       accountUID:'DO_NOT_LEAK',
     },
-    [stage]:{status:'complete',private:true,sourceSnapshotId:SNAP},
+    [stage]:{status:'complete',private:true,sourceSnapshotId:SNAP,
+      reviewScope:'house-gallery-only',publicReviewApproved:true,
+      reviewDigest:'c'.repeat(64),galleryVersion:3},
     [image]:{
       status:'approved',publicReviewed:true,sourceSnapshotId:SNAP,
       version:3,path:PATH,bucketName:BUCKET,
@@ -139,10 +141,25 @@ describe('Firebase-only public gallery image policy',()=>{
     }
   });
 
-  it('rejects incomplete public staging or missing image documents',async()=>{
+  it('rejects missing or unreviewed image-only stage and missing image documents',async()=>{
     const f=fixture({docs:{[stage]:{status:'pending',private:true,
       sourceSnapshotId:SNAP}}});
     await denied(f.run(),503);
+    for(const bad of [
+      {status:'complete',private:true,sourceSnapshotId:SNAP,
+        reviewScope:'house-gallery-only',publicReviewApproved:false,
+        reviewDigest:'c'.repeat(64),galleryVersion:3},
+      {status:'complete',private:true,sourceSnapshotId:SNAP,
+        reviewScope:'catalog-only',publicReviewApproved:true,
+        reviewDigest:'c'.repeat(64),galleryVersion:3},
+      {status:'complete',private:true,sourceSnapshotId:SNAP,
+        reviewScope:'house-gallery-only',publicReviewApproved:true,
+        reviewDigest:'broken',galleryVersion:3},
+    ]){
+      const unreviewed=fixture({docs:{[stage]:bad}});
+      await denied(unreviewed.run(),503);
+      expect(unreviewed.objects).toHaveLength(0);
+    }
     const g=fixture({docs:{[image]:null}});
     await denied(g.run(),404);
     expect(g.objects).toHaveLength(0);

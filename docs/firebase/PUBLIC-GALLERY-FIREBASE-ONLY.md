@@ -30,15 +30,18 @@ O documento `campaignCloudRuntime/<snapshot>` deve conter:
 `galleryVersion:<inteiro positivo>` e
 `publishedGalleryVersion` igual à mesma versão.
 
-O documento `migrationPublicContentStage/<snapshot>` deve conter
-`status:'complete'`, `private:true`, `sourceSnapshotId:<snapshot>`.
+O documento `migrationPublicHouseGalleryStage/<snapshot>` deve conter
+`status:'complete'`, `private:true`, `sourceSnapshotId:<snapshot>`,
+`reviewScope:'house-gallery-only'`, `publicReviewApproved:true`, `reviewDigest:<sha256>`,
+`galleryVersion` igual à versão publicada. Esse estágio exclusivo de imagens
+não altera ou libera o catálogo público (que tem revisão separada).
 Essa etapa de revisão é separada de `migrationStorageStage`: o simples
 índice histórico de referências e a existência de objeto NÃO autorizam
 acesso anônimo. Nenhuma coleção é criada ou preenchida neste PR.
 
 Para cada imagem pública revisada é necessário o documento:
 
-`migrationPublicContentStage/<snapshot>/gallery/<sha256 do path UTF-8>`
+`migrationPublicHouseGalleryStage/<snapshot>/gallery/<sha256 do path UTF-8>`
 
 com os campos abaixo:
 
@@ -52,7 +55,7 @@ com os campos abaixo:
 | `bucketName` | bucket privado do runtime |
 | `storagePath` | exatamente `campaign-images/` + `path` |
 | `sha256` | SHA-256 dos **bytes reais**, minúsculo |
-| `sizeBytes` | tamanho inteiro, 1 a 4 MiB |
+| `sizeBytes` | tamanho inteiro, 1 a 20 MiB |
 | `contentType` | `image/png`, `image/jpeg`, `image/webp` ou `image/gif` |
 
 A revisão deve comprovar que cada entrada corresponde a uma galeria de

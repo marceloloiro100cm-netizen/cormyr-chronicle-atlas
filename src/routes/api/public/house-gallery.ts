@@ -12,7 +12,7 @@ export async function readHouseDriveGallery(request:Request):Promise<Response>{
     !/^cormyr-[a-z0-9-]+$/.test(bucket)||process.env['FIRESTORE_EMULATOR_HOST'])return fail(503);
  try{
   const db=await publicContentFirestore(),root=db.collection('campaignCloudRuntime').doc(snap),
-   stage=db.collection('migrationPublicContentStage').doc(snap);
+   stage=db.collection('migrationPublicHouseGalleryStage').doc(snap);
   const [a,b]=await Promise.all([root.get(),stage.get()]);
   const r=a.data()??{},s=b.data()??{};
   if(r['status']!=='active'||r['private']!==true||r['sourceSnapshotId']!==snap||
@@ -20,7 +20,10 @@ export async function readHouseDriveGallery(request:Request):Promise<Response>{
      r['publicGalleryApproved']!==true||r['publicGalleryBucket']!==bucket||
      !Number.isSafeInteger(r['galleryVersion'])||r['galleryVersion']<1||
      r['galleryVersion']!==r['publishedGalleryVersion']||
-     s['status']!=='complete'||s['private']!==true||s['sourceSnapshotId']!==snap)return fail(503);
+     s['status']!=='complete'||s['private']!==true||s['sourceSnapshotId']!==snap||
+     s['reviewScope']!=='house-gallery-only'||s['publicReviewApproved']!==true||
+     typeof s['reviewDigest']!=='string'||!/^[a-f0-9]{64}$/.test(s['reviewDigest'])||
+     s['galleryVersion']!==r['galleryVersion'])return fail(503);
   const d=(await stage.collection('houseGalleries').doc(house).get()).data();
   if(!d||d['status']!=='approved'||d['publicReviewed']!==true||d['sourceSnapshotId']!==snap||
      d['version']!==r['galleryVersion']||d['houseId']!==house||
