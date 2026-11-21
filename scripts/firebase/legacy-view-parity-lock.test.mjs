@@ -79,6 +79,11 @@
  * ações e mesmos estilos; o botão direito passa a oferecer "Abrir em nova
  * guia". newspaper-editorial.css só repete as regras do menu para <a>.
  * Nenhum controle, filtro ou RPC foi removido. Re-captured after review.
+ * 2026-11-21 (Hub Temporal V2.1, pedido do proprietário): players-workspace.tsx
+ * só acrescenta, no workspace Firebase e para jogadores, a bolinha de festival
+ * na aba Calendário (some ao abrir a aba) e o aviso "Festival nesta semana"
+ * acima do calendário. Nenhuma aba, filtro, controle ou RPC preexistente foi
+ * removido ou alterado. Re-captured after review.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -91,7 +96,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'a335c90dccf10fcdb40ceed57a9939bc8b2636df',
+  'src/components/players/players-workspace.tsx':'730609e7444c1716ebb9e816fc78f3b333339b06',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',

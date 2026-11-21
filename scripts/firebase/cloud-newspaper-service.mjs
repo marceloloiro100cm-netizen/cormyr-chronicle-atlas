@@ -106,6 +106,16 @@ export function createFirebaseCloudNewspaper({
       deny('authentication_required',401);
     return identity.uid;
   }
+  /** Hub Temporal V2.1: com "uma edição por semana" ligado no Hub, só uma
+   * edição nova por semana aberta; desligado, só registra a semana. */
+  const roundOf=config=>Number.isSafeInteger(config?.openRound)&&config.openRound>0?config.openRound:null;
+  function weeklyEditionGate(config){
+    const round=roundOf(config);
+    if(config?.newspaperOneEditionPerWeek===true&&round!==null&&
+       config.newspaperLastPublishedRound===round)deny('weekly_edition_limit',409);
+  }
+  const publishedRoundOf=config=>roundOf(config)===null?{}:{publishedRound:roundOf(config)};
+  const lastPublishedRoundOf=config=>roundOf(config)===null?{}:{newspaperLastPublishedRound:roundOf(config)};
   async function readApproval(uid,tx){
     const docs=await Promise.all([
       ...roots.map(ref=>tx.get(ref)),tx.get(calendar),
@@ -317,7 +327,10 @@ export function createFirebaseCloudNewspaper({
         if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
           deny('invalid_server_clock',503);
         const published=input.state==='published';
+        const firstPublication=published&&!old?.publishedAt;
+        if(firstPublication)weeklyEditionGate(config);
         const next={...(old??{}),...content,id,source:'firebase-cloud',
+          ...(firstPublication?publishedRoundOf(config):{}),
           sourceSnapshotId:snapshotId,editionNo:old?.editionNo??config.nextNewspaperEditionNo,
           state:input.state,version:input.expectedVersion+1,
           campaignDate:published&&!old?.publishedAt?calendarDate:old?.campaignDate??calendarDate,
@@ -341,7 +354,10 @@ export function createFirebaseCloudNewspaper({
         if(oldDoc.exists)tx.update(ref,next);else tx.create(ref,next);
         tx.create(audit,{action:'save_edition',actorUid:uid,occurredAt:now,
           editionId:id,requestFingerprint:fingerprint,before:old??null,after:next});
-        if(!oldDoc.exists)tx.update(runtime,{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1});
+        const runtimeChanges={
+          ...(!oldDoc.exists?{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1}:{}),
+          ...(firstPublication?lastPublishedRoundOf(config):{})};
+        if(Object.keys(runtimeChanges).length)tx.update(runtime,runtimeChanges);
         return {...editorialView(next),duplicate:false};
       });
     },
@@ -388,17 +404,19 @@ export function createFirebaseCloudNewspaper({
         if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
           deny('invalid_server_clock',503);
         const no=config.nextNewspaperEditionNo;
+        weeklyEditionGate(config);
         const doc={
           id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
           editionNo:no,title:data.title,subtitle:data.subtitle,
           state:'published',blocks:[{id:'article-1',type:'article',text:data.article}],
           publishedAt:now,campaignDate:calendarDate,cancelledAt:null,
+          ...publishedRoundOf(config),
           createdBy:uid,requestFingerprint:fingerprint,version:1,
         };
         tx.create(ref,doc);
         tx.create(audit,{action:'publish',editionId:id,actorUid:uid,
           requestFingerprint:fingerprint,occurredAt:now,editionNo:no});
-        tx.update(runtime,{nextNewspaperEditionNo:no+1});
+        tx.update(runtime,{nextNewspaperEditionNo:no+1,...lastPublishedRoundOf(config)});
         return {id,editionNo:no,duplicate:false,state:'published'};
       });
     },

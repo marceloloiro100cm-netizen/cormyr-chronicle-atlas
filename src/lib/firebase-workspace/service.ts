@@ -29,6 +29,9 @@ import {createFirebaseLetterConsequences,LetterConsequenceError} from '../house/
 import {queryRows,type Row,type QueryStep} from './query';
 import {createHash,randomUUID} from 'node:crypto';
 import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
+import {absoluteDay,fromAbsoluteDay,weekPeriod,festivalsInRange,fixedFestivalEntries,
+ visibleForRegions,dateKeyOf,type HubFestival} from '../../../scripts/firebase/hub-temporal-core.mjs';
+import {NARRATION_GROUPS} from '../mail-groups';
 import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
 import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-ledger';
 import {readAllPaged} from './paged-read';
@@ -357,6 +360,14 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    if(snap.overLimit)throw new CloudAccessError('schedule_events_too_large',503);
    return snap.docs.map((d:any)=>d.data()).filter((v:any)=>isEventId(v?.id)&&Number.isSafeInteger(v?.version));
   };
+  // Hub Temporal V2.1: festivais cadastrados e regiões (grupos de narração) de quem lê.
+  const cloudFestivals=async():Promise<HubFestival[]>=>{
+   const snap=await readAllPaged(db.collection('campaignCloudRuntime').doc(snapshotId).collection('festivals'),RUNTIME_ROWS_MAX);
+   if(snap.overLimit)throw new CloudAccessError('festivals_too_large',503);
+   return snap.docs.map((d:any)=>d.data()).filter((v:any)=>v&&v.deleted!==true&&typeof v.id==='string'&&v.date) as HubFestival[];
+  };
+  const viewerRegions=():string[]|null=>scope.profile!=='jogador'?null:
+   NARRATION_GROUPS.filter(g=>g.houseIds.some(h=>scope.memberHouseIds.some(m=>m.toLowerCase()===h))).map(g=>g.id);
   const consequences=()=>createFirebaseLetterConsequences({db,snapshotId});
   const notesCollection=()=>db.collection('campaignCloudRuntime').doc(snapshotId).collection('narratorMailNotes');
   const runtimeApproved=async()=>{
@@ -1066,7 +1077,8 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       return {id:e['id'],date:value.date,title:value.title,
        description:value.description??'',deleted:value.deleted===true,
        version:e['version'],published:e['published']!=null,
-       pending:e['draft']!=null};
+       pending:e['draft']!=null,
+       scope:value.scope==='region'?'region':'kingdom',region:value.scope==='region'?value.region??null:null};
      }).sort((a,b)=>String(a.date).localeCompare(String(b.date))||
       String(a.id).localeCompare(String(b.id)));
    }
@@ -1075,16 +1087,50 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     if(!Number.isSafeInteger(year)||!Number.isSafeInteger(month)||(month as number)<0||(month as number)>11)
      throw new CloudAccessError('invalid_calendar_request',400);
     const inMonth=(key:unknown)=>{const d=parseEventDate(key);return Boolean(d&&d.year===year&&d.month===month);};
-    const kingdom=(await cloudEvents()).filter(e=>e['published']&&inMonth(e['published'].date))
+    // Eventos regionais só aparecem para as Casas da região (Narrador e Editor veem todos).
+    const regions=viewerRegions();
+    const kingdom=(await cloudEvents()).filter(e=>e['published']&&inMonth(e['published'].date)&&
+      visibleForRegions(e['published'],regions))
      .map(e=>({id:'evento-'+e['id'],date:e['published'].date,title:e['published'].title,kind:'kingdom' as const,
       ...(e['published'].description?{description:e['published'].description}:{})}));
-    if(name!=='get_campaign_chronology')return kingdom;
+    // Festivais cadastrados no Hub (os dias festivos fixos já vêm do calendário de Harptos).
+    let festivals:{id:string;date:string;title:string;kind:'kingdom';description?:string}[]=[];
+    if(name==='get_campaign_schedule_events'){
+     const first=absoluteDay({year:year as number,month:month as number,day:1,festival:null});
+     const next=(month as number)===11?{year:(year as number)+1,month:0,day:1,festival:null}
+      :{year:year as number,month:(month as number)+1,day:1,festival:null};
+     const last=absoluteDay(next);
+     festivals=festivalsInRange(await cloudFestivals(),first,last)
+      .filter(o=>visibleForRegions(o.festival,regions))
+      .flatMap(o=>{const out=[];for(let n=Math.max(o.start,first);n<Math.min(o.end,last);n++)
+       out.push({id:'festival-'+o.festival.id+'-'+n,date:dateKeyOf(fromAbsoluteDay(n)),
+        title:'Festival · '+o.festival.name,kind:'kingdom' as const,
+        ...(o.festival.description?{description:o.festival.description}:{})});return out;});
+    }
+    if(name!=='get_campaign_chronology')return [...kingdom,...festivals];
     // Chronology: published Kingdom events and delivered letters the viewer may read.
     const ds=await mail();
     const letters=ds.letters.filter(l=>l.publication_state==='delivered'&&l.deleted_at===null&&
      inMonth(l['campaign_date'])&&canReadLetterAs(ds,l,scope.uid))
      .map(l=>({id:'mail-'+l.id,date:l['campaign_date'] as string,title:l.subject,kind:'mail' as const}));
     return {year,month,events:[...kingdom,...letters],rounds:[],unassigned_round_count:0};
+   }
+   if(name==='get_campaign_week_festivals'){
+    // Festivais com aviso na semana aberta, para a bolinha dos jogadores.
+    const live=(await db.collection('campaignCloudRuntime').doc(snapshotId).get()).data();
+    const c=live?.calendar,round=live?.openRound;
+    if(live?.status!=='active'||!Number.isSafeInteger(round)||!c||!Number.isSafeInteger(c.year))
+     return {round:null,festivals:[]};
+    const date={year:c.year,month:c.month,day:c.day,festival:c.festival??null};
+    let period:{start:number;end:number};
+    try{period=weekPeriod(date);}catch{return {round:null,festivals:[]};}
+    const regions=viewerRegions();
+    const notify=live.fixedFestivalNotify&&typeof live.fixedFestivalNotify==='object'?live.fixedFestivalNotify:{};
+    const list=[...fixedFestivalEntries(notify),...await cloudFestivals()].filter(f=>f.notify===true);
+    return {round,festivals:festivalsInRange(list,period.start,period.end)
+     .filter(o=>visibleForRegions(o.festival,regions))
+     .map(o=>({id:o.festival.id,name:o.festival.name,start:dateKeyOf(fromAbsoluteDay(o.start)),
+      end:dateKeyOf(fromAbsoluteDay(o.end-1)),scope:o.festival.scope,region:o.festival.region}))};
    }
    if(name==='get_campaign_time_history'){
     // Narrator history of the Firebase HUB (launch and weekly openings).

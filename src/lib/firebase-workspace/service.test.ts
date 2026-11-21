@@ -461,14 +461,28 @@ describe('real Firebase workspace boundary',()=>{
   const drafts=await run({kind:'rpc',name:'get_campaign_schedule_drafts',args:{}});
   expect(drafts).toEqual([
    {id:'evt-aaaaaaaa',date:'1522-01-10',title:'Feira',description:'Mercado',
-    deleted:false,version:2,published:true,pending:false},
+    deleted:false,version:2,published:true,pending:false,scope:'kingdom',region:null},
    {id:'evt-bbbbbbbb',date:'1522-01-12',title:'Segredo',description:'',
-    deleted:false,version:1,published:false,pending:true},
+    deleted:false,version:1,published:false,pending:true,scope:'kingdom',region:null},
   ]);
   const saved=await run({kind:'rpc',name:'save_campaign_schedule_event',args:{p_payload:{id:null,version:null,date:'1522-01-20',title:'Torneio',description:'',deleted:false}}});
   expect(saved.version).toBe(1);
   expect(f.writes[0].v).toMatchObject({draft:{date:'1522-01-20',title:'Torneio',deleted:false},published:null});
   await expect(run({kind:'rpc',name:'save_campaign_schedule_event',args:{p_payload:{id:null,version:null,date:'1522-13-01',title:'x',description:'',deleted:false}}})).rejects.toThrow('invalid_event');
+ });
+ it('Hub V2.1: regional events reach only their region; narrator sees all',async()=>{
+  f.runtimeReady=true;
+  f.events=[{id:'evt-r',data:{id:'evt-rrrrrrrr',version:2,draft:null,published:{date:'1522-01-10',title:'Feira de Horselands',description:'',scope:'region',region:'2'}}},
+   {id:'evt-k',data:{id:'evt-kkkkkkkk',version:2,draft:null,published:{date:'1522-01-11',title:'Edital',description:''}}}];
+  f.scope={uid:'p1',profile:'jogador',playerId:'p1',memberHouseIds:['ashkar'],editHouseIds:[]};
+  const coast=await run({kind:'rpc',name:'get_campaign_schedule_events',args:{p_year:1522,p_month:0}});
+  expect(coast.map((e:any)=>e.title)).toEqual(['Edital']);
+  f.scope={uid:'p2',profile:'jogador',playerId:'p2',memberHouseIds:['harcourt'],editHouseIds:[]};
+  const horse=await run({kind:'rpc',name:'get_campaign_schedule_events',args:{p_year:1522,p_month:0}});
+  expect(horse.map((e:any)=>e.title).sort()).toEqual(['Edital','Feira de Horselands']);
+  f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
+  const all=await run({kind:'rpc',name:'get_campaign_schedule_events',args:{p_year:1522,p_month:0}});
+  expect(all).toHaveLength(2);
  });
  it('reads the operational House sheet (seeded from the import) once activated, and House-scoped consequences',async()=>{
   const {constructionStateHash}=await import('../house/firebase-construction-transaction');

@@ -10,10 +10,14 @@ import {validateHarptosDate} from './stage-temporal-emulator.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {publishEvent} from './cloud-schedule-events-core.mjs';
+import {weekPeriod,dateKeyInRange,planFestivalSave,isFestivalId,FIXED_FESTIVALS}
+  from './hub-temporal-core.mjs';
 
 const HASH=/^[a-f0-9]{64}$/;
 const UID=/^[^/\u0000-\u001f]{1,128}$/;
 const REASON=/^[\s\S]{12,300}$/;
+const EVENT_ID=/^[A-Za-z0-9_-]{8,128}$/;
+const HISTORY_ACTIONS=['advance_week','launch_firebase_campaign','set_calendar_date','undo_advance','start_season'];
 
 export class NarratorWeekDraftError extends Error {
   constructor(code,status=403){
@@ -56,15 +60,68 @@ export function planWeekAdvance({live,request}){
      !validateHarptosDate(d.year,d.month,d.day,d.festival??null))
     deny('draft_date_invalid',400);
   const next={year:d.year,month:d.month,day:d.day,festival:d.festival??null};
-  if(harptosOrdinal(next)<harptosOrdinal(current))deny('advance_backdate_forbidden',400);
+  // Volta no tempo (Hub V2.1): a semana avança, a data do jogo recua. Exige
+  // confirmação explícita; efeitos já realizados não são desfeitos e a
+  // economia das Casas não roda de novo (marca d'água por Casa).
+  const flashback=harptosOrdinal(next)<harptosOrdinal(current);
+  if(flashback&&(request.allowBackdate!==true||request.acknowledgeIrreversibleEffects!==true))
+    deny('advance_backdate_forbidden',400);
+  if(flashback&&current.year-next.year>50)deny('flashback_too_far',400);
   if(typeof request.reason!=='string'||!REASON.test(request.reason.trim()))
     deny('draft_reason_invalid',400);
-  const monthsCrossed=(next.year-current.year)*12+(next.month-current.month);
+  const monthsCrossed=Math.max(0,(next.year-current.year)*12+(next.month-current.month));
   if(monthsCrossed>0&&request.acknowledgeHouseEffectsPending!==true)
     deny('house_effects_acknowledgement_required',409);
   if(monthsCrossed>3)deny('advance_too_far',400);
-  return {date:next,monthsCrossed,openRound:live.openRound+1,
+  return {date:next,monthsCrossed,openRound:live.openRound+1,flashback,
     version:live.calendarVersion+1,reason:request.reason.trim()};
+}
+
+/** Nova temporada: a semana avança e a data muda para qualquer era. Não há
+ * efeitos mensais das Casas nem viradas de idade de personagens. */
+export function planSeasonStart({live,request}){
+  if(!request||typeof request!=='object'||Array.isArray(request))
+    deny('season_invalid_request',400);
+  if(!whole(request.expectedCalendarVersion,1,2147483647)||
+     request.expectedCalendarVersion!==live.calendarVersion||
+     !whole(request.expectedOpenRound,1,2147483646)||
+     request.expectedOpenRound!==live.openRound)
+    deny('calendar_version_conflict',409);
+  const d=request.proposedDate;
+  if(!d||typeof d!=='object'||Array.isArray(d)||
+     !validateHarptosDate(d.year,d.month,d.day,d.festival??null))
+    deny('draft_date_invalid',400);
+  if(request.name!==undefined&&(typeof request.name!=='string'||request.name.length>80))
+    deny('season_invalid_request',400);
+  if(typeof request.reason!=='string'||!REASON.test(request.reason.trim()))
+    deny('draft_reason_invalid',400);
+  const before=seasonsOf(live);
+  const number=Math.max(...before.map(x=>x.number))+1;
+  const seasons=[...before.map(x=>x.status==='active'?{...x,status:'closed',endRound:live.openRound}:x),
+    {number,name:(request.name??'').trim(),startRound:live.openRound+1,
+     startDate:{year:d.year,month:d.month,day:d.day,festival:d.festival??null},status:'active'}];
+  return {date:{year:d.year,month:d.month,day:d.day,festival:d.festival??null},
+    openRound:live.openRound+1,version:live.calendarVersion+1,
+    reason:request.reason.trim(),seasons,number};
+}
+/** Temporadas registradas; sem registro, a campanha está na Temporada 2. */
+export function seasonsOf(live){
+  const list=Array.isArray(live?.seasons)?live.seasons.filter(x=>
+    x&&whole(x.number,1,999)&&['active','closed'].includes(x.status)):[];
+  return list.length?list:[{number:2,name:'',startRound:null,startDate:null,status:'active'}];
+}
+
+/** Escolhe os eventos publicados na abertura: rascunhos do período da nova
+ * semana (menos os desmarcados) e exclusões pendentes. */
+export function planEventPublication(docs,date,exclude=[]){
+  const {start,end}=weekPeriod(date);
+  const skip=new Set(Array.isArray(exclude)?exclude:[]);
+  return (docs??[]).filter(d=>{
+    const v=d.data();
+    if(!v?.draft)return false;
+    if(v.draft.deleted===true)return true;
+    return !skip.has(d.id)&&dateKeyInRange(v.draft.date,start,end);
+  });
 }
 
 /**
@@ -143,6 +200,20 @@ export function planNarratorWeekDraft({archivedCalendar,previous,request,actorUi
   };
 }
 
+/** Diz se a última abertura do Hub pode ser desfeita (exceto o teste de
+ * missivas novas, que precisa consultar a coleção dentro da transação). */
+export function undoBlocker(last,live){
+  if(!last||!['advance_week','start_season'].includes(last.action)||
+     !Array.isArray(last.eventsBefore)||!last.from)
+    return {available:false,reason:'no_hub_opening'};
+  if(typeof last.undoneAt==='string')return {available:false,reason:'no_hub_opening'};
+  if(last.toRound!==live?.openRound||last.to?.version!==live?.calendarVersion)
+    return {available:false,reason:'undo_calendar_changed'};
+  if(last.action==='advance_week'&&(last.monthsCrossed>0||last.from.year!==last.to.year))
+    return {available:false,reason:'undo_house_effects_applied'};
+  return {available:true};
+}
+
 export function createFirebaseNarratorWeekDraft({
   db,auth,snapshotId,projectId,enabled=false,env=process.env,
   now=()=>new Date().toISOString(),newId=randomUUID,
@@ -208,6 +279,15 @@ export function createFirebaseNarratorWeekDraft({
     }:null,
     editable:true,calendarPublished:false,mailEnabled:false,
   });
+  function publishChosen(tx,cloud,docs,at){
+    let count=0;
+    for(const d of docs){
+      const next=publishEvent(d.data(),at);
+      if(!next)continue;
+      tx.set(cloud.collection('scheduleEvents').doc(d.id),next);count++;
+    }
+    return count;
+  }
   function publishPending(tx,cloud,eventDocs,at){
     const docs=Array.isArray(eventDocs?.docs)?eventDocs.docs:[];
     if(docs.length>2000)deny('schedule_events_too_large',503);
@@ -361,8 +441,11 @@ export function createFirebaseNarratorWeekDraft({
       const uid=await authenticate(token);
       if(!request||typeof request!=='object'||Array.isArray(request)||
          Object.keys(request).some(k=>!['expectedCalendarVersion','expectedOpenRound',
-           'proposedDate','reason','acknowledgeHouseEffectsPending','requestKey'].includes(k))||
-         typeof request.requestKey!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(request.requestKey))
+           'proposedDate','reason','acknowledgeHouseEffectsPending','requestKey',
+           'allowBackdate','acknowledgeIrreversibleEffects','excludeEventIds'].includes(k))||
+         typeof request.requestKey!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(request.requestKey)||
+         (request.excludeEventIds!==undefined&&(!Array.isArray(request.excludeEventIds)||
+           request.excludeEventIds.length>200||request.excludeEventIds.some(x=>!EVENT_ID.test(String(x))))))
         deny('advance_invalid_request',400);
       return db.runTransaction(async tx=>{
         const state=await readState(tx,uid);
@@ -397,25 +480,34 @@ export function createFirebaseNarratorWeekDraft({
             });
           }
         }
+        // Opening the week publishes the Narrator's pending events of the new
+        // week's period (Hub V2.1); the previous documents allow an exact undo.
+        if((eventDocs?.docs?.length??0)>2000)deny('schedule_events_too_large',503);
+        const chosen=planEventPublication(eventDocs?.docs,plan.date,request.excludeEventIds);
+        const auditId=newId();
         tx.set(cloud,{...live,calendar,calendarVersion:plan.version,openRound:plan.openRound,
           publishedTimeVersion:plan.version,
           pendingHouseEffectMonths:pending+plan.monthsCrossed,
-          lastAdvanceKey:request.requestKey,lastAdvanceBy:uid,lastAdvancedAt:at});
+          lastAdvanceKey:request.requestKey,lastAdvanceBy:uid,lastAdvancedAt:at,
+          lastAdvanceAuditId:auditId});
         tx.set(mail,{...gate,calendarVersion:plan.version,openRound:plan.openRound,
           lastAdvancedAt:at});
-        // Opening the week also publishes the Narrator's pending calendar events.
-        const published=publishPending(tx,cloud,eventDocs,at);
-        tx.create(audit.doc(newId()),{action:'advance_week',actorUid:uid,at,publishedEvents:published,
+        const published=publishChosen(tx,cloud,chosen,at);
+        tx.create(audit.doc(auditId),{action:'advance_week',actorUid:uid,at,publishedEvents:published,
           from:{...effective},to:calendar,fromRound:live.openRound,toRound:plan.openRound,
           monthsCrossed:plan.monthsCrossed,houseEffectsPending:plan.monthsCrossed>0,
-          reason:plan.reason});
+          flashback:plan.flashback,reason:plan.reason,
+          prevAdvanceAuditId:typeof live.lastAdvanceAuditId==='string'?live.lastAdvanceAuditId:null,
+          eventsBefore:chosen.map(d=>({id:d.id,doc:d.data()}))});
         return {advanced:true,duplicate:false,calendar,openRound:plan.openRound,
           monthsCrossed:plan.monthsCrossed,publishedEvents:published};
       });
     },
     /** Explicit publication of pending calendar events, without a new week. */
-    async publishEvents(token){
+    async publishEvents(token,ids){
       const uid=await authenticate(token);
+      if(ids!==undefined&&(!Array.isArray(ids)||ids.length<1||ids.length>200||
+         ids.some(x=>!EVENT_ID.test(String(x)))))deny('advance_invalid_request',400);
       return db.runTransaction(async tx=>{
         await readState(tx,uid);
         const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
@@ -424,7 +516,8 @@ export function createFirebaseNarratorWeekDraft({
         if(liveDoc.data()?.status!=='active')deny('campaign_not_launched',409);
         const at=now();
         if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
-        const published=publishPending(tx,cloud,eventDocs,at);
+        const published=ids===undefined?publishPending(tx,cloud,eventDocs,at)
+          :publishChosen(tx,cloud,(eventDocs?.docs??[]).filter(d=>ids.includes(d.id)),at);
         if(published>0)tx.create(audit.doc(newId()),{action:'publish_events',actorUid:uid,at,publishedEvents:published});
         return {published};
       });
@@ -437,12 +530,239 @@ export function createFirebaseNarratorWeekDraft({
         await readState(tx,uid);
         const docs=await tx.get(audit.limit(500));
         return (docs.docs??[]).map(d=>({id:d.id,...d.data()}))
-          .filter(a=>['advance_week','launch_firebase_campaign','set_calendar_date'].includes(a.action))
+          .filter(a=>HISTORY_ACTIONS.includes(a.action))
           .sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,limit)
           .map(a=>({id:a.id,action:a.action,at:a.at,
             from:a.from??null,to:a.to??a.calendar??null,
             fromRound:a.fromRound??null,toRound:a.toRound??a.openRound??null,
-            monthsCrossed:a.monthsCrossed??0,reason:a.reason??null}));
+            monthsCrossed:a.monthsCrossed??0,reason:a.reason??null,
+            flashback:a.flashback===true,undone:typeof a.undoneAt==='string',
+            publishedEvents:Number.isSafeInteger(a.publishedEvents)?a.publishedEvents:null,
+            season:a.season??null}));
+      });
+    },
+    /** Estado operacional para as ações do Hub V2.1 (somente Narrador). */
+    async hubData(token){
+      const uid=await authenticate(token);
+      return db.runTransaction(async tx=>{
+        await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const [liveDoc,festDocs,letterDocs,paperDocs]=await Promise.all([tx.get(cloud),
+          tx.get(cloud.collection('festivals').limit(501)),
+          tx.get(cloud.collection('letters').select('originHouseId','recipientKind',
+            'recipientHouseId','subject','campaignDate','creationRound','deliveryRound',
+            'publicationState','deletedAt').limit(5001)),
+          tx.get(cloud.collection('publishedNewspapers').select('editionNo','state',
+            'publishedAt','publishedRound').limit(2001))]);
+        const live=liveDoc.data();
+        if(live?.status!=='active')deny('campaign_not_launched',409);
+        const round=live.openRound;
+        let undo={available:false,reason:'no_hub_opening'};
+        if(typeof live.lastAdvanceAuditId==='string'){
+          const last=await tx.get(audit.doc(live.lastAdvanceAuditId));
+          undo=undoBlocker(last.data(),live);
+          if(undo.available){
+            const fresh=await tx.get(cloud.collection('letters')
+              .where('creationRound','==',round).limit(1));
+            if((fresh?.docs?.length??0)>0)undo={available:false,reason:'undo_new_week_has_mail'};
+          }
+        }
+        const letters=(letterDocs?.docs??[]).map(d=>({id:d.id,...d.data()}))
+          .filter(v=>v.deletedAt==null&&typeof v.campaignDate==='string')
+          .map(v=>({id:v.id,from:v.originHouseId??null,to:v.recipientKind==='house'?v.recipientHouseId??null:'narrador',
+            subject:typeof v.subject==='string'?v.subject.slice(0,160):'',date:v.campaignDate,
+            creationRound:whole(v.creationRound,1,2147483647)?v.creationRound:null,
+            deliveryRound:whole(v.deliveryRound,1,2147483647)?v.deliveryRound:null,
+            state:['draft','scheduled','delivered'].includes(v.publicationState)?v.publicationState:'draft'}));
+        const editions=(paperDocs?.docs??[]).map(d=>d.data())
+          .filter(v=>v&&v.state!=='cancelled'&&typeof v.publishedAt==='string');
+        return {
+          openRound:round,
+          seasons:seasonsOf(live),
+          settings:{newspaperOneEditionPerWeek:live.newspaperOneEditionPerWeek===true},
+          fixedFestivalNotify:live.fixedFestivalNotify&&typeof live.fixedFestivalNotify==='object'
+            ?live.fixedFestivalNotify:{},
+          festivals:(festDocs?.docs??[]).map(d=>d.data()).filter(f=>f&&f.deleted!==true&&isFestivalId(f.id)),
+          letters,
+          newspaper:{total:editions.length,
+            thisWeek:editions.filter(v=>v.publishedRound===round)
+              .map(v=>v.editionNo).filter(n=>whole(n,0,99999999)).sort((a,b)=>a-b)},
+          undo,
+        };
+      });
+    },
+    /** Desfaz a última abertura feita pelo Hub (sem prazo), revertendo
+     * exatamente o que ela gravou. Bloqueia se a nova semana já teve
+     * missivas, se a abertura processou a economia das Casas ou virou o ano. */
+    async undo(token,request){
+      const uid=await authenticate(token);
+      if(!request||typeof request!=='object'||Array.isArray(request)||
+         Object.keys(request).some(k=>!['expectedCalendarVersion','expectedOpenRound','requestKey'].includes(k))||
+         typeof request.requestKey!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(request.requestKey))
+        deny('undo_invalid_request',400);
+      return db.runTransaction(async tx=>{
+        const state=await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const mail=db.collection('campaignMailRuntime').doc(snapshotId);
+        const [liveDoc,mailDoc]=await Promise.all([tx.get(cloud),tx.get(mail)]);
+        const live=liveDoc.data(),gate=mailDoc.data();
+        if(live?.lastUndoKey===request.requestKey&&live?.lastUndoBy===uid)
+          return {undone:true,duplicate:true,calendar:live.calendar,openRound:live.openRound};
+        const effective=effectiveCloudCalendar(state.calendar,live,snapshotId);
+        const launched=live?.status==='active'&&live?.calendarSource==='operational'&&
+          live?.sourceAuthority==='owner_adopted_firebase'&&effective&&
+          live.calendarVersion===effective.version&&whole(live.openRound,2,2147483647)&&
+          cloudMailRuntimeApproved(live,gate,state.calendar,snapshotId);
+        if(!launched)deny('campaign_not_launched',409);
+        if(request.expectedCalendarVersion!==live.calendarVersion||
+           request.expectedOpenRound!==live.openRound)deny('calendar_version_conflict',409);
+        if(typeof live.lastAdvanceAuditId!=='string')deny('no_hub_opening',409);
+        const auditRef=audit.doc(live.lastAdvanceAuditId);
+        const lastDoc=await tx.get(auditRef);
+        const last=lastDoc.data();
+        const blocker=undoBlocker(last,live);
+        if(!blocker.available)deny(blocker.reason,409);
+        const fresh=await tx.get(cloud.collection('letters')
+          .where('creationRound','==',live.openRound).limit(1));
+        if((fresh?.docs?.length??0)>0)deny('undo_new_week_has_mail',409);
+        const before=Array.isArray(last.eventsBefore)?last.eventsBefore:[];
+        const refs=before.map(x=>cloud.collection('scheduleEvents').doc(x.id));
+        const current=await Promise.all(refs.map(r=>tx.get(r)));
+        for(let i=0;i<before.length;i++){
+          const now_=current[i]?.data();
+          if(!now_||now_.version!==before[i].doc.version+1)deny('undo_events_changed',409);
+        }
+        const at=now();
+        if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
+        const version=live.calendarVersion+1;
+        const f=last.from;
+        const calendar={year:f.year,month:f.month,day:f.day,festival:f.festival??null,version};
+        before.forEach((x,i)=>tx.set(refs[i],x.doc));
+        tx.set(cloud,{...live,calendar,calendarVersion:version,publishedTimeVersion:version,
+          openRound:last.fromRound,lastAdvanceKey:null,
+          lastAdvanceAuditId:typeof last.prevAdvanceAuditId==='string'?last.prevAdvanceAuditId:null,
+          ...(last.action==='start_season'?{seasons:Array.isArray(last.seasonsBefore)?last.seasonsBefore:null}:{}),
+          lastUndoKey:request.requestKey,lastUndoBy:uid,lastUndoneAt:at});
+        tx.set(mail,{...gate,calendarVersion:version,openRound:last.fromRound,lastUndoneAt:at});
+        tx.set(auditRef,{...last,undoneAt:at,undoneBy:uid});
+        tx.create(audit.doc(newId()),{action:'undo_advance',actorUid:uid,at,
+          undoneAuditId:lastDoc.id??live.lastAdvanceAuditId,
+          from:{...effective},to:calendar,fromRound:live.openRound,toRound:last.fromRound,
+          monthsCrossed:0,restoredEvents:before.length,
+          reason:'Abertura da Semana '+live.openRound+' desfeita pelo Narrador'});
+        return {undone:true,duplicate:false,calendar,openRound:last.fromRound,restoredEvents:before.length};
+      });
+    },
+    /** Inicia uma nova temporada em qualquer data (inclusive outra era). */
+    async startSeason(token,request){
+      const uid=await authenticate(token);
+      if(!request||typeof request!=='object'||Array.isArray(request)||
+         Object.keys(request).some(k=>!['expectedCalendarVersion','expectedOpenRound',
+           'proposedDate','reason','name','requestKey'].includes(k))||
+         typeof request.requestKey!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(request.requestKey))
+        deny('season_invalid_request',400);
+      return db.runTransaction(async tx=>{
+        const state=await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const mail=db.collection('campaignMailRuntime').doc(snapshotId);
+        const [liveDoc,mailDoc,eventDocs]=await Promise.all([tx.get(cloud),tx.get(mail),
+          tx.get(cloud.collection('scheduleEvents').limit(2001))]);
+        const live=liveDoc.data(),gate=mailDoc.data();
+        if(live?.lastSeasonKey===request.requestKey&&live?.lastSeasonBy===uid)
+          return {started:true,duplicate:true,calendar:live.calendar,openRound:live.openRound};
+        const effective=effectiveCloudCalendar(state.calendar,live,snapshotId);
+        const launched=live?.status==='active'&&live?.calendarSource==='operational'&&
+          live?.sourceAuthority==='owner_adopted_firebase'&&effective&&
+          live.calendarVersion===effective.version&&whole(live.openRound,1,2147483646)&&
+          cloudMailRuntimeApproved(live,gate,state.calendar,snapshotId);
+        if(!launched)deny('campaign_not_launched',409);
+        const plan=planSeasonStart({live,request});
+        if((eventDocs?.docs?.length??0)>2000)deny('schedule_events_too_large',503);
+        const at=now();
+        if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
+        const calendar={...plan.date,version:plan.version};
+        const chosen=planEventPublication(eventDocs?.docs,plan.date,[]);
+        const auditId=newId();
+        tx.set(cloud,{...live,calendar,calendarVersion:plan.version,openRound:plan.openRound,
+          publishedTimeVersion:plan.version,seasons:plan.seasons,
+          lastSeasonKey:request.requestKey,lastSeasonBy:uid,lastAdvancedAt:at,
+          lastAdvanceAuditId:auditId});
+        tx.set(mail,{...gate,calendarVersion:plan.version,openRound:plan.openRound,lastAdvancedAt:at});
+        const published=publishChosen(tx,cloud,chosen,at);
+        tx.create(audit.doc(auditId),{action:'start_season',actorUid:uid,at,publishedEvents:published,
+          from:{...effective},to:calendar,fromRound:live.openRound,toRound:plan.openRound,
+          monthsCrossed:0,reason:plan.reason,season:{number:plan.number,name:plan.seasons.at(-1).name},
+          seasonsBefore:Array.isArray(live.seasons)?live.seasons:null,
+          prevAdvanceAuditId:typeof live.lastAdvanceAuditId==='string'?live.lastAdvanceAuditId:null,
+          eventsBefore:chosen.map(d=>({id:d.id,doc:d.data()}))});
+        return {started:true,duplicate:false,calendar,openRound:plan.openRound,
+          season:plan.number,publishedEvents:published};
+      });
+    },
+    /** Cadastro, edição e exclusão de festivais (coleção festivals). */
+    async saveFestival(token,payload){
+      const uid=await authenticate(token);
+      return db.runTransaction(async tx=>{
+        await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const id=payload&&typeof payload==='object'?payload.id:undefined;
+        if(id!==null&&id!==undefined&&!isFestivalId(id))deny('invalid_festival',400);
+        const [liveDoc,prevDoc]=await Promise.all([tx.get(cloud),
+          typeof id==='string'?tx.get(cloud.collection('festivals').doc(id)):Promise.resolve(null)]);
+        if(liveDoc.data()?.status!=='active')deny('campaign_not_launched',409);
+        const at=now();
+        const next=planFestivalSave(prevDoc?.exists?prevDoc.data():null,payload,{
+          deny,newId:()=>'fest-'+String(newId()).replace(/[^A-Za-z0-9_-]/g,''),uid,at});
+        tx.set(cloud.collection('festivals').doc(next.id),next);
+        tx.create(audit.doc(newId()),{action:'save_festival',actorUid:uid,at,
+          festivalId:next.id,version:next.version});
+        return next;
+      });
+    },
+    async deleteFestival(token,request){
+      const uid=await authenticate(token);
+      if(!request||!isFestivalId(request.id)||!whole(request.version,1,2147483646))
+        deny('invalid_festival',400);
+      return db.runTransaction(async tx=>{
+        await readState(tx,uid);
+        const ref=db.collection('campaignCloudRuntime').doc(snapshotId).collection('festivals').doc(request.id);
+        const prev=await tx.get(ref);
+        const v=prev.data();
+        if(!prev.exists||v?.deleted===true)deny('festival_not_found',404);
+        if(v.version!==request.version)deny('festival_version_conflict',409);
+        const at=now();
+        tx.set(ref,{...v,deleted:true,version:v.version+1,updatedAt:at,updatedBy:uid});
+        tx.create(audit.doc(newId()),{action:'delete_festival',actorUid:uid,at,festivalId:request.id});
+        return {deleted:true};
+      });
+    },
+    /** Ajustes do Hub: aviso dos dias festivos fixos e limite semanal do Jornal. */
+    async saveSettings(token,request){
+      const uid=await authenticate(token);
+      const keys=['newspaperOneEditionPerWeek','fixedFestivalNotify'];
+      if(!request||typeof request!=='object'||Array.isArray(request)||
+         Object.keys(request).length===0||Object.keys(request).some(k=>!keys.includes(k))||
+         (request.newspaperOneEditionPerWeek!==undefined&&typeof request.newspaperOneEditionPerWeek!=='boolean')||
+         (request.fixedFestivalNotify!==undefined&&(typeof request.fixedFestivalNotify!=='object'||
+           request.fixedFestivalNotify===null||Array.isArray(request.fixedFestivalNotify)||
+           Object.entries(request.fixedFestivalNotify).some(([k,v])=>
+             !FIXED_FESTIVALS.some(f=>f.id===k)||typeof v!=='boolean'))))
+        deny('invalid_settings',400);
+      return db.runTransaction(async tx=>{
+        await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const live=(await tx.get(cloud)).data();
+        if(live?.status!=='active')deny('campaign_not_launched',409);
+        const at=now();
+        const next={...live,
+          ...(request.newspaperOneEditionPerWeek!==undefined?{newspaperOneEditionPerWeek:request.newspaperOneEditionPerWeek}:{}),
+          ...(request.fixedFestivalNotify!==undefined?{fixedFestivalNotify:{
+            ...(live.fixedFestivalNotify&&typeof live.fixedFestivalNotify==='object'?live.fixedFestivalNotify:{}),
+            ...request.fixedFestivalNotify}}:{})};
+        tx.set(cloud,next);
+        tx.create(audit.doc(newId()),{action:'hub_settings',actorUid:uid,at,changes:request});
+        return {settings:{newspaperOneEditionPerWeek:next.newspaperOneEditionPerWeek===true},
+          fixedFestivalNotify:next.fixedFestivalNotify??{}};
       });
     },
     async get(token){
