@@ -1,0 +1,51 @@
+name: Read-only live House galleries smoke — no deployment
+on:
+  push:
+    branches:
+      - audit/house-gallery-public-20261121
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify three public House galleries and sample images (GET only)
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const houses=['phelles','evenhand','goldfin'];
+          let ready=0;
+          for(const house of houses){
+            const url='https://atlas.cormyr.com.br/api/public/house-gallery?house='+house;
+            let status=0,images=[];
+            try{
+              const r=await fetch(url,{signal:AbortSignal.timeout(20000),headers:{Accept:'application/json'}});
+              status=r.status;
+              if(r.status===200){
+                const json=await r.json();
+                if(json.houseId!==house||!Array.isArray(json.images)||json.images.length===0||
+                   json.images.length>250)throw Error('invalid_public_gallery_list');
+                images=json.images;
+              }
+            }catch(e){console.log('PUBLIC_HOUSE '+house+' request_error='+e.name);}
+            console.log('PUBLIC_HOUSE '+house+' status='+status+' image_count='+images.length);
+            if(status!==200||!images.length)continue;
+            const sample=images[0];
+            const path=sample.path;
+            if(!/^public-house\/[a-z0-9-]+\/[a-f0-9]{48}$/.test(path))
+              throw Error('unexpected_public_path');
+            const u='https://atlas.cormyr.com.br/api/public/gallery-image?path='+encodeURIComponent(path);
+            try{
+              const res=await fetch(u,{signal:AbortSignal.timeout(30000)});
+              const ctype=res.headers.get('content-type')||'';
+              console.log('PUBLIC_IMAGE '+house+' status='+res.status+' image_type_ok='+(/^image\/(png|jpeg|webp|gif)/.test(ctype)));
+              if(res.status===200&&/^image\/(png|jpeg|webp|gif)/.test(ctype))ready++;
+            }catch(e){console.log('PUBLIC_IMAGE '+house+' request_error='+e.name);}
+          }
+          console.log('PUBLIC_HOUSE_GALLERY_SMOKE successful_houses='+ready+' total_houses='+houses.length);
+          if(ready!==houses.length)process.exit(2);
+          NODE
