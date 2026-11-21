@@ -474,7 +474,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    void updateNewspaperEdition(draft,{
     campaign_date:draft.campaign_date,title:draft.title.trim(),subtitle:draft.subtitle,
     template:draft.template,font_style:draft.font_style,blocks:draft.blocks,
-    pdf_path:draft.pdf_path,state:'draft',
+    pdf_path:draft.pdf_path,state:'draft',publish_on:draft.publish_on??null,
    }).then(result=>{
     // Preserve edits typed DURING the network request. The cached row is the
     // snapshot actually saved, so unsaved changes still appear as dirty.
