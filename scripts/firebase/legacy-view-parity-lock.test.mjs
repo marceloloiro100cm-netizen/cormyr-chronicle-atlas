@@ -100,6 +100,10 @@
  * vazio antes de inserir notícias contratadas e informa limitações do
  * upload Firebase sem gravar registros incompletos. A tela, menus, filtros,
  * conteúdo importado e fluxos dos demais perfis permanecem preservados.
+ * A 21/11 audit CSS review verified: long engraving names and campaign dates
+ * must wrap instead of being clipped; old responsive spacing, menus,
+ * typography choices and controls were preserved. No hidden interactive
+ * element was made newly accessible or removed.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -117,7 +121,7 @@ const originals={
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
   'src/components/newspaper/NewspaperHub.tsx':'0f4d1115bccee284e04ddf4ca37c107cd67c7c78',
-  'src/components/newspaper/newspaper-editorial.css':'1201a06ca889a61da1a9f905701c0e0107a87b17',
+  'src/components/newspaper/newspaper-editorial.css':'7983710e5e5a6cc5872cb9b6568fc0a81f4cdd43',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
