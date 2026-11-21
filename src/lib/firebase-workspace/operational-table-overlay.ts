@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- limite do Firebase Admin e da API de consulta original. */
 import {createHash,randomUUID} from 'node:crypto';
 import type {QueryStep,Row} from './query';
+import {readAllPaged} from './paged-read';
 
 /**
  * Tabelas operacionais do workspace Firebase (20/11/2026).
@@ -60,9 +61,10 @@ const docId=(table:string,key:unknown)=>createHash('sha256').update(table+':'+JS
 
 /** Linhas operacionais de uma tabela (inclui marcas de exclusão). */
 export async function readOverlayRows(db:any,snapshotId:string,table:string):Promise<{key:unknown;row:Row|null}[]>{
- // Poucas linhas por tabela: leitura única e filtro pelo nome da tabela.
- const snap=await collection(db,snapshotId,table).limit(5001).get();
- if(snap.docs.length>5000)fail('overlay_too_large',503);
+ // Leitura integral em páginas e filtro pelo nome da tabela (teto de segurança
+ // folgado: o caderno do Narrador cresce a cada sessão).
+ const snap=await readAllPaged<any>(collection(db,snapshotId,table),50_000);
+ if(snap.overLimit)fail('overlay_too_large',503);
  return snap.docs.map((d:any)=>d.data()).filter((v:any)=>v&&v.table===table)
   .map((v:any)=>({key:v.key,row:v.deleted?null:(v.row??null)}));
 }

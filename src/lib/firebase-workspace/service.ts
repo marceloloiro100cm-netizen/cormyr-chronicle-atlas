@@ -31,6 +31,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {planEventSave,parseEventDate,isEventId} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
 import {listCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
 import {readOperationalHouseLedger,mergeHouseLedger} from './operational-house-ledger';
+import {readAllPaged} from './paged-read';
 import {readOperationalRecordDocs,projectOperationalRecords,
  projectOperationalVersions,readOperationalRecordVersionDocs,OperationalRecordError} from './operational-records';
 import {commitOperationalRecord,RecordWriteError} from './operational-record-write';
@@ -77,6 +78,12 @@ export const recordVisible=(s:Scope,r:Row)=>s.profile==='narrador'||s.profile===
 // O acervo importado não muda depois de concluído; com a instância mantida
 // aquecida (minInstances 1), 6 horas evitam reler centenas de documentos.
 const TABLE_TTL_MS=6*60*60_000;
+/** Tetos de segurança das coleções operacionais, lidas por inteiro em páginas
+ * (paged-read.ts). Folga de anos para 13 a 15 Casas; passar deles ainda falha
+ * fechado, sem conjunto parcial. */
+const MAIL_LETTERS_MAX=10_000;
+const MAIL_RECEIPTS_MAX=40_000;
+const RUNTIME_ROWS_MAX=20_000;
 const tableCache=new WeakMap<object,Map<string,{at:number;rows:Promise<Row[]>}>>();
 export function cachedWorkspaceTable(db:any,snapshotId:string,name:string,now=Date.now()):Promise<Row[]>{
  let byDb=tableCache.get(db);
@@ -99,6 +106,41 @@ function shared<T>(db:any,key:string,read:()=>Promise<T>):Promise<T>{
  const running=byDb.get(key);if(running)return running;
  const p=read().finally(()=>{if(byDb.get(key)===p)byDb.delete(key);});
  byDb.set(key,p);return p;
+}
+/**
+ * Cache curto das coleções vivas da caixa de missivas (cartas, recibos e
+ * moderação). Cada tela aberta da Chancelaria consulta a caixa a cada 30 s e,
+ * sem isto, cada consulta relia todas as cartas e todos os recibos no
+ * Firestore. Guarda só os documentos brutos (o filtro por perfil e por grupo
+ * continua sendo aplicado a cada pedido) por poucos segundos, e é apagado a
+ * cada pedido que não seja leitura conhecida, antes e depois dele: quem envia,
+ * responde, marca como lida ou exclui sempre lê e devolve a caixa fresca.
+ */
+const RUNTIME_MAIL_TTL_MS=10_000;
+const RUNTIME_MAIL_KEYS=['|letters','|receipts','|legacy-moderation'];
+const recentRuntime=new WeakMap<object,Map<string,{at:number;value:Promise<any>}>>();
+function recentRuntimeRead<T>(db:any,key:string,read:()=>Promise<T>,now=Date.now()):Promise<T>{
+ let byDb=recentRuntime.get(db);
+ if(!byDb){byDb=new Map();recentRuntime.set(db,byDb);}
+ const hit=byDb.get(key);
+ if(hit&&now-hit.at<RUNTIME_MAIL_TTL_MS)return hit.value;
+ const entry={at:now,value:read()};
+ byDb.set(key,entry);
+ entry.value.catch(()=>{if(byDb.get(key)===entry)byDb.delete(key);});
+ return entry.value;
+}
+export function clearRecentRuntimeReads(db:any){recentRuntime.get(db)?.clear();}
+/** Pedidos que só leem: os únicos que podem usar o cache curto da caixa. */
+const READ_ONLY_RPCS=new Set(['mail_page','mail_trash_page','mail_insights','mail_insights_grouped',
+ 'mail_compose_options','calendar_mail_events','house_gallery_mail_images']);
+export function isReadOnlyWorkspaceRequest(input:any):boolean{
+ if(!input||typeof input!=='object')return false;
+ if(input.kind==='batch')return Array.isArray(input.items)&&input.items.length>0&&
+  input.items.every((i:any)=>i?.kind!=='batch'&&isReadOnlyWorkspaceRequest(i));
+ if(input.kind==='query')return Array.isArray(input.steps)&&
+  !input.steps.some((s:any)=>['insert','update','delete','upsert'].includes(s?.op));
+ if(input.kind==='rpc')return READ_ONLY_RPCS.has(String(input.name));
+ return ['auth','house','record','houseLedgerExport'].includes(input.kind);
 }
 /** cacheImportedTables: ligado só pela rota de produção (acervo imutável). */
 export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=false}: {db:any;auth:any;snapshotId:string;cacheImportedTables?:boolean}){
@@ -126,7 +168,10 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    })());
    return cache.get(name)!;
   };
-  const once=<T,>(key:string,read:()=>Promise<T>)=>cacheImportedTables?shared(db,key,read):read();
+  const readOnly=isReadOnlyWorkspaceRequest(input);
+  const once=<T,>(key:string,read:()=>Promise<T>)=>!cacheImportedTables?read():
+   readOnly&&RUNTIME_MAIL_KEYS.some(k=>key.endsWith(k))?recentRuntimeRead(db,key,()=>shared(db,key,read)):
+   shared(db,key,read);
   const houseAllowed=(id:string)=>admin||scope.profile==='jogador'&&scope.memberHouseIds.includes(id);
   const checkHouse=(id:string)=>{if(typeof id!=='string'||!houseAllowed(id))denied();};
   // Permissões atuais com overlay privado: jamais alterar ou autorizar pelo acervo.
@@ -172,13 +217,13 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     return {letters,receipts:historical,openRound:null};
    // Read the whole bounded approved runtime before exposing any new row.
    const [mailDocs,snapshot,moderation]=await Promise.all([
-    once(snapshotId+'|letters',()=>runtime.collection('letters').limit(501).get()),
-    once(snapshotId+'|receipts',()=>runtime.collection('mailReadReceipts').limit(2001).get()),
-    once(snapshotId+'|legacy-moderation',()=>runtime.collection('legacyMailModeration').limit(501).get()),
+    once(snapshotId+'|letters',()=>readAllPaged(runtime.collection('letters'),MAIL_LETTERS_MAX)),
+    once(snapshotId+'|receipts',()=>readAllPaged(runtime.collection('mailReadReceipts'),MAIL_RECEIPTS_MAX)),
+    once(snapshotId+'|legacy-moderation',()=>readAllPaged(runtime.collection('legacyMailModeration'),MAIL_LETTERS_MAX)),
    ]) as [any,any,any];
-   if(!Array.isArray(mailDocs.docs)||mailDocs.docs.length>500)
+   if(mailDocs.overLimit)
     throw new CloudAccessError('mailbox_requires_pagination',503);
-   if(!Array.isArray(moderation.docs)||moderation.docs.length>500)
+   if(moderation.overLimit)
     throw new CloudAccessError('mail_moderation_too_large',503);
    const markers=new Map<string,Record<string,unknown>>();
    for(const d of moderation.docs){
@@ -205,7 +250,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const all=[...archived,...operational];
    if(new Set(all.map(l=>l['id'])).size!==all.length)
     throw new CloudAccessError('mailbox_id_conflict',503);
-   if(!Array.isArray(snapshot.docs)||snapshot.docs.length>2000)
+   if(snapshot.overLimit)
     throw new CloudAccessError('mail_receipts_too_large',503);
    const existing=new Map<string,Row>();
    const key=(letterId:string,uid:string)=>letterId+'|'+uid;
@@ -269,9 +314,9 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const own=new Set(ds.letters.filter(l=>l['source']==='firebase-cloud'&&
     (admin||l.sender_user_id===scope.uid)).map(l=>l.id));
    if(!own.size)return [];
-   const snap=await db.collection('campaignCloudRuntime').doc(snapshotId)
-    .collection('letterVersions').limit(2001).get();
-   if(!Array.isArray(snap.docs)||snap.docs.length>2000)
+   const snap=await readAllPaged(db.collection('campaignCloudRuntime').doc(snapshotId)
+    .collection('letterVersions'),MAIL_RECEIPTS_MAX);
+   if(snap.overLimit)
     throw new CloudAccessError('mail_versions_too_large',503);
    return snap.docs.map((d:any)=>({id:d.id,...d.data()})).filter((v:any)=>
     own.has(v.letterId)&&Number.isSafeInteger(v.version)&&typeof v.content==='string')
@@ -308,8 +353,8 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   };
   const eventsCollection=()=>db.collection('campaignCloudRuntime').doc(snapshotId).collection('scheduleEvents');
   const cloudEvents=async():Promise<Row[]>=>{
-   const snap=await eventsCollection().limit(2001).get();
-   if(!Array.isArray(snap.docs)||snap.docs.length>2000)throw new CloudAccessError('schedule_events_too_large',503);
+   const snap=await readAllPaged(eventsCollection(),RUNTIME_ROWS_MAX);
+   if(snap.overLimit)throw new CloudAccessError('schedule_events_too_large',503);
    return snap.docs.map((d:any)=>d.data()).filter((v:any)=>isEventId(v?.id)&&Number.isSafeInteger(v?.version));
   };
   const consequences=()=>createFirebaseLetterConsequences({db,snapshotId});
@@ -324,8 +369,8 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   };
   const cloudNotes=async():Promise<Row[]>=>{
    if(!admin||!await runtimeApproved())return [];
-   const snap=await notesCollection().limit(2001).get();
-   if(!Array.isArray(snap.docs)||snap.docs.length>2000)throw new CloudAccessError('mail_notes_too_large',503);
+   const snap=await readAllPaged(notesCollection(),RUNTIME_ROWS_MAX);
+   if(snap.overLimit)throw new CloudAccessError('mail_notes_too_large',503);
    return snap.docs.map((d:any)=>d.data()).filter((v:any)=>typeof v?.id==='string').map((v:any)=>({
     id:v.id,letter_id:v.letterId??null,reply_id:v.replyId??null,notes:v.notes,
     updated_by:v.updatedBy,updated_at:v.updatedAt}));
@@ -1039,8 +1084,12 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     const limit=args['p_limit']??15;
     if(!Number.isSafeInteger(limit)||(limit as number)<1||(limit as number)>50)
      throw new CloudAccessError('invalid_history_request',400);
-    const docs=await db.collection('campaignNarratorDrafts').doc(snapshotId)
-     .collection('calendarAudit').limit(500).get();
+    // Lido por inteiro: um corte em 500 (ordem por id, não por data) podia
+    // esconder as semanas mais recentes do histórico.
+    const audit=await readAllPaged(db.collection('campaignNarratorDrafts').doc(snapshotId)
+     .collection('calendarAudit'),RUNTIME_ROWS_MAX);
+    if(audit.overLimit)throw new CloudAccessError('calendar_audit_too_large',503);
+    const docs={docs:audit.docs};
     const key=(d:any)=>d&&Number.isSafeInteger(d.year)&&Number.isSafeInteger(d.month)&&Number.isSafeInteger(d.day)
      ?dateKey({year:d.year,month:d.month,day:d.day,festival:d.festival??null}):null;
     return (docs.docs??[]).map((d:any)=>({id:d.id,...d.data()}))
@@ -1194,6 +1243,9 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   return result;
   };
   let result:any;
+  // Escrita (ou pedido desconhecido): nada da caixa em cache antes nem depois.
+  if(cacheImportedTables&&!readOnly)clearRecentRuntimeReads(db);
+  try{
   if(input?.kind==='batch'){
    const items=input.items;
    if(!Array.isArray(items)||items.length<1||items.length>40||items.some((i:any)=>i?.kind==='batch'))
@@ -1201,6 +1253,9 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    const settled=await Promise.allSettled(items.map((item:any)=>dispatch(item)));
    result=settled.map(r=>r.status==='fulfilled'?{ok:true,result:r.value}:{ok:false,...workspaceErrorCategory(r.reason)});
   }else result=await dispatch(input);
+  }finally{
+   if(cacheImportedTables&&!readOnly)clearRecentRuntimeReads(db);
+  }
   const after=await cloud.workspaceScope(token);
   if(JSON.stringify(after)!==JSON.stringify(scope))denied();
   return result;

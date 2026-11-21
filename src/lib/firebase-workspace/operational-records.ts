@@ -5,6 +5,7 @@
  */
 import {createHash} from 'node:crypto';
 import type {Scope} from './service';
+import {readAllPaged} from './paged-read';
 
 export type RecordRow=Record<string,unknown>;
 export type OperationalRecord={
@@ -154,8 +155,8 @@ export async function readOperationalRecordDocs(db:any,snapshotId:string):
  if(!/^[a-f0-9]{64}$/.test(snapshotId))fail('record_source_unavailable');
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
  if(!(await operationalRecordReadGate(root,snapshotId)))return [];
- const snap=await root.collection('records').limit(501).get();
- if(!Array.isArray(snap.docs)||snap.docs.length>500)
+ const snap=await readAllPaged<any>(root.collection('records'),20_000);
+ if(snap.overLimit)
    fail('record_collection_too_large');
  return snap.docs.map((doc:any)=>{
   const row=doc.data();
@@ -172,8 +173,8 @@ export async function readOperationalRecordVersionDocs(db:any,snapshotId:string)
  if(!/^[a-f0-9]{64}$/.test(snapshotId))fail('record_source_unavailable');
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
  if(!(await operationalRecordReadGate(root,snapshotId)))return [];
- const docs=await root.collection('recordVersions').limit(5001).get();
- if(!Array.isArray(docs.docs)||docs.docs.length>5000)
+ const docs=await readAllPaged<any>(root.collection('recordVersions'),50_000);
+ if(docs.overLimit)
    fail('record_history_too_large');
  return docs.docs.map((doc:any)=>{
   const d=doc.data();

@@ -70,7 +70,10 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
   const today=clock?dateKey(clock):'';
   const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
   const mail=useQuery({queryKey:['chancelaria-mail',uid],queryFn:()=>allMail(false),refetchInterval:30000});
-  const trash=useQuery({queryKey:['chancelaria-trash',uid],queryFn:()=>allMail(true),refetchInterval:30000});
+  // A Lixeira só é lida quando aberta (como na visão do Narrador): antes ela
+  // relia a caixa inteira a cada 30 s mesmo fechada.
+  const trash=useQuery({queryKey:['chancelaria-trash',uid],queryFn:()=>allMail(true),
+    enabled:queue==='trash',refetchInterval:30000});
   const myHouses=useMemo(()=>new Set(data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id)),[data.members,me?.id]);
   const editHouses=useMemo(()=>new Set(data.members.filter(m=>m.player_id===me?.id&&
     m.can_edit).map(m=>m.house_id)),[data.members,me?.id]);

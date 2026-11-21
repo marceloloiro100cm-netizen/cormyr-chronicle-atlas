@@ -12,6 +12,7 @@ import {chooseCurrentAccountAccess}
 import {commissionStory,rejectCommission,commissionRow,markCommissionsSeen,
  NewspaperError} from '../../../scripts/firebase/newspaper-core.mjs';
 import type {Scope} from '../firebase-workspace/service';
+import {readAllPaged} from '../firebase-workspace/paged-read';
 
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -267,8 +268,8 @@ export async function readFirebaseCommissions(db:any,snapshot:string,actor:Scope
  const root=rootFor(db,snapshot),rt=await root.get();
  if(!rt.exists)return [];
  assertRuntime(rt.data(),snapshot);
- const docs=await root.collection('newspaperCommissions').limit(501).get();
- if(docs.docs.length>500)fail('newspaper_commissions_limit',503);
+ const docs=await readAllPaged<any>(root.collection('newspaperCommissions'),20_000);
+ if(docs.overLimit)fail('newspaper_commissions_limit',503);
  return docs.docs.map((d:any)=>{
   const item=checkedCommission(d.data(),d.id,snapshot);
   return commissionRow(item);
