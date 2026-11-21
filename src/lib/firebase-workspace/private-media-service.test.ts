@@ -12,7 +12,7 @@ vi.mock('./service',()=>({
   data:state.rows[input.table]??[],
  })}),
 }));
-import {createFirebasePrivateMedia} from './private-media-service';
+import {createFirebasePrivateMedia,legacyStorageStageMatches} from './private-media-service';
 import {privateMediaHash} from './private-media-core';
 
 const snap='a'.repeat(64),root='campaignCloudRuntime/'+snap;
@@ -77,6 +77,15 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 describe('Item 11, gateway privado do Storage',()=>{
+ it('aceita manifesto legado versão 1 sem snapshot duplicado no campo, mas recusa qualquer desvio',()=>{
+  expect(legacyStorageStageMatches({status:'complete',private:true,formatVersion:1},snap)).toBe(true);
+  expect(legacyStorageStageMatches({status:'complete',private:true,formatVersion:1,
+   sourceSnapshotId:'b'.repeat(64)},snap)).toBe(false);
+  expect(legacyStorageStageMatches({status:'complete',private:true},snap)).toBe(false);
+  expect(legacyStorageStageMatches({status:'pending',private:true,formatVersion:1},snap)).toBe(false);
+  expect(legacyStorageStageMatches({status:'complete',private:false,formatVersion:1},snap)).toBe(false);
+ });
+
  it('verifica bytes, guarda metadata e devolve caminho determinístico',async()=>{
   const f=fixture(),first=await f.api.upload('valid-token',body);
   const path='private/'+snap+'/alice/'+body.id+'.png';
@@ -218,7 +227,7 @@ describe('Item 11, gateway privado do Storage',()=>{
  it('leitura histórica exige duas cópias iguais e referência legível',async()=>{
    const f=fixture(),historical='alice/legacy/portrait.png';
    f.docs.set('migrationStorageStage/'+snap,{
-     status:'complete',private:true,sourceSnapshotId:snap,
+     status:'complete',private:true,formatVersion:1,
    });
    state.rows['campaign_records']=[{content:'[cormyr-image:'+historical+'|Retrato]'}];
    f.blobs.set('migration-staging/campaign-images/'+historical,image);
