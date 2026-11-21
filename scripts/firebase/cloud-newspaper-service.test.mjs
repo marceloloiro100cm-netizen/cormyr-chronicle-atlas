@@ -373,3 +373,25 @@ test('Historical edition publication is not bypassed through the operational dra
  notEditor.records.set(key,f.records.get(key));
  await denied(()=>notEditor.service().saveHistoricalDraft(token,args),'editor_not_authorized',403);
 });
+
+test('classico template can create a draft containing an empty image slot without publishing a broken illustration',async()=>{
+ const f=fixture(),srv=f.service();
+ const initial=rich({requestKey:'classico-with-blank-image-001',content:{
+  title:'A Folha Sem Selo',subtitle:'',template:'classico',font_style:'classico',
+  blocks:[
+   {id:'headline-template',type:'headline',text:'Escreva a manchete principal',span:12,height:110},
+   {id:'article-template',type:'article',text:'Título da reportagem\\nTexto',span:6,height:190},
+   {id:'image-placeholder',type:'image',text:'',span:6,height:270,caption:'Legenda da fotografia'},
+  ],
+ }});
+ const saved=await srv.saveEdition(token,initial);
+ assert.equal(saved.state,'draft');
+ assert.equal(saved.editionNo,13);
+ assert.equal(saved.blocks[2].imageSrc,undefined);
+ await denied(()=>srv.saveEdition(token,{...initial,requestKey:'classico-with-blank-image-publish',
+  id:saved.id,expectedVersion:1,state:'published'}),'invalid_editorial_content',400);
+ const stored=f.records.get(path('campaignCloudRuntime',snapshot,'publishedNewspapers',saved.id));
+ assert.equal(stored.state,'draft');
+ assert.equal(stored.version,1);
+ assert.equal(stored.blocks[2].imageSrc,undefined);
+});
