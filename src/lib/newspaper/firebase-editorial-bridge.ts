@@ -39,7 +39,7 @@ export function originalNewspaperEdition(value:CloudEdition):NewspaperEdition{
   publish_on:value.publishOn??null,
   version:value.version,publication_revision:value.publishedAt?value.version:0,
   created_by:'',updated_at:value.publishedAt??'',published_at:value.publishedAt,
-  archived_at:null,cancelled_at:null,publish_on:null,
+  archived_at:null,cancelled_at:null,
  };
 }
 async function request<T>(body:Record<string,unknown>):Promise<T>{
