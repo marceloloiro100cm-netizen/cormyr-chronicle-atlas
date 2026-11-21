@@ -49,7 +49,7 @@ export const validateNewspaperMediaUpload=(raw:unknown)=>{
     (v['kind']==='editionPdf'?type!=='application/pdf':!IMAGE.includes(type)))
    fail('invalid_media_type',415);
  return {kind:v['kind'] as Kind,editionId:v['editionId'] as string|undefined,
-  houseId:v['houseId'] as string|undefined,bytes,contentType:type};
+  houseId:v['houseId'] as string|undefined,bytes,contentType:type as string};
 };
 const extension=(type:string)=>type==='image/png'?'png':type==='image/webp'?'webp':
  type==='image/jpeg'?'jpg':'pdf';
@@ -86,7 +86,7 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
  };
  const registered=async(path:unknown):Promise<Entry>=>{
   if(!isNewspaperMediaPath(path,snapshotId))fail('invalid_media_path');
-  const d=await registry.doc(newspaperMediaDocId(path)).get(),v=d.data();
+  const d=await registry.doc(newspaperMediaDocId(path as string)).get(),v=d.data();
   if(!d.exists||v?.path!==path||v.sourceSnapshotId!==snapshotId||
      v.state!=='ready'||!KINDS.includes(v.kind)||!v.contentType||
      !Number.isSafeInteger(v.bytes)||v.bytes<1||v.bytes>SIZE)
@@ -105,7 +105,7 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
     if(v.kind==='engraving'){
      if(v.houseId||v.editionId)fail('invalid_media_scope');
     }else if(!v.editionId||v.houseId)fail('invalid_media_scope');
-    else await edition(v.editionId);
+    else await edition(v.editionId!);
    }
    const path=newspaperMediaPath(snapshotId,v.kind,extension(v.contentType));
    const sha256=createHash('sha256').update(v.bytes).digest('hex');
@@ -128,7 +128,7 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
    if(Object.keys(v).some(k=>!['action','sourcePath','editionId','commissionId'].includes(k))||
       v['action']!=='clone'||typeof v['sourcePath']!=='string'||
       typeof v['editionId']!=='string')fail('invalid_media');
-   await edition(v['editionId']);
+   await edition(v['editionId'] as string);
    const src=await registered(v['sourcePath']);
    if(!['commission','engraving'].includes(src.kind))fail('invalid_media_source',403);
    if(src.kind==='commission'){
