@@ -30,8 +30,8 @@ export async function readPublicStaffPhoto({db,bucket,snapshotId,staffId}:{
  if(!stage.exists||stage.data()?.status!=='complete'||stage.data()?.private!==true)reject(503);
  const overlay=await readNewspaperStaffOverlay(db,snapshotId);
  const rows=overlay??await readWorkspaceTable(db,snapshotId,'campaign_newspaper_staff');
- const person=rows.find((row:Record<string,unknown>)=>row.id===staffId);
- const path=person?.photo_path;
+ const person=rows.find((row:Record<string,unknown>)=>row['id']===staffId);
+ const path=person?.['photo_path'];
  if(typeof path!=='string'||!PHOTO.test(path)||path.includes('..')||path.includes('//'))reject(404);
  // Aceita os dois prefixos da migração, sem permitir seleção pelo visitante.
  for(const prefix of ['migration-staging/campaign-newspaper-staff/','campaign-newspaper-staff/']){
@@ -44,7 +44,7 @@ export async function readPublicStaffPhoto({db,bucket,snapshotId,staffId}:{
   const [data]=await file.download();
   if(!Buffer.isBuffer(data)||data.length!==size)reject(503);
   const contentType=typeOf(data);
-  if(!contentType)reject(503);
+  if(contentType===null)throw new PublicStaffPhotoError(503);
   return {data,contentType};
  }
  return reject(404);
