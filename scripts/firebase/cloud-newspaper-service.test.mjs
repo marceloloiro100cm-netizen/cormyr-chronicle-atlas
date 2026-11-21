@@ -314,3 +314,62 @@ test('edição não aceita encomenda forjada ou não homologada',async()=>{
   assert.equal([...f.records].filter(([k])=>
     k.includes('/publishedNewspapers/')).length,0);
 });
+
+test('Editor-Chefe saves original imported edition nº 002 as a separate audited operational draft',async()=>{
+ const f=fixture(),srv=f.service(),id='11111111-2222-4333-8444-555555555555';
+ const legacyKey=path('migrationNewspaperRuntimeStage',snapshot,'editions',id);
+ const original={id,editionNo:2,state:'draft',version:5,
+  title:'A Folha Sem Selo',subtitle:'',template:'classico',fontStyle:'classico',
+  campaignDate:'1522-10-11',publishedAt:null,blocks:[
+   {id:'headline-1',type:'headline',text:'Primeira página',span:12,height:110},
+   {id:'image-1',type:'image',text:'',imagePath:'antigo/retrato.jpg',span:6,height:270},
+  ]};
+ f.records.set(legacyKey,structuredClone(original));
+ const before=structuredClone(original);
+ const args={action:'saveHistoricalDraft',id,requestKey:'original-002-save-01',
+  expectedVersion:5,content:{
+   title:'A Folha Sem Selo',subtitle:'Edição preservada',template:'classico',
+   font_style:'classico',campaignDate:'1522-10-11',
+   blocks:[
+    {id:'headline-1',type:'headline',text:'Texto novo da edição nº 002',span:12,height:110},
+    {id:'image-1',type:'image',text:'',imagePath:'antigo/retrato.jpg',span:6,height:270},
+   ],
+  }};
+ const saved=await srv.saveHistoricalDraft(token,args);
+ assert.equal(saved.id,id);
+ assert.equal(saved.editionNo,2);
+ assert.equal(saved.version,6);
+ assert.equal(saved.state,'draft');
+ assert.equal(saved.blocks[1].imagePath,'antigo/retrato.jpg');
+ assert.deepEqual(f.records.get(legacyKey),before,'immutable source must not change');
+ assert.equal([...f.records].filter(([k])=>k.includes('/publishedNewspapers/')).length,0);
+ assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,13);
+ assert.equal((await srv.listHistoricalDrafts(token)).items[0].id,id);
+ assert.equal((await srv.saveHistoricalDraft(token,args)).duplicate,true);
+ const overlays=[...f.records].filter(([k])=>k.includes('/newspaperHistoricalDrafts/'));
+ assert.equal(overlays.length,1);
+ assert.equal([...f.records].filter(([k])=>k.includes('/newspaperAudits/historical-')).length,1);
+ await denied(()=>srv.saveHistoricalDraft(token,{...args,requestKey:'original-002-save-02'}),'historical_draft_version_conflict',409);
+ await denied(()=>srv.saveHistoricalDraft(token,{...args,
+  requestKey:'original-002-save-03',expectedVersion:6,
+  content:{...args.content,blocks:[
+   {id:'image-1',type:'image',text:'',imagePath:'forged/path.jpg',span:6,height:270},
+  ]}}),'invalid_historical_draft_content',400);
+ assert.deepEqual(f.records.get(legacyKey),before);
+});
+
+test('Historical edition publication is not bypassed through the operational draft API',async()=>{
+ const f=fixture(),srv=f.service(),id='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+ const key=path('migrationNewspaperRuntimeStage',snapshot,'editions',id);
+ f.records.set(key,{id,editionNo:2,version:3,state:'published',
+  blocks:[{id:'article-1',type:'article',text:'Histórico',span:6,height:190}]});
+ const args={action:'saveHistoricalDraft',id,requestKey:'historic-publish-deny-01',
+  expectedVersion:3,content:{title:'Edição',subtitle:'',template:'classico',
+   font_style:'classico',campaignDate:'1522-10-11',
+   blocks:[{id:'article-1',type:'article',text:'Alteração',span:6,height:190}]}};
+ await denied(()=>srv.saveHistoricalDraft(token,args),'historical_draft_unavailable',409);
+ assert.equal([...f.records].filter(([k])=>k.includes('/newspaperHistoricalDrafts/')).length,0);
+ const notEditor=fixture('jogador');
+ notEditor.records.set(key,f.records.get(key));
+ await denied(()=>notEditor.service().saveHistoricalDraft(token,args),'editor_not_authorized',403);
+});
