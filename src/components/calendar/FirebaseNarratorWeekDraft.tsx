@@ -311,8 +311,11 @@ export function FirebaseNarratorWeekDraft(){
       {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&
         <FirebaseTemporalCalendarManager
           calendar={loaded.operationalCalendar} openRound={loaded.openRound!}
-          changeDate={fields=>requestWeek('changeDate',fields)}
-          publishEvents={()=>requestWeek('publishEvents')}
+          changeDate={fields=>requestWeek<{
+            changed:boolean;duplicate:boolean;calendar:DateView&{version:number};
+            openRound:number;monthsCrossed:number;houses?:{error?:string}|null;
+          }>('changeDate',fields)}
+          publishEvents={()=>requestWeek<{published:number}>('publishEvents')}
           onDone={()=>void refresh()}/>}
       {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&
         <WeeklyAdvance key={String(loaded.openRound)} view={loaded} onDone={()=>void refresh()}/>}
