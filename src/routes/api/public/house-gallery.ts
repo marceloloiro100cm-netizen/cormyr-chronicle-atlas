@@ -1,7 +1,12 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {publicContentFirestore} from '@/lib/public/firebase-public-content-admin.server';
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
-const fail=(status:404|503)=>Response.json({error:'Galeria indisponível'},{status,headers});
+// Fixed, public-safe diagnostic categories only: never emit snapshot IDs, IAM
+// identities, source paths, provider errors, or unreleased gallery records.
+const fail=(status:404|503,phase?:'configuration'|'approval'|'inventory'|'data-access')=>
+ Response.json({error:'Galeria indisponível'},{status,headers:{
+  ...headers,...(status===503&&phase?{'X-Cormyr-Gallery-Health':phase}:{}),
+ }});
 export async function readHouseDriveGallery(request:Request):Promise<Response>{
  const u=new URL(request.url),q=u.searchParams,house=q.get('house');
  if(u.search.length>180||q.getAll('house').length!==1||[...q.keys()].some(k=>k!=='house')||
@@ -9,7 +14,7 @@ export async function readHouseDriveGallery(request:Request):Promise<Response>{
  const snap=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
  const bucket=process.env['CORMYR_FIREBASE_PUBLIC_GALLERY_BUCKET']??'';
  if(process.env['CORMYR_FIREBASE_PUBLIC_GALLERY_ENABLED']!=='true'||!/^[a-f0-9]{64}$/.test(snap)||
-    !/^cormyr-[a-z0-9-]+$/.test(bucket)||process.env['FIRESTORE_EMULATOR_HOST'])return fail(503);
+    !/^cormyr-[a-z0-9-]+$/.test(bucket)||process.env['FIRESTORE_EMULATOR_HOST'])return fail(503,'configuration');
  try{
   const db=await publicContentFirestore(),root=db.collection('campaignCloudRuntime').doc(snap),
    stage=db.collection('migrationPublicHouseGalleryStage').doc(snap);
@@ -23,7 +28,7 @@ export async function readHouseDriveGallery(request:Request):Promise<Response>{
      s['status']!=='complete'||s['private']!==true||s['sourceSnapshotId']!==snap||
      s['reviewScope']!=='house-gallery-only'||s['publicReviewApproved']!==true||
      typeof s['reviewDigest']!=='string'||!/^[a-f0-9]{64}$/.test(s['reviewDigest'])||
-     s['galleryVersion']!==r['galleryVersion'])return fail(503);
+     s['galleryVersion']!==r['galleryVersion'])return fail(503,'approval');
   const d=(await stage.collection('houseGalleries').doc(house).get()).data();
   if(!d||d['status']!=='approved'||d['publicReviewed']!==true||d['sourceSnapshotId']!==snap||
      d['version']!==r['galleryVersion']||d['houseId']!==house||
@@ -33,11 +38,11 @@ export async function readHouseDriveGallery(request:Request):Promise<Response>{
    if(!item||typeof item.path!=='string'||!/^public-house\/[a-z0-9-]{1,80}\/[a-f0-9]{48}$/.test(item.path)||
       !item.path.startsWith('public-house/'+house+'/')||seen.has(item.path)||
       typeof item.name!=='string'||!item.name||item.name.length>200||
-      /[\u0000-\u001f\u007f]/.test(item.name))return fail(503);
+      /[\u0000-\u001f\u007f]/.test(item.name))return fail(503,'inventory');
    seen.add(item.path);images.push({path:item.path,name:item.name});
   }
   return Response.json({houseId:house,images},{headers});
- }catch{return fail(503);}
+ }catch{return fail(503,'data-access');}
 }
 export const Route=createFileRoute('/api/public/house-gallery')({
  server:{handlers:{GET:async({request})=>readHouseDriveGallery(request)}},
