@@ -10,6 +10,8 @@ export interface CloudNewspaperRuntime {
   markReader(token:string,input:unknown):Promise<{
     recorded:boolean;alreadyRecorded:boolean;
   }>;
+  listHistoricalDrafts(token:string):Promise<{items:unknown[]}>;
+  saveHistoricalDraft(token:string,input:unknown):Promise<unknown>;
   listEditorial(token:string):Promise<unknown>;
   getEditorial(token:string,input:unknown):Promise<unknown>;
   saveEdition(token:string,input:unknown):Promise<unknown>;
