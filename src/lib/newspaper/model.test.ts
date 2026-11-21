@@ -8,6 +8,19 @@ const published={
  pdf_path:null,version:2,publication_revision:2,created_by:'user',updated_at:'',published_at:'',
  archived_at:null,cancelled_at:null,
 } as NewspaperEdition;
+describe('preservação de texto integral do Jornal',()=>{
+ it('não corta textos, legendas nem assinaturas históricas durante a projeção',()=>{
+  const prose='Crônica de Cormyr '.repeat(2800);
+  const subtitle='Detalhes da edição '.repeat(60);
+  const byline='Correspondente '.repeat(15);
+  const blocks=safeNewspaperBlocks([{id:'a',type:'article',text:prose,
+   subtitle,byline,caption:'Ilustração '.repeat(70),span:6,height:220}]);
+  expect(blocks[0]?.text).toBe(prose);
+  expect(blocks[0]?.subtitle).toBe(subtitle);
+  expect(blocks[0]?.byline).toBe(byline);
+  expect(blocks[0]?.caption).toBe('Ilustração '.repeat(70));
+ });
+});
 describe('Jornal de Cormyr',()=>{
  it('traz três modelos com blocos ajustáveis sem HTML inseguro',()=>{
   for(const layout of ['classico','guerra','gazeta'] as const){
