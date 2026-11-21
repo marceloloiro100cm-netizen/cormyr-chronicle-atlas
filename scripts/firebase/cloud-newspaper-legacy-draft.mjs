@@ -22,7 +22,7 @@ export function validateHistoricalDraft(source,raw){
     typeof raw.campaignDate!=='string'||!isNewspaperDate(raw.campaignDate)||
     Buffer.byteLength(JSON.stringify(raw),'utf8')>240_000)invalid();
  const original=new Map(source.blocks.filter(b=>b&&typeof b.id==='string').map(b=>[b.id,b]));
- const paths=new Map();
+ const paths=new Map(),trustedSourceImages=new Map();
  const checked=raw.blocks.map(block=>{
   if(!block||typeof block!=='object'||Array.isArray(block))invalid();
   const old=original.get(block.id);
@@ -37,9 +37,21 @@ export function validateHistoricalDraft(source,raw){
    paths.set(block.id,old.imagePath);
   }
   const safe=Object.fromEntries(Object.entries(block).filter(([k])=>FIELDS.has(k)));
-  // Validate genuine legacy-image blocks without turning the placeholder
-  // into a visible image or storing a synthetic asset reference.
-  if(paths.has(block.id)&&!safe.imageSrc)safe.imageSrc=imagePlaceholder;
+  // Older, already-reviewed imports may contain an image URL that the new
+  // Cloud editor does not accept for *new* images. Keep it only if identical
+  // to the immutable source, never from an arbitrary client value.
+  if(block.type==='image'&&typeof safe.imageSrc==='string'&&
+     safe.imageSrc!==imagePlaceholder&&
+     !['/newspaper/gravuras/castelo_cormyr.jpg',
+       '/newspaper/gravuras/conselho_real.jpg',
+       '/newspaper/gravuras/mercado_suzail.jpg'].includes(safe.imageSrc)){
+    if(old?.imageSrc!==safe.imageSrc)invalid();
+    trustedSourceImages.set(block.id,old.imageSrc);
+    safe.imageSrc=imagePlaceholder;
+  }
+  // A historical page may contain an empty image placeholder. Validate it
+  // without replacing it with a fictitious picture in the saved edition.
+  if(block.type==='image'&&!safe.imageSrc)safe.imageSrc=imagePlaceholder;
   return safe;
  });
  let valid;
@@ -49,10 +61,10 @@ export function validateHistoricalDraft(source,raw){
  const blocks=valid.blocks.map(b=>{
   const prior=original.get(b.id),rest=prior&&prior.type===b.type?{...prior}:{};
   const next={...rest,...b};
-  if(paths.has(b.id)){
-   next.imagePath=paths.get(b.id);
-   if(!raw.blocks.find(x=>x.id===b.id)?.imageSrc)delete next.imageSrc;
-  }else delete next.imagePath;
+  if(paths.has(b.id))next.imagePath=paths.get(b.id);
+  else delete next.imagePath;
+  if(trustedSourceImages.has(b.id))next.imageSrc=trustedSourceImages.get(b.id);
+  else if(!raw.blocks.find(x=>x.id===b.id)?.imageSrc)delete next.imageSrc;
   return next;
  });
  return {...valid,blocks,campaignDate:raw.campaignDate};
