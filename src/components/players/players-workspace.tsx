@@ -9,6 +9,7 @@ import { ChangePassword, ChangePasswordButton } from '@/components/change-passwo
 import { NpcHub, CollapsibleText } from '@/components/npc-hub';
 import { NarratorCalendar } from '@/components/calendar/narrator-calendar';
 import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
+import {useWeekFestivals,WeekFestivalBanner} from '@/components/calendar/hub-temporal/week-festivals';
 import { CampaignShell } from '@/components/campaign-shell';
 import { Button } from '@/components/ui/button';
 import { CampaignContent } from '@/components/campaign-content';
@@ -181,6 +182,8 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   const {count:editionsUnread}=useUnreadNewspaperCount(expectedUserId);
   const commissionAnswers=useUnseenCommissionAnswers(expectedUserId);
   const newspaperUnread=editionsUnread+commissionAnswers;
+  // Hub Temporal V2.1: bolinha de festival na aba Calendário dos jogadores.
+  const weekFestivals=useWeekFestivals(firebaseMode&&baseData!==undefined&&!baseData.admin,expectedUserId);
   // Aba, Casa e módulo ficam no endereço: cada tela pode ser aberta em nova guia.
   const [tabParam,setTabParam]=useUrlParam('aba','',{reset:NESTED_URL_PARAMS}),[house,setHouseParam]=useUrlParam('casa',''),[section,setSectionParam]=useUrlParam('secao','painel',{reset:NESTED_URL_PARAMS});
   const [mailHouse]=useUrlParam('filtroCasa','');
@@ -190,6 +193,8 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   const setTab=(id:string)=>setTabParam(id);
   const setHouse=(id:string)=>setHouseParam(id);
   const setSection=(id:string)=>setSectionParam(id);
+  // Abrir o Calendário apaga a bolinha de festival desta semana.
+  useEffect(()=>{if(tab==='calendario'&&weekFestivals.unseen)weekFestivals.markSeen();},[tab,weekFestivals.unseen]);// eslint-disable-line react-hooks/exhaustive-deps
   /** Link real de uma aba ou módulo (nova guia, Ctrl+clique); clique comum troca aqui mesmo. */
   const tabLink=(changes:Record<string,string|null>,go:()=>void)=>({href:hrefWithParams(changes,NESTED_URL_PARAMS),
     onClick:(e:MouseEvent<HTMLAnchorElement>)=>{if(!isPlainLeftClick(e))return;e.preventDefault();go();}});
@@ -249,11 +254,11 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       {current&&<HouseIdentity house={current}/>}
       {data.admin&&<select aria-label="Selecionar casa para administração" value={current?.id??''} onChange={e=>{setHouse(e.target.value);sessionStorage.setItem('campaign-selected-house',e.target.value);}}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select>}
     </div>
-    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button asChild key={id} variant={tab===id?'default':'outline'}><a {...tabLink({aba:id??'casa'},()=>setTab(id??'casa'))} aria-current={tab===id?'page':undefined} aria-label={id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined}>{label}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</a></Button>)}</nav>
+    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button asChild key={id} variant={tab===id?'default':'outline'}><a {...tabLink({aba:id??'casa'},()=>setTab(id??'casa'))} aria-current={tab===id?'page':undefined} aria-label={id==='calendario'&&weekFestivals.unseen?'Calendário: festival nesta semana':id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined}>{label}{id==='calendario'&&weekFestivals.unseen&&<span className="campaign-tab-count" aria-hidden="true">✦</span>}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</a></Button>)}</nav>
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText></>}
     {tab==='galeria'&&current&&<GalleryTab key={current.id} houseId={current.id}
      houseName={current.name} records={data.records.filter(r=>r.house_id===current.id)}/>}
-    {tab==='calendario'&&<CampaignCalendar/>}
+    {tab==='calendario'&&<><WeekFestivalBanner festivals={weekFestivals.festivals}/><CampaignCalendar/></>}
     {tab==='ficha'&&current&&<FichaTab playerId={me?.id} admin={data.admin} npcManager={<NpcHub records={data.records.filter(r=>r.house_id===current.id)} houseId={current.id} playerId={me?.id} admin={data.admin} canEdit={canEdit} onSave={afterSave} renderEditor={row=><RecordEditor row={row} canEdit={canEdit} onSave={afterSave}/>}/>} current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
     {tab==='jornal'&&!data.admin&&<NewspaperHub userId={data.user.id} editor={false} {...(current?{houseId:current.id}:{})}/>}

@@ -48,7 +48,15 @@ async function request<T>(body:Record<string,unknown>):Promise<T>{
   body:JSON.stringify(body),
  });
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a redação.');
+ // Limite semanal definido pelo Narrador no Hub Temporal (Ajustes).
+ const code=response.ok?'':await (async()=>{
+  try{
+   const b:unknown=await response.clone().json();
+   return b&&typeof b==='object'&&'error' in b?String((b as {error:unknown}).error):'';
+  }catch{return '';}
+ })();
  if(!response.ok)throw Object.assign(Error(
+  code==='weekly_edition_limit'?'A Folha já publicou a edição desta semana. O Narrador limitou o Jornal a uma edição por semana.':
   response.status===409?'Esta edição mudou. Recarregue o jornal antes de salvar.':
   response.status===403?'Seu perfil não tem permissão editorial.':
   response.status===400?'Confira os blocos, imagens, título e conteúdo antes de salvar.':

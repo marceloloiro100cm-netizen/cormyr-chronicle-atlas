@@ -26,7 +26,7 @@ async function boundedJson(request:Request):Promise<Record<string,unknown>>{
     const {done,value}=await reader.read();
     if(done)break;
     bytes+=value.byteLength;
-    if(bytes>2048){
+    if(bytes>8192){
       await reader.cancel();
       throw new NarratorWeekDraftError('body_too_large',413);
     }
@@ -57,13 +57,20 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(!['get','save','publish','advance','changeDate','history','publishEvents','processHouseMonths'].includes(String(payload['action'])))
+    if(!['get','save','publish','advance','changeDate','history','publishEvents','processHouseMonths',
+      'hubData','undo','startSeason','saveFestival','deleteFestival','saveSettings'].includes(String(payload['action'])))
       return error(400,'invalid_action');
-    if(['history','publishEvents','processHouseMonths'].includes(String(payload['action']))&&Object.keys(payload).length!==1)
+    if(['history','processHouseMonths','hubData'].includes(String(payload['action']))&&Object.keys(payload).length!==1)
+      return error(400,'invalid_request');
+    if(payload['action']==='publishEvents'&&Object.keys(payload).some(key=>!['action','ids'].includes(key)))
       return error(400,'invalid_request');
     if(payload['action']==='advance'&&Object.keys(payload).some(key=>
       !['action','expectedCalendarVersion','expectedOpenRound','proposedDate','reason',
-        'acknowledgeHouseEffectsPending','requestKey'].includes(key)))
+        'acknowledgeHouseEffectsPending','requestKey','allowBackdate',
+        'acknowledgeIrreversibleEffects','excludeEventIds'].includes(key)))
+      return error(400,'invalid_request');
+    if(['saveFestival','deleteFestival','saveSettings'].includes(String(payload['action']))&&
+       Object.keys(payload).some(key=>!['action','festival','id','version','settings'].includes(key)))
       return error(400,'invalid_request');
     if(payload['action']==='changeDate'&&Object.keys(payload).some(key=>
       !['action','expectedCalendarVersion','expectedOpenRound','proposedDate',
@@ -106,6 +113,20 @@ async function handle(request:Request):Promise<Response>{
         return error(409,'campaign_not_launched');
       return Response.json({result:await monthly(view.operationalCalendar)},{status:200,headers});
     }
+    // Hub Temporal V2.1: dados operacionais, desfazer, temporadas, festivais e ajustes.
+    const strip=(o:Record<string,unknown>)=>{const {action:_a,...rest}=o;return rest;};
+    if(payload['action']==='hubData')
+      return Response.json({result:await service.hubData(token)},{status:200,headers});
+    if(payload['action']==='undo')
+      return Response.json({result:await service.undo(token,strip(payload))},{status:200,headers});
+    if(payload['action']==='startSeason')
+      return Response.json({result:await service.startSeason(token,strip(payload))},{status:200,headers});
+    if(payload['action']==='saveFestival')
+      return Response.json({result:await service.saveFestival(token,payload['festival'])},{status:200,headers});
+    if(payload['action']==='deleteFestival')
+      return Response.json({result:await service.deleteFestival(token,{id:payload['id'],version:payload['version']})},{status:200,headers});
+    if(payload['action']==='saveSettings')
+      return Response.json({result:await service.saveSettings(token,payload['settings'])},{status:200,headers});
     const result=payload['action']==='changeDate'
       ?await service.changeDate(token,{
         expectedCalendarVersion:payload['expectedCalendarVersion'],
@@ -124,11 +145,15 @@ async function handle(request:Request):Promise<Response>{
         requestKey:payload['requestKey'],
         ...(payload['acknowledgeHouseEffectsPending']!==undefined?
           {acknowledgeHouseEffectsPending:payload['acknowledgeHouseEffectsPending']}:{}),
+        ...(payload['allowBackdate']!==undefined?{allowBackdate:payload['allowBackdate']}:{}),
+        ...(payload['acknowledgeIrreversibleEffects']!==undefined?
+          {acknowledgeIrreversibleEffects:payload['acknowledgeIrreversibleEffects']}:{}),
+        ...(payload['excludeEventIds']!==undefined?{excludeEventIds:payload['excludeEventIds']}:{}),
       })
       :payload['action']==='history'
       ?await service.history(token)
       :payload['action']==='publishEvents'
-      ?await service.publishEvents(token)
+      ?await service.publishEvents(token,payload['ids']===undefined?undefined:payload['ids'])
       :payload['action']==='publish'
       ?await service.publish(token,{expectedDraftVersion:payload['expectedDraftVersion'],adoptFirebaseSource:payload['adoptFirebaseSource']})
       :payload['action']==='get'

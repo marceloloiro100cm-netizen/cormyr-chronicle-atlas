@@ -61,7 +61,9 @@ export async function processMonthlyHouseEffects({db,snapshotId,actorUid,calenda
     results.push(result);
   }
   // The pending counter only clears when every operational House is current.
-  if(results.every(r=>r.status==='processed'||r.status==='already_current'))
+  // Depois de uma volta no tempo, Casas à frente do calendário já têm os
+  // efeitos do mês aplicados: não há pendência a cobrar (Hub V2.1).
+  if(results.every(r=>r.status==='processed'||r.status==='already_current'||r.status==='ahead_of_calendar'))
     await runtime.update({pendingHouseEffectMonths:0,houseMonthlyProcessedTo:target});
   return {target,results};
 }

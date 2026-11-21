@@ -118,7 +118,7 @@ const WORKSPACE_READ_TTL_MS=20_000;
 const MUTATING_QUERY_STEPS=new Set(['insert','update','upsert','delete']);
 const READ_RPCS=new Set([
  'is_campaign_admin','runtime_approvals','vassal_workbook',
- 'get_newspaper_calendar_events',
+ 'get_newspaper_calendar_events','get_campaign_week_festivals',
  'spy_house_management','spy_recruitment_options','spy_house_mission_timeline',
  'spy_house_counterintelligence','spy_intelligence_read','spy_get_regional_strategy',
  'spy_public_noble_targets','spy_player_mission_preview',
