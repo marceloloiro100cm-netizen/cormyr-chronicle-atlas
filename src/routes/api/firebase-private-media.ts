@@ -61,6 +61,8 @@ export async function handleFirebasePrivateMedia(request:Request):Promise<Respon
    bucket:getStorage(app).bucket(
     process.env['CORMYR_FIREBASE_PRIVATE_MEDIA_BUCKET']||
       'cormyr.firebasestorage.app'),
+   // Fixed private checksum comparison, never a user-controlled bucket.
+   verifiedBucket:getStorage(app).bucket('cormyr-migration-homolog-477785088395'),
    snapshotId,
   });
   const token=authHeader.slice(7);
