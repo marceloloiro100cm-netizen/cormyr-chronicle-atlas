@@ -1,0 +1,96 @@
+name: Firebase Jornal — restore verified original edition-1 image once
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/firebase-newspaper-issue-one-restore.yml'
+      - 'scripts/firebase/restore-newspaper-issue-one.mjs'
+      - 'scripts/firebase/restore-newspaper-issue-one-core.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cormyr-restore-newspaper-one
+  cancel-in-progress: false
+
+jobs:
+  fetch-private-original:
+    if: github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: drive_auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+      - name: Fetch only the explicitly shared private original, never log file contents
+        env:
+          DRIVE_TOKEN: ${{ steps.drive_auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp-newspaper-original
+          curl --fail --silent --show-error --location --retry 2 \
+            -H "Authorization: Bearer ${DRIVE_TOKEN}" \
+            'https://www.googleapis.com/drive/v3/files/1hFE1xuqxQNMlVjBjLvtX77uz3wppyOAj?alt=media' \
+            -o .tmp-newspaper-original/image.png
+          echo '84fcfd2ce77a34aae2d1b14f58f10053fe732764d6ef56cc8629277e1058b83f  .tmp-newspaper-original/image.png' | sha256sum -c --status
+          test "$(wc -c < .tmp-newspaper-original/image.png)" = 3237233
+          echo 'Original private image integrity confirmed.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: newspaper-issue-one-private-original
+          path: .tmp-newspaper-original/image.png
+          if-no-files-found: error
+          retention-days: 1
+
+  restore-to-private-firebase:
+    needs: fetch-private-original
+    environment: firebase-auth-test-activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm current main commit after approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GH_REPO/branches/main" --jq '.commit.sha')" = "${GITHUB_SHA}"
+      - uses: actions/download-artifact@v4
+        with:
+          name: newspaper-issue-one-private-original
+          path: .tmp-newspaper-original
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+          project_id: cormyr
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Create the original storage object only if absent and verify the resulting SHA-256
+        run: node scripts/firebase/restore-newspaper-issue-one.mjs .tmp-newspaper-original/image.png
+      - name: Delete the temporary bytes on runner
+        if: always()
+        run: rm -rf .tmp-newspaper-original
