@@ -130,9 +130,168 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
     fail('newspaper_request_invalid',400);
    const h=args['p_house'] as string,key=args['p_key'] as string;
    if(!valid(h)||!UUID.test(String(key)))fail('newspaper_request_invalid',400);
-   if(args['p_image_path']!==null&&args['p_image_path']!==undefined)
-    fail('newspaper_image_storage_pending',501);
-   const fingerprint=hash(JSON.stringify([actor.uid,h,key,args['p_title'],args['p_body']]));
+   const mediaPath=args['p_image_path']??null;
+   if(mediaPath!==null&&(typeof mediaPath!=='string'||
+      !new RegExp('^newspaper-media/'+snapshotId+
+       '/commission/[0-9a-f-]{36}\\.(?:png|jpg|webp)
+   const requestRef=requests.doc(hash('commission:'+actor.uid+':'+key));
+   return db.runTransaction(async(tx:any)=>{
+    await currentActor(tx,db,root,snapshotId,actor);
+    const [house,source,economic,prior,cloudRows,mediaDoc]=await Promise.all([
+     tx.get(sourceHouse(h)),tx.get(sourceSheet(h)),tx.get(economy(h)),
+     tx.get(requestRef),tx.get(commissions.where('houseId','==',h).limit(501)),
+     mediaRef?tx.get(mediaRef):Promise.resolve(null),
+    ]);
+    if(!houseValid(house,h))fail('newspaper_house_unavailable',404);
+    if(actor.profile!=='narrador'&&!actor.editHouseIds.includes(h))
+     fail('newspaper_scope_invalid');
+    const moneyRow=money(economic,source,h,snapshotId);
+    if(prior.exists){
+     const saved=prior.data();
+     if(saved?.fingerprint!==fingerprint||saved?.actorUid!==actor.uid)
+      fail('newspaper_key_conflict',409);
+     return {...saved.result,alreadyApplied:true};
+    }
+    if(mediaRef){
+     const media=mediaDoc?.data();
+     if(!mediaDoc?.exists||media?.path!==mediaPath||
+        media.kind!=='commission'||media.sourceSnapshotId!==snapshotId||
+        media.houseId!==h||media.createdBy!==actor.uid||
+        media.state!=='ready'||media.commissionId!=null)
+       fail('newspaper_image_not_authorized',409);
+    }
+    if(cloudRows.docs.length>500)fail('newspaper_commissions_limit',503);
+    const originalPending=historical.filter(c=>c['house_id']===h&&c['state']==='pending').length;
+    const pending=cloudRows.docs.filter((d:any)=>d.data()?.state==='pending').length;
+    const ledgerRef=ledger.doc(hash('newspaper-commission:'+actor.uid+':'+key));
+    const oldLedger=await tx.get(ledgerRef);
+    try{
+     const r=commissionStory({
+      scope:rowScope(actor),houseId:h,title:args['p_title'],body:args['p_body'],
+      imagePath:mediaPath,key,sheet:moneyRow,existingByKey:null,
+      ledgerKeyTaken:oldLedger.exists,pendingCount:originalPending+pending,
+      newId:randomUUID,now:new Date().toISOString(),
+     });
+     if(r.alreadyApplied||!r.commission||!r.sheet||!r.ledger)
+      fail('newspaper_key_conflict',409);
+     const next=verifiedEconomicState(r.sheet.state);
+     if(!next||!calculateFirebaseHouseEconomy(next)||
+        r.sheet.version!==moneyRow.version+1||
+        constructionStateHash(next)===moneyRow.stateHash)
+      fail('newspaper_wealth_invalid',409);
+     const at=r.commission.createdAt;
+     tx.update(economy(h),{state:next,version:r.sheet.version,
+      stateHash:constructionStateHash(next),updatedBy:actor.uid,updatedAt:at});
+     const result={...r.result};
+     tx.create(commissions.doc(r.commission.id),{
+      ...r.commission,sourceSnapshotId:snapshotId});
+     if(mediaRef)tx.update(mediaRef,{commissionId:r.commission.id});
+     tx.create(ledgerRef,{...r.ledger,id:ledgerRef.id,sourceSnapshotId:snapshotId,
+      beforeStateHash:moneyRow.stateHash,afterStateHash:constructionStateHash(next)});
+     tx.create(requestRef,{actorUid:actor.uid,fingerprint,result,at,
+      sourceSnapshotId:snapshotId});
+     tx.create(audit.doc(hash('commission:'+r.commission.id)),{
+      action:'newspaper_commission',actorUid:actor.uid,
+      commissionId:r.commission.id,houseId:h,houseVersion:r.sheet.version,
+      beforeStateHash:moneyRow.stateHash,
+      afterStateHash:constructionStateHash(next),occurredAt:at});
+     return result;
+    }catch(e){return convert(e);}
+   });
+  },
+  async reject(args:Record<string,unknown>){
+   if(!['narrador','editor'].includes(actor.profile)||!clean(args)||
+      Object.keys(args).some(k=>!['p_commission','p_note'].includes(k))||
+      !UUID.test(String(args['p_commission'])))
+    fail('newspaper_request_invalid',400);
+   const id=args['p_commission'] as string,ref=commissions.doc(id);
+   return db.runTransaction(async(tx:any)=>{
+    await currentActor(tx,db,root,snapshotId,actor);
+    const doc=await tx.get(ref);
+    if(!doc.exists)fail('newspaper_commission_not_operational',404);
+    const old=checkedCommission(doc.data(),id,snapshotId);
+    if(old.state==='rejected'){
+     if(old.rejectionNote===String(args['p_note']).trim()&&old.rejectedBy===actor.uid)
+      return {commissionId:id,refunded:1,duplicate:true};
+     fail('newspaper_commission_closed',409);
+    }
+    if(old.state!=='pending')fail('newspaper_commission_closed',409);
+    const h=old.houseId;
+    const [house,source,economic]=await Promise.all([
+     tx.get(sourceHouse(h)),tx.get(sourceSheet(h)),tx.get(economy(h)),
+    ]);
+    if(!houseValid(house,h))fail('newspaper_house_unavailable',404);
+    const row=money(economic,source,h,snapshotId);
+    const ledgerRef=ledger.doc(hash('newspaper-refund:'+id));
+    const existing=await tx.get(ledgerRef);
+    try{
+     const r=rejectCommission({
+      scope:rowScope(actor),commission:old,note:args['p_note'],
+      sheet:row,ledgerKey:'newspaper-refund:'+id,now:new Date().toISOString(),
+     });
+     if(existing.exists||!r.commission||!r.sheet||!r.ledger)
+      fail('newspaper_key_conflict',409);
+     const next=verifiedEconomicState(r.sheet.state);
+     if(!next||!calculateFirebaseHouseEconomy(next)||
+        r.sheet.version!==row.version+1)
+      fail('newspaper_wealth_invalid',409);
+     const at=r.commission.rejectedAt;
+     tx.update(economy(h),{state:next,version:r.sheet.version,
+      stateHash:constructionStateHash(next),updatedBy:actor.uid,updatedAt:at});
+     tx.update(ref,r.commission);
+     tx.create(ledgerRef,{...r.ledger,sourceSnapshotId:snapshotId,
+      beforeStateHash:row.stateHash,afterStateHash:constructionStateHash(next)});
+     tx.create(audit.doc(hash('reject:'+id)),{
+      action:'newspaper_reject',actorUid:actor.uid,commissionId:id,
+      houseId:h,houseVersion:r.sheet.version,occurredAt:at});
+     return r.result;
+    }catch(e){return convert(e);}
+   });
+  },
+  async markSeen(args:Record<string,unknown>){
+   if(!clean(args)||Object.keys(args).some(k=>k!=='p_house')||
+     !valid(args['p_house']))fail('newspaper_request_invalid',400);
+   const h=args['p_house'] as string;
+   if(actor.profile==='editor')fail('newspaper_scope_invalid');
+   return db.runTransaction(async(tx:any)=>{
+    await currentActor(tx,db,root,snapshotId,actor);
+    if(actor.profile!=='narrador'&&!actor.memberHouseIds.includes(h))
+     fail('newspaper_scope_invalid');
+    const [house,snapshot]=await Promise.all([
+     tx.get(sourceHouse(h)),tx.get(commissions.where('houseId','==',h).limit(501)),
+    ]);
+    if(!houseValid(house,h))fail('newspaper_house_unavailable',404);
+    if(snapshot.docs.length>500)fail('newspaper_commissions_limit',503);
+    const items=snapshot.docs.map((d:any)=>checkedCommission(d.data(),d.id,snapshotId));
+    const seen=markCommissionsSeen({scope:rowScope(actor),houseId:h,
+     commissions:items,now:new Date().toISOString()});
+    for(const item of seen)tx.update(commissions.doc(item.id),{seenAt:item.seenAt});
+    if(seen.length)tx.create(audit.doc(randomUUID()),{action:'newspaper_seen',
+     actorUid:actor.uid,houseId:h,commissionIds:seen.map((v:any)=>v.id),
+     occurredAt:seen[0].seenAt,sourceSnapshotId:snapshotId});
+    return seen.length;
+   });
+  },
+ };
+}
+export async function readFirebaseCommissions(db:any,snapshot:string,actor:Scope){
+ if(process.env['CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED']!=='true')return [];
+ const root=rootFor(db,snapshot),rt=await root.get();
+ if(!rt.exists)return [];
+ assertRuntime(rt.data(),snapshot);
+ const docs:any=await readAllPaged(root.collection('newspaperCommissions'),20_000);
+ if(docs.overLimit)fail('newspaper_commissions_limit',503);
+ return docs.docs.map((d:any)=>{
+  const item=checkedCommission(d.data(),d.id,snapshot);
+  return commissionRow(item);
+ }).filter((v:any)=>actor.profile==='editor'||actor.profile==='narrador'||
+  actor.memberHouseIds.includes(v.house_id));
+}
+).test(mediaPath)))
+    fail('newspaper_image_invalid',400);
+   const mediaRef=mediaPath?root.collection('newspaperMedia')
+     .doc(hash('newspaper-media:'+mediaPath)):null;
+   const fingerprint=hash(JSON.stringify([actor.uid,h,key,args['p_title'],args['p_body'],mediaPath]));
    const requestRef=requests.doc(hash('commission:'+actor.uid+':'+key));
    return db.runTransaction(async(tx:any)=>{
     await currentActor(tx,db,root,snapshotId,actor);
