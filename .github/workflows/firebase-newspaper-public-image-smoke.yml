@@ -1,0 +1,23 @@
+name: Firebase Jornal — public image read-only check
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/firebase-newspaper-public-image-smoke.yml'
+      - 'scripts/firebase/probe-public-newspaper-image.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-image-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test HTTP response and exact published PNG checksum without exposing image bytes
+        run: node scripts/firebase/probe-public-newspaper-image.mjs
