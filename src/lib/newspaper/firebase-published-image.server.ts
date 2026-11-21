@@ -54,18 +54,32 @@ export async function readPublishedNewspaperImage({
  let file;
  let expectedHash:string|null=null;
  if(cloud){
-  if(!new RegExp('^newspaper-media/'+snapshotId+
-    '/editionImage/[0-9a-f-]{36}\\.(?:png|jpg|webp)$').test(block.imagePath))
-   bad(404,'newspaper_image_not_found');
-  const media=await runtime.collection('newspaperMedia').doc(
-    createHash('sha256').update('newspaper-media:'+block.imagePath).digest('hex')).get();
-  const v=media.data();
-  if(!media.exists||v?.state!=='ready'||v.path!==block.imagePath||
-     v.kind!=='editionImage'||v.editionId!==editionId||
-     v.sourceSnapshotId!==snapshotId||typeof v.sha256!=='string')
-   bad(404,'newspaper_image_not_found');
-  expectedHash=v.sha256;
-  file=bucket.file(block.imagePath);
+  if(typeof e.sourceHistoricId==='string'){
+   // A historical copy may reference only the SAME unchanged image of
+   // the imported edition. The original bytes are never rewritten.
+   const source=await stage.collection('editions').doc(e.sourceHistoricId).get();
+   const original=source.data();
+   if(!source.exists||original?.id!==e.sourceHistoricId||
+      !Array.isArray(original.blocks)||!original.blocks.some((b:any)=>
+       b.id===block.id&&b.type==='image'&&b.imagePath===block.imagePath))
+    bad(404,'newspaper_image_not_found');
+   file=bucket.file('migration-staging/campaign-newspapers/'+block.imagePath);
+   const [found]=await file.exists();
+   if(!found)file=bucket.file('campaign-newspapers/'+block.imagePath);
+  }else{
+   if(!new RegExp('^newspaper-media/'+snapshotId+
+     '/editionImage/[0-9a-f-]{36}\\.(?:png|jpg|webp)$').test(block.imagePath))
+    bad(404,'newspaper_image_not_found');
+   const media=await runtime.collection('newspaperMedia').doc(
+     createHash('sha256').update('newspaper-media:'+block.imagePath).digest('hex')).get();
+   const v=media.data();
+   if(!media.exists||v?.state!=='ready'||v.path!==block.imagePath||
+      v.kind!=='editionImage'||v.editionId!==editionId||
+      v.sourceSnapshotId!==snapshotId||typeof v.sha256!=='string')
+    bad(404,'newspaper_image_not_found');
+   expectedHash=v.sha256;
+   file=bucket.file(block.imagePath);
+  }
  }else{
   // Imported originals remain at their historical, read-only locations.
   file=bucket.file('migration-staging/campaign-newspapers/'+block.imagePath);
