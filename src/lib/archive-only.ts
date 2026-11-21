@@ -76,6 +76,9 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        pathname === '/api/public/time' ||
        pathname === '/api/public/catalog' ||
        pathname === '/api/public/translations' ||
+       // Public House gallery index: Firebase-only, independently approved
+       // per-House metadata; legacy request middleware must not intercept.
+       pathname === '/api/public/house-gallery' ||
        pathname === '/api/public/gallery-image' ||
        pathname === '/api/public/jobs/drive-sync' ||
        pathname === '/api/firebase-cloud-treasury' ||
