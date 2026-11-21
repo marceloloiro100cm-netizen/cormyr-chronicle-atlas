@@ -211,8 +211,14 @@ export async function updateFirebaseNewspaperEdition(
   if(input.state==='published'){
    if(input.pdf_path!==current.pdf_path||input.publish_on!=null)
     throw Error('Revise os anexos e agendamentos históricos antes de publicar.');
+   // Publish the CURRENT canvas atomically. The server validates it against
+   // the immutable historical source and creates one separate Cloud edition.
+   // Previously this request only published the last saved overlay, silently
+   // omitting changes still visible in the Editor-Chefe's canvas.
    const saved=await request<CloudEdition>({action:'publishHistoricalDraft',
-    id:current.id,requestKey:crypto.randomUUID(),expectedVersion:current.version});
+    id:current.id,requestKey:crypto.randomUUID(),expectedVersion:current.version,
+    content:{title:input.title,subtitle:input.subtitle??'',template:input.template,
+     font_style:input.font_style,blocks:input.blocks,campaignDate:input.campaign_date}});
    return originalNewspaperEdition(saved);
   }
   if(input.state!=='draft')
