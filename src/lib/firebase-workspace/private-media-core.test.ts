@@ -63,4 +63,19 @@ describe('Item 11, isolamento de anexos privados',()=>{
   expect(projectPrivateMailGallery('house-a',[missingDeletedAt],[],'alice'))
    .toHaveLength(1);
  });
+ it('inclui imagens históricas entregues na galeria, sem cruzar Casas ou aceitar URLs',()=>{
+   const legacy='legacy-owner/old-folder/portrait.png';
+   const letter={id:'legacy-letter',origin_house_id:'house-a',
+     recipient_house_id:'house-b',subject:'Correspondência',
+     publication_state:'delivered',deleted_at:null,
+     content:'[cormyr-image:'+legacy+'|Retrato histórico]',
+     delivered_at:'2026-11-20T00:00:00Z'};
+   const bad={...letter,id:'bad',content:'[cormyr-image:../../evil.png|x]'};
+   expect(projectPrivateMailGallery('house-a',[letter,bad],[],'alice'))
+     .toMatchObject([{path:legacy,sourceKind:'letter',caption:'Retrato histórico'}]);
+   expect(projectPrivateMailGallery('house-c',[letter],[],'alice')).toEqual([]);
+   expect(projectPrivateMailGallery('house-b',[{...letter,publication_state:'scheduled'}],[],'bob'))
+     .toEqual([]);
+ });
+
 });
