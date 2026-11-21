@@ -395,3 +395,24 @@ test('classico template can create a draft containing an empty image slot withou
  assert.equal(stored.version,1);
  assert.equal(stored.blocks[2].imageSrc,undefined);
 });
+
+test('publishing a historical draft creates a separate Cloud copy without touching the imported row',async()=>{
+ const f=fixture(),service=f.service();
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const stage=path('migrationNewspaperRuntimeStage',snapshot,'editions',id);
+ const imported={id,editionNo:2,version:1,state:'draft',title:'Folha Antiga',
+  subtitle:'Crônicas',template:'classico',font_style:'classico',
+  blocks:[{id:'old-article',type:'article',text:'Notícia histórica\\nRelato original',span:12,height:180}],
+  campaignDate:'1522-01-01',pdfPath:null};
+ f.records.set(stage,structuredClone(imported));
+ const saved=await service.publishHistoricalDraft(token,{action:'publishHistoricalDraft',id,
+  expectedVersion:1,requestKey:'publish-historical-001'});
+ assert.match(saved.id,/^cloud-[a-f0-9]{64}$/);
+ assert.equal(saved.editionNo,13);
+ assert.equal(saved.state,'published');
+ assert.deepEqual(f.records.get(stage),imported);
+ const again=await service.publishHistoricalDraft(token,{action:'publishHistoricalDraft',id,
+  expectedVersion:1,requestKey:'publish-historical-001'});
+ assert.equal(again.duplicate,true);
+ assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,14);
+});

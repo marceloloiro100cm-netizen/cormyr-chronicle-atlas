@@ -182,7 +182,7 @@ export function createFirebaseCloudNewspaper({
   }
   const editorialView=v=>({
     id:v.id,editionNo:v.editionNo,title:v.title,subtitle:v.subtitle??'',
-    blocks:v.blocks,version:v.version,state:v.state,
+    blocks:v.blocks,pdfPath:v.pdfPath??null,publishOn:v.publishOn??null,version:v.version,state:v.state,
     ...(v.template?{template:v.template}:{}),
     ...(v.font_style?{font_style:v.font_style}:{}),
     campaignDate:v.campaignDate,publishedAt:v.publishedAt,
@@ -346,6 +346,114 @@ export function createFirebaseCloudNewspaper({
         return editorialView(v);
       });
     },
+    /**
+     * Publish a reviewed historical working copy as a NEW Cloud edition.
+     * The imported numbered source, files and audit trail remain immutable.
+     * Concurrent retries of the same source may not create multiple issues.
+     */
+    async publishHistoricalDraft(token,input){
+      const uid=await actorId(token);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['action','id','requestKey','expectedVersion'].includes(k))||
+         input.action!=='publishHistoricalDraft'||!historicalDraftId(input.id)||
+         typeof input.requestKey!=='string'||!KEY.test(input.requestKey)||
+         !number(input.expectedVersion,1,2147483646))
+       deny('invalid_historical_publish_request',400);
+      const sourceRef=historicalSource.doc(input.id);
+      const workingRef=historicalDrafts.doc(input.id);
+      const id='cloud-'+digest('publish-historical:'+snapshotId+':'+input.id);
+      const ref=editions.doc(id);
+      const audit=audits.doc('historical-publish-'+digest(input.id));
+      return db.runTransaction(async tx=>{
+       const {calendarDate,config}=await readApproval(uid,tx);
+       const [sourceDoc,draftDoc,publishedDoc,auditDoc]=await Promise.all([
+        tx.get(sourceRef),tx.get(workingRef),tx.get(ref),tx.get(audit),
+       ]);
+       const source=sourceDoc.data(),draft=draftDoc.exists?draftDoc.data():source;
+       if(!sourceDoc.exists||source?.id!==input.id||source.state!=='draft'||
+          !Array.isArray(source.blocks)||!draft||draft.id!==input.id||
+          draft.state!=='draft'||!Array.isArray(draft.blocks)||
+          (draftDoc.exists&&(draft.sourceSnapshotId!==snapshotId||
+            draft.sourceVersion!==source.version))||
+          draft.version!==input.expectedVersion)
+        deny('historical_draft_conflict',409);
+       if(publishedDoc.exists){
+        const existing=publishedDoc.data();
+        if(existing?.sourceHistoricId!==input.id||
+           existing.sourceSnapshotId!==snapshotId)deny('historical_publish_conflict',409);
+        return {...editorialView(existing),duplicate:true};
+       }
+       if(auditDoc.exists)deny('historical_publish_conflict',409);
+       // The draft was validated against imported source on its last save;
+       // recheck its exact image provenance before public circulation.
+       let approved;
+       try{approved=validateHistoricalDraft(source,{
+        title:draft.title,subtitle:draft.subtitle,
+        template:draft.template,font_style:draft.font_style,
+        blocks:draft.blocks,campaignDate:draft.campaignDate,
+       });}catch{deny('historical_draft_invalid',400);}
+       if(!approved.blocks.some(b=>b.type==='article'||b.type==='headline'||b.imagePath||b.imageSrc))
+        deny('historical_draft_incomplete',400);
+       if(commissionIdsOf(approved.blocks).length)
+        deny('historical_commissions_require_reconciliation',409);
+       if(draft.pdfPath&&draft.pdfPath!==source.pdfPath)
+        deny('historical_pdf_requires_reconciliation',409);
+       if(approved.blocks.some(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc))
+        deny('historical_image_missing',409);
+       weeklyEditionGate(config);
+       const now=clock();
+       if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
+        deny('invalid_server_clock',503);
+       const next={
+        ...approved,
+        ...(source.pdfPath?{pdfPath:source.pdfPath}:{}),
+        id,editionNo:config.nextNewspaperEditionNo,
+        source:'firebase-cloud',sourceHistoricId:input.id,
+        sourceSnapshotId:snapshotId,sourceHistoricVersion:source.version,
+        state:'published',version:1,campaignDate:calendarDate,
+        publishedAt:now,cancelledAt:null,createdBy:uid,
+        updatedBy:uid,updatedAt:now,...publishedRoundOf(config),
+       };
+       tx.create(ref,next);
+       tx.create(audit,{action:'publish_historical_draft',editionId:id,
+        historicalEditionId:input.id,actorUid:uid,occurredAt:now,
+        before:null,after:next});
+       tx.update(runtime,{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1,
+        ...lastPublishedRoundOf(config)});
+       return {...editorialView(next),duplicate:false};
+      });
+    },
+    /** Revision history is projected from write audits, never a mutable import. */
+    async listRevisions(token,input){
+      const uid=await actorId(token);
+      if(!input||Object.keys(input).some(k=>!['action','id'].includes(k))||
+         input.action!=='listRevisions'||typeof input.id!=='string'||
+         !validId(input.id))deny('invalid_revision_request',400);
+      return db.runTransaction(async tx=>{
+        await readApproval(uid,tx);
+        const snap=await tx.get(audits.where('editionId','==',input.id).limit(201));
+        if(snap.docs.length>200)deny('revision_history_too_large',503);
+        const items=snap.docs.map(d=>({id:d.id,...d.data()}))
+         .filter(v=>v&&['save_edition','save_historical_draft'].includes(v.action)&&
+             v.editionId===input.id&&v.before&&typeof v.before==='object'&&
+             !Array.isArray(v.before)&&number(v.before.version,1,2147483646))
+         .sort((a,b)=>b.before.version-a.before.version||
+              String(b.occurredAt).localeCompare(String(a.occurredAt)))
+         .slice(0,40).map(v=>({
+           id:v.id,newspaper_id:input.id,previous_version:v.before.version,
+           changed_at:v.occurredAt,
+           snapshot:{
+            title:v.before.title,subtitle:v.before.subtitle,
+            blocks:v.before.blocks,template:v.before.template,
+            font_style:v.before.font_style,
+            campaign_date:v.before.campaignDate??v.before.campaign_date,
+            pdf_path:v.before.pdfPath??v.before.pdf_path??null,
+            publish_on:v.before.publishOn??null,
+           },
+         }));
+        return {items};
+      });
+    },
     async saveEdition(token,input){
       const uid=await actorId(token);
       if(!input||Object.keys(input).some(k=>!['action','requestKey','id','expectedVersion','state','content'].includes(k))||
@@ -355,13 +463,17 @@ export function createFirebaseCloudNewspaper({
          (input.id!==null&&(typeof input.id!=='string'||!/^cloud-[a-f0-9]{64}$/.test(input.id))))
         deny('invalid_editorial_request',400);
       let content;
-      try{content=validateEditorialContent(input.content,{allowEmptyImages:input.state==='draft'});}
+      try{content=validateEditorialContent(input.content,{allowEmptyImages:input.state==='draft'||input.state==='cancelled'});}
       catch{deny('invalid_editorial_content',400);}
       const id=input.id??'cloud-'+digest('editorial:'+uid+':'+input.requestKey);
       const ref=editions.doc(id),audit=audits.doc('edit-'+digest(uid+':'+input.requestKey));
       const fingerprint=digest(JSON.stringify({...input,content}));
       return db.runTransaction(async tx=>{
         const {calendarDate,config}=await readApproval(uid,tx);
+        if(content.publishOn&&input.state!=='draft')
+          deny('schedule_requires_draft',400);
+        if(content.publishOn&&content.publishOn<=calendarDate)
+          deny('schedule_date_not_future',400);
         const commissionIds=commissionIdsOf(content.blocks);
         if(commissionIds.length>20)deny('edition_commissions_too_many',400);
         if(commissionIds.length&&(
@@ -371,10 +483,25 @@ export function createFirebaseCloudNewspaper({
           deny('edition_commissions_not_approved',503);
         const commissionRefs=commissionIds.map(cid=>
           runtime.collection('newspaperCommissions').doc(cid));
-        const [oldDoc,auditDoc,commissionDocs]=await Promise.all([
+        const imagePaths=[...new Set(content.blocks.map(b=>b.imagePath).filter(Boolean))];
+        const paths=[...imagePaths,...(content.pdfPath?[content.pdfPath]:[])];
+        const mediaRefs=paths.map(path=>runtime.collection('newspaperMedia')
+         .doc(digest('newspaper-media:'+path)));
+        const [oldDoc,auditDoc,commissionDocs,mediaDocs]=await Promise.all([
          tx.get(ref),tx.get(audit),
          Promise.all(commissionRefs.map(doc=>tx.get(doc))),
+         Promise.all(mediaRefs.map(doc=>tx.get(doc))),
         ]);
+        for(let i=0;i<paths.length;i++){
+         const entry=mediaDocs[i].data(),path=paths[i];
+         if(!mediaDocs[i].exists||entry?.state!=='ready'||
+            entry.path!==path||entry.sourceSnapshotId!==snapshotId||
+            entry.editionId!==id||
+            entry.kind!==(path===content.pdfPath?'editionPdf':'editionImage')||
+            !number(entry.bytes,1,15*1024*1024)||
+            typeof entry.sha256!=='string'||!/^[a-f0-9]{64}$/.test(entry.sha256))
+           deny('unverified_editorial_media',409);
+        }
         if(auditDoc.exists){
           const prior=auditDoc.data();
           if(prior.actorUid!==uid||prior.requestFingerprint!==fingerprint)
@@ -406,7 +533,9 @@ export function createFirebaseCloudNewspaper({
         const published=input.state==='published';
         const firstPublication=published&&!old?.publishedAt;
         if(firstPublication)weeklyEditionGate(config);
-        const next={...(old??{}),...content,id,source:'firebase-cloud',
+        const next={...(old??{}),...content,
+          publishOn:input.state==='draft'?content.publishOn:null,
+          id,source:'firebase-cloud',
           ...(firstPublication?publishedRoundOf(config):{}),
           sourceSnapshotId:snapshotId,editionNo:old?.editionNo??config.nextNewspaperEditionNo,
           state:input.state,version:input.expectedVersion+1,

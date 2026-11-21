@@ -130,15 +130,21 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
     fail('newspaper_request_invalid',400);
    const h=args['p_house'] as string,key=args['p_key'] as string;
    if(!valid(h)||!UUID.test(String(key)))fail('newspaper_request_invalid',400);
-   if(args['p_image_path']!==null&&args['p_image_path']!==undefined)
-    fail('newspaper_image_storage_pending',501);
-   const fingerprint=hash(JSON.stringify([actor.uid,h,key,args['p_title'],args['p_body']]));
+   const mediaPath=args['p_image_path']??null;
+   if(mediaPath!==null&&(typeof mediaPath!=='string'||
+      !new RegExp('^newspaper-media/'+snapshotId+
+       '/commission/[0-9a-f-]{36}\\.(?:png|jpg|webp)$').test(mediaPath)))
+    fail('newspaper_image_invalid',400);
+   const mediaRef=mediaPath?root.collection('newspaperMedia')
+     .doc(hash('newspaper-media:'+mediaPath)):null;
+   const fingerprint=hash(JSON.stringify([actor.uid,h,key,args['p_title'],args['p_body'],mediaPath]));
    const requestRef=requests.doc(hash('commission:'+actor.uid+':'+key));
    return db.runTransaction(async(tx:any)=>{
     await currentActor(tx,db,root,snapshotId,actor);
-    const [house,source,economic,prior,cloudRows]=await Promise.all([
+    const [house,source,economic,prior,cloudRows,mediaDoc]=await Promise.all([
      tx.get(sourceHouse(h)),tx.get(sourceSheet(h)),tx.get(economy(h)),
      tx.get(requestRef),tx.get(commissions.where('houseId','==',h).limit(501)),
+     mediaRef?tx.get(mediaRef):Promise.resolve(null),
     ]);
     if(!houseValid(house,h))fail('newspaper_house_unavailable',404);
     if(actor.profile!=='narrador'&&!actor.editHouseIds.includes(h))
@@ -150,6 +156,14 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
       fail('newspaper_key_conflict',409);
      return {...saved.result,alreadyApplied:true};
     }
+    if(mediaRef){
+     const media=mediaDoc?.data();
+     if(!mediaDoc?.exists||media?.path!==mediaPath||
+        media.kind!=='commission'||media.sourceSnapshotId!==snapshotId||
+        media.houseId!==h||media.createdBy!==actor.uid||
+        media.state!=='ready'||media.commissionId!=null)
+       fail('newspaper_image_not_authorized',409);
+    }
     if(cloudRows.docs.length>500)fail('newspaper_commissions_limit',503);
     const originalPending=historical.filter(c=>c['house_id']===h&&c['state']==='pending').length;
     const pending=cloudRows.docs.filter((d:any)=>d.data()?.state==='pending').length;
@@ -158,7 +172,7 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
     try{
      const r=commissionStory({
       scope:rowScope(actor),houseId:h,title:args['p_title'],body:args['p_body'],
-      imagePath:null,key,sheet:moneyRow,existingByKey:null,
+      imagePath:mediaPath,key,sheet:moneyRow,existingByKey:null,
       ledgerKeyTaken:oldLedger.exists,pendingCount:originalPending+pending,
       newId:randomUUID,now:new Date().toISOString(),
      });
@@ -175,6 +189,7 @@ export function createFirebaseCommissions({db,snapshotId,actor}:{
      const result={...r.result};
      tx.create(commissions.doc(r.commission.id),{
       ...r.commission,sourceSnapshotId:snapshotId});
+     if(mediaRef)tx.update(mediaRef,{commissionId:r.commission.id});
      tx.create(ledgerRef,{...r.ledger,id:ledgerRef.id,sourceSnapshotId:snapshotId,
       beforeStateHash:moneyRow.stateHash,afterStateHash:constructionStateHash(next)});
      tx.create(requestRef,{actorUid:actor.uid,fingerprint,result,at,

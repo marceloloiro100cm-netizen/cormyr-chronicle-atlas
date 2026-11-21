@@ -5,12 +5,12 @@
 import {firebaseWorkspaceClient} from '../firebase-workspace/state';
 import {workspaceRequest} from '../firebase-workspace/client';
 import {firebasePilotAuth} from '../auth/firebase-pilot-session';
-import {safeNewspaperBlocks,type NewspaperEdition,type NewspaperBlock,
+import {safeNewspaperBlocks,type NewspaperEdition,type NewspaperBlock,type NewspaperRevision,
  type NewspaperState,type NewspaperTemplate,type NewspaperFont} from './model';
 
 const CLOUD=/^cloud-[a-f0-9]{64}$/;
 type CloudEdition={id:string;editionNo:number;title:string;subtitle:string;
- blocks:NewspaperBlock[];version:number;state:NewspaperState;
+ blocks:NewspaperBlock[];pdfPath?:string|null;publishOn?:string|null;version:number;state:NewspaperState;
  campaignDate:string;publishedAt:string|null;template?:NewspaperTemplate;
  font_style?:NewspaperFont};
 type EditorialList={items:{id:string;editionNo:number;title:string;
@@ -35,10 +35,11 @@ export function originalNewspaperEdition(value:CloudEdition):NewspaperEdition{
   id:value.id,edition_no:value.editionNo,campaign_date:value.campaignDate,
   title:value.title,subtitle:value.subtitle,
   template:value.template??'classico',font_style:value.font_style??'classico',
-  state:value.state,blocks:safeNewspaperBlocks(value.blocks),pdf_path:null,
+  state:value.state,blocks:safeNewspaperBlocks(value.blocks),pdf_path:value.pdfPath??null,
+  publish_on:value.publishOn??null,
   version:value.version,publication_revision:value.publishedAt?value.version:0,
   created_by:'',updated_at:value.publishedAt??'',published_at:value.publishedAt,
-  archived_at:null,cancelled_at:null,publish_on:null,
+  archived_at:null,cancelled_at:null,
  };
 }
 async function request<T>(body:Record<string,unknown>):Promise<T>{
@@ -158,13 +159,15 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
   throw Error('Identificador de edição duplicado no acervo.');
  return combined.sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
 }
-type DraftInput={campaign_date:string;title:string;subtitle?:string;
+type DraftInput={campaign_date:string;title:string;subtitle?:string;pdf_path?:string|null;publish_on?:string|null;
  template:NewspaperTemplate;font_style?:NewspaperFont;blocks:NewspaperBlock[]};
 type UpdateInput=DraftInput&{font_style:NewspaperFont;pdf_path:string|null;
  state:NewspaperState;publish_on?:string|null};
 const content=(v:DraftInput)=>({
  title:v.title,subtitle:v.subtitle??'',template:v.template,
  font_style:v.font_style??'classico',blocks:v.blocks,
+ ...(v.pdf_path?{pdfPath:v.pdf_path}:{}),
+ publishOn:v.publish_on??null,
 });
 export async function createFirebaseNewspaperEdition(input:DraftInput):Promise<NewspaperEdition>{
  if(!isFirebaseNewspaperWorkspace())throw Error('Área Firebase não está ativa.');
@@ -205,8 +208,15 @@ export async function updateFirebaseNewspaperEdition(
  if(!CLOUD.test(current.id)){
   if(!HISTORICAL_ID.test(current.id)||current.state!=='draft')
    throw Error('Esta edição histórica não é um rascunho editável. O original permanece preservado.');
+  if(input.state==='published'){
+   if(input.pdf_path!==current.pdf_path||input.publish_on!=null)
+    throw Error('Revise os anexos e agendamentos históricos antes de publicar.');
+   const saved=await request<CloudEdition>({action:'publishHistoricalDraft',
+    id:current.id,requestKey:crypto.randomUUID(),expectedVersion:current.version});
+   return originalNewspaperEdition(saved);
+  }
   if(input.state!=='draft')
-   throw Error('Salve o rascunho histórico. Publicá-lo requer revisão separada para preservar a edição original.');
+   throw Error('O original histórico não pode ser arquivado nem cancelado por esta edição.');
   if(input.pdf_path!==current.pdf_path||input.publish_on!=null)
    throw Error('Anexos e publicação agendada de edições importadas exigem reconciliação.');
   const saved=await request<HistoricalDraft>({action:'saveHistoricalDraft',
@@ -220,11 +230,18 @@ export async function updateFirebaseNewspaperEdition(
    campaign_date:saved.campaignDate,blocks:safeNewspaperBlocks(saved.blocks),
    version:saved.version,state:'draft'};
  }
- if(input.pdf_path!==null||input.publish_on!=null||
-    input.blocks.some(b=>b.imagePath))
-  throw Error(prohibited);
  const saved=await request<CloudEdition>({action:'saveEdition',requestKey:crypto.randomUUID(),
   id:current.id,expectedVersion:current.version,state:input.state,
   content:content(input)});
  return originalNewspaperEdition(saved);
+}
+
+/** Versions created by Cloud writes; previous immutable snapshots stay intact. */
+export async function loadFirebaseNewspaperRevisions(id:string):Promise<NewspaperRevision[]>{
+ if(!CLOUD.test(id)&&!HISTORICAL_ID.test(id))return [];
+ const result=await request<{items:NewspaperRevision[]}>({action:'listRevisions',id});
+ if(!Array.isArray(result.items)||result.items.length>40)
+  throw Error('Histórico editorial inválido.');
+ return result.items.map(r=>({...r,snapshot:{...r.snapshot,
+  blocks:safeNewspaperBlocks(r.snapshot?.blocks)}}));
 }

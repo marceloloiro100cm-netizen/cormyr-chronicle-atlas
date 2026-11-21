@@ -1,32 +1,62 @@
 import {describe,it,expect,vi,beforeEach} from 'vitest';
 
-const state=vi.hoisted(()=>({storageFrom:vi.fn()}));
+const state=vi.hoisted(()=>({
+ storageFrom:vi.fn(),upload:vi.fn(),read:vi.fn(),clone:vi.fn(),
+}));
 vi.mock('@/integrations/supabase/client',()=>({
  supabase:{storage:{from:state.storageFrom}},
 }));
 vi.mock('./firebase-editorial-bridge',()=>({
  isFirebaseNewspaperWorkspace:()=>true,
 }));
-import {uploadCommissionImage,signedCommissionImage,
+vi.mock('./firebase-newspaper-media',()=>({
+ uploadFirebaseNewspaperMedia:state.upload,
+ readFirebaseNewspaperMedia:state.read,
+ cloneFirebaseNewspaperMedia:state.clone,
+ isFirebaseNewspaperMediaPath:(path:string)=>
+  path.startsWith('newspaper-media/'),
+}));
+import {uploadCommissionImage,signedCommissionImage,preflightNewspaperSourceImage,
  copyCommissionImageToEdition,copyBucketImageToEdition}
  from './data';
 
-describe('Jornal Firebase: nunca utilizar buckets legados para encomendas',()=>{
- beforeEach(()=>state.storageFrom.mockReset());
- it('recusa anexos de encomenda antes de tocar Storage antigo ou debitar Riqueza',async()=>{
-  const file=new File([new Uint8Array([137,80,78,71])],'foto.png',
-   {type:'image/png'});
-  await expect(uploadCommissionImage('house-a',file))
-   .rejects.toThrow('Imagens de encomendas ainda aguardam homologação');
+describe('Jornal Firebase: mídia exclusivamente pelo registro autorizado',()=>{
+ beforeEach(()=>{for(const fn of Object.values(state))fn.mockReset();});
+ it('envia encomendas ao Firebase sem tocar Storage legado ou debitar recursos',async()=>{
+  state.upload.mockResolvedValue('newspaper-media/registered/commission/photo.png');
+  const file=new File([new Uint8Array([137,80,78,71])],'foto.png',{type:'image/png'});
+  expect(await uploadCommissionImage('house-a',file)).toContain('/commission/');
+  expect(state.upload).toHaveBeenCalledWith({kind:'commission',houseId:'house-a',file});
   expect(state.storageFrom).not.toHaveBeenCalled();
  });
- it('não gera URL nem copia imagens históricas pelo bucket legado',async()=>{
-  await expect(signedCommissionImage('house-a/img.png'))
+ it('lê e copia mídia vinculada sem tocar o bucket antigo',async()=>{
+  state.read.mockResolvedValue('blob:preview');
+  state.clone.mockResolvedValue('newspaper-media/registered/editionImage/photo.png');
+  expect(await signedCommissionImage('newspaper-media/registered/commission/photo.png'))
+   .toBe('blob:preview');
+  expect(await copyCommissionImageToEdition('cloud-id','newspaper-media/registered/commission/photo.png','commission-id'))
+   .toContain('/editionImage/');
+  expect(state.clone).toHaveBeenCalledWith(
+   'newspaper-media/registered/commission/photo.png','cloud-id','commission-id');
+  await expect(copyBucketImageToEdition('legacy-bucket','cloud-id','legacy/photo.png'))
+   .rejects.toThrow('não autorizada');
+  expect(state.storageFrom).not.toHaveBeenCalled();
+ });
+ it('mídia legada não reconciliada permanece bloqueada',async()=>{
+  await expect(signedCommissionImage('house-a/img.png')).rejects.toThrow('não reconciliada');
+  await expect(preflightNewspaperSourceImage('house-a/img.png','commission'))
    .rejects.toThrow('não reconciliada');
-  await expect(copyCommissionImageToEdition('edition-1','house-a/img.png'))
-   .rejects.toThrow('não aprovada');
-  await expect(copyBucketImageToEdition('legacy-bucket','edition-1','house-a/img.png'))
-   .rejects.toThrow('não aprovada');
+  expect(state.storageFrom).not.toHaveBeenCalled();
+ });
+ it('confere a mídia autenticada antes de criar rascunho e rejeita tipo incorreto',async()=>{
+  state.read.mockResolvedValue('blob:imagem-validada');
+  await preflightNewspaperSourceImage('newspaper-media/registered/commission/foto.png','commission');
+  expect(state.read).toHaveBeenCalledWith('newspaper-media/registered/commission/foto.png');
+  await expect(preflightNewspaperSourceImage('newspaper-media/registered/engraving/foto.png','commission'))
+   .rejects.toThrow('origem incorreta');
+  state.read.mockRejectedValue(Error('media_integrity'));
+  await expect(preflightNewspaperSourceImage('newspaper-media/registered/engraving/foto.png','engraving'))
+   .rejects.toThrow('media_integrity');
   expect(state.storageFrom).not.toHaveBeenCalled();
  });
 });

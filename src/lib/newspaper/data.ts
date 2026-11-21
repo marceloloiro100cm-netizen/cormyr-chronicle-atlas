@@ -4,9 +4,10 @@ import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 import {
  isFirebaseNewspaperWorkspace,loadFirebaseNewspaperEditions,
  createFirebaseNewspaperEdition,updateFirebaseNewspaperEdition,
- loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,
+ loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,loadFirebaseNewspaperRevisions,
 } from './firebase-editorial-bridge';
 import {workspaceRequest} from '@/lib/firebase-workspace/client';
+import {uploadFirebaseNewspaperMedia,readFirebaseNewspaperMedia,cloneFirebaseNewspaperMedia,isFirebaseNewspaperMediaPath} from './firebase-newspaper-media';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 import {mediaFileBase64} from '@/lib/firebase-workspace/private-media-client';
 import {
@@ -80,6 +81,7 @@ export async function markNewspaperUnread(id:string):Promise<void>{
  if(error)throw error;
 }
 export async function uploadNewspaperAsset(editionId:string,file:File,kind:'pdf'|'image'):Promise<string>{
+ if(isFirebaseNewspaperWorkspace())return uploadFirebaseNewspaperMedia({kind:kind==='pdf'?'editionPdf':'editionImage',editionId,file});
  if(file.size>15*1024*1024)throw new Error('O arquivo deve ter no máximo 15 MB.');
  const types=kind==='pdf'?['application/pdf']:['image/png','image/jpeg','image/webp'];
  if(!types.includes(file.type))throw new Error(kind==='pdf'?'Envie um arquivo PDF.':'Envie PNG, JPG ou WebP.');
@@ -92,6 +94,11 @@ export async function uploadNewspaperAsset(editionId:string,file:File,kind:'pdf'
  return path;
 }
 export async function signedNewspaperAsset(path:string):Promise<string>{
+ if(isFirebaseNewspaperWorkspace()){
+  if(/^\/api\/public\/newspaper-file\?edition=[-A-Za-z0-9_]{1,128}$/.test(path))return path;
+  if(isFirebaseNewspaperMediaPath(path))return readFirebaseNewspaperMedia(path);
+  throw Error('Anexo original ainda não reconciliado no Firebase Storage.');
+ }
  const {data,error}=await db.storage.from(PAPER_BUCKET).createSignedUrl(path,3600);
  if(error||!data?.signedUrl)throw error??new Error('Arquivo temporariamente indisponível.');
  return data.signedUrl;
@@ -108,7 +115,7 @@ export async function uploadCommissionImage(houseId:string,file:File):Promise<st
  // O fluxo de comissões Firebase ainda não aceita imagem vinculada à
  // despesa. Nunca usar o bucket legado nem cobrar Riqueza por um anexo órfão.
  if(isFirebaseNewspaperWorkspace())
-  throw new Error('Imagens de encomendas ainda aguardam homologação no Firebase. Envie somente o texto.');
+  return uploadFirebaseNewspaperMedia({kind:'commission',houseId,file});
  if(file.size>5*1024*1024)throw new Error('A imagem deve ter no máximo 5 MB.');
  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
  if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
@@ -119,9 +126,26 @@ export async function uploadCommissionImage(houseId:string,file:File):Promise<st
  if(error)throw error;
  return path;
 }
+/**
+ * Verify the source before opening a new edition. This read goes through the
+ * authenticated Firebase media registry and checks the stored bytes/hash.
+ * Never create a draft for an unavailable or unregistered legacy attachment.
+ */
+export async function preflightNewspaperSourceImage(
+ path:string,kind:'commission'|'engraving',
+):Promise<void>{
+ if(!isFirebaseNewspaperWorkspace())return;
+ if(!isFirebaseNewspaperMediaPath(path)||!path.includes('/'+kind+'/'))
+  throw Error('Imagem histórica ou origem incorreta ainda não reconciliada com Firebase Storage.');
+ const url=await readFirebaseNewspaperMedia(path);
+ if(typeof URL!=='undefined'&&typeof URL.revokeObjectURL==='function')
+  URL.revokeObjectURL(url);
+}
 export async function signedCommissionImage(path:string):Promise<string>{
- if(isFirebaseNewspaperWorkspace())
+ if(isFirebaseNewspaperWorkspace()){
+  if(isFirebaseNewspaperMediaPath(path))return readFirebaseNewspaperMedia(path);
   throw new Error('Imagem histórica de encomenda não reconciliada com o Firebase Storage.');
+ }
  const {data,error}=await db.storage.from(COMMISSION_BUCKET).createSignedUrl(path,3600);
  if(error||!data?.signedUrl)throw error??new Error('Imagem temporariamente indisponível.');
  return data.signedUrl;
@@ -138,13 +162,18 @@ export async function commissionNewspaperStory(input:{
  return data as {commissionId:string;alreadyApplied:boolean};
 }
 /** O Editor-Chefe copia a imagem do pedido para a pasta da edição, onde os leitores têm acesso. */
-export async function copyCommissionImageToEdition(editionId:string,commissionPath:string):Promise<string>{
+export async function copyCommissionImageToEdition(editionId:string,commissionPath:string,commissionId?:string):Promise<string>{
+ if(isFirebaseNewspaperWorkspace())
+  return cloneFirebaseNewspaperMedia(commissionPath,editionId,commissionId);
  return copyBucketImageToEdition(COMMISSION_BUCKET,editionId,commissionPath);
 }
 export async function copyBucketImageToEdition(bucket:string,editionId:string,commissionPath:string):Promise<string>{
- // Não copiar entre buckets antigos quando a Redação usa Firebase.
- if(isFirebaseNewspaperWorkspace())
-  throw new Error('Cópia de imagens editoriais ainda não aprovada no Firebase Storage.');
+ // Firestore registry authorizes the source, target edition and original file.
+ if(isFirebaseNewspaperWorkspace()){
+  if(bucket!==ENGRAVINGS_BUCKET)
+   throw Error('Cópia editorial de um bucket legado não autorizada.');
+  return cloneFirebaseNewspaperMedia(commissionPath,editionId);
+ }
  const {data,error}=await db.storage.from(bucket).download(commissionPath);
  if(error||!data)throw error??new Error('Não foi possível ler a imagem do pedido.');
  const extension=commissionPath.slice(commissionPath.lastIndexOf('.'));
@@ -172,6 +201,17 @@ export async function deleteNewspaperDraft(id:string):Promise<void>{
 }
 /** Histórico de versões salvas desta edição (mais recentes primeiro). */
 export async function getNewspaperRevisions(id:string):Promise<NewspaperRevision[]>{
+ if(isFirebaseNewspaperWorkspace()){
+  const live=await loadFirebaseNewspaperRevisions(id);
+  const {data,error}=await db.from('campaign_newspaper_revisions')
+   .select('id,newspaper_id,previous_version,changed_at,snapshot')
+   .eq('newspaper_id',id).order('previous_version',{ascending:false}).limit(40);
+  if(error)throw error;
+  return [...live,...(data??[] as NewspaperRevision[])]
+   .sort((a,b)=>b.previous_version-a.previous_version)
+   .filter((row,index,all)=>all.findIndex(x=>x.previous_version===row.previous_version)===index)
+   .slice(0,40);
+ }
  const {data,error}=await db.from('campaign_newspaper_revisions')
   .select('id,newspaper_id,previous_version,changed_at,snapshot')
   .eq('newspaper_id',id).order('previous_version',{ascending:false}).limit(40);
@@ -321,6 +361,15 @@ export async function getEngravings():Promise<NewspaperEngraving[]>{
  return (data??[]) as NewspaperEngraving[];
 }
 export async function uploadEngraving(file:File,name:string):Promise<void>{
+ if(isFirebaseNewspaperWorkspace()){
+  if(file.size>5*1024*1024)throw Error('A gravura deve ter no máximo 5 MB.');
+  const path=await uploadFirebaseNewspaperMedia({kind:'engraving',file});
+  const label=name.trim()||file.name.replace(/\.[^.]+$/,'').slice(0,80)||'Gravura';
+  const {error}=await db.from('campaign_newspaper_engravings')
+   .insert({name:label.slice(0,80),image_path:path});
+  if(error)throw error;
+  return;
+ }
  if(file.size>5*1024*1024)throw new Error('A gravura deve ter no máximo 5 MB.');
  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
  if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
@@ -334,6 +383,10 @@ export async function uploadEngraving(file:File,name:string):Promise<void>{
  if(result.error){await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);throw result.error;}
 }
 export async function signedEngravingImage(path:string):Promise<string>{
+ if(isFirebaseNewspaperWorkspace()){
+  if(isFirebaseNewspaperMediaPath(path))return readFirebaseNewspaperMedia(path);
+  throw Error('Gravura histórica ainda não reconciliada no Firebase Storage.');
+ }
  const {data,error}=await db.storage.from(ENGRAVINGS_BUCKET).createSignedUrl(path,3600);
  if(error||!data?.signedUrl)throw error??new Error('Gravura temporariamente indisponível.');
  return data.signedUrl;
@@ -345,8 +398,10 @@ export async function setEngravingInCollection(id:string,inCollection:boolean):P
 export async function deleteEngraving(id:string,path:string|null):Promise<void>{
  const {error}=await db.from('campaign_newspaper_engravings').delete().eq('id',id);
  if(error)throw error;
- // Gravuras originais do site não têm arquivo no armazenamento; só as enviadas têm.
- if(path)await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);
+ // Nunca destruir o objeto original ao retirar uma gravura da coleção.
+ // A retenção de arquivos Firebase é gerenciada por reconciliação auditada.
+ if(path&&!isFirebaseNewspaperWorkspace())
+  await db.storage.from(ENGRAVINGS_BUCKET).remove([path]);
 }
 /** Devolve ao acervo as gravuras originais do site que o Editor-Chefe havia excluído. */
 export async function restoreOriginalEngravings(existing:readonly NewspaperEngraving[]):Promise<number>{

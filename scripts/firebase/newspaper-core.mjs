@@ -212,7 +212,9 @@ export function commissionStory({scope,houseId,title,body,imagePath,key,sheet,ex
   if(!canHouse)fail('denied','Contratação de notícia não autorizada');
   const t=(title??'').toString().trim(),b=(body??'').toString().trim();
   if(typeof key!=='string'||!UUID.test(key)||t.length<3||t.length>180||b.length<10||b.length>6000||
-     (imagePath!=null&&(typeof imagePath!=='string'||!imagePath.startsWith(houseId+'/')||imagePath.length>300)))
+     (imagePath!=null&&(typeof imagePath!=='string'||imagePath.length>300||
+      !(imagePath.startsWith(houseId+'/')||
+        /^newspaper-media\/[a-f0-9]{64}\/commission\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/.test(imagePath)))))
     fail('invalid','Notícia inválida: informe título e texto');
   if(!sheet||!isObj(sheet.state)||sheet.state.phase!=='active')fail('invalid','A Casa precisa de ficha ativa');
   if(existingByKey&&existingByKey.houseId===houseId)

@@ -3,6 +3,7 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight,EyeOff} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {isFirebaseNewspaperWorkspace} from '@/lib/newspaper/firebase-editorial-bridge';
+import {isFirebaseNewspaperMediaPath} from '@/lib/newspaper/firebase-newspaper-media';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate} from '@/lib/calendar/harptos';
@@ -17,6 +18,7 @@ import {
  markNewspaperRead,markNewspaperUnread,updateNewspaperEdition,uploadNewspaperAsset,
  getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,getPublicNewspaperReadCounts,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
+ preflightNewspaperSourceImage,
 } from '@/lib/newspaper/data';
 import {
  commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
@@ -220,17 +222,23 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
       (b.type==='article'&&b.text.startsWith('Título da notícia'))||
       (b.type==='quote'&&b.text.startsWith('Uma declaração importante'))||
       (b.type==='image'&&!b.imagePath));
-    return {...old,pdf_path:path,blocks:examplesOnly?[]:old.blocks};
+    return {...old,pdf_path:path,blocks:examplesOnly?[{...makeNewspaperBlock('headline'),text:'Edição disponível em PDF'}]:old.blocks};
    });
    else if(kind==='image'){
     const imageBlock=makeNewspaperBlock('image');
+    const placeholder=current.blocks.find(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc);
+    const target=sourceBlock&&current.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
+     sourceBlock:placeholder?.id;
     setDraft(old=>old?.id===editionId?{
-     ...old,blocks:sourceBlock&&old.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
-      old.blocks.map(b=>b.id===sourceBlock?{...b,imagePath:path}:b):
+     ...old,blocks:target?
+      old.blocks.map(b=>{
+       if(b.id!==target)return b;
+       const {imageSrc:_unused,...rest}=b;
+       return {...rest,imagePath:path};
+      }):
       [...old.blocks,{...imageBlock,imagePath:path}],
     }:old);
-    setBlockId(sourceBlock&&current.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
-     sourceBlock:imageBlock.id);
+    setBlockId(target??imageBlock.id);
    }
    notice('Arquivo anexado. Salve o rascunho para registrar a alteração.');
   }catch(cause){setError(safeError(cause));}
@@ -284,30 +292,40 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
 
  const quickUpload=async(file:File)=>{
   if(!editor||busy)return;
-  // No Cloud edition can reference arbitrary legacy Storage paths.
-  // Avoid creating an empty edition before discovering this limitation.
-  if(isFirebaseNewspaperWorkspace()){
-   setError('Anexos PDF e imagens de edição ainda não possuem upload homologado no Firebase. Nenhum rascunho ou arquivo foi criado.');
-   return;
-  }
   const kind=file.type==='application/pdf'?'pdf':'image';
   if(current){await upload(file,kind);setEditing(true);return;}
   setBusy(true);setError('');
+  let createdDraft=false;
   try{
-   const base=await createNewspaperEdition({...(await editionSeed()),blocks:[]});
+   const seed=await editionSeed();
+   const base=await createNewspaperEdition({...seed,blocks:createNewspaperLayout(seed.template)});
+   createdDraft=true;
+   // A failure uploading the file must not hide an already-created edition.
+   setSelectedId(base.id);setDraft(cloneEditableEdition(base));setEditing(true);
+   setBlockId(base.blocks[0]?.id??null);
+   qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
+    [base,...(rows??[]).filter(e=>e.id!==base.id)]);
    const path=await uploadNewspaperAsset(base.id,file,kind);
    const nextBlock=kind==='image'?{...makeNewspaperBlock('image'),imagePath:path}:null;
    const result=await updateNewspaperEdition(base,{
     campaign_date:base.campaign_date,title:base.title,
     subtitle:base.subtitle,
-    template:base.template,font_style:base.font_style,blocks:nextBlock?[nextBlock]:[],
+    template:base.template,font_style:base.font_style,
+    blocks:nextBlock?base.blocks.some(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc)?
+     base.blocks.map(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc?{...b,imagePath:path}:b):
+     [...base.blocks,nextBlock]:
+     [{...makeNewspaperBlock('headline'),text:'Edição disponível em PDF'}],
     pdf_path:kind==='pdf'?path:null,state:'draft',
    });
    setDraft(cloneEditableEdition(result));setSelectedId(result.id);
    setBlockId(nextBlock?.id??null);setEditing(true);
    notice('Arquivo importado em novo rascunho. Revise a página antes de publicar.');
    await refresh();
-  }catch(cause){setError(safeError(cause));}
+  }catch(cause){
+   setError(createdDraft?
+    'O novo rascunho permanece aberto e preservado. O anexo não foi concluído: '+safeError(cause):
+    safeError(cause));
+  }
   finally{setBusy(false);}
  };
  const editBlock=(id:string,patch:Partial<NewspaperBlock>)=>{
@@ -366,37 +384,70 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const insertCommission=async(commission:NewspaperCommission)=>{
   if(!editor||busy)return;
   setBusy(true);setError('');
+  let createdDraft=false;
   try{
    // Never create a contentless Cloud draft. A new commission supplies the
    // first valid article; an existing draft retains its blocks and version.
-   // Image copying is not yet available on Firebase; fail BEFORE creating
-   // any edition rather than leaving an unusable empty record behind.
-   if(commission.image_path&&isFirebaseNewspaperWorkspace())
-    throw new Error('A imagem desta notícia ainda não pode ser copiada no Firebase. O pedido e sua Riqueza permanecem preservados.');
+   // Verify the registered media and Storage bytes BEFORE creating a new
+   // edition. A historical/unavailable source may not leave a stray draft.
    const inDraft=Boolean(current&&current.state==='draft');
    if(inDraft&&current!.blocks.some(b=>b.commissionId===commission.id)){
-    const already=current!.blocks.find(b=>b.commissionId===commission.id)!;
+    const already=current!.blocks.find(b=>b.type==='article'&&b.commissionId===commission.id);
+    if(!already)throw Error('O vínculo da matéria precisa ser revisado antes de anexar a imagem.');
+    const photo=current!.blocks.find(b=>b.type==='image'&&b.commissionId===commission.id);
+    if(commission.image_path&&!photo?.imagePath){
+     if(!photo&&current!.blocks.length>=80)throw Error('A edição permite até 80 elementos.');
+     if(isFirebaseNewspaperWorkspace())
+      await preflightNewspaperSourceImage(commission.image_path,'commission');
+     const imagePath=await copyCommissionImageToEdition(
+      current!.id,commission.image_path,commission.id);
+     const createdPhoto=commissionToBlocks(commission,imagePath,houseNames.get(commission.house_id))
+      .find(b=>b.type==='image')!;
+     setDraft(old=>old?.id===current!.id?{...old,blocks:photo?
+      old.blocks.map(b=>b.id===photo.id?{...b,imagePath}:b):
+      [...old.blocks.slice(0,old.blocks.findIndex(b=>b.id===already.id)+1),
+       createdPhoto,
+       ...old.blocks.slice(old.blocks.findIndex(b=>b.id===already.id)+1)]}:old);
+     setBlockId(photo?.id??createdPhoto.id);setEditing(true);
+     notice('Fotografia recuperada. Salve o rascunho para registrar o anexo.');return;
+    }
     setBlockId(already.id);setEditing(true);notice('A notícia já está nesta edição.');return;
    }
+   if(commission.image_path&&isFirebaseNewspaperWorkspace())
+    await preflightNewspaperSourceImage(commission.image_path,'commission');
    if(!inDraft){
     const blocks=commissionToBlocks(commission,undefined,houseNames.get(commission.house_id));
     const created=await createNewspaperEdition({...(await editionSeed()),blocks});
+    createdDraft=true;
+    // The paid article is already a valid, named, recoverable draft. Select
+    // and cache it now, before any fallible media clone operation.
     setSelectedId(created.id);setDraft(cloneEditableEdition(created));
-    setBlockId(blocks[0]?.id??null);setEditing(true);
-    notice('Notícia inserida na nova edição em rascunho. Revise antes de publicar.');
+    setBlockId(created.blocks[0]?.id??null);setEditing(true);
+    qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
+     [created,...(rows??[]).filter(e=>e.id!==created.id)]);
+    const imagePath=commission.image_path?await copyCommissionImageToEdition(
+     created.id,commission.image_path,commission.id):undefined;
+    const ready=commissionToBlocks(commission,imagePath,houseNames.get(commission.house_id));
+    setSelectedId(created.id);setDraft({...cloneEditableEdition(created),blocks:ready});
+    setBlockId(ready[0]?.id??null);setEditing(true);
+    notice('Notícia e imagem preparadas no rascunho. Salve e revise antes de publicar.');
     await refresh();
     return;
    }
    const base=cloneEditableEdition(current!);
    const imagePath=commission.image_path?
-    await copyCommissionImageToEdition(base.id,commission.image_path):undefined;
+    await copyCommissionImageToEdition(base.id,commission.image_path,commission.id):undefined;
    const blocks=commissionToBlocks(commission,imagePath,houseNames.get(commission.house_id));
    if(base.blocks.length+blocks.length>80)throw new Error('A edição permite até 80 elementos.');
    const next={...base,blocks:[...base.blocks,...blocks]};
    setSelectedId(next.id);setDraft(next);setBlockId(blocks[0]?.id??null);setEditing(true);
    notice('Notícia inserida. Edite o texto direto na folha e clique em Publicar Edição: ela sai das pendências ao publicar.');
    await refresh();
-  }catch(cause){setError(safeError(cause));}
+  }catch(cause){
+   setError(createdDraft?
+    'A matéria continua preservada no rascunho aberto; confira a imagem e tente novamente: '+safeError(cause):
+    safeError(cause));
+  }
   finally{setBusy(false);}
  };
  const rejectCommission=async(commission:NewspaperCommission,note:string)=>{
@@ -658,19 +709,24 @@ const useStoryModel=async(model:StoryModel)=>{
   // Gravura original do Reino: arquivo fixo do site, sem cópia no armazenamento.
   if(item.public_src){useEngraving(item.public_src,item.name);return;}
   if(!item.image_path){setError('Esta gravura não tem imagem.');return;}
-  if(isFirebaseNewspaperWorkspace()){
-   // Never create a new draft before discovering that this migrated bucket
-   // cannot be copied. The approved static engravings still work.
-   setError('Gravuras enviadas anteriormente ainda não podem ser copiadas no Firebase. Selecione uma gravura original do Reino; nenhum rascunho foi criado.');
+  if(isFirebaseNewspaperWorkspace()&&!isFirebaseNewspaperMediaPath(item.image_path)){
+   setError('Gravura histórica ainda não reconciliada com o Firebase Storage. Nenhum rascunho foi criado.');
    return;
   }
   setBusy(true);setError('');
+  let createdDraft=false;
   try{
+   if(isFirebaseNewspaperWorkspace())
+    await preflightNewspaperSourceImage(item.image_path,'engraving');
    let base=current;
    if(!base){
     const seed=await editionSeed();
     base=cloneEditableEdition(await createNewspaperEdition({...seed,blocks:createNewspaperLayout(seed.template)}));
-    setSelectedId(base.id);setDraft(base);
+    createdDraft=true;
+    setSelectedId(base.id);setDraft(base);setEditing(true);
+    setBlockId(base.blocks[0]?.id??null);
+    qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
+     [base!,...(rows??[]).filter(e=>e.id!==base!.id)]);
     await refresh();
    }
    const imagePath=await copyBucketImageToEdition(ENGRAVINGS_BUCKET,base.id,item.image_path!);
@@ -687,7 +743,11 @@ const useStoryModel=async(model:StoryModel)=>{
    const block={...makeNewspaperBlock('image'),imagePath,caption:item.name};
    setDraft(old=>old?{...old,blocks:[...old.blocks,block]}:old);
    setBlockId(block.id);setEditing(true);notice('Gravura inserida na folha.');
-  }catch(cause){setError(safeError(cause));}
+  }catch(cause){
+   setError(createdDraft?
+    'O rascunho continua aberto, mas a gravura não foi anexada: '+safeError(cause):
+    safeError(cause));
+  }
   finally{setBusy(false);}
  };
  const restoreEngravings=async()=>{

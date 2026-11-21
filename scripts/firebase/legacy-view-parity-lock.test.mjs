@@ -104,6 +104,23 @@
  * must wrap instead of being clipped; old responsive spacing, menus,
  * typography choices and controls were preserved. No hidden interactive
  * element was made newly accessible or removed.
+ * 2026-11-21 (Firebase editorial media): NewspaperHub retains all sections,
+ * controls and filters; only upload, commissioned illustration and engraving
+ * handlers now use an approved Firebase media bridge. Empty image slots are
+ * reused rather than blocking publication. Explicitly reviewed source
+ * contract before updating this UI integrity hash.
+ * 2026-11-21 (resiliência de uploads da Folha): a redação pré-valida
+ * a imagem contratada ou gravura no registro autenticado do Firebase antes
+ * de criar qualquer edição. Se a mídia falhar após a criação, o rascunho
+ * que contém a matéria fica aberto e no cache para recuperação, sem descartar
+ * os dados nem modificar o acervo importado. O upload rápido também mantém
+ * o rascunho recuperável após erro. Nenhuma aba, filtro, permissão ou ação
+ * editorial foi removida. SHA-1 recapturado após diff e testes de segurança.
+ * 2026-11-21 (notícias pagas com fotografia): retry de cópia de mídia
+ * no rascunho previamente criado reaproveita a matéria existente sem
+ * duplicar a encomenda ou perder seu texto. O validador Cloud aceita a única
+ * fotografia vinculada à reportagem correspondente, rejeitando duas matérias,
+ * duas fotos e fotos órfãs. Nenhum filtro, botão ou perfil foi removido.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -120,7 +137,7 @@ const originals={
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
-  'src/components/newspaper/NewspaperHub.tsx':'b5b12ffae066a05b2e209652f4ce4f23aa640666',
+  'src/components/newspaper/NewspaperHub.tsx':'6a0ea6546c0c1ed7f668cc8e63fe057405a93d75',
   'src/components/newspaper/newspaper-editorial.css':'7983710e5e5a6cc5872cb9b6568fc0a81f4cdd43',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
