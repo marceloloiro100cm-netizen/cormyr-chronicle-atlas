@@ -33,8 +33,11 @@ function CampaignMedia({kind,id,title}:{kind:'youtube'|'drive';id:string;title:s
  </figure>;
 }
 export function PrivateImage({ path, caption, thumbnail = false, zoomable = false, onUnavailable }: { path: string; caption: string; thumbnail?: boolean; zoomable?: boolean; onUnavailable?: () => void }) {
-  const { data, error } = useQuery({
+  const { data, error, refetch } = useQuery({
     queryKey: ["private-image", Boolean(firebaseWorkspaceClient()), path],
+    // A missing historical asset must report one actionable failure, not
+    // retry the same private read several times and stall the entire gallery.
+    retry: false,
     queryFn: async () => {
       // No Firebase, imagens novas (private/...) e históricas do acervo
       // passam pela mesma ponte autenticada; o servidor confere a leitura.
@@ -118,6 +121,11 @@ export function PrivateImage({ path, caption, thumbnail = false, zoomable = fals
             ) : (
               <p role="status" style={{ color: "white", padding: "1rem", textAlign: "center" }}>
                 {error ? "Imagem indisponível." : "Carregando imagem…"}
+                {error && <button type="button"
+                  onClick={()=>void refetch()}
+                  style={{display:"block",margin:"0.75rem auto 0",padding:"0.4rem 0.75rem",
+                    border:"1px solid #c59b49",borderRadius:4,color:"white"}}
+                >Tentar novamente</button>}
               </p>
             )}
           </div>

@@ -19,14 +19,37 @@ function workspaceError(status:number,input:Record<string,unknown>,serverCode?:s
  const code=typeof serverCode==='string'&&/^[a-z_]{3,60}$/.test(serverCode)?serverCode:undefined;
  return Object.assign(Error(message),{code:'FIREBASE_'+status,...(code?{serverCode:code}:{})});
 }
+const WORKSPACE_REQUEST_TIMEOUT_MS=18_000;
+/**
+ * Includes Firebase token refresh and response decoding in one bounded request.
+ * A hung Cloud call must not trap House sheets or other private tabs forever.
+ * Aborting cancels the HTTP request; no writes are replayed automatically.
+ */
+function withWorkspaceDeadline<T>(work:(signal:AbortSignal)=>Promise<T>):Promise<T>{
+ const controller=new AbortController();
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ const deadline=new Promise<never>((_,reject)=>{
+  timer=setTimeout(()=>{
+   reject(Object.assign(new Error('A consulta ao Firebase demorou além do limite. Tente novamente.'),{
+    code:'FIREBASE_TIMEOUT',serverCode:'request_timeout',
+   }));
+   controller.abort();
+  },WORKSPACE_REQUEST_TIMEOUT_MS);
+ });
+ return Promise.race([work(controller.signal),deadline]).finally(()=>{
+  if(timer!==undefined)clearTimeout(timer);
+ });
+}
 async function send(body:Record<string,unknown>):Promise<{ok:true;result:any}|{ok:false;status:number;serverCode?:string}>{
+ return withWorkspaceDeadline(async(signal)=>{
  const auth=firebasePilotAuth();
  const beforeUid=auth?.current()?.uid;
  const token=await auth?.getToken();
  const uid=auth?.current()?.uid;
  if((beforeUid&&beforeUid!==uid)||auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a consulta.');
+ if(signal.aborted)throw Error('Consulta cancelada por tempo excedido.');
  if(!token||!uid)throw Error('Entre novamente com sua conta Firebase.');
- const r=await fetch('/api/firebase-workspace',{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+ const r=await fetch('/api/firebase-workspace',{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',signal,
   headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(body)});
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a consulta.');
  if(!r.ok){
@@ -37,6 +60,7 @@ async function send(body:Record<string,unknown>):Promise<{ok:true;result:any}|{o
  const json=await r.json();
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a consulta.');
  return {ok:true,result:json.result};
+ });
 }
 /**
  * Consultas feitas ao mesmo tempo (mesma volta do navegador) viajam juntas
@@ -81,11 +105,13 @@ export function workspaceRequest(input:Record<string,unknown>):Promise<any>{
 const response=async(fn:()=>Promise<any>)=>{try{return {data:await fn(),error:null};}catch(e){return {data:null,error:{message:e instanceof Error?e.message:'Firebase indisponível',code:(e as any)?.code,serverCode:(e as any)?.serverCode}};}};
 
 async function privateMediaRequest(input:Record<string,unknown>,binary=false){
+ return withWorkspaceDeadline(async(signal)=>{
  const auth=firebasePilotAuth(),beforeUid=auth?.current()?.uid;
  const token=await auth?.getToken(),uid=auth?.current()?.uid;
+ if(signal.aborted)throw Error('Consulta cancelada por tempo excedido.');
  if(!token||!uid||(beforeUid&&beforeUid!==uid)||auth?.current()?.uid!==uid)throw Error('Sessão Firebase inválida.');
  const response=await fetch('/api/firebase-private-media',{
-  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',signal,
   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
   body:JSON.stringify(input),
  });
@@ -101,6 +127,7 @@ async function privateMediaRequest(input:Record<string,unknown>,binary=false){
  if(!result||typeof result!=='object'||!('result' in result))
   throw Error('Resposta de arquivo inválida.');
  return (result as {result:unknown}).result;
+ });
 }
 async function privateMediaUuid(path:string):Promise<string>{
  const result=new Uint8Array(await crypto.subtle.digest('SHA-256',

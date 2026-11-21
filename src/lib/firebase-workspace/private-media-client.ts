@@ -9,9 +9,12 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PATH=/^private\/[a-f0-9]{64}\/[^/\u0000-\u001f\u007f]{1,128}\/[0-9a-f-]{36}\.(?:png|jpg|webp|gif)$/i;
 
 async function currentAuth(){
- const session=firebasePilotAuth(),uid=session?.current()?.uid;
+ const session=firebasePilotAuth(),beforeUid=session?.current()?.uid;
  const token=await session?.getToken();
- if(!session||!uid||!token||uid!==session.current()?.uid)
+ // A primeira renovação pode hidratar o UID após o início da consulta.
+ const uid=session?.current()?.uid;
+ if(!session||!uid||!token||(beforeUid&&beforeUid!==uid)||
+    uid!==session.current()?.uid)
   throw Error('Sessão Firebase encerrada. Entre novamente.');
  return {session,uid,token};
 }
@@ -73,12 +76,23 @@ export async function uploadFirebasePrivateImage(id:string,contentType:string,da
 }
 /** Caminho histórico do acervo (galeria, Corte, missivas), servido da cópia migrada. */
 const LEGACY=/^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/;
+const PRIVATE_IMAGE_READ_TIMEOUT_MS=18_000;
 export async function downloadFirebasePrivateImage(path:string):Promise<Blob>{
+ const controller=new AbortController();
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ const deadline=new Promise<never>((_,reject)=>{
+  timer=setTimeout(()=>{
+   reject(new Error('A imagem demorou além do limite. Tente novamente.'));
+   controller.abort();
+  },PRIVATE_IMAGE_READ_TIMEOUT_MS);
+ });
+ const read=async()=>{
  const legacy=!path.startsWith('private/');
  if(legacy?(!LEGACY.test(path)||path.includes('..')):!PATH.test(path))throw Error('Referência privada inválida.');
  const {session,uid,token}=await currentAuth();
+ if(controller.signal.aborted)throw Error('Leitura cancelada por tempo excedido.');
  const response=await fetch('/api/firebase-private-media',{
-  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',signal:controller.signal,
   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
   body:JSON.stringify({action:'download',path}),
  });
@@ -90,4 +104,8 @@ export async function downloadFirebasePrivateImage(path:string):Promise<Blob>{
  if(blob.size>(legacy?20:5)*1024*1024||blob.size<1)
   throw Error('Imagem privada inválida.');
  return blob;
+ };
+ return Promise.race([read(),deadline]).finally(()=>{
+  if(timer!==undefined)clearTimeout(timer);
+ });
 }
