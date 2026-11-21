@@ -17,7 +17,8 @@ function fixture(options:{two?:boolean;weekly?:boolean;incomplete?:boolean}={}){
  const root={
   status:'active',private:true,sourceSnapshotId:snapshot,
   sourceSnapshotReconciled:true,applicationEnabled:true,
-  newspaperWriteApproved:true,openRound:3,
+  newspaperWriteApproved:true,newspaperSequenceReconciled:true,
+  calendarVersion:3,openRound:3,
   newspaperOneEditionPerWeek:options.weekly??true,
   newspaperLastPublishedRound:2,
  };
@@ -71,6 +72,7 @@ describe('Jornal: publicação agendada exclusivamente pelo HUB',()=>{
   expect(first).toBe(1);
   expect(f.docs.get(runtime+'/publishedNewspapers/'+idA)).toMatchObject({
    state:'published',publishOn:null,version:3,publishedRound:3,
+   campaignDate:'1522-01-12',
   });
   expect(f.docs.get(runtime).newspaperLastPublishedRound).toBe(3);
   const audit=[...f.docs.keys()].filter(p=>p.includes('/newspaperAudits/scheduled-'));
@@ -92,9 +94,23 @@ describe('Jornal: publicação agendada exclusivamente pelo HUB',()=>{
   expect(f.docs.get(runtime+'/publishedNewspapers/'+idA).state).toBe('draft');
   expect([...f.docs.keys()].filter(p=>p.includes('/newspaperAudits/scheduled-'))).toHaveLength(0);
  });
+ it('bloqueia imagem agendada sem registro autorizado de mídia',async()=>{
+  const f=fixture(),media='newspaper-media/'+snapshot+
+   '/editionImage/00000000-0000-4000-8000-000000000001.png';
+  const stored=f.docs.get(runtime+'/publishedNewspapers/'+idA);
+  f.docs.set(runtime+'/publishedNewspapers/'+idA,{
+   ...stored,blocks:[...stored.blocks,{id:'photo',type:'image',text:'',
+    imagePath:media,span:6,height:200}],
+  });
+  expect(await releaseDueNewspapers(f.db,snapshot)).toBe(0);
+  expect(f.docs.get(runtime+'/publishedNewspapers/'+idA).state).toBe('draft');
+  expect([...f.docs.keys()].filter(p=>p.includes('/newspaperAudits/scheduled-'))).toHaveLength(0);
+ });
  it('não atua sem aprovação de publicação do Firebase',async()=>{
   const f=fixture();f.docs.set(runtime,{...f.root,newspaperWriteApproved:false});
   expect(await releaseDueNewspapers(f.db,snapshot)).toBe(0);
   expect(f.docs.get(runtime+'/publishedNewspapers/'+idA).state).toBe('draft');
+  const g=fixture();g.docs.set(runtime,{...g.root,sourceSnapshotReconciled:false});
+  expect(await releaseDueNewspapers(g.db,snapshot)).toBe(0);
  });
 });

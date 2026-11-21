@@ -21,6 +21,7 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
  if(!root.exists||config?.status!=='active'||config.private!==true||
     config.sourceSnapshotId!==snapshotId||config.sourceSnapshotReconciled!==true||
     config.applicationEnabled!==true||config.newspaperWriteApproved!==true||
+    config.newspaperSequenceReconciled!==true||
     !source.exists||source.data()?.status!=='complete'||source.data()?.private!==true||
     !clock.exists)return 0;
  const current=effectiveCloudCalendar(clock.data(),config,snapshotId);
@@ -51,14 +52,17 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
    ]);
    const settings=live.data(),v=entry.data();
    if(!live.exists||settings?.status!=='active'||settings.private!==true||
-      settings.sourceSnapshotId!==snapshotId||settings.applicationEnabled!==true||
-      settings.newspaperWriteApproved!==true||
+      settings.sourceSnapshotId!==snapshotId||
+      settings.sourceSnapshotReconciled!==true||
+      settings.newspaperSequenceReconciled!==true||
+      settings.applicationEnabled!==true||settings.newspaperWriteApproved!==true||
       !entry.exists||v?.source!=='firebase-cloud'||v.sourceSnapshotId!==snapshotId||
-      v.state!=='draft'||!v.publishOn)return false;
+      v.state!=='draft'||!v.publishOn||v.publishedAt!=null)return false;
    const d=effectiveCloudCalendar(calendar.data(),settings,snapshotId);
-   if(!validateHarptosDate(d?.year,d?.month,d?.day,d?.festival??null))
-    return false;
-   const nowOrdinal=dateOrdinal(harptosKey(d.year,d.month,d.day,d.festival??null));
+   if(!validateHarptosDate(d?.year,d?.month,d?.day,d?.festival??null)||
+      d.version!==settings.calendarVersion)return false;
+   const officialDate=harptosKey(d.year,d.month,d.day,d.festival??null);
+   const nowOrdinal=dateOrdinal(officialDate);
    const target=dateOrdinal(v.publishOn);
    if(nowOrdinal===null||target===null||target>nowOrdinal)return false;
    const round=Number.isSafeInteger(settings.openRound)?settings.openRound:null;
@@ -69,6 +73,24 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
     title:v.title,subtitle:v.subtitle,template:v.template,font_style:v.font_style,
     blocks:v.blocks,...(v.pdfPath?{pdfPath:v.pdfPath}:{}),
    });}catch{return false;}
+   // A imagem/PDF foi registrada no rascunho, mas o registro pode ter sido
+   // revogado enquanto aguardava a data. Reconfira o vínculo da mesma edição
+   // antes de torná-la visível a jogadores e visitantes.
+   const mediaPaths=[...new Set([
+    ...v.blocks.map((b:any)=>b.imagePath).filter(Boolean),
+    ...(v.pdfPath?[v.pdfPath]:[]),
+   ])];
+   const mediaRefs=mediaPaths.map((path:string)=>runtime.collection('newspaperMedia')
+    .doc(digest('newspaper-media:'+path)));
+   const mediaDocs=await Promise.all(mediaRefs.map((ref:any)=>tx.get(ref)));
+   if(mediaDocs.some((doc:any,i:number)=>{
+    const path=mediaPaths[i],entry=doc.data();
+    return !doc.exists||entry?.state!=='ready'||entry.path!==path||
+     entry.sourceSnapshotId!==snapshotId||entry.editionId!==v.id||
+     entry.kind!==(path===v.pdfPath?'editionPdf':'editionImage')||
+     !Number.isSafeInteger(entry.bytes)||entry.bytes<1||entry.bytes>15*1024*1024||
+     typeof entry.sha256!=='string'||!/^[a-f0-9]{64}$/.test(entry.sha256);
+   }))return false;
    const commissions=commissionIdsOf(v.blocks);
    if(commissions.length>20||commissions.length&&
      (settings.newspaperCommissionsReadApproved!==true||
@@ -95,8 +117,8 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
        sourceSnapshotId:snapshotId,
       });
    }
-   const next={...v,state:'published',publishOn:null,publishedAt:now,
-    version:v.version+1,updatedAt:now,
+   const next={...v,state:'published',publishOn:null,campaignDate:officialDate,
+    publishedAt:now,version:v.version+1,updatedAt:now,
     ...(round!==null?{publishedRound:round}:{})};
    tx.update(ref,next);
    tx.create(audit,{action:'scheduled_publication',editionId:v.id,
