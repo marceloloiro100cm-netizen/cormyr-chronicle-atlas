@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/firebase-newspaper-public-image-smoke.yml'
       - 'scripts/firebase/probe-public-newspaper-image.mjs'
+      - 'src/lib/archive-only.ts'
   workflow_dispatch:
 permissions:
   contents: read
