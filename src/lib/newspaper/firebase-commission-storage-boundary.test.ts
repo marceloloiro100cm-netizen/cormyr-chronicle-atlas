@@ -16,7 +16,7 @@ vi.mock('./firebase-newspaper-media',()=>({
  isFirebaseNewspaperMediaPath:(path:string)=>
   path.startsWith('newspaper-media/'),
 }));
-import {uploadCommissionImage,signedCommissionImage,
+import {uploadCommissionImage,signedCommissionImage,preflightNewspaperSourceImage,
  copyCommissionImageToEdition,copyBucketImageToEdition}
  from './data';
 
@@ -44,6 +44,19 @@ describe('Jornal Firebase: mídia exclusivamente pelo registro autorizado',()=>{
  });
  it('mídia legada não reconciliada permanece bloqueada',async()=>{
   await expect(signedCommissionImage('house-a/img.png')).rejects.toThrow('não reconciliada');
+  await expect(preflightNewspaperSourceImage('house-a/img.png','commission'))
+   .rejects.toThrow('não reconciliada');
+  expect(state.storageFrom).not.toHaveBeenCalled();
+ });
+ it('confere a mídia autenticada antes de criar rascunho e rejeita tipo incorreto',async()=>{
+  state.read.mockResolvedValue('blob:imagem-validada');
+  await preflightNewspaperSourceImage('newspaper-media/registered/commission/foto.png','commission');
+  expect(state.read).toHaveBeenCalledWith('newspaper-media/registered/commission/foto.png');
+  await expect(preflightNewspaperSourceImage('newspaper-media/registered/engraving/foto.png','commission'))
+   .rejects.toThrow('origem incorreta');
+  state.read.mockRejectedValue(Error('media_integrity'));
+  await expect(preflightNewspaperSourceImage('newspaper-media/registered/engraving/foto.png','engraving'))
+   .rejects.toThrow('media_integrity');
   expect(state.storageFrom).not.toHaveBeenCalled();
  });
 });

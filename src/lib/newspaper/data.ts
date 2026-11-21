@@ -126,6 +126,21 @@ export async function uploadCommissionImage(houseId:string,file:File):Promise<st
  if(error)throw error;
  return path;
 }
+/**
+ * Verify the source before opening a new edition. This read goes through the
+ * authenticated Firebase media registry and checks the stored bytes/hash.
+ * Never create a draft for an unavailable or unregistered legacy attachment.
+ */
+export async function preflightNewspaperSourceImage(
+ path:string,kind:'commission'|'engraving',
+):Promise<void>{
+ if(!isFirebaseNewspaperWorkspace())return;
+ if(!isFirebaseNewspaperMediaPath(path)||!path.includes('/'+kind+'/'))
+  throw Error('Imagem histórica ou origem incorreta ainda não reconciliada com Firebase Storage.');
+ const url=await readFirebaseNewspaperMedia(path);
+ if(typeof URL!=='undefined'&&typeof URL.revokeObjectURL==='function')
+  URL.revokeObjectURL(url);
+}
 export async function signedCommissionImage(path:string):Promise<string>{
  if(isFirebaseNewspaperWorkspace()){
   if(isFirebaseNewspaperMediaPath(path))return readFirebaseNewspaperMedia(path);

@@ -129,7 +129,13 @@ describe('Item 10, encomendas de notícias com Riqueza real',()=>{
    .rejects.toThrow();
   await expect(f.editorCommands().commission(order,[])).rejects.toThrow();
   await expect(f.story().commission({...order,p_image_path:'house-a/image.png'},[]))
-   .rejects.toThrow('newspaper_image_storage_pending');
+   .rejects.toThrow('newspaper_image_invalid');
+  // A URL com sintaxe Firebase mas sem registro de objeto também falha
+  // antes de debitar Riqueza: nenhuma imagem pode ser inventada no cliente.
+  const missing='newspaper-media/'+snapshot+
+   '/commission/00000000-0000-4000-8000-000000000001.png';
+  await expect(f.story().commission({...order,p_image_path:missing},[]))
+   .rejects.toThrow('newspaper_image_not_authorized');
   expect(f.docs.get(f.economy).version).toBe(0);
  });
  it('ausência da aprovação de escrita bloqueia débito e não afeta leitura histórica',async()=>{
