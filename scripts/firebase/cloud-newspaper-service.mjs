@@ -346,6 +346,37 @@ export function createFirebaseCloudNewspaper({
         return editorialView(v);
       });
     },
+    /** Revision history is projected from write audits, never a mutable import. */
+    async listRevisions(token,input){
+      const uid=await actorId(token);
+      if(!input||Object.keys(input).some(k=>!['action','id'].includes(k))||
+         input.action!=='listRevisions'||typeof input.id!=='string'||
+         !validId(input.id))deny('invalid_revision_request',400);
+      return db.runTransaction(async tx=>{
+        await readApproval(uid,tx);
+        const snap=await tx.get(audits.where('editionId','==',input.id).limit(201));
+        if(snap.docs.length>200)deny('revision_history_too_large',503);
+        const items=snap.docs.map(d=>({id:d.id,...d.data()}))
+         .filter(v=>v&&['save_edition','save_historical_draft'].includes(v.action)&&
+             v.editionId===input.id&&v.before&&typeof v.before==='object'&&
+             !Array.isArray(v.before)&&number(v.before.version,1,2147483646))
+         .sort((a,b)=>b.before.version-a.before.version||
+              String(b.occurredAt).localeCompare(String(a.occurredAt)))
+         .slice(0,40).map(v=>({
+           id:v.id,newspaper_id:input.id,previous_version:v.before.version,
+           changed_at:v.occurredAt,
+           snapshot:{
+            title:v.before.title,subtitle:v.before.subtitle,
+            blocks:v.before.blocks,template:v.before.template,
+            font_style:v.before.font_style,
+            campaign_date:v.before.campaignDate??v.before.campaign_date,
+            pdf_path:v.before.pdfPath??v.before.pdf_path??null,
+            publish_on:v.before.publishOn??null,
+           },
+         }));
+        return {items};
+      });
+    },
     async saveEdition(token,input){
       const uid=await actorId(token);
       if(!input||Object.keys(input).some(k=>!['action','requestKey','id','expectedVersion','state','content'].includes(k))||
