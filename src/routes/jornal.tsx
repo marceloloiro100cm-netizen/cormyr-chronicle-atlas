@@ -27,7 +27,7 @@ export const Route=createFileRoute('/jornal')({
 });
 
 type Summary={id:string;title:string;subtitle:string;editionNo:number;publishedAt:string;campaignDate:string|null};
-type ListReply={items:Summary[];staff:Pick<NewspaperStaffMember,'id'|'name'|'specialty'|'bio'|'sort_order'>[]};
+type ListReply={items:Summary[];staff:(Pick<NewspaperStaffMember,'id'|'name'|'specialty'|'bio'|'sort_order'>&{photo_url?:string|null})[]};
 type EditionReply={id:string;title:string;subtitle:string;editionNo:number;template:string;font_style:string;
   blocks:unknown[];publishedAt:string;campaignDate:string|null;version:number};
 
