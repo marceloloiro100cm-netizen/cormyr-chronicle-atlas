@@ -154,6 +154,9 @@ export async function commitNewspaperStaffPhoto({db,snapshotId,actorUid,imported
    return {id,rows:before};
   }
   if(input.id&&!old)fail('staff_not_found',404);
+  if(input.id&&old&&old['photo_path']===input.photoPath&&
+     old['name']===op.name&&old['specialty']===op.specialty&&old['bio']===op.bio)
+   return {id,rows:before};
   if(!input.id&&before.length>=MAX_STAFF)fail('staff_too_large',413);
   const now=new Date().toISOString();
   const next=old?
