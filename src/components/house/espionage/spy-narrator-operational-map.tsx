@@ -53,7 +53,8 @@ export function SpyNarratorOperationalMap({operation}:Props){
    </label>
   </header>
   {map&&failedImage!==map.src?<div className="spy-narrator-map-stage"
-   style={{aspectRatio:map.width+' / '+map.height}}>
+   style={{aspectRatio:map.width+' / '+map.height,
+    maxWidth:'min(100%, '+(map.width/map.height*72).toFixed(2)+'vh)'}}>
    <img src={map.src} width={map.width} height={map.height} alt={'Mapa oficial ilustrado de '+map.name}
     loading="lazy" decoding="async" onError={()=>setFailedImage(map.src)}/>
    <svg viewBox={'0 0 '+map.width+' '+map.height} role="img"
