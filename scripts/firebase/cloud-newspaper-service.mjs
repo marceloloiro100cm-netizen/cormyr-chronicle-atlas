@@ -1,4 +1,5 @@
 import {validateEditorialContent} from './cloud-editorial-content.mjs';
+import {validateHistoricalDraft,historicalDraftId} from './cloud-newspaper-legacy-draft.mjs';
 import {deletedNewspaperIds} from './newspaper-deleted.mjs';
 import {commissionIdsOf} from './newspaper-core.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
@@ -90,6 +91,8 @@ export function createFirebaseCloudNewspaper({
   const calendar=roots[2].collection('calendar').doc('current');
   const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
   const editions=runtime.collection('publishedNewspapers');
+  const historicalDrafts=runtime.collection('newspaperHistoricalDrafts');
+  const historicalSource=roots[3].collection('editions');
   const audits=runtime.collection('newspaperAudits');
   const readReceipts=runtime.collection('newspaperReadReceipts');
   async function actorId(token){
@@ -240,6 +243,80 @@ export function createFirebaseCloudNewspaper({
         if(receipt.exists)tx.update(receiptRef,next);
         else tx.create(receiptRef,next);
         return {recorded:true,alreadyRecorded:false};
+      });
+    },
+
+    /**
+     * Operational edits of legacy draft editions. These do not change the
+     * immutable import, publication status, edition number or public reader.
+     */
+    async listHistoricalDrafts(token){
+      const uid=await actorId(token);
+      return db.runTransaction(async tx=>{
+        await readApproval(uid,tx);
+        const snap=await tx.get(historicalDrafts.limit(101));
+        if(snap.docs.length>100)deny('historical_drafts_too_many',503);
+        const items=snap.docs.map(d=>d.data());
+        if(items.some(v=>!v||v.sourceSnapshotId!==snapshotId||
+          !historicalDraftId(v.id)||v.state!=='draft'||
+          !number(v.version,1,2147483646)||!number(v.sourceVersion,1,2147483646)||
+          !number(v.editionNo,1,99999999)||!Array.isArray(v.blocks)))
+          deny('historical_draft_corrupt',503);
+        return {items:items.map(v=>({id:v.id,editionNo:v.editionNo,
+          title:v.title,subtitle:v.subtitle,template:v.template,
+          font_style:v.font_style,blocks:v.blocks,version:v.version,
+          sourceVersion:v.sourceVersion,state:'draft',
+          campaignDate:v.campaignDate}))};
+      });
+    },
+    async saveHistoricalDraft(token,input){
+      const uid=await actorId(token);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['action','id','requestKey','expectedVersion','content'].includes(k))||
+         input.action!=='saveHistoricalDraft'||!historicalDraftId(input.id)||
+         typeof input.requestKey!=='string'||!KEY.test(input.requestKey)||
+         !number(input.expectedVersion,1,2147483646))
+        deny('invalid_historical_draft_request',400);
+      const id=input.id,ref=historicalDrafts.doc(id),
+        stage=historicalSource.doc(id),
+        audit=audits.doc('historical-'+digest(uid+':'+input.requestKey));
+      const fingerprint=digest(JSON.stringify(input));
+      return db.runTransaction(async tx=>{
+        await readApproval(uid,tx);
+        const [sourceDoc,oldDoc,auditDoc]=await Promise.all([
+          tx.get(stage),tx.get(ref),tx.get(audit),
+        ]);
+        const source=sourceDoc.data();
+        if(!sourceDoc.exists||source?.id!==id||source.state!=='draft')
+          deny('historical_draft_unavailable',409);
+        let content;
+        try{content=validateHistoricalDraft(source,input.content);}
+        catch{deny('invalid_historical_draft_content',400);}
+        if(auditDoc.exists){
+          const prior=auditDoc.data();
+          if(prior?.actorUid!==uid||prior.fingerprint!==fingerprint)
+            deny('historical_request_key_conflict',409);
+          return {...prior.after,duplicate:true};
+        }
+        const old=oldDoc.data();
+        if(oldDoc.exists&&(
+          old?.sourceSnapshotId!==snapshotId||old.id!==id||
+          old.sourceVersion!==source.version||old.editionNo!==source.editionNo||
+          old.state!=='draft'))deny('historical_draft_conflict',409);
+        if((oldDoc.exists?old.version:source.version)!==input.expectedVersion)
+          deny('historical_draft_version_conflict',409);
+        const now=clock();
+        if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
+          deny('invalid_server_clock',503);
+        const after={...content,id,sourceSnapshotId:snapshotId,
+          sourceVersion:source.version,editionNo:source.editionNo,
+          state:'draft',version:input.expectedVersion+1,
+          publishedAt:null,updatedBy:uid,updatedAt:now};
+        if(oldDoc.exists)tx.update(ref,after);else tx.create(ref,after);
+        tx.create(audit,{action:'save_historical_draft',actorUid:uid,
+          occurredAt:now,editionId:id,fingerprint,
+          before:old??null,after});
+        return {...after,duplicate:false};
       });
     },
 
