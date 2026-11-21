@@ -529,14 +529,14 @@ const useStoryModel=async(model:StoryModel)=>{
   setBlockId(block.id);setEditing(true);
   notice('Matéria criada com o título da data. Escreva o texto direto na folha.');
  };
- const saveStaff=async(input:{id?:string;requestId:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null):Promise<boolean>=>{
+ const saveStaff=async(input:{id?:string;requestId?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null):Promise<boolean>=>{
   if(!editor||busy)return false;
   setBusy(true);setError('');
   try{
    const sortOrder=input.id?undefined:staff.reduce((m,x)=>Math.max(m,(x.sort_order??0)+1),0);
    if(photo&&isFirebaseNewspaperWorkspace()){
     await saveNewspaperStaffWithPhoto({
-     ...(input.id?{id:input.id}:{}),requestId:input.requestId,
+     ...(input.id?{id:input.id}:{}),requestId:input.requestId??crypto.randomUUID(),
      name:input.name,specialty:input.specialty,bio:input.bio,
      ...(sortOrder===undefined?{}:{sortOrder}),
     },photo);
