@@ -192,9 +192,11 @@ export async function getNewspaperStaff():Promise<NewspaperStaffMember[]>{
  return (data??[]) as NewspaperStaffMember[];
 }
 export async function uploadStaffPhoto(file:File):Promise<string>{
- // No Firebase, fotos novas da Redação aguardam o Storage homologado.
+ // Compatibilidade exclusiva com o acervo legado. O Editor-Chefe Firebase
+ // usa saveNewspaperStaffWithPhoto, que salva a foto E o funcionário juntos.
+ // Não atribuir uma falha deste adaptador antigo à homologação do Storage.
  if(isFirebaseNewspaperWorkspace())
-  throw new Error('Fotos novas da Redação ainda aguardam o armazenamento homologado no Firebase. Salve sem foto por enquanto.');
+  throw new Error('Esta tela do Jornal usa o envio antigo. Reabra o Jornal para carregar a versão atualizada e enviar a fotografia pelo Firebase.');
  if(file.size>5*1024*1024)throw new Error('A foto deve ter no máximo 5 MB.');
  const ext={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'}[file.type];
  if(!ext)throw new Error('Envie PNG, JPG ou WebP.');
