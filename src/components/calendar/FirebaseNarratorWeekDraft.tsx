@@ -1,4 +1,5 @@
 import {useEffect,useState,type FormEvent} from 'react';
+import {FirebaseTemporalCalendarManager} from './FirebaseTemporalCalendarManager';
 import {FESTIVALS,MONTHS,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {buildThirdTendayRequest} from '@/lib/calendar/firebase-third-tenday';
 import {nextTendayStart,crossesMonth} from '@/lib/calendar/firebase-next-tenday';
@@ -23,7 +24,7 @@ type WeekView={
 type HistoryItem={id:string;action:string;at:string;from:DateView|null;to:DateView|null;
   fromRound:number|null;toRound:number|null;monthsCrossed:number;reason:string|null};
 
-async function requestWeek<T=WeekView>(action:'get'|'save'|'publish'|'advance'|'history'|'publishEvents'|'processHouseMonths',fields?:Record<string,unknown>):Promise<T>{
+async function requestWeek<T=WeekView>(action:'get'|'save'|'publish'|'advance'|'changeDate'|'history'|'publishEvents'|'processHouseMonths',fields?:Record<string,unknown>):Promise<T>{
   const auth=firebasePilotAuth();
   const token=await auth?.getToken();
   if(!token)throw Error('Entre novamente com sua conta de Narrador.');
@@ -171,7 +172,7 @@ function WeeklyAdvance({view,onDone}:{view:WeekView;onDone:()=>void}){
     <details><summary className="text-sm">Histórico de aberturas</summary>
       {history===null?<p className="text-sm">Carregando…</p>:history.length===0?<p className="text-sm">Nenhum registro.</p>:
       <ul className="text-sm">{history.map(h=><li key={h.id}>
-        {new Date(h.at).toLocaleString('pt-BR')} · {h.action==='launch_firebase_campaign'?'Lançamento':'Abertura'}
+        {new Date(h.at).toLocaleString('pt-BR')} · {h.action==='launch_firebase_campaign'?'Lançamento':h.action==='set_calendar_date'?'Alteração da data':'Abertura'}
         {h.toRound?` da Semana ${h.toRound}`:''}{h.to?` em ${h.to.day}/${h.to.month+1}/${h.to.year}`:''}
         {h.monthsCrossed?` · ${h.monthsCrossed} mês(es) com efeitos pendentes`:''}{h.reason?` · ${h.reason}`:''}</li>)}</ul>}
     </details>
@@ -307,6 +308,12 @@ export function FirebaseNarratorWeekDraft(){
           :'Missivas ainda bloqueadas: os dois runtimes não estão alinhados.'}
         {' '}O histórico importado permanece preservado.
       </p>}
+      {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&
+        <FirebaseTemporalCalendarManager
+          calendar={loaded.operationalCalendar} openRound={loaded.openRound!}
+          changeDate={fields=>requestWeek('changeDate',fields)}
+          publishEvents={()=>requestWeek('publishEvents')}
+          onDone={()=>void refresh()}/>}
       {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&
         <WeeklyAdvance key={String(loaded.openRound)} view={loaded} onDone={()=>void refresh()}/>}
       {!loaded.calendarPublished&&loaded.editable&&<form onSubmit={event=>void save(event)} className="space-y-3">
