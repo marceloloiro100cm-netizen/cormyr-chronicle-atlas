@@ -318,7 +318,7 @@ export function FirebaseNarratorWeekDraft(){
           publishEvents={()=>requestWeek<{published:number}>('publishEvents')}
           onDone={()=>void refresh()}/>}
       {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&
-        <WeeklyAdvance key={String(loaded.openRound)} view={loaded} onDone={()=>void refresh()}/>}
+        <WeeklyAdvance key={String(loaded.openRound)+'-'+String(loaded.operationalCalendar.version)} view={loaded} onDone={()=>void refresh()}/>}
       {!loaded.calendarPublished&&loaded.editable&&<form onSubmit={event=>void save(event)} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="text-sm">Ano (CV)
