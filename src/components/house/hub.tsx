@@ -9,7 +9,7 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {projectTemporalNotice} from '@/lib/calendar/house-time-impact';
 import { legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import { useCallback, useRef, useState } from 'react';
-import {urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
+import {setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
@@ -83,6 +83,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   const [sectionParam]=useUrlParam('parte','overview');
   useUrlSearch();
   const section=NAV.some(([id])=>id===sectionParam&&houseNavigationVisible(id,admin,firebaseWorkspaceClient()!==null))?sectionParam:'overview';
+  const setSection=(id:string)=>setUrlParams({parte:id==='overview'?null:id,espionagem:null,dossie:null,modalidade:null});
   const [buy,setBuy]=useState(false),[purchaseItemId,setPurchaseItemId]=useState(''),[importPreview,setImport]=useState<ImportPreview|null>(null),[resource,setResource]=useState<typeof RESOURCE_KEYS[number]>('wealth'),[importDecision,setImportDecision]=useState('');
   const active=state.holdings.filter(h=>h.status==='active'),projects=state.projects.filter(p=>p.status==='building');
   const drift=globalCalendar?calendarDrift(state.month,globalCalendar):null;
