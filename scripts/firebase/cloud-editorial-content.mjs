@@ -14,7 +14,7 @@ const imageStyles=['vintage','woodcut','original'];
 const imageFocus=['top','center','bottom'];
 const noticeIcons=['⚜','📜','🏪','⚔','⚠','👑'];
 
-export function validateEditorialContent(input){
+export function validateEditorialContent(input,{allowEmptyImages=false}={}){
   const invalid=()=>{throw Error('invalid_editorial_content');};
   if(!input||typeof input!=='object'||Array.isArray(input)||
      Object.keys(input).some(k=>!['title','subtitle','blocks','template','font_style'].includes(k)))invalid();
@@ -79,7 +79,7 @@ export function validateEditorialContent(input){
         out[key]=b[key];
       }
     }
-    if(b.type==='image'&&!out.imageSrc)invalid();
+    if(b.type==='image'&&!out.imageSrc&&!allowEmptyImages)invalid();
     return out;
   });
   const commissions=blocks.filter(b=>b.commissionId).map(b=>b.commissionId);
