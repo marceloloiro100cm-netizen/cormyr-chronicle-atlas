@@ -257,7 +257,11 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
    return '<figure class="castle-gallery-artwork"><div class="castle-gallery-frame"><div class="castle-gallery-mat"><div class="castle-gallery-canvas"><a href="'+url+'" target="_blank" rel="noopener"><img src="'+url+'" alt="'+esc(label)+'" loading="lazy"></a></div></div><span class="castle-frame-corner corner-tl" aria-hidden="true"></span><span class="castle-frame-corner corner-tr" aria-hidden="true"></span><span class="castle-frame-corner corner-bl" aria-hidden="true"></span><span class="castle-frame-corner corner-br" aria-hidden="true"></span></div><figcaption class="castle-gallery-plaque"><span class="plaque-rivet" aria-hidden="true">•</span><span class="plaque-title">'+esc(label)+'</span><span class="plaque-rivet" aria-hidden="true">•</span></figcaption><div style="margin-top:10px;z-index:2"><a class="quiet" href="'+url+'&download=1&name='+encodeURIComponent(image.name||'imagem')+'">Baixar imagem</a></div></figure>';
   }).join('');
   gallery.innerHTML='<h3>Galeria</h3>'+(cards?'<div class="castle-art-gallery-grid">'+cards+'</div>':
-   '<p class="small">'+(h.galleryLoading?'Consultando imagens…':h.galleryError?'Galeria temporariamente indisponível.':'Nenhuma imagem cadastrada.')+'</p>');
+   '<p class="small">'+(h.galleryLoading?'Consultando imagens…':h.galleryError?'Galeria temporariamente indisponível.':'Nenhuma imagem cadastrada.')+'</p>'+
+   (h.galleryError?'<button type="button" class="quiet" id="house-gallery-retry">Tentar novamente</button>':''));
+  gallery.querySelector('#house-gallery-retry')?.addEventListener('click',()=>{
+   h.galleryError=false;h.galleryRetryCount=0;loadDriveGallery(h);renderHouseGallery(h);
+  });
   gallery.style.display='block';
  }
  function loadDriveGallery(h){
@@ -266,8 +270,14 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   fetch('/api/public/house-gallery?house='+encodeURIComponent(h.nobleId),{cache:'no-store'})
    .then(r=>{if(!r.ok)throw Error('gallery_unavailable');return r.json();})
    .then(d=>{if(d.houseId!==h.nobleId||!Array.isArray(d.images))throw Error('gallery_invalid');
-     h.driveGallery=d.images;h.galleryLoaded=true;h.galleryError=false;})
-   .catch(()=>{h.galleryError=true;})
+     h.driveGallery=d.images;h.galleryLoaded=true;h.galleryError=false;h.galleryRetryCount=0;})
+   .catch(()=>{
+     h.galleryError=true;
+     const retries=(h.galleryRetryCount||0)+1;h.galleryRetryCount=retries;
+     if(retries<=3)setTimeout(()=>{
+       if(state.noble.house===h.nobleId&&!h.galleryLoaded&&!h.galleryLoading)loadDriveGallery(h);
+     },retries*2500);
+   })
    .finally(()=>{h.galleryLoading=false;if(state.noble.house===h.nobleId)renderHouseGallery(h);});
  }
 function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=>normalize(x.name)===normalize(q.parent||''));const back=state.houseHistory.length?nobleHouses.find(x=>x.nobleId===state.houseHistory.at(-1)):null;
