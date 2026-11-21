@@ -13,6 +13,7 @@ export interface CloudNewspaperRuntime {
   listHistoricalDrafts(token:string):Promise<{items:unknown[]}>;
   saveHistoricalDraft(token:string,input:unknown):Promise<unknown>;
   listEditorial(token:string):Promise<unknown>;
+  listRevisions(token:string,input:unknown):Promise<unknown>;
   getEditorial(token:string,input:unknown):Promise<unknown>;
   saveEdition(token:string,input:unknown):Promise<unknown>;
   status(token:string):Promise<{enabled:boolean;canPublish:boolean;readOnly:boolean}>;
