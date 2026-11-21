@@ -58,7 +58,7 @@ export async function readPublishedNewspaperImage({
  if(!Buffer.isBuffer(bytes)||bytes.length!==size)
   bad(503,'newspaper_image_integrity_failed');
  const type=imageType(bytes);
- if(!type)bad(503,'newspaper_image_type_invalid');
+ if(!type)return bad(503,'newspaper_image_type_invalid');
  // A signed public edition already has an immutable, reviewed source. The
  // original image path never appears in the response URL or headers.
  return {data:bytes,contentType:type};
