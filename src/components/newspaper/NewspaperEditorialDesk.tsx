@@ -3,7 +3,7 @@ import {
  BookOpen,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
  BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
  ImagePlus,Columns3,Quote,TriangleAlert,Plus,Printer,ChevronDown,
- ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,Mail,Globe,
+ ArrowUp,ArrowDown,Trash2,Save,CheckCircle2,Circle,Search,Globe,
  Undo2,Redo2,Copy,Scissors,ClipboardPaste,CalendarClock,ChevronLeft,ChevronRight,Keyboard,List,
 } from 'lucide-react';
 import {ChangePasswordButton} from '@/components/change-password';
@@ -38,7 +38,7 @@ const NAV=[
  {id:'anuncios',label:'Anúncios',icon:Megaphone},
  {id:'arquivo',label:'Arquivo',icon:Archive},
  {id:'alcance',label:'Leitura e Alcance',icon:BarChart3},
- {id:'missivas',label:'Missivas',icon:Mail},
+ {id:'missivas',label:'Informações & Furos',icon:Search},
  {id:'configuracoes',label:'Configurações',icon:Settings},
 ] as const;
 type Section=typeof NAV[number]['id'];
@@ -466,9 +466,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       </section>}
 
       {section==='missivas'&&props.missivas!==undefined&&<section className="folha-section-content folha-missivas">
-       <h3>Missivas</h3>
-       <p>Missivas e respostas já entregues entre as Casas, somente para leitura: fonte para as fofocas e notícias da Folha.</p>
-       <div className="campaign-theme folha-missivas-reader">{props.missivas}</div>
+       <h3>Fontes e bastidores</h3>
+       <p>Da correspondência entre Casas aos segredos da corte: investigue relatos entregues, acompanhe os desdobramentos e selecione assuntos para a próxima edição.</p>
+       <div className="folha-missivas-reader">{props.missivas}</div>
       </section>}
 
       {section==='configuracoes'&&<section className="folha-section-content">
