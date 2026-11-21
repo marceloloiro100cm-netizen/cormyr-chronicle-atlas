@@ -107,25 +107,28 @@ function PublicNewspaper(){
           <h1>A Folha Sem Selo</h1>
           <p>As notícias que atravessam Cormyr, abertas a todos os leitores.</p>
         </div>
+      </div>
+      <div className="public-folha-toolbar">
         <nav className="public-folha-tabs" aria-label="Jornal">
           <a aria-current={view==='edicoes'?'page':undefined} {...urlLinkProps({ver:null})} href={newTabHref({ver:null})}><Newspaper size={16}/> Edições</a>
           <a aria-current={view==='redacao'?'page':undefined} {...urlLinkProps({ver:'redacao'})} href={newTabHref({ver:'redacao'})}><UsersRound size={16}/> A Redação</a>
         </nav>
+        {view==='edicoes'&&items.length>0&&<nav className="public-folha-edition-nav" aria-label="Navegar entre edições">
+          <button type="button" aria-label="Edição anterior" disabled={index<0||index>=items.length-1}
+            onClick={()=>{const previous=items[index+1];if(previous)go(previous.id);}}>
+            <ChevronLeft size={18}/><span>Anterior</span>
+          </button>
+          <span className="public-folha-current-edition" aria-live="polite">
+            Edição nº {items[index]?.editionNo??'—'}
+            <small>{index>=0?`${index+1} de ${items.length} no arquivo`:''}</small>
+          </span>
+          <button type="button" aria-label="Edição seguinte" disabled={index<=0}
+            onClick={()=>{const next=items[index-1];if(next)go(next.id);}}>
+            <span>Seguinte</span><ChevronRight size={18}/>
+          </button>
+        </nav>}
+        {view==='edicoes'&&items.length>0&&<span className="public-folha-toolbar-balance" aria-hidden="true"/>}
       </div>
-      {view==='edicoes'&&items.length>0&&<nav className="public-folha-edition-nav" aria-label="Navegar entre edições">
-        <button type="button" aria-label="Edição anterior" disabled={index<0||index>=items.length-1}
-          onClick={()=>{const previous=items[index+1];if(previous)go(previous.id);}}>
-          <ChevronLeft size={18}/><span>Anterior</span>
-        </button>
-        <span className="public-folha-current-edition" aria-live="polite">
-          Edição nº {items[index]?.editionNo??'—'}
-          <small>{index>=0?`${index+1} de ${items.length} no arquivo`:''}</small>
-        </span>
-        <button type="button" aria-label="Edição seguinte" disabled={index<=0}
-          onClick={()=>{const next=items[index-1];if(next)go(next.id);}}>
-          <span>Seguinte</span><ChevronRight size={18}/>
-        </button>
-      </nav>}
     </div>
     {list.isPending&&<p role="status" className="public-folha-status">Abrindo o arquivo do jornal…</p>}
     {list.isError&&<p role="alert" className="public-folha-status">{list.error instanceof Error?list.error.message:'Jornal indisponível.'}</p>}

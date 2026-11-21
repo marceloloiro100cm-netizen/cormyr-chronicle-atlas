@@ -18,9 +18,9 @@ describe('Public Folha masthead and editions visual alignment',()=>{
  });
  it('keeps the top rectangle and bottom grid on the exact same outer edges',()=>{
   expect(css).toContain('--public-folha-inset:clamp(14px,3vw,30px)');
-  expect(css).toMatch(/\.public-folha-masthead\{[^}]*max-width:1500px;[^}]*padding:0 var\(--public-folha-inset\)/s);
-  expect(css).toMatch(/\.public-folha-layout\{max-width:1500px;[^}]*padding:0 var\(--public-folha-inset\)/s);
-  expect(css).toMatch(/\.public-folha-head\{[^}]*width:100%;[^}]*margin:0;/s);
+  expect(css).toMatch(/\.public-folha-masthead\{[^}]*box-sizing:border-box;[^}]*width:100%;[^}]*max-width:1500px;[^}]*padding:0 var\(--public-folha-inset\)/s);
+  expect(css).toMatch(/\.public-folha-layout\{[^}]*box-sizing:border-box;width:100%;max-width:1500px;margin:0 auto;[^}]*padding:0 var\(--public-folha-inset\)/s);
+  expect(css).toMatch(/\.public-folha-head\{[^}]*box-sizing:border-box;[^}]*max-width:none;[^}]*width:100%;[^}]*margin:0;/s);
   expect(css).toMatch(/\.public-folha-tabs\{[^}]*width:100%;[^}]*max-width:none;[^}]*margin:0;/s);
  });
  it('stretches the crest over the masthead height without cropping the coat of arms',()=>{
@@ -36,21 +36,29 @@ describe('Public Folha masthead and editions visual alignment',()=>{
 });
 
 describe('Video-requested newspaper navigation',()=>{
- it('keeps edition and staff actions inside the top masthead',()=>{
-  const head=source.indexOf('<div className="public-folha-head">');
-  const nav=source.indexOf('<nav className="public-folha-tabs"');
-  const end=source.indexOf('</div>',source.indexOf('<div className="public-folha-head-copy">'));
-  expect(head).toBeGreaterThan(-1);
-  expect(nav).toBeGreaterThan(end);
-  expect(source).toContain('className="public-folha-edition-nav"');
-  expect(source).toContain('className="public-folha-current-edition"');
+ it('places Edições, A Redação, Anterior and Seguinte in one shared toolbar',()=>{
+  const start=source.indexOf('<div className="public-folha-toolbar">');
+  const end=source.indexOf('className="public-folha-toolbar-balance"',start);
+  const toolbar=source.slice(start,end);
+  expect(start).toBeGreaterThan(source.indexOf('className="public-folha-head-copy"'));
+  expect(end).toBeGreaterThan(start);
+  expect(toolbar).toContain('className="public-folha-tabs"');
+  expect(toolbar).toContain(' Edições</a>');
+  expect(toolbar).toContain(' A Redação</a>');
+  expect(toolbar).toContain('className="public-folha-edition-nav"');
+  expect(toolbar).toContain('Edição anterior');
+  expect(toolbar).toContain('Edição seguinte');
+  expect(toolbar).toContain('className="public-folha-current-edition"');
  });
  it('places previous and next controls in the centered header and preserves historical menu',()=>{
   expect(source).toContain('items[index+1]');
   expect(source).toContain('items[index-1]');
   expect(source).toContain('aria-label="Edições publicadas"');
   expect(source).not.toContain('<div className="public-folha-pager">');
-  expect(css).toContain('.public-folha-edition-nav{');
+  expect(css).toContain('.public-folha-toolbar .public-folha-edition-nav{');
+  expect(css).toContain('grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)');
+  expect(css).toContain('.public-folha-toolbar .public-folha-tabs{');
+  expect(css).toContain('overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;');
   expect(css).toContain('justify-content:center');
  });
  it('prevents long headlines and image blocks from stretching the visible published page',()=>{
