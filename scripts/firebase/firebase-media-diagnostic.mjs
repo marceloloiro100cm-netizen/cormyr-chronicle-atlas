@@ -32,6 +32,12 @@ console.log('MEDIA_DIAG storage_stage_status '+(
   ?stageData.status.toUpperCase():'OTHER'));
 console.log('MEDIA_DIAG storage_stage_private '+(stageData.private===true?'YES':'NO'));
 console.log('MEDIA_DIAG storage_stage_snapshot_match '+(stageData.sourceSnapshotId===snapshot?'YES':'NO'));
+console.log('MEDIA_DIAG storage_stage_source_present '+
+ (Object.hasOwn(stageData,'sourceSnapshotId')?'YES':'NO'));
+console.log('MEDIA_DIAG storage_stage_format_v1 '+(stageData.formatVersion===1?'YES':'NO'));
+console.log('MEDIA_DIAG storage_stage_legacy_v1_eligible '+
+ (stage.exists&&stageData.status==='complete'&&stageData.private===true&&
+  stageData.sourceSnapshotId===undefined&&stageData.formatVersion===1?'YES':'NO'));
 console.log('MEDIA_DIAG storage_stage_complete '+
   (stage.exists&&stage.data()?.status==='complete'&&stage.data()?.private===true&&
    stage.data()?.sourceSnapshotId===snapshot?'YES':'NO'));
