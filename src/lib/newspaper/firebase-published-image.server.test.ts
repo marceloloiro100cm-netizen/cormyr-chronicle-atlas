@@ -1,4 +1,6 @@
 import {describe,it,expect} from 'vitest';
+import {vi} from 'vitest';
+vi.mock('../../../scripts/firebase/newspaper-deleted.mjs',()=>({deletedNewspaperIds:async()=>new Set()}));
 import {readPublishedNewspaperImage,publishedImageSrc}
  from './firebase-published-image.server';
 
