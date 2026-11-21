@@ -33,8 +33,9 @@ const filter=(f:Record<string,string>)=>({kind:'rpc',name:'mail_page',
  args:{p_filters:{text:'',number:'',kind:'',read:'',...f},p_page:0,p_size:20}});
 // Always resolve the SAME id selected in the UI. In the real roster the
 // display name may be "Casa Ashkar" and the id need not be the slug.
-const roster=await service.execute('authorized-editor-filter-audit',{kind:'query',
+const directory=await service.execute('authorized-editor-filter-audit',{kind:'query',
  table:'campaign_houses',steps:[{op:'select',args:['id,name']}]});
+const roster=directory?.data;
 if(!Array.isArray(roster))throw Error('audit_catalog_unavailable');
 const ashkar=roster.filter(h=>typeof h?.name==='string'&&
  /ashkar/i.test(h.name));
