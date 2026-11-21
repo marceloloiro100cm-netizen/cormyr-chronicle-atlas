@@ -64,7 +64,13 @@ export function validateHistoricalDraft(source,raw){
   if(paths.has(b.id))next.imagePath=paths.get(b.id);
   else delete next.imagePath;
   if(trustedSourceImages.has(b.id))next.imageSrc=trustedSourceImages.get(b.id);
-  else if(!raw.blocks.find(x=>x.id===b.id)?.imageSrc)delete next.imageSrc;
+  else if(!raw.blocks.find(x=>x.id===b.id)?.imageSrc){
+   // safeNewspaperBlocks may omit an unsupported legacy image URL. Never
+   // discard its source reference merely because the browser cannot edit it.
+   if(prior?.type==='image'&&typeof prior.imageSrc==='string')
+    next.imageSrc=prior.imageSrc;
+   else delete next.imageSrc;
+  }
   return next;
  });
  return {...valid,blocks,campaignDate:raw.campaignDate};
