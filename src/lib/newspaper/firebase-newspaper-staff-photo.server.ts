@@ -37,7 +37,7 @@ export function parseStaffPhotoInput(raw:unknown):{input:Input;bytes:Buffer;ext:
  if(bytes.length<1||bytes.length>MAX||bytes.toString('base64')!==v['dataBase64']||
     imageType(bytes)!==v['contentType'])fail('invalid_staff_image',415);
  const ext=v['contentType']==='image/png'?'png':v['contentType']==='image/webp'?'webp':'jpg';
- return {input:v as Input,bytes,ext,
+ return {input:v as unknown as Input,bytes,ext,
   sha256:createHash('sha256').update(bytes).digest('hex')};
 }
 export async function saveFirebaseStaffPhoto({db,auth,bucket,snapshotId,token,raw}:{
