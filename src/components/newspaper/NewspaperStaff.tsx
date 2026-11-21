@@ -3,7 +3,7 @@ import {useQuery} from '@tanstack/react-query';
 import {ArrowDown,ArrowUp,GripVertical,ImagePlus,Pencil,Trash2,UserPlus} from 'lucide-react';
 import {signedStaffPhoto} from '@/lib/newspaper/data';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
-import {HISTORICAL_STAFF_INDEX,HISTORICAL_STAFF_SPRITE} from './historical-staff-sprite';
+import {HISTORICAL_STAFF_BY_NAME,HISTORICAL_STAFF_INDEX,HISTORICAL_STAFF_SPRITE} from './historical-staff-sprite';
 import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {staffByline,validateStaffMember,type NewspaperStaffMember} from '@/lib/newspaper/model';
 
@@ -19,7 +19,7 @@ export function StaffPhoto({path,name,id,src}:{path:string|null;name:string;id?:
   alt={`Foto de ${name}`} onError={()=>setFailed(true)}/>;
  // A miniatura de backup pertence ao funcionário exato (ID do acervo de 15/11).
  // Só substitui a foto quando o Storage ainda não contém seu arquivo original.
- const index=id?HISTORICAL_STAFF_INDEX[id]:undefined;
+ const index=(id?HISTORICAL_STAFF_INDEX[id]:undefined)??HISTORICAL_STAFF_BY_NAME[name.trim().toLocaleLowerCase('pt-BR')];
  if(index!==undefined)return <div role="img" aria-label={`Foto histórica de ${name}`}
   className="folha-staff-photo folha-staff-photo-historical"
   style={{backgroundImage:`url("${HISTORICAL_STAFF_SPRITE}")`,
