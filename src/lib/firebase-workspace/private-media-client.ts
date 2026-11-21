@@ -17,9 +17,8 @@ async function currentAuth(){
 }
 async function requestJson(action:'upload'|'sign',args:Record<string,unknown>){
  const {session,uid,token}=await currentAuth();
- if(controller.signal.aborted)throw Error('Leitura cancelada por tempo excedido.');
  const response=await fetch('/api/firebase-private-media',{
-  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',signal:controller.signal,
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
   body:JSON.stringify({action,...args}),
  });
@@ -88,8 +87,9 @@ export async function downloadFirebasePrivateImage(path:string):Promise<Blob>{
  const legacy=!path.startsWith('private/');
  if(legacy?(!LEGACY.test(path)||path.includes('..')):!PATH.test(path))throw Error('Referência privada inválida.');
  const {session,uid,token}=await currentAuth();
+ if(controller.signal.aborted)throw Error('Leitura cancelada por tempo excedido.');
  const response=await fetch('/api/firebase-private-media',{
-  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',signal:controller.signal,
   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
   body:JSON.stringify({action:'download',path}),
  });
