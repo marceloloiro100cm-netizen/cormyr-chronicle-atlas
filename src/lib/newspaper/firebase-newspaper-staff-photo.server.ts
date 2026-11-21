@@ -56,7 +56,7 @@ export async function saveFirebaseStaffPhoto({db,auth,bucket,snapshotId,token,ra
  if(!stage.exists||stage.data()?.private!==true||stage.data()?.status!=='complete'||
     !runtime.exists||config?.status!=='active'||config?.private!==true||
     config?.sourceSnapshotId!==snapshotId||config?.sourceSnapshotReconciled!==true||
-    config?.applicationEnabled!==true||config?.newspaperWriteApproved!==true)
+    config?.applicationEnabled!==true)
   fail('staff_photo_not_approved',503);
  const id=input.id??input.requestId;
  const path=`newspaper-staff/${snapshotId}/${id}/${input.requestId}.${ext}`;
