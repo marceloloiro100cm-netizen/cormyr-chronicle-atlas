@@ -64,6 +64,8 @@ jobs:
           bunx vitest run
           src/test/espionage-r5-lote3-narrator-ux.test.ts
           src/test/espionage-r5-lote3-privacy.test.ts
+      - name: Spy V3 — narrator operational map and canonical Hub deadline tests
+        run: bunx vitest run src/test/espionage-v3-mesa-narrador.test.tsx
       - name: Scoped TypeScript verification (spy module and integration)
         run: bunx tsc -p tsconfig.espionage-live.json --noEmit
       - name: Production build without deploying

@@ -1,13 +1,16 @@
 import {useEffect,useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
-import {ClipboardList,RefreshCw} from 'lucide-react';
+import {ClipboardList,RefreshCw,MapPinned,Clock3} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-import {formatDate,parseDate} from '@/lib/calendar/harptos';
+import {dateKey,formatDate,parseDate} from '@/lib/calendar/harptos';
+import {listCrossedHarptosPeriods} from '@/lib/calendar/temporal-engine';
+import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {readSpyNarratorOperationsBrowser,advanceSpyActiveMissionsBrowser,type SpyNarratorOperation}
  from '@/lib/espionage/spy-operations-browser';
 import {readSpyHouseManagementBrowser} from '@/lib/espionage/spy-browser-client';
 import {SpyNarratorResolutionPanel} from './spy-narrator-resolution';
+import {SpyNarratorOperationalMap} from './spy-narrator-operational-map';
 import {retrySpyIntelligence} from '@/lib/espionage/spy-dossier.functions';
 import './spy-operations-center.css';
 
@@ -74,6 +77,19 @@ export function filterSpyOperations(operations:readonly SpyNarratorOperation[],
  });
 }
 const dateLabel=(value:string|null)=>value&&parseDate(value)?formatDate(value):'—';
+
+/** Official calendar only: flag overdue stages for inspection, never move
+ * dates or missions from the client. Festivals are compared chronologically.
+ */
+export function spyNarratorClockAlerts(operations:readonly SpyNarratorOperation[],officialDate:string|null){
+ if(!officialDate||!parseDate(officialDate))return [];
+ return operations.filter(o=>{
+  const milestone=o.status==='traveling'?o.arrivalKey:
+   o.status==='operating'?o.investigationEndKey:null;
+  return Boolean(milestone&&parseDate(milestone)&&
+   listCrossedHarptosPeriods(milestone,officialDate).direction==='forward');
+ });
+}
 export function SpyNarratorOperationsCenter(){
  const reviewRef=useRef<HTMLElement|null>(null);
  const [search,setSearch]=useState('');
@@ -85,6 +101,9 @@ export function SpyNarratorOperationsCenter(){
  const [recentResolution,setRecentResolution]=useState('');
  const [retryingDossier,setRetryingDossier]=useState<string|null>(null);
  const [advancing,setAdvancing]=useState(false);
+ const [mapOpen,setMapOpen]=useState(false);
+ const [mappedOperationId,setMappedOperationId]=useState<string|null>(null);
+ const clock=useCampaignTime();
  useEffect(()=>{
   if(!selectedReview)return;
   reviewRef.current?.focus({preventScroll:true});
@@ -139,24 +158,27 @@ export function SpyNarratorOperationsCenter(){
  });
  const operations=query.data??[];
  const counters=spyOperationCounters(operations);
+ const officialDate=clock.data&&!clock.isError?dateKey(clock.data):null;
+ const clockAlerts=spyNarratorClockAlerts(operations,officialDate);
  const pending=state==='attention'
   ?filterSpyOperations(spyNarratorActionQueue(operations),search,'attention')
   :filterSpyOperations(operations,search,state);
  const pageSize=15,totalPages=Math.max(1,Math.ceil(pending.length/pageSize));
  const safePage=Math.min(totalPages,Math.max(1,page));
  const visible=pending.slice((safePage-1)*pageSize,safePage*pageSize);
+ const mappedOperation=operations.find(o=>o.operationId===mappedOperationId)??visible[0]??null;
  return <section className="house-panel spy-operations-center"
   aria-label="Central de operações do Narrador">
   <header className="house-section-heading">
    <div>
     <p className="campaign-eyebrow">ESPIONAGEM · NARRADOR</p>
-    <h3><ClipboardList size={18} aria-hidden="true"/> Central de operações</h3>
-    <p className="house-caption">Julgue missões e confirme descobertas no mesmo lugar.</p>
+    <h3><ClipboardList size={18} aria-hidden="true"/> Mesa de Inteligência Operacional</h3>
+    <p className="house-caption">Priorize decisões, acompanhe agentes no mapa e consulte inteligência histórica sem alterar o HUB.</p>
    </div>
    <div className="flex flex-wrap gap-2">
     <Button type="button" variant="outline" disabled={advancing}
      onClick={()=>void advanceCalendar()}>
-     {advancing?'Sincronizando…':'Avançar missões pelo HUB'}
+     {advancing?'Sincronizando…':'Sincronizar missões com o HUB'}
     </Button>
     <Button type="button" variant="outline" disabled={query.isFetching}
      onClick={()=>void query.refetch()}><RefreshCw size={16}/>
@@ -170,12 +192,36 @@ export function SpyNarratorOperationsCenter(){
    <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
     Tentar novamente</Button></p>}
   {query.data&&<>
-   <div className="spy-operations-metrics" aria-label="Resumo operacional">
-    <div><strong>{counters.review}</strong><small>Aguardam julgamento</small></div>
-    <div><strong>{counters.active}</strong><small>Em andamento</small></div>
-    <div><strong>{counters.dossier}</strong><small>Dossiês pendentes</small></div>
-    <div><strong>{counters.complete}</strong><small>Concluídas</small></div>
+   <div className="spy-operations-metrics" aria-label="Filtros rápidos da Mesa de Inteligência">
+    {([
+     {filter:'review',count:counters.review,label:'Aguardam julgamento'},
+     {filter:'active',count:counters.active,label:'Em andamento'},
+     {filter:'dossier',count:counters.dossier,label:'Dossiês pendentes'},
+     {filter:'completed',count:counters.complete,label:'Concluídas'},
+    ] as const).map(item=><button key={item.filter} type="button"
+     className={'spy-operations-metric-button'+(state===item.filter?' is-active':'')}
+     aria-pressed={state===item.filter}
+     onClick={()=>{setState(item.filter);setPage(1);}}>
+     <strong>{item.count}</strong><small>{item.label}</small>
+    </button>)}
    </div>
+   <nav className="spy-narrator-quick-links" aria-label="Áreas da inteligência">
+    <a href="#spy-narrator-dossiers">Consultar dossiês detalhados</a>
+    <a href="#spy-narrator-incidents">Arquivo de contraespionagem</a>
+   </nav>
+   {officialDate&&<p className="house-caption spy-narrator-clock">
+    <Clock3 size={16} aria-hidden="true"/> Data oficial do HUB: {formatDate(officialDate)}
+   </p>}
+   {clock.isError&&<p role="alert" className="spy-operations-feedback">
+    Não foi possível consultar a data oficial do HUB. Nenhuma previsão será estimada.
+   </p>}
+   {clockAlerts.length>0&&<div className="spy-narrator-clock-alert" role="status">
+    <strong>{clockAlerts.length} missão(ões) com marco temporal ultrapassado</strong>
+    <p>Confira a sincronização do HUB antes de julgar ou alterar qualquer missão.</p>
+    <ul>{clockAlerts.slice(0,4).map(o=><li key={o.operationId}>
+     {o.ownerHouseName} → {o.targetHouseName} · {o.agentName}
+    </li>)}</ul>
+   </div>}
    <div className="spy-operations-filters">
     <label>Buscar Casa ou agente
      <input value={search} placeholder="Casa ou codinome"
@@ -234,6 +280,13 @@ export function SpyNarratorOperationsCenter(){
      o.id===selectedReview.operationId&&o.status==='pending_narrator_review')&&
      <p role="status">Esta missão não está mais aguardando resolução.</p>}
    </section>}
+   <div className="spy-narrator-map-controls">
+    <Button type="button" variant="outline" aria-expanded={mapOpen}
+     onClick={()=>setMapOpen(v=>!v)}><MapPinned size={16} aria-hidden="true"/>
+     {mapOpen?'Ocultar mapa estratégico':'Abrir mapa estratégico'}</Button>
+    {mapOpen&&<span className="house-caption">Somente visualização cartográfica; as rotas reais permanecem no servidor.</span>}
+   </div>
+   {mapOpen&&<SpyNarratorOperationalMap operation={mappedOperation}/>}
    {visible.length?<div className="spy-operations-list">
     {visible.map(o=><article className="spy-operation-row" key={o.operationId}>
      <div>
@@ -250,6 +303,7 @@ export function SpyNarratorOperationsCenter(){
          ?'Prêmio sem confirmação: revisar integridade':
        'Chegada '+dateLabel(o.arrivalKey)+' · fim '+dateLabel(o.investigationEndKey)}</small>
      </div>
+     <div className="spy-operation-actions">
      {o.status==='pending_narrator_review'&&<Button type="button"
       disabled={query.isError} variant={selectedReview?.operationId===o.operationId?'default':'outline'}
       className="spy-operation-resolve-button"
@@ -271,6 +325,12 @@ export function SpyNarratorOperationsCenter(){
        setRecentResolution('Prêmio não confirmado. Verifique a decisão e o histórico; não repita o julgamento.');
        void query.refetch();
       }}>Verificar status</Button>}
+     <Button type="button" variant="outline"
+      aria-label={'Ver no mapa operação '+o.ownerHouseName+' contra '+o.targetHouseName}
+      onClick={()=>{setMappedOperationId(o.operationId);setMapOpen(true);}}>
+      <MapPinned size={15} aria-hidden="true"/> Mapa
+     </Button>
+     </div>
     </article>)}
    </div>:<p className="house-caption">Nenhuma missão neste filtro.</p>}
    {totalPages>1&&<div className="spy-operations-pages">

@@ -30,7 +30,7 @@ export function SpyNarratorIncidentHistory(){
   (outcome==='all'||row.outcome===outcome)&&
   (!search||[row.ownerHouseName,row.targetHouseName,row.agentName,row.targetRegion??'']
    .some(value=>normalized(value).includes(search))));
- return <details className="house-ledger spy-narrator-incidents"
+ return <details id="spy-narrator-incidents" className="house-ledger spy-narrator-incidents"
   onToggle={e=>setExpanded(e.currentTarget.open)}>
   <summary><ShieldAlert size={18} aria-hidden="true"/>
    {' '}Incidentes de contraespionagem do reino</summary>

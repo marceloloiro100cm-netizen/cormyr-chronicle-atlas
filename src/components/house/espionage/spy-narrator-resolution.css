@@ -20,3 +20,9 @@
  .spy-narrator-main-fields{grid-template-columns:minmax(0,1fr)}
  .spy-narrator-form>button[type=submit]{width:100%}
 }
+
+/* V3: decision explanation always uses confirmed server result. */
+.spy-narrator-resolution-details{display:block;border:1px solid var(--border);
+ border-radius:8px;padding:12px;font-size:13px;line-height:1.6;
+ overflow-wrap:anywhere}
+.spy-narrator-resolution-details strong{display:inline;font-weight:700}

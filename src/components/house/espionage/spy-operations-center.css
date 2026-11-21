@@ -103,3 +103,34 @@
 @media(prefers-reduced-motion:reduce){
  .spy-operation-inline-review{scroll-behavior:auto}
 }
+
+/* V3: real narrator task board; filter buttons never mutate missions. */
+.spy-operations-metric-button{display:grid;gap:4px;text-align:left;align-content:start;
+ border:1px solid var(--border);border-radius:10px;padding:12px;min-width:0;
+ background:var(--background);color:var(--foreground);cursor:pointer}
+.spy-operations-metric-button strong{font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.spy-operations-metric-button small{font-size:12px;color:var(--muted-foreground);line-height:1.4}
+.spy-operations-metric-button:hover{border-color:var(--primary)}
+.spy-operations-metric-button.is-active{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+.spy-narrator-quick-links{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.spy-narrator-quick-links a{min-height:44px;padding:9px 11px;display:inline-flex;align-items:center;
+ border:1px solid var(--border);border-radius:8px;color:var(--foreground);
+ font-size:13px;font-weight:650}
+.spy-narrator-quick-links a:hover{border-color:var(--primary);text-decoration:underline}
+.spy-narrator-clock{display:flex;align-items:center;gap:7px}
+.spy-narrator-clock-alert{padding:12px;border:1px solid #d5a15a;border-radius:10px;
+ display:grid;gap:8px;overflow-wrap:anywhere}
+.spy-narrator-clock-alert p{margin:0;font-size:13px}
+.spy-narrator-clock-alert ul{margin:0;padding-left:20px;font-size:13px;display:grid;gap:3px}
+.spy-narrator-map-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.spy-operation-actions{display:flex;justify-content:flex-end;align-items:center;
+ gap:8px;flex-wrap:wrap;min-width:0}
+.spy-operation-actions button{min-height:44px}
+.spy-operations-center button:focus-visible,
+.spy-narrator-quick-links a:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
+@media(max-width:720px){
+ .spy-operations-metric-button strong{font-size:22px}
+ .spy-operation-actions{justify-content:stretch}
+ .spy-operation-actions button{flex:1 1 100%;min-height:48px}
+ .spy-narrator-quick-links a{flex:1 1 100%;justify-content:center}
+}
