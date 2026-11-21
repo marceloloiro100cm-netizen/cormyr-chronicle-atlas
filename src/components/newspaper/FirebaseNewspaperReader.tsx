@@ -6,7 +6,7 @@
  * images. Private Storage paths must be served by a future Firebase media
  * adapter, never by Supabase.
  */
-import type {ReactNode} from 'react';
+import {useState,type ReactNode} from 'react';
 import {newspaperTypefaceFamily,NEWSPAPER_TYPEFACES,type NewspaperTypeface} from '@/lib/newspaper/model';
 
 type DisplayKind='headline'|'subtitle'|'article'|'quote'|'notice'|'image';
@@ -20,15 +20,23 @@ export type NewspaperEditionRead={
   campaignDate?:string|null;
 };
 
+const imageRoute=(editionId:string,index:number):string|null=>
+ /^[A-Za-z0-9_-]{1,128}$/.test(editionId)&&Number.isSafeInteger(index)&&
+ index>=0&&index<80
+  ?'/api/public/newspaper-image?edition='+encodeURIComponent(editionId)+'&index='+index
+  :null;
+
 const publicImage=(value:unknown):string|null=>{
   if(typeof value!=='string'||value.length>250||
-     value.includes('..')||value.includes('//')||
-     !/^\/(?:newspaper|cormyr)\/[a-zA-Z0-9/_-]+\.(?:png|jpe?g|webp|avif)$/i.test(value))
+     value.includes('..')||value.includes('//'))return null;
+  if(/^\/api\/public\/newspaper-image\?edition=[A-Za-z0-9_-]{1,128}&index=(?:0|[1-7]?[0-9])$/.test(value))
+   return value;
+  if(!/^\/(?:newspaper|cormyr)\/[a-zA-Z0-9/_-]+\.(?:png|jpe?g|webp|avif)$/i.test(value))
     return null;
   return value;
 };
 
-export function safePublishedBlocks(input:unknown):DisplayBlock[]{
+export function safePublishedBlocks(input:unknown,editionId?:string):DisplayBlock[]{
   if(!Array.isArray(input))return [];
   return input.slice(0,80).flatMap((raw,index)=>{
     if(!raw||typeof raw!=='object'||Array.isArray(raw))return [];
@@ -41,7 +49,10 @@ export function safePublishedBlocks(input:unknown):DisplayBlock[]{
       typeof b[key]==='string'?(b[key] as string).slice(0,max):'';
     const text=str('text',16000),subtitle=str('subtitle',1000);
     const byline=str('byline',200),caption=str('caption',600);
-    const imageSrc=publicImage(b['imageSrc']);
+    const imageSrc=publicImage(b['imageSrc'])??(
+      type==='image'&&typeof b['imagePath']==='string'&&
+      /^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/.test(b['imagePath'])&&
+      !b['imagePath'].includes('..')&&editionId?imageRoute(editionId,index):null);
     if(type!=='image'&&!text.trim())return [];
     return [{
       id:typeof b['id']==='string'&&b['id'].length<=120?b['id']:String(index),
@@ -51,6 +62,22 @@ export function safePublishedBlocks(input:unknown):DisplayBlock[]{
       ...(typeof b['span']==='number'&&[3,4,6,8,12].includes(b['span'])?{span:b['span']}:{}),
     }];
   });
+}
+
+function NewspaperPicture({item}:{item:DisplayBlock}){
+ const [broken,setBroken]=useState(false);
+ return <figure className="my-5">
+  {item.imageSrc&&!broken
+   ?<img src={item.imageSrc} alt={item.caption||'Gravura do jornal'}
+       onError={()=>setBroken(true)}
+       loading="lazy" className="max-h-[480px] w-full object-contain sepia-[.2]"/>
+   :<div className="flex min-h-28 items-center justify-center
+      border border-dashed border-[#af9167] p-4 text-center text-sm italic">
+      Gravura original ainda não disponível no Firebase Storage.
+     </div>}
+  {item.caption&&<figcaption className="mt-1 text-center text-xs italic">
+    {item.caption}</figcaption>}
+ </figure>;
 }
 
 function NewspaperBlock({item}:{item:DisplayBlock}):ReactNode{
@@ -77,19 +104,7 @@ function NewspaperBlock({item}:{item:DisplayBlock}):ReactNode{
           <p className="mt-2 whitespace-pre-wrap">{parts.join('\n').trim()}</p>}
       </aside>;
     }
-    case 'image':
-      return <figure className="my-5">
-        {item.imageSrc
-          ?<img src={item.imageSrc} alt={item.caption||'Gravura do jornal'}
-            loading="lazy" className="max-h-[480px] w-full object-contain sepia-[.2]"/>
-          :<div className="flex min-h-28 items-center justify-center
-            border border-dashed border-[#af9167] p-4 text-center
-            text-sm italic">Gravura preservada; acesso à imagem pendente
-            da migração para o Firebase Storage.</div>}
-        {item.caption&&<figcaption className="mt-1 text-center text-xs italic">
-          {item.caption}
-        </figcaption>}
-      </figure>;
+    case 'image':return <NewspaperPicture item={item}/>;
     default:{
       const [heading,...body]=item.text.split('\n');
       const story=body.join('\n').trim();
@@ -106,7 +121,7 @@ function NewspaperBlock({item}:{item:DisplayBlock}):ReactNode{
 }
 
 export function FirebaseNewspaperReader({edition}:{edition:NewspaperEditionRead}){
-  const items=safePublishedBlocks(edition.blocks);
+  const items=safePublishedBlocks(edition.blocks,edition.id);
   return <article aria-label="Edição publicada de A Folha Sem Selo"
     className="mx-auto w-full max-w-3xl bg-[#f1e1bf] text-[#38291e]
       border-4 border-double border-[#97744d] px-4 py-6 sm:px-8
