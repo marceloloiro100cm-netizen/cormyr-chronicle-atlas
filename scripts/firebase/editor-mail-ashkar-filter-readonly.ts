@@ -31,23 +31,27 @@ const scopedAuth={verifyIdToken:async()=>({uid:candidate.userId}),
 const service=createWorkspaceService({db,auth:scopedAuth,snapshotId,cacheImportedTables:true});
 const filter=(f:Record<string,string>)=>({kind:'rpc',name:'mail_page',
  args:{p_filters:{text:'',number:'',kind:'',read:'',...f},p_page:0,p_size:20}});
-const items=[
- {kind:'query',table:'campaign_houses',steps:[{op:'select',args:['id,name']}]},
- filter({}),filter({origin:'ashkar'}),filter({house:'ashkar'}),
- filter({origin:'none'}),
-];
+// Always resolve the SAME id selected in the UI. In the real roster the
+// display name may be "Casa Ashkar" and the id need not be the slug.
+const roster=await service.execute('authorized-editor-filter-audit',{kind:'query',
+ table:'campaign_houses',steps:[{op:'select',args:['id,name']}]});
+if(!Array.isArray(roster))throw Error('audit_catalog_unavailable');
+const ashkar=roster.filter(h=>typeof h?.name==='string'&&
+ /ashkar/i.test(h.name));
+if(ashkar.length!==1||typeof ashkar[0]?.id!=='string')
+ throw Error('audit_ashkar_catalog_ambiguous');
+const houseId=ashkar[0].id;
+const items=[filter({}),filter({origin:houseId}),
+ filter({house:houseId}),filter({origin:'none'})];
 const responses=await service.execute('authorized-editor-filter-audit',{kind:'batch',items});
 if(!Array.isArray(responses)||responses.length!==items.length||
  responses.some(r=>r?.ok!==true))throw Error('audit_query_failed');
-const houses=responses[0].result;
-if(!Array.isArray(houses)||!houses.some(h=>h.id==='ashkar'&&h.name==='Ashkar'))
- throw Error('audit_ashkar_catalog_mismatch');
-const totals=responses.slice(1).map(r=>r.result?.total);
+const totals=responses.map(r=>r.result?.total);
 if(totals.some(n=>!Number.isSafeInteger(n)||n<0))throw Error('audit_count_invalid');
 const [all,origin,related,narrator]=totals as number[];
 if(related<origin||all<related)throw Error('audit_filter_inconsistent');
 console.log('EDITOR_ASHKAR_AUDIT '+JSON.stringify({
  status:'ok',totalDeliveredVisible:all,originOnly:origin,
  houseInvolved:related,narratorOrigin:narrator,
- relatedButNotOrigin:related-origin,countsOnly:true,
+ relatedButNotOrigin:related-origin,catalogIdIsSlug:houseId==='ashkar',countsOnly:true,
 }));
