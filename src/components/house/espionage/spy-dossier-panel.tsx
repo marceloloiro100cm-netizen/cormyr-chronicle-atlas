@@ -254,7 +254,7 @@ export function SpyNarratorDossiers(){
   <SpyNarratorOperationsCenter/>
   <SpyNarratorIncidentHistory/>
   <section className="house-panel spy-dossier-panel"
-   aria-label="Dossiês de Espionagem do Narrador">
+   id="spy-narrator-dossiers" aria-label="Dossiês de Espionagem do Narrador">
    <p role="alert">Não foi possível consultar os dossiês. A Central de Operações
     continua disponível acima. Confira a sessão ou tente novamente.</p>
    <Button type="button" variant="outline" onClick={()=>void query.refetch()}>
@@ -264,7 +264,7 @@ export function SpyNarratorDossiers(){
  return <>
  <SpyNarratorOperationsCenter/>
  <SpyNarratorIncidentHistory/>
- <section className="house-panel spy-dossier-panel" aria-label="Dossiês de Espionagem do Narrador">
+ <section className="house-panel spy-dossier-panel" id="spy-narrator-dossiers" aria-label="Dossiês de Espionagem do Narrador">
   <div className="house-section-heading"><div>
    <p className="campaign-eyebrow">NARRADOR · INTELIGÊNCIA CONFIDENCIAL</p>
    <h2>Dossiês de Espionagem</h2>
