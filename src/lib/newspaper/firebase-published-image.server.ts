@@ -123,25 +123,42 @@ export async function readPublishedNewspaperPdf({db,bucket,snapshotId,editionId}
     e.cancelledAt!=null||(await deletedNewspaperIds(db,snapshotId)).has(editionId))
   bad(404,'newspaper_pdf_not_found');
  const path=e.pdfPath;
- if(typeof path!=='string'||!new RegExp('^newspaper-media/'+snapshotId+
-   '/editionPdf/[0-9a-f-]{36}\\.pdf$').test(path))
-  bad(404,'newspaper_pdf_not_found');
- const doc=await runtime.collection('newspaperMedia').doc(
-  createHash('sha256').update('newspaper-media:'+path).digest('hex')).get();
- const v=doc.data();
- if(!doc.exists||v?.state!=='ready'||v.path!==path||
-    v.kind!=='editionPdf'||v.sourceSnapshotId!==snapshotId||
-    v.editionId!==editionId||v.contentType!=='application/pdf')
-  bad(404,'newspaper_pdf_not_found');
- const file=bucket.file(path);
+ let file:any,expectedSize:number|null=null,expectedHash:string|null=null;
+ if(typeof path!=='string')bad(404,'newspaper_pdf_not_found');
+ if(typeof e.sourceHistoricId==='string'){
+  const source=await db.collection('migrationNewspaperRuntimeStage')
+   .doc(snapshotId).collection('editions').doc(e.sourceHistoricId).get();
+  const original=source.data();
+  if(!source.exists||original?.id!==e.sourceHistoricId||
+     original.pdfPath!==path||!LEGACY.test(path)||
+     path.includes('..')||path.includes('//'))
+   bad(404,'newspaper_pdf_not_found');
+  file=bucket.file('migration-staging/campaign-newspapers/'+path);
+  const [found]=await file.exists();
+  if(!found)file=bucket.file('campaign-newspapers/'+path);
+ }else{
+  if(!new RegExp('^newspaper-media/'+snapshotId+
+    '/editionPdf/[0-9a-f-]{36}\\.pdf$').test(path))
+   bad(404,'newspaper_pdf_not_found');
+  const doc=await runtime.collection('newspaperMedia').doc(
+   createHash('sha256').update('newspaper-media:'+path).digest('hex')).get();
+  const v=doc.data();
+  if(!doc.exists||v?.state!=='ready'||v.path!==path||
+     v.kind!=='editionPdf'||v.sourceSnapshotId!==snapshotId||
+     v.editionId!==editionId||v.contentType!=='application/pdf')
+   bad(404,'newspaper_pdf_not_found');
+  expectedSize=v.bytes;expectedHash=v.sha256;
+  file=bucket.file(path);
+ }
  const [exists]=await file.exists();if(!exists)bad(404,'newspaper_pdf_not_found');
  const [meta]=await file.getMetadata(),size=Number(meta?.size);
- if(!Number.isSafeInteger(size)||size<5||size>MAX_IMAGE_BYTES||size!==v.bytes)
+ if(!Number.isSafeInteger(size)||size<5||size>MAX_IMAGE_BYTES||
+    expectedSize!==null&&size!==expectedSize)
   bad(404,'newspaper_pdf_not_found');
  const [bytes]=await file.download();
  if(!Buffer.isBuffer(bytes)||bytes.length!==size||
     bytes.subarray(0,5).toString()!=='%PDF-'||
-    createHash('sha256').update(bytes).digest('hex')!==v.sha256)
+    expectedHash!==null&&createHash('sha256').update(bytes).digest('hex')!==expectedHash)
   bad(503,'newspaper_pdf_integrity');
  return {data:bytes,contentType:'application/pdf'};
 }
