@@ -125,6 +125,12 @@
  * transmite publish_on do estado aberto; não apaga a data de publicação
  * agendada ao persistir alterações de texto. Os menus, botões, filtros
  * e estados históricos permanecem idênticos. A paridade foi revisada.
+ * 2026-11-21 (tela roxa no celular, PR corretivo): somente o CSS da
+ * Redação corrige a faixa 761–1020px, onde o menu horizontal herdava
+ * indevidamente o min-height do rail de desktop, empurrando o conteúdo do
+ * jornal para fora da primeira tela. As 10 abas existentes passam a se
+ * distribuir em linhas visíveis em tablets e celulares, sem excluir ações.
+ * A paridade do arquivo de estilo foi recapturada após revisão do diff.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -142,7 +148,7 @@ const originals={
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
   'src/components/newspaper/NewspaperHub.tsx':'50d897ac44662ddf37bc794adba1114e5b513ff7',
-  'src/components/newspaper/newspaper-editorial.css':'7983710e5e5a6cc5872cb9b6568fc0a81f4cdd43',
+  'src/components/newspaper/newspaper-editorial.css':'6b20d2e36145a88ead599c37373a09895a2ac40b',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
@@ -193,4 +199,22 @@ test('legacy player and Mail filters remain reference contracts',()=>{
     'mail-overview','filtersVisible','group_house_ids','schedule_letter_draft',
     'mark_letter_read','restore_campaign_letter','set_letter_round'])
     assert.ok(mail.includes(feature),'Original mailbox filter/action missing: '+feature);
+});
+
+test('Editorial responsive rail does not bury the journal below a blank panel',()=>{
+  const css=readFileSync(resolve(root,'src/components/newspaper/newspaper-editorial.css'),'utf8');
+  const marker='/* Celular e tablet: corrigir o rail alto do desktop e revelar todas as abas.';
+  const start=css.indexOf(marker);
+  assert.ok(start>0,'Missing reviewed mobile override');
+  // This rule must remain after the desktop 761px min-height declaration;
+  // otherwise the tablet breakpoint brings back the empty plum panel.
+  const lateDesktop=css.lastIndexOf('.folha-navigation{min-height:calc(100vh');
+  assert.ok(start>lateDesktop,'Mobile override precedes the desktop rail min-height');
+  const mobile=css.slice(start);
+  assert.match(mobile,/@media\(max-width:1020px\)/);
+  assert.match(mobile,/\.folha-editorial \.folha-navigation\{\s*min-height:0;height:auto;overflow:visible/);
+  assert.match(mobile,/\.folha-editorial \.folha-navigation nav\{\s*display:grid;grid-template-columns:repeat\(auto-fit,minmax\(150px,1fr\)\)/);
+  assert.match(mobile,/\.folha-editorial \.folha-navigation nav a\{[\s\S]*?white-space:normal/);
+  assert.match(mobile,/@media\(max-width:600px\)/);
+  assert.match(mobile,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });
