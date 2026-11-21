@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createFirebaseNarratorWeekDraft,planNarratorWeekDraft,
+import {createFirebaseNarratorWeekDraft,planNarratorWeekDraft,planCalendarDateChange,
   NarratorWeekDraftError} from './cloud-narrator-week-draft.mjs';
 
 const HASH='c'.repeat(64);
@@ -316,4 +316,117 @@ test('virada anual gera uma auditoria por ano e retry não duplica eventos',asyn
  assert.equal(retry.duplicate,true);
  assert.equal([...data].filter(([path])=>path.startsWith(prefix)).length,1);
  assert.equal(data.get('migrationTimeEngineStage/'+HASH+'/calendar/current').year,1522);
+});
+
+/* ---- Data oficial independente da semana de correspondência ---- */
+const dateChangeReq=(changes={})=>({
+ expectedCalendarVersion:5,expectedOpenRound:3,
+ proposedDate:{year:1522,month:0,day:12,festival:null},
+ reason:'Correção independente do dia oficial pelo Narrador',
+ requestKey:'date-change-unique-01',...changes,
+});
+
+test('independent date command keeps mail round and archive unchanged and audits once',async()=>{
+ const {service,data}=await launched();
+ const source='migrationTimeEngineStage/'+HASH+'/calendar/current';
+ const historical=JSON.stringify(data.get(source));
+ const event='campaignCloudRuntime/'+HASH+'/scheduleEvents/evt-test';
+ data.set(event,{id:'evt-test',version:1,
+  draft:{date:'1522-01-14',title:'Evento rascunho',description:'',deleted:false},
+  published:null});
+ const result=await service.changeDate('valid-token',dateChangeReq());
+ assert.equal(result.changed,true);
+ assert.equal(result.openRound,3);
+ assert.equal(result.calendar.day,12);
+ assert.equal(result.calendar.version,6);
+ assert.equal(data.get('campaignCloudRuntime/'+HASH).openRound,3);
+ assert.equal(data.get('campaignMailRuntime/'+HASH).openRound,3);
+ assert.equal(data.get('campaignMailRuntime/'+HASH).calendarVersion,6);
+ assert.equal(data.get('campaignCloudRuntime/'+HASH).publishedTimeVersion,6);
+ assert.equal(JSON.stringify(data.get(source)),historical);
+ assert.equal(data.get(event).published,null,'date edit must not publish event drafts');
+ const view=await service.get('valid-token');
+ assert.equal(view.calendarPublished,true);
+ assert.equal(view.mailEnabled,true);
+ assert.equal(view.openRound,3);
+ const history=await service.history('valid-token');
+ assert.equal(history[0].action,'set_calendar_date');
+ assert.deepEqual([history[0].fromRound,history[0].toRound],[3,3]);
+ const again=await service.changeDate('valid-token',dateChangeReq());
+ assert.equal(again.duplicate,true);
+ assert.equal(data.get('campaignCloudRuntime/'+HASH).calendarVersion,6);
+});
+
+test('date-only command rejects stale version, unsafe regressions and invalid scope',async()=>{
+ const {service}=await launched();
+ for(const changes of [{expectedCalendarVersion:4},{expectedOpenRound:2}]){
+  await assert.rejects(service.changeDate('valid-token',dateChangeReq(changes)),
+   e=>e.code==='calendar_version_conflict'&&e.status===409);
+ }
+ await assert.rejects(service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1522,month:0,day:11,festival:null},
+ })),e=>e.code==='date_unchanged');
+ await assert.rejects(service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1522,month:0,day:10,festival:null},
+ })),e=>e.code==='date_backdate_acknowledgement_required');
+ await assert.rejects(service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1521,month:11,day:30,festival:null},
+  allowBackdate:true,acknowledgeIrreversibleEffects:true,
+ })),e=>e.code==='historical_month_reversal_forbidden');
+ await assert.rejects(service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1522,month:1,day:1,festival:null},
+ })),e=>e.code==='house_effects_acknowledgement_required');
+ await assert.rejects(service.changeDate('valid-token',dateChangeReq({
+  requestKey:'short',
+ })),e=>e.code==='date_change_invalid_request');
+ await assert.rejects(service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1522,month:13,day:1,festival:null},
+ })),e=>e.code==='draft_date_invalid');
+ const accepted=await service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1522,month:0,day:10,festival:null},
+  allowBackdate:true,acknowledgeIrreversibleEffects:true,
+ }));
+ assert.equal(accepted.openRound,3);
+ assert.equal(accepted.calendar.day,10);
+ for(const config of [{profile:'editor'},{profile:'jogador'},{active:false}]){
+  const f=readyLaunch(config);
+  await assert.rejects(f.service.changeDate('valid-token',dateChangeReq()));
+ }
+});
+
+test('date-only month and year transition records pending effects without opening a week',async()=>{
+ const {service,data}=await launched();
+ const root='campaignCloudRuntime/'+HASH;
+ const live=data.get(root);
+ data.set(root,{...live,calendar:{year:1522,month:11,day:30,festival:null,version:5},
+  calendarVersion:5});
+ const result=await service.changeDate('valid-token',dateChangeReq({
+  proposedDate:{year:1523,month:0,day:1,festival:null},
+  acknowledgeHouseEffectsPending:true,requestKey:'date-1523-transition',
+ }));
+ assert.equal(result.openRound,3);
+ assert.equal(result.monthsCrossed,1);
+ assert.equal(result.calendar.year,1523);
+ assert.equal(data.get(root).pendingHouseEffectMonths,1);
+ assert.equal(data.get('campaignMailRuntime/'+HASH).openRound,3);
+ const transitions=[...data].filter(([k])=>k.startsWith(root+'/characterYearTransitions/'));
+ assert.equal(transitions.length,1);
+ assert.equal(transitions[0][1].fromYear,1522);
+ assert.equal(transitions[0][1].toYear,1523);
+ assert.equal(data.get('migrationTimeEngineStage/'+HASH+'/calendar/current').year,1522);
+});
+
+test('pure date planner enforces mail round and month boundaries',()=>{
+ const live={calendar:{year:1522,month:9,day:20,festival:null,version:3},
+  calendarVersion:3,openRound:3};
+ const req={expectedCalendarVersion:3,expectedOpenRound:3,
+  proposedDate:{year:1522,month:9,day:21,festival:null},
+  reason:'Mudar para a terceira désdia em Marpenoth'};
+ assert.deepEqual(planCalendarDateChange({live,request:req}).openRound,3);
+ rejectCode(()=>planCalendarDateChange({live,request:{...req,expectedOpenRound:4}}),
+  'calendar_version_conflict',409);
+ rejectCode(()=>planCalendarDateChange({live,request:{...req,
+  proposedDate:{year:1522,month:8,day:30,festival:null},
+  allowBackdate:true,acknowledgeIrreversibleEffects:true}}),
+ 'historical_month_reversal_forbidden',400);
 });
