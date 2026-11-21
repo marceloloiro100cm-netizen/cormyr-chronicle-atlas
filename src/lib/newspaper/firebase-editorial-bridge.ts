@@ -10,7 +10,7 @@ import {safeNewspaperBlocks,type NewspaperEdition,type NewspaperBlock,type Newsp
 
 const CLOUD=/^cloud-[a-f0-9]{64}$/;
 type CloudEdition={id:string;editionNo:number;title:string;subtitle:string;
- blocks:NewspaperBlock[];pdfPath?:string|null;version:number;state:NewspaperState;
+ blocks:NewspaperBlock[];pdfPath?:string|null;publishOn?:string|null;version:number;state:NewspaperState;
  campaignDate:string;publishedAt:string|null;template?:NewspaperTemplate;
  font_style?:NewspaperFont};
 type EditorialList={items:{id:string;editionNo:number;title:string;
@@ -36,6 +36,7 @@ export function originalNewspaperEdition(value:CloudEdition):NewspaperEdition{
   title:value.title,subtitle:value.subtitle,
   template:value.template??'classico',font_style:value.font_style??'classico',
   state:value.state,blocks:safeNewspaperBlocks(value.blocks),pdf_path:value.pdfPath??null,
+  publish_on:value.publishOn??null,
   version:value.version,publication_revision:value.publishedAt?value.version:0,
   created_by:'',updated_at:value.publishedAt??'',published_at:value.publishedAt,
   archived_at:null,cancelled_at:null,publish_on:null,
@@ -158,7 +159,7 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
   throw Error('Identificador de edição duplicado no acervo.');
  return combined.sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
 }
-type DraftInput={campaign_date:string;title:string;subtitle?:string;pdf_path?:string|null;
+type DraftInput={campaign_date:string;title:string;subtitle?:string;pdf_path?:string|null;publish_on?:string|null;
  template:NewspaperTemplate;font_style?:NewspaperFont;blocks:NewspaperBlock[]};
 type UpdateInput=DraftInput&{font_style:NewspaperFont;pdf_path:string|null;
  state:NewspaperState;publish_on?:string|null};
@@ -166,6 +167,7 @@ const content=(v:DraftInput)=>({
  title:v.title,subtitle:v.subtitle??'',template:v.template,
  font_style:v.font_style??'classico',blocks:v.blocks,
  ...(v.pdf_path?{pdfPath:v.pdf_path}:{}),
+ publishOn:v.publish_on??null,
 });
 export async function createFirebaseNewspaperEdition(input:DraftInput):Promise<NewspaperEdition>{
  if(!isFirebaseNewspaperWorkspace())throw Error('Área Firebase não está ativa.');
@@ -228,8 +230,6 @@ export async function updateFirebaseNewspaperEdition(
    campaign_date:saved.campaignDate,blocks:safeNewspaperBlocks(saved.blocks),
    version:saved.version,state:'draft'};
  }
- if(input.publish_on!=null)
-  throw Error('Agendamento editorial depende do calendário operacional do Firebase.');
  const saved=await request<CloudEdition>({action:'saveEdition',requestKey:crypto.randomUUID(),
   id:current.id,expectedVersion:current.version,state:input.state,
   content:content(input)});
