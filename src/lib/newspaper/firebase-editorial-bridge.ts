@@ -206,8 +206,15 @@ export async function updateFirebaseNewspaperEdition(
  if(!CLOUD.test(current.id)){
   if(!HISTORICAL_ID.test(current.id)||current.state!=='draft')
    throw Error('Esta edição histórica não é um rascunho editável. O original permanece preservado.');
+  if(input.state==='published'){
+   if(input.pdf_path!==current.pdf_path||input.publish_on!=null)
+    throw Error('Revise os anexos e agendamentos históricos antes de publicar.');
+   const saved=await request<CloudEdition>({action:'publishHistoricalDraft',
+    id:current.id,requestKey:crypto.randomUUID(),expectedVersion:current.version});
+   return originalNewspaperEdition(saved);
+  }
   if(input.state!=='draft')
-   throw Error('Salve o rascunho histórico. Publicá-lo requer revisão separada para preservar a edição original.');
+   throw Error('O original histórico não pode ser arquivado nem cancelado por esta edição.');
   if(input.pdf_path!==current.pdf_path||input.publish_on!=null)
    throw Error('Anexos e publicação agendada de edições importadas exigem reconciliação.');
   const saved=await request<HistoricalDraft>({action:'saveHistoricalDraft',
