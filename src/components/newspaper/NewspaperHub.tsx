@@ -3,7 +3,7 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight,EyeOff} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {isFirebaseNewspaperWorkspace} from '@/lib/newspaper/firebase-editorial-bridge';
-import {isFirebaseNewspaperMediaPath} from '@/lib/newspaper/firebase-newspaper-media.client';
+import {isFirebaseNewspaperMediaPath} from '@/lib/newspaper/firebase-newspaper-media';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate} from '@/lib/calendar/harptos';
