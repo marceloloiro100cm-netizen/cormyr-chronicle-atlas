@@ -16,6 +16,18 @@ const isObj=(v:unknown):v is Record<string,unknown>=>
 const LEGACY_PREFIX='migration-staging/campaign-images/';
 const LEGACY_PATH=/^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/;
 const LEGACY_LIMIT=20*1024*1024;
+/**
+ * The original version-one Storage manifest is keyed by the verified
+ * snapshot document ID but historically omitted sourceSnapshotId. New
+ * manifests must explicitly match the snapshot; an explicitly mismatched
+ * value is never accepted. Object authorization and dual-bucket checksum
+ * checks remain mandatory in either case.
+ */
+export function legacyStorageStageMatches(stage:any,snapshotId:string):boolean{
+ return stage?.status==='complete'&&stage.private===true&&
+  (stage.sourceSnapshotId===snapshotId||
+   (stage.sourceSnapshotId===undefined&&stage.formatVersion===1));
+}
 /** Entre requisições (a rota cria o serviço a cada chamada). */
 const legacyCache=new Map<string,{until:number;paths:Promise<Set<string>>}>();
 export function createFirebasePrivateMedia({db,auth,bucket,verifiedBucket,snapshotId}:{
@@ -62,8 +74,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,verifiedBucket,snapsh
   if(!runtime.exists||v?.status!=='active'||v.private!==true||
      v.sourceSnapshotId!==snapshotId||
      v.sourceSnapshotReconciled!==true||v.applicationEnabled!==true||
-     !storage.exists||stage?.status!=='complete'||stage.private!==true||
-     stage.sourceSnapshotId!==snapshotId||
+     !storage.exists||!legacyStorageStageMatches(stage,snapshotId)||
      typeof verifiedBucket?.file!=='function')
     privateMediaFail('private_media_archive_not_approved',503);
  };
