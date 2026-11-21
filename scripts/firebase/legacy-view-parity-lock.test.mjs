@@ -91,6 +91,11 @@
  * o envio de foto para o Firebase Storage autenticado; a interface e os
  * demais comandos editoriais permanecem os mesmos. O formulário e a API
  * tratam prévia, erro, gravação, vínculo e leitura pública do retrato.
+ * 2026-11-21 (edição histórica nº 002): NewspaperHub.tsx mantém o
+ * layout e todos os controles; apenas atualiza o cache local após um
+ * salvamento operacional bem-sucedido e não repete para sempre erros
+ * permanentes da gravação. A cópia editável permanece no Firebase; o
+ * acervo histórico e os filtros continuam inalterados.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -107,7 +112,7 @@ const originals={
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
-  'src/components/newspaper/NewspaperHub.tsx':'1e114bdab2c3982736d37a398fea70d99fde1129',
+  'src/components/newspaper/NewspaperHub.tsx':'ac40c18aa5a2e33f6ac96d1de7d9eab6e911a945',
   'src/components/newspaper/newspaper-editorial.css':'1201a06ca889a61da1a9f905701c0e0107a87b17',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
