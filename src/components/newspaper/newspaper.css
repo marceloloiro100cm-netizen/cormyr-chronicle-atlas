@@ -589,3 +589,14 @@
  .newspaper-article,.newspaper-quote,.newspaper-notice-block,
  .newspaper-colophon,.newspaper-byline,.newspaper-photo figcaption
 ){color:#33281a}
+
+/* Miniaturas de resgate dos quatro retratos originais da Redação.
+   A moldura preserva tamanho e recorte mesmo sem Firebase Storage. */
+.folha-staff-photo-historical{
+ display:block;flex:none;
+ background-color:#e6c275;
+ background-repeat:no-repeat;
+ background-size:400% auto;
+ border:2px solid #a07a44;
+ border-radius:4px;
+}
