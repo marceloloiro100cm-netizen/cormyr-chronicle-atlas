@@ -1,7 +1,7 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {saveFirebaseStaffPhoto} from '@/lib/newspaper/firebase-newspaper-staff-photo.server';
 import {NewspaperStaffError} from '@/lib/newspaper/firebase-newspaper-staff.server';
-import {CloudAccessError} from '../../../../scripts/firebase/cloud-readonly-service.mjs';
+import {CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const headers={'Cache-Control':'private, no-store','Vary':'Authorization',
