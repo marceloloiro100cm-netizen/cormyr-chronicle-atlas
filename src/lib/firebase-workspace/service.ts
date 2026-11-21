@@ -74,7 +74,9 @@ export const recordVisible=(s:Scope,r:Row)=>s.profile==='narrador'||s.profile===
  * Cache por instância do Firestore; falhas nunca ficam guardadas. Permissões
  * continuam aplicadas a cada consulta, depois da leitura.
  */
-const TABLE_TTL_MS=30*60_000;
+// O acervo importado não muda depois de concluído; com a instância mantida
+// aquecida (minInstances 1), 6 horas evitam reler centenas de documentos.
+const TABLE_TTL_MS=6*60*60_000;
 const tableCache=new WeakMap<object,Map<string,{at:number;rows:Promise<Row[]>}>>();
 export function cachedWorkspaceTable(db:any,snapshotId:string,name:string,now=Date.now()):Promise<Row[]>{
  let byDb=tableCache.get(db);

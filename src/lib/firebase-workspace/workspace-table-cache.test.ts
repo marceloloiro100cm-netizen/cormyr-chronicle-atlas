@@ -31,7 +31,7 @@ describe('cache do acervo importado (login rápido)',()=>{
     await cachedWorkspaceTable(a,snap,'campaign_houses',0);
     await cachedWorkspaceTable(b,snap,'campaign_houses',0);
     await cachedWorkspaceTable(a,'b'.repeat(64),'campaign_houses',0);
-    await cachedWorkspaceTable(a,snap,'campaign_houses',31*60_000);
+    await cachedWorkspaceTable(a,snap,'campaign_houses',6*60*60_000+60_000);
     expect(f.reads).toBe(4);
   });
 });

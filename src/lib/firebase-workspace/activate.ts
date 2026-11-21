@@ -1,4 +1,4 @@
-import {createWorkspaceClient,workspaceRequest} from './client';
+import {createWorkspaceClient,installWorkspaceWriteInvalidation,workspaceRequest} from './client';
 import {setFirebaseWorkspaceClient,registerWorkspaceFunction,clearWorkspaceFunctions} from './state';
 import {loadHouseHub,loadHouseLedger,houseOperation,readCourtMember,readVassalNpc,saveHouseRule} from '../house/house.functions';
 import {submitFirebaseHouseOperation} from '../house/firebase-house-operation-client';
@@ -57,6 +57,7 @@ let stop:ReturnType<typeof setTimeout>|null=null;
 export function activateFirebaseWorkspace(){
  if(stop){clearTimeout(stop);stop=null;}
  setFirebaseWorkspaceClient(createWorkspaceClient());
+ installWorkspaceWriteInvalidation();
  registerWorkspaceFunction(loadHouseHub,input=>workspaceRequest({kind:'house',houseId:input?.data?.houseId}));
  // Ficha importada da vassala (Ashkar/Qazir e Everlost/Everet) lida no servidor Firebase.
  registerWorkspaceFunction(loadVassalWorkbook,input=>workspaceRequest({kind:'rpc',name:'vassal_workbook',

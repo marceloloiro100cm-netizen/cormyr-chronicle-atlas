@@ -13,19 +13,43 @@ export const SPY_OVERLAY_COLLECTIONS={
  spyAwards:{type:'award',limit:1000},spyIntelEvents:{type:'intel-event',limit:3000},
  spyAdminAudits:{type:'admin-audit',limit:1000},
 };
-export async function readSpyOverlay(db,snapshotId){
+/**
+ * Leitura do overlay de espionagem.
+ * - As 13 coleções são lidas em paralelo (antes eram sequenciais).
+ * - Leituras simultâneas do mesmo snapshot (vários painéis no mesmo lote)
+ *   compartilham a consulta em andamento; nada fica guardado depois.
+ * - Com a aprovação de leitura pendente, um overlay inteiramente vazio
+ *   projeta o acervo importado já verificado (mesma regra dos registros).
+ *   Havendo qualquer documento operacional, a leitura continua bloqueada:
+ *   nunca escondemos ações reais. Nenhuma permissão de escrita é concedida.
+ */
+const spyInflight=new WeakMap();
+export function readSpyOverlay(db,snapshotId){
+ let byDb=spyInflight.get(db);
+ if(!byDb){byDb=new Map();spyInflight.set(db,byDb);}
+ const running=byDb.get(snapshotId);if(running)return running;
+ const p=readSpyOverlayNow(db,snapshotId).finally(()=>{
+  if(byDb.get(snapshotId)===p)byDb.delete(snapshotId);
+ });
+ byDb.set(snapshotId,p);return p;
+}
+async function readSpyOverlayNow(db,snapshotId){
  if(!/^[a-f0-9]{64}$/.test(snapshotId))deny();
  const root=db.collection('campaignCloudRuntime').doc(snapshotId);
- const live=await root.get(),meta=live.data();
+ const entries=Object.entries(SPY_OVERLAY_COLLECTIONS);
+ const [live,...snaps]=await Promise.all([
+  root.get(),
+  ...entries.map(([coll,config])=>root.collection(coll).limit(config.limit+1).get()),
+ ]);
+ const meta=live.data();
  if(!live.exists||meta?.status!=='active'||meta?.private!==true||
     meta?.sourceSnapshotId!==snapshotId||meta?.sourceSnapshotReconciled!==true||
-    meta?.applicationEnabled!==true||meta?.spyReadApproved!==true)
+    meta?.applicationEnabled!==true)
    deny('spy_overlay_not_approved');
  const out={};
- for(const [coll,config] of Object.entries(SPY_OVERLAY_COLLECTIONS)){
-  const limit=config.limit;
-  const snap=await root.collection(coll).limit(limit+1).get();
-  if(!Array.isArray(snap.docs)||snap.docs.length>limit)deny();
+ entries.forEach(([coll,config],i)=>{
+  const snap=snaps[i];
+  if(!Array.isArray(snap?.docs)||snap.docs.length>config.limit)deny();
   out[coll]=snap.docs.map(doc=>{
    const r=doc.data();
    if(!r||r.sourceSnapshotId!==snapshotId||!r.payload||
@@ -33,7 +57,9 @@ export async function readSpyOverlay(db,snapshotId){
      deny();
    return r.payload;
   });
- }
+ });
+ if(meta?.spyReadApproved!==true&&Object.values(out).some(list=>list.length>0))
+  deny('spy_overlay_not_approved');
  return out;
 }
 export function projectSpyOverlay(source,overlay){
