@@ -97,15 +97,22 @@ function PublicNewspaper(){
         <span>Atlas <em>Cormyr</em></span></a>
       <a href="/cormyr/index.html">Voltar ao Atlas</a>
     </header>}
-    <div className="public-folha-head">
-      <img src="/newspaper/brasao_folha.webp" alt="" aria-hidden="true" width={56} height={56}/>
-      <div><p className="newspaper-kicker">A IMPRENSA DO REINO</p><h1>A Folha Sem Selo</h1>
-        <p>As notícias que atravessam Cormyr, abertas a todos os leitores.</p></div>
+    <div className="public-folha-masthead">
+      <div className="public-folha-head">
+        <div className="public-folha-crest" aria-hidden="true">
+          <img src="/newspaper/brasao_folha.webp" alt="" width={220} height={220}/>
+        </div>
+        <div className="public-folha-head-copy">
+          <p className="newspaper-kicker">A IMPRENSA DO REINO</p>
+          <h1>A Folha Sem Selo</h1>
+          <p>As notícias que atravessam Cormyr, abertas a todos os leitores.</p>
+        </div>
+      </div>
+      <nav className="public-folha-tabs" aria-label="Jornal">
+        <a aria-current={view==='edicoes'?'page':undefined} {...urlLinkProps({ver:null})} href={newTabHref({ver:null})}><Newspaper size={16}/> Edições</a>
+        <a aria-current={view==='redacao'?'page':undefined} {...urlLinkProps({ver:'redacao'})} href={newTabHref({ver:'redacao'})}><UsersRound size={16}/> A Redação</a>
+      </nav>
     </div>
-    <nav className="public-folha-tabs" aria-label="Jornal">
-      <a aria-current={view==='edicoes'?'page':undefined} {...urlLinkProps({ver:null})} href={newTabHref({ver:null})}><Newspaper size={16}/> Edições</a>
-      <a aria-current={view==='redacao'?'page':undefined} {...urlLinkProps({ver:'redacao'})} href={newTabHref({ver:'redacao'})}><UsersRound size={16}/> A Redação</a>
-    </nav>
     {list.isPending&&<p role="status" className="public-folha-status">Abrindo o arquivo do jornal…</p>}
     {list.isError&&<p role="alert" className="public-folha-status">{list.error instanceof Error?list.error.message:'Jornal indisponível.'}</p>}
     {list.data&&view==='redacao'&&(staff.length?<NewspaperTeam staff={staff}/>:
