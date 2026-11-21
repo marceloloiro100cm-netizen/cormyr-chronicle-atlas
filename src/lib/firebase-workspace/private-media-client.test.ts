@@ -1,10 +1,10 @@
 import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
-const session=vi.hoisted(()=>({token:vi.fn()}));
+const session=vi.hoisted(()=>({uid:'player',token:vi.fn()}));
 vi.mock('@/lib/auth/firebase-pilot-session',()=>({
- firebasePilotAuth:()=>({current:()=>({uid:'player'}),getToken:session.token}),
+ firebasePilotAuth:()=>({current:()=>({uid:session.uid}),getToken:session.token}),
 }));
 import {mediaUploadId,downloadFirebasePrivateImage} from './private-media-client';
-beforeEach(()=>session.token.mockReset().mockResolvedValue('verified-token'));
+beforeEach(()=>{session.uid='player';session.token.mockReset().mockResolvedValue('verified-token');});
 afterEach(()=>vi.useRealTimers());
 
 describe('ponte de imagens Firebase',()=>{
@@ -27,6 +27,29 @@ describe('ponte de imagens Firebase',()=>{
   const check=expect(pending).rejects.toThrow('A imagem demorou além do limite');
   await vi.advanceTimersByTimeAsync(18_001);
   await check;
+ });
+
+ it('permite imagem após o primeiro refresh hidratar o UID do Firebase',async()=>{
+  session.uid='';
+  session.token.mockImplementation(async()=>{session.uid='player';return 'verified-token';});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({
+   ok:true,headers:new Headers({'content-type':'image/png'}),
+   blob:async()=>new Blob(['original'],{type:'image/png'}),
+  }));
+  try{
+   const data=await downloadFirebasePrivateImage('historico/retrato.png');
+   expect(data.size).toBeGreaterThan(0);
+   expect(fetch).toHaveBeenCalledTimes(1);
+  }finally{vi.unstubAllGlobals();}
+ });
+ it('não autoriza download após troca de identidade no refresh',async()=>{
+  session.token.mockImplementation(async()=>{session.uid='other';return 'token';});
+  vi.stubGlobal('fetch',vi.fn());
+  try{
+   await expect(downloadFirebasePrivateImage('historico/retrato.png'))
+    .rejects.toThrow('Sessão Firebase encerrada');
+   expect(fetch).not.toHaveBeenCalled();
+  }finally{vi.unstubAllGlobals();}
  });
 
 });
