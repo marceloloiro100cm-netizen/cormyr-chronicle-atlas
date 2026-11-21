@@ -1,0 +1,37 @@
+name: Firebase — diagnóstico de filtro Ashkar (somente leitura)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/editor-mail-ashkar-filter-readonly.ts'
+      - '.github/workflows/firebase-editor-ashkar-filter-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check source privacy guard
+        run: node scripts/verify-public-repo.mjs
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: oven-sh/setup-bun@v2
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compare editor's source filter with Casa involved filter
+        env:
+          GOOGLE_CLOUD_PROJECT: cormyr
+        run: bun scripts/firebase/editor-mail-ashkar-filter-readonly.ts
