@@ -47,6 +47,16 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   expect(container.querySelector('.newspaper-story-notice')).not.toHaveClass('newspaper-story-editable');
  });
 
+ it('preserva apenas o URL interno seguro ao normalizar bloco público',()=>{
+  const route='/api/public/newspaper-image?edition=edition-one&index=2';
+  const safe=safeNewspaperBlocks([{...edition.blocks[2],imagePath:undefined,imageSrc:route}]);
+  expect(safe[0]?.imageSrc).toBe(route);
+  const unsafe=safeNewspaperBlocks([{...edition.blocks[2],imagePath:undefined,
+   imageSrc:'https://evil.example/image.png'}]);
+  expect(unsafe[0]?.imageSrc).toBeUndefined();
+  const {container}=render(<NewspaperCanvas edition={{...edition,state:'published',blocks:safe}}/>);
+  expect(container.querySelector('.newspaper-story-image img')?.getAttribute('src')).toBe(route);
+ });
  it('usa o subtítulo da edição no rodapé em vez do lema fixo, inclusive ao alterá-lo',()=>{
   const {container,rerender}=render(<NewspaperCanvas edition={edition}/>);
   const footer=container.querySelector('.newspaper-colophon');
