@@ -46,9 +46,14 @@ export async function readPublishedNewspaperImage({
     typeof block.imagePath!=='string'||!LEGACY.test(block.imagePath)||
     block.imagePath.includes('..')||block.imagePath.includes('//'))
   bad(404,'newspaper_image_not_found');
- const path='migration-staging/campaign-newspapers/'+block.imagePath;
- const file=bucket.file(path);
- const [exists]=await file.exists();
+ // O mesmo arquivo histórico pode estar no prefixo importado ou no canônico.
+ // Não existe escolha de caminho pelo visitante.
+ let file=bucket.file('migration-staging/campaign-newspapers/'+block.imagePath);
+ let [exists]=await file.exists();
+ if(!exists){
+  file=bucket.file('campaign-newspapers/'+block.imagePath);
+  [exists]=await file.exists();
+ }
  if(!exists)bad(404,'newspaper_image_not_found');
  const [meta]=await file.getMetadata();
  const size=Number(meta?.size);
