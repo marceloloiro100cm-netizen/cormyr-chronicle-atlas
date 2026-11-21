@@ -9,3 +9,10 @@ export const HISTORICAL_STAFF_INDEX:Readonly<Record<string,number>>={
  'e1d07694-49e8-4703-bb4f-53ed1b3fbdb3':2, // Charlotte
  '987fa6a4-b052-41b8-b13e-fd50fa8f609a':3, // Edwina
 };
+/** Compatibilidade com identificadores operacionais recriados na migração. */
+export const HISTORICAL_STAFF_BY_NAME:Readonly<Record<string,number>>={
+ 'parkxs altenbuch':0,
+ 'astarion ancunin':1,
+ 'charlotte, o famoso gourmet':2,
+ 'edwina':3,
+};
