@@ -55,27 +55,7 @@ export async function readPublishedNewspaperImage({
  let expectedHash:string|null=null;
  if(cloud){
   if(!new RegExp('^newspaper-media/'+snapshotId+
-    '/editionImage/[0-9a-f-]{36}\\.(?:png|jpg|webp)
- if(!exists)bad(404,'newspaper_image_not_found');
- const [meta]=await file.getMetadata();
- const size=Number(meta?.size);
- if(!Number.isSafeInteger(size)||size<1||size>MAX_IMAGE_BYTES)
-  bad(404,'newspaper_image_not_found');
- const [bytes]=await file.download();
- if(!Buffer.isBuffer(bytes)||bytes.length!==size||
-    expectedHash&&createHash('sha256').update(bytes).digest('hex')!==expectedHash)
-  bad(503,'newspaper_image_integrity_failed');
- const type=imageType(bytes);
- if(!type)return bad(503,'newspaper_image_type_invalid');
- // A signed public edition already has an immutable, reviewed source. The
- // original image path never appears in the response URL or headers.
- return {data:bytes,contentType:type};
-}
-export function publishedImageSrc(editionId:string,index:number):string|null{
- if(!ID.test(editionId)||!Number.isSafeInteger(index)||index<0||index>=80)return null;
- return '/api/public/newspaper-image?edition='+encodeURIComponent(editionId)+'&index='+index;
-}
-).test(block.imagePath))
+    '/editionImage/[0-9a-f-]{36}\\.(?:png|jpg|webp)$').test(block.imagePath))
    bad(404,'newspaper_image_not_found');
   const media=await runtime.collection('newspaperMedia').doc(
     createHash('sha256').update('newspaper-media:'+block.imagePath).digest('hex')).get();
@@ -89,7 +69,7 @@ export function publishedImageSrc(editionId:string,index:number):string|null{
  }else{
   // Imported originals remain at their historical, read-only locations.
   file=bucket.file('migration-staging/campaign-newspapers/'+block.imagePath);
-  let [found]=await file.exists();
+  const [found]=await file.exists();
   if(!found)file=bucket.file('campaign-newspapers/'+block.imagePath);
  }
  const [exists]=await file.exists();
@@ -99,7 +79,8 @@ export function publishedImageSrc(editionId:string,index:number):string|null{
  if(!Number.isSafeInteger(size)||size<1||size>MAX_IMAGE_BYTES)
   bad(404,'newspaper_image_not_found');
  const [bytes]=await file.download();
- if(!Buffer.isBuffer(bytes)||bytes.length!==size)
+ if(!Buffer.isBuffer(bytes)||bytes.length!==size||
+    expectedHash&&createHash('sha256').update(bytes).digest('hex')!==expectedHash)
   bad(503,'newspaper_image_integrity_failed');
  const type=imageType(bytes);
  if(!type)return bad(503,'newspaper_image_type_invalid');
