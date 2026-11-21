@@ -5,6 +5,10 @@ on:
     paths:
       - '.github/workflows/firebase-house-drive-gallery.yml'
       - 'scripts/firebase/sync-house-drive-gallery.mjs'
+      - 'src/routes/api/public/house-gallery.ts'
+      - 'src/lib/public/firebase-public-gallery.server.ts'
+      - 'public/cormyr/app.js'
+      - 'apphosting.yaml'
   workflow_dispatch:
 permissions:
   contents: read
