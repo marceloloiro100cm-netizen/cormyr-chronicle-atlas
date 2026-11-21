@@ -77,7 +77,7 @@ export type NewspaperEdition={
 };
 /** Versão anterior da edição guardada pelo banco a cada salvamento (só o Editor-Chefe lê). */
 export type NewspaperRevision={
-  id:number;newspaper_id:string;previous_version:number;changed_at:string;
+  id:string|number;newspaper_id:string;previous_version:number;changed_at:string;
   snapshot:Partial<NewspaperEdition>;
 };
 export type NewspaperCommissionState='pending'|'published'|'rejected';
