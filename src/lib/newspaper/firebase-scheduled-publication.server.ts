@@ -34,9 +34,11 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
  const due=await collection.where('state','==','draft').limit(101).get();
  if(due.docs.length>100)return 0;
  const candidates=due.docs.map((d:any)=>d.data())
-  .filter((v:any)=>v?.source==='firebase-cloud'&&v.sourceSnapshotId===snapshotId&&
-    typeof v.publishOn==='string'&&
-    dateOrdinal(v.publishOn)!==null&&dateOrdinal(v.publishOn)!<=ordinal)
+  .filter((v:any)=>{
+   const date=typeof v?.publishOn==='string'?dateOrdinal(v.publishOn):null;
+   return v?.source==='firebase-cloud'&&v.sourceSnapshotId===snapshotId&&
+    date!==null&&date<=ordinal;
+  })
   .sort((a:any,b:any)=>String(a.publishOn).localeCompare(String(b.publishOn))||
     a.editionNo-b.editionNo).slice(0,30);
  let released=0;
@@ -56,8 +58,8 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
    if(!validateHarptosDate(d?.year,d?.month,d?.day,d?.festival??null))
     return false;
    const nowOrdinal=dateOrdinal(harptosKey(d.year,d.month,d.day,d.festival??null));
-   if(nowOrdinal===null||dateOrdinal(v.publishOn)===null||
-      dateOrdinal(v.publishOn)!>nowOrdinal)return false;
+   const target=dateOrdinal(v.publishOn);
+   if(nowOrdinal===null||target===null||target>nowOrdinal)return false;
    const round=Number.isSafeInteger(settings.openRound)?settings.openRound:null;
    if(settings.newspaperOneEditionPerWeek===true&&round!==null&&
       settings.newspaperLastPublishedRound===round)return false;
