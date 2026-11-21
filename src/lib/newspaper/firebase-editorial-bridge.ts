@@ -238,7 +238,7 @@ export async function updateFirebaseNewspaperEdition(
 
 /** Versions created by Cloud writes; previous immutable snapshots stay intact. */
 export async function loadFirebaseNewspaperRevisions(id:string):Promise<NewspaperRevision[]>{
- if(!CLOUD.test(id))return [];
+ if(!CLOUD.test(id)&&!HISTORICAL_ID.test(id))return [];
  const result=await request<{items:NewspaperRevision[]}>({action:'listRevisions',id});
  if(!Array.isArray(result.items)||result.items.length>40)
   throw Error('Histórico editorial inválido.');
