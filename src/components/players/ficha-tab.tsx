@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { isNarrativeNpc, isArchivedCourtNpc } from "@/lib/house/narrative-npc";
 import { useState } from "react";
+import { urlLinkProps, useUrlParam } from "@/lib/navigation/url-state";
 import {useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {loadHouseHub} from '@/lib/house/house.functions';
@@ -38,7 +39,10 @@ export function FichaTab({
   canEdit: boolean;
   onSave: () => unknown;
 }) {
-  const [view, setView] = useState<"house" | "character" | "legacy" | "cloud">("house");
+  // Tipo de ficha no endereço (?ficha=personagem): cada uma abre em nova guia.
+  const [viewParam] = useUrlParam("ficha", "casa");
+  const view: "house" | "character" | "legacy" | "cloud" =
+    viewParam === "personagem" ? "character" : viewParam === "economia" ? "cloud" : "house";
   const [editingId,setEditingId]=useState<string|null>(null);
   const [creating,setCreating]=useState(false);
   const load=useServerFn(loadHouseHub);
@@ -76,25 +80,20 @@ export function FichaTab({
   return (
     <section>
       <nav className="campaign-tabs" aria-label="Tipo de ficha">
-        <Button
-          variant={view === "house" ? "default" : "outline"}
-          aria-pressed={view === "house"}
-          onClick={() => setView("house")}
-        >
-          Ficha da Casa
+        <Button asChild variant={view === "house" ? "default" : "outline"}>
+          <a {...urlLinkProps({ ficha: null, parte: null, espionagem: null })} aria-current={view === "house" ? "page" : undefined}>
+            Ficha da Casa
+          </a>
         </Button>
-        <Button
-          variant={view === "character" ? "default" : "outline"}
-          aria-pressed={view === "character"}
-          onClick={() => setView("character")}
-        >
-          Ficha do Personagem
+        <Button asChild variant={view === "character" ? "default" : "outline"}>
+          <a {...urlLinkProps({ ficha: "personagem", parte: null, espionagem: null })} aria-current={view === "character" ? "page" : undefined}>
+            Ficha do Personagem
+          </a>
         </Button>
-        {firebaseWorkspaceClient()!==null&&canEdit&&<Button
-          variant={view === "cloud" ? "default" : "outline"}
-          aria-pressed={view === "cloud"}
-          onClick={() => setView("cloud")}>
-          Economia Firebase
+        {firebaseWorkspaceClient()!==null&&canEdit&&<Button asChild variant={view === "cloud" ? "default" : "outline"}>
+          <a {...urlLinkProps({ ficha: "economia", parte: null, espionagem: null })} aria-current={view === "cloud" ? "page" : undefined}>
+            Economia Firebase
+          </a>
         </Button>}
       </nav>
       {view === "house" && (

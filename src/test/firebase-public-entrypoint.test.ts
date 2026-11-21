@@ -7,7 +7,10 @@ describe('Atlas público: entrada Firebase visível, sem ponte Supabase',()=>{
     expect(html).toContain('<a id="login-button"');
     expect(html).toContain('href="/auth"');
     expect(html).toContain('Acessar o Atlas com Firebase');
-    expect(html).toContain('window.CORMYR_ARCHIVE_ONLY = true');
+    // 21/11/2026: o site aberto saiu do modo manutenção. Calendário, catálogo
+    // e traduções vêm das APIs públicas; se elas responderem erro, o acervo
+    // estático continua como está (cada script ignora a falha).
+    expect(html).not.toContain('CORMYR_ARCHIVE_ONLY');
     expect(html).not.toContain('aria-label="Conselho em manutenção"');
   });
   it('remove o token legado, chamadas do provedor antigo e autorização de administrador no browser',()=>{

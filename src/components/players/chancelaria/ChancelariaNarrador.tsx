@@ -11,6 +11,7 @@ import {dateKey,formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
 import {mailWeekTimeline,replyDeliveryWeek} from '@/lib/weekly-delivery';
 import type {Panel} from '@/components/players/panel-data';
+import {isPlainLeftClick,readUrlParam,setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
 import {HouseMark,Icon,NARRATOR_DRAWER_CONTEXT,NARRATOR_NARROW,narrationGroupOf,useMedia} from '@/components/players/narrator/narrator-ui';
 import {
   buildConversations,conversationUnread,lastAuthor,queueMembers,
@@ -66,9 +67,17 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
   const admin=data.admin,uid=data.user.id;
   const narrow=useMedia(NARRATOR_NARROW);
   const drawerContext=useMedia(NARRATOR_DRAWER_CONTEXT);
-  const [queue,setQueue]=useState<QueueId>(initialHouse?'all':'attention');
-  const [selected,setSelected]=useState<string|null>(null);
-  const [pane,setPane]=useState<'list'|'reader'|'compose'>('list');
+  // Pasta e carta abertas ficam no endereço (?pasta=mediation&carta=...):
+  // cada pasta e cada carta podem ser abertas em nova guia.
+  const defaultQueue:QueueId=initialHouse?'all':'attention';
+  const [queueParam]=useUrlParam('pasta',defaultQueue);
+  const queue:QueueId=queueParam in QUEUE_TEXT?queueParam as QueueId:defaultQueue;
+  const setQueue=(q:QueueId)=>setUrlParams({pasta:q===defaultQueue?null:q,carta:null});
+  const [selectedParam]=useUrlParam('carta','');
+  const selected=selectedParam||null;
+  const setSelected=(id:string|null,replace=false)=>setUrlParams({carta:id},{replace});
+  useUrlSearch();
+  const [pane,setPane]=useState<'list'|'reader'|'compose'>(()=>readUrlParam('carta')?'reader':'list');
   const [search,setSearch]=useState('');
   const [group,setGroup]=useState<string>(()=>initialHouse?narrationGroupOf(initialHouse)?.id??'':'');
   const [house,setHouse]=useState(initialHouse??'');
@@ -110,7 +119,7 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
       :Number(conversationUnread(b,ctx))-Number(conversationUnread(a,ctx))||b.lastAt.localeCompare(a.lastAt));
   const current=list.find(c=>c.root.id===selected)??null;
   useEffect(()=>{
-    if(!current&&list[0]&&!narrow&&compose===false)setSelected(list[0].root.id);
+    if(!current&&list[0]&&!narrow&&compose===false)setSelected(list[0].root.id,true);
   },[queue,list.length,narrow]);// eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{if(!message)return;const t=setTimeout(()=>setMessage(''),4500);return()=>clearTimeout(t);},[message]);
   const refresh=()=>{
@@ -140,8 +149,11 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
   };
   const closeCompose=()=>{setCompose(false);setPane(narrow?'list':'reader');};
   const select=(id:string)=>{
-    setSelected(id);setCompose(false);setPane('reader');
-    if(!list.some(c=>c.root.id===id)){setQueue('all');setGroup('');setHouse('');setWeek('');setSearch('');}
+    setCompose(false);setPane('reader');
+    if(!list.some(c=>c.root.id===id)){
+      setUrlParams({pasta:defaultQueue==='all'?null:'all',carta:id});
+      setGroup('');setHouse('');setWeek('');setSearch('');
+    }else setSelected(id);
   };
   const pickQueue=(q:QueueId)=>{setQueue(q);setPane('list');setSelected(null);setCompose(false);};
   const resetFilters=()=>{setGroup('');setHouse('');setWeek('');setSearch('');};
@@ -204,7 +216,8 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
       separator=<p className="chn-wsep">{c.root.delivery_week?`Semana ${c.root.delivery_week}`:'Sem semana'}</p>;}
     return <div key={c.root.id} role="listitem">{separator}
       <div className={'chn-it'+(unread?' chn-it--unread':'')} aria-current={c.root.id===current?.root.id?'true':undefined}>
-        <button type="button" className="chn-it-open" onClick={()=>select(c.root.id)}>
+        <a className="chn-it-open" href={urlLinkProps({carta:c.root.id}).href}
+          onClick={e=>{if(!isPlainLeftClick(e))return;e.preventDefault();select(c.root.id);}}>
           <HouseMark house={c.kind==='geral'?null:mainHouse}/>
           <span className="chn-tags">
             {unread&&<span className="chn-udot" title="Não lida"/>}
@@ -218,7 +231,7 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
           <span className="chn-it-title">{c.root.subject}</span>
           <span className="chn-it-who">{c.root.sender_name} · {houseName(c.root.origin_house_id)} → {houseName(c.root.recipient_house_id)}{lastWho?` · última: ${lastWho}`:''}</span>
           <span className="chn-it-pv">{preview}</span>
-        </button>
+        </a>
         {queue!=='trash'&&<button type="button" className="chn-it-read" aria-label={unread?'Marcar como lida':'Marcar como não lida'}
           title={unread?'Marcar como lida':'Marcar como não lida'} onClick={()=>toggleRead(c)}><Icon name={unread?'missivas':'mailopen'} size={16}/></button>}
       </div></div>;
@@ -228,10 +241,11 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
       <section className="chn-panel">
         <div className="chn-ph"><span className="chn-ph-t">Pastas</span></div>
         <nav className="chn-qlist" aria-label="Pastas">
-          {NARRATOR_QUEUES.map(q=>{const n=queueCount(q);return <button type="button" key={q} className="chn-q"
-            aria-current={queue===q?'true':undefined} title={QUEUE_TEXT[q][1]} onClick={()=>pickQueue(q)}>
+          {NARRATOR_QUEUES.map(q=>{const n=queueCount(q);return <a key={q} className="chn-q"
+            aria-current={queue===q?'true':undefined} title={QUEUE_TEXT[q][1]}
+            {...urlLinkProps({pasta:q===defaultQueue?null:q,carta:null},{onNavigate:()=>{setPane('list');setCompose(false);}})}>
             <Icon name={QUEUE_TEXT[q][2]}/><span className="chn-q-label">{QUEUE_TEXT[q][0]}<small>{QUEUE_TEXT[q][1]}</small></span>
-            <span className={'chn-cnt'+(q==='attention'&&n!=='0'?' chn-cnt--hot':'')}>{n}</span></button>;})}
+            <span className={'chn-cnt'+(q==='attention'&&n!=='0'?' chn-cnt--hot':'')}>{n}</span></a>;})}
         </nav>
       </section>
     </aside>

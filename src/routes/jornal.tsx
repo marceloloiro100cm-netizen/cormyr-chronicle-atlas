@@ -1,5 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Newspaper,UsersRound,ChevronLeft,ChevronRight} from 'lucide-react';
 import {NewspaperCanvas} from '@/components/newspaper/NewspaperCanvas';
@@ -7,6 +7,7 @@ import {NewspaperTeam} from '@/components/newspaper/NewspaperTeam';
 import {formatDate} from '@/lib/calendar/harptos';
 import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,type NewspaperEdition,
   type NewspaperFont,type NewspaperStaffMember,type NewspaperTemplate} from '@/lib/newspaper/model';
+import {hrefWithParams,isPlainLeftClick,setUrlParams,urlLinkProps,useUrlParam} from '@/lib/navigation/url-state';
 import '@/components/newspaper/newspaper.css';
 import '@/components/newspaper/newspaper-editorial.css';
 
@@ -59,8 +60,13 @@ function toEdition(v:EditionReply):NewspaperEdition{
 function PublicNewspaper(){
   const params=useMemo(()=>new URLSearchParams(typeof window==='undefined'?'':window.location.search),[]);
   const embed=params.get('embed')==='1';
-  const [selected,setSelected]=useState<string|null>(params.get('edicao'));
-  const [view,setView]=useState<'edicoes'|'redacao'>(params.get('ver')==='redacao'?'redacao':'edicoes');
+  // Edição e aba no endereço (?edicao=...&ver=redacao): o link copiado abre a
+  // mesma edição, e cada edição pode ser aberta em nova guia.
+  const [selectedParam]=useUrlParam('edicao','');
+  const selected=selectedParam||null;
+  const [viewParam]=useUrlParam('ver','edicoes');
+  const view:'edicoes'|'redacao'=viewParam==='redacao'?'redacao':'edicoes';
+
   const list=useQuery({queryKey:['public-newspaper-list'],queryFn:()=>getJson<ListReply>('/api/public/newspaper'),
     staleTime:60_000,retry:1});
   const items=list.data?.items??[];
@@ -80,7 +86,9 @@ function PublicNewspaper(){
       headers:{'Content-Type':'application/json'},body:JSON.stringify({editionId:id,visitor})}).catch(()=>undefined);
   },[edition.data?.id,view]);
   const index=items.findIndex(i=>i.id===currentId);
-  const go=(id:string)=>{setSelected(id);setView('edicoes');window.scrollTo?.({top:0,behavior:'smooth'});};
+  // Dentro do Atlas a página vem embutida (?embed=1); em nova guia ela abre inteira.
+  const newTabHref=(changes:Record<string,string|null>)=>hrefWithParams({...changes,embed:null});
+  const go=(id:string)=>{setUrlParams({edicao:id,ver:null});window.scrollTo?.({top:0,behavior:'smooth'});};
   const staff=(list.data?.staff??[]).map(m=>({...m,photo_path:null,created_at:'',updated_at:''}));
 
   return <div className={'public-folha'+(embed?' public-folha--embed':'')}>
@@ -95,8 +103,8 @@ function PublicNewspaper(){
         <p>As notícias que atravessam Cormyr, abertas a todos os leitores.</p></div>
     </div>
     <nav className="public-folha-tabs" aria-label="Jornal">
-      <button type="button" aria-pressed={view==='edicoes'} onClick={()=>setView('edicoes')}><Newspaper size={16}/> Edições</button>
-      <button type="button" aria-pressed={view==='redacao'} onClick={()=>setView('redacao')}><UsersRound size={16}/> A Redação</button>
+      <a aria-current={view==='edicoes'?'page':undefined} {...urlLinkProps({ver:null})} href={newTabHref({ver:null})}><Newspaper size={16}/> Edições</a>
+      <a aria-current={view==='redacao'?'page':undefined} {...urlLinkProps({ver:'redacao'})} href={newTabHref({ver:'redacao'})}><UsersRound size={16}/> A Redação</a>
     </nav>
     {list.isPending&&<p role="status" className="public-folha-status">Abrindo o arquivo do jornal…</p>}
     {list.isError&&<p role="alert" className="public-folha-status">{list.error instanceof Error?list.error.message:'Jornal indisponível.'}</p>}
@@ -107,9 +115,10 @@ function PublicNewspaper(){
         <aside className="public-folha-list" aria-label="Edições publicadas">
           <h2>Edições</h2>
           <ul>{items.map(item=><li key={item.id}>
-            <button type="button" aria-current={item.id===currentId?'true':undefined} onClick={()=>go(item.id)}>
+            <a aria-current={item.id===currentId?'true':undefined} href={newTabHref({edicao:item.id,ver:null})}
+              onClick={e=>{if(!isPlainLeftClick(e))return;e.preventDefault();go(item.id);}}>
               <span>Nº {item.editionNo}{item.campaignDate?' · '+formatDate(item.campaignDate):''}</span>
-              <strong>{item.title}</strong></button></li>)}</ul>
+              <strong>{item.title}</strong></a></li>)}</ul>
         </aside>
         <main className="public-folha-reader">
           <div className="public-folha-pager">

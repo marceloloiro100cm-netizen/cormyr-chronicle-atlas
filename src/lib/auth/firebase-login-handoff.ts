@@ -3,13 +3,14 @@
  * mostra um segundo formulário: sem sessão ela volta para /auth, levando
  * apenas uma mensagem curta e fixa (nunca token, e-mail ou dado da campanha).
  */
-const REFRESH_KEY='cormyr:firebase-cloud-pilot:refresh';
+import {FIREBASE_REFRESH_KEY,readSharedSessionValue} from './firebase-pilot-session';
 const MESSAGE_KEY='cormyr:firebase-login-message';
 
-/** Há sessão nesta aba (em memória ou com renovação guardada)? Não autoriza nada. */
+/** Há sessão neste navegador (em memória ou com renovação guardada, válida
+ * para todas as abas)? Não autoriza nada. */
 export function hasStoredFirebaseSession(current:unknown):boolean{
   if(current)return true;
-  try{return Boolean(window.sessionStorage.getItem(REFRESH_KEY));}catch{return false;}
+  return Boolean(readSharedSessionValue(FIREBASE_REFRESH_KEY));
 }
 
 export function handOffLoginMessage(message:string|undefined){

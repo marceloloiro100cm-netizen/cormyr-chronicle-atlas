@@ -129,3 +129,6 @@
  .spy-dossier-panel input,.spy-dossier-panel select{font-size:16px;max-width:100%}
  .spy-dossier-report-tools button,.spy-dossier-card,.spy-dossier-pending button{min-height:48px}
 }
+
+/* Dossiês como links (botão direito > abrir em nova guia). */
+a.spy-dossier-card{text-decoration:none}

@@ -1,4 +1,5 @@
 import {useMemo,useRef,useState,type ReactNode} from 'react';
+import {isPlainLeftClick,setUrlParams,urlLinkProps,useUrlParam} from '@/lib/navigation/url-state';
 import {
  BookOpen,Layers3,CalendarDays,UsersRound,Megaphone,Archive,
  BarChart3,Settings,Feather,FileUp,Eye,Newspaper,
@@ -133,7 +134,10 @@ export interface NewspaperEditorialProps{
 
 export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const {current,history,reads,editing,busy,selectedBlockId}=props;
- const [section,setSection]=useState<Section>('painel');
+ // Seção da Redação no endereço (?redacao=anuncios): cada uma abre em nova guia.
+ const [sectionParam]=useUrlParam('redacao','painel');
+ const section:Section=NAV.some(item=>item.id===sectionParam)?sectionParam as Section:'painel';
+ const setSection=(value:Section)=>setUrlParams({redacao:value==='painel'?null:value});
  const [dateOpen,setDateOpen]=useState(false);
  const [profileOpen,setProfileOpen]=useState(false);
  const [fullPreview,setFullPreview]=useState(false);
@@ -259,13 +263,14 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
      <strong>REDAÇÃO<br/>DA FOLHA</strong><span>❧ ❦ ❧</span>
     </div>
     <nav>{navItems.map(item=>{
-     const Icon=item.icon;return <button type="button" key={item.id}
+     const Icon=item.icon;return <a key={item.id}
        aria-current={section===item.id?'page':undefined}
        className={section===item.id?'active':''}
-       onClick={()=>chooseSection(item.id)}><Icon size={21}/>{item.label}
+       href={urlLinkProps({redacao:item.id==='painel'?null:item.id}).href}
+       onClick={e=>{if(!isPlainLeftClick(e))return;e.preventDefault();chooseSection(item.id);}}><Icon size={21}/>{item.label}
        {item.id==='anuncios'&&props.pendingCommissions.length>0&&
         <span className="folha-nav-count" aria-label={`${props.pendingCommissions.length} notícia(s) contratada(s) pendente(s)`}>
-         {props.pendingCommissions.length}</span>}</button>;
+         {props.pendingCommissions.length}</span>}</a>;
     })}</nav>
     <img className="folha-navigation-emblem" src="/newspaper/emblema_integrado.webp" alt="" aria-hidden="true"/>
    </aside>

@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {isPlainLeftClick,setUrlParams,urlLinkProps,useUrlParam} from '@/lib/navigation/url-state';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {Eye,ScrollText,Shield,Swords,Castle,LockKeyhole,RefreshCw} from 'lucide-react';
@@ -29,7 +30,10 @@ function count(d:SpyDossier,objective:SpyIntelligenceObjective){
  return d.findings.filter(f=>f.objective===objective).length;
 }
 function DossierView({dossier,narrator=false}:{dossier:SpyDossier;narrator?:boolean}){
- const [tab,setTab]=useState<SpyIntelligenceObjective>('house_resources');
+ // Modalidade aberta no endereço (?modalidade=army): abre em nova guia.
+ const [tabParam]=useUrlParam('modalidade','house_resources');
+ const tab:SpyIntelligenceObjective=SPY_INTELLIGENCE_OBJECTIVES.some(item=>item.id===tabParam)
+  ?tabParam as SpyIntelligenceObjective:'house_resources';
  const time=useCampaignTime();
  const official=time.data&&!time.isError?dateKey(time.data):null;
  const last=spyDossierLastVerified(dossier);
@@ -47,10 +51,10 @@ function DossierView({dossier,narrator=false}:{dossier:SpyDossier;narrator?:bool
   <SpyDossierSummary dossier={dossier} officialDate={official}/>
   <SpyDossierReportActions dossier={dossier} officialDate={official}/>
   <div className="spy-dossier-tabs" role="group" aria-label="Modalidade do dossiê">
-   {SPY_INTELLIGENCE_OBJECTIVES.map(item=><Button type="button" key={item.id}
-    variant={tab===item.id?'default':'outline'} aria-pressed={tab===item.id}
-    onClick={()=>setTab(item.id)}>{item.id==='army'?<Swords size={16}/>:item.id==='possessions'?<Castle size={16}/>:<Shield size={16}/>}
-    {item.label}</Button>)}
+   {SPY_INTELLIGENCE_OBJECTIVES.map(item=><Button asChild key={item.id}
+    variant={tab===item.id?'default':'outline'}><a aria-current={tab===item.id?'page':undefined}
+    {...urlLinkProps({modalidade:item.id==='house_resources'?null:item.id})}>{item.id==='army'?<Swords size={16}/>:item.id==='possessions'?<Castle size={16}/>:<Shield size={16}/>}
+    {item.label}</a></Button>)}
   </div>
   <div className="spy-dossier-sheet-body">
    <h4>{labels[tab]} · {count(dossier,tab)}{tab==='house_resources'?'/7':''}</h4>
@@ -90,21 +94,24 @@ function DossierView({dossier,narrator=false}:{dossier:SpyDossier;narrator?:bool
  </section>;
 }
 function DossierCard({dossier,active,onSelect}:{dossier:SpyDossier;active:boolean;onSelect:()=>void}){
- return <button type="button" onClick={onSelect}
+ return <a href={urlLinkProps({dossie:dossier.id,modalidade:null}).href}
+  onClick={e=>{if(!isPlainLeftClick(e))return;e.preventDefault();onSelect();}}
   className={'spy-dossier-card'+(active?' is-selected':'')}
-  aria-pressed={active}>
+  aria-current={active?'page':undefined}>
   <strong>Casa {dossier.targetHouseName}</strong>
   <span>Recursos: {count(dossier,'house_resources')}/7</span>
   <span>Exército: {count(dossier,'army')} conhecido(s)</span>
   <span>Posses: {count(dossier,'possessions')} conhecida(s)</span>
   <small>Abrir relatório</small>
- </button>;
+ </a>;
 }
 function DossierCollection({dossiers,title,summary,onRefresh,refreshing=false}:{
  dossiers:SpyDossier[];title:string;summary?:string;
  onRefresh?:()=>void;refreshing?:boolean;
 }){
- const [selected,setSelected]=useState<string>('');
+ // Dossiê aberto no endereço (?dossie=...): cada relatório abre em nova guia.
+ const [selected]=useUrlParam('dossie','');
+ const setSelected=(id:string)=>setUrlParams({dossie:id||null,modalidade:null});
  const [targetFilter,setTargetFilter]=useState('');
  const [regionFilter,setRegionFilter]=useState('');
  const [progress,setProgress]=useState<SpyDossierProgress>('all');
@@ -181,7 +188,9 @@ export function SpyPlayerDossiers({houseId}:{houseId:string}){
 
 export function SpyNarratorDossiers(){
  const qc=useQueryClient();
- const [owner,setOwner]=useState(''),[target,setTarget]=useState(''),[region,setRegion]=useState(''),[selected,setSelected]=useState(''),
+ const [selected]=useUrlParam('dossie','');
+ const setSelected=(id:string)=>setUrlParams({dossie:id||null,modalidade:null},{replace:!id});
+ const [owner,setOwner]=useState(''),[target,setTarget]=useState(''),[region,setRegion]=useState(''),
   [objective,setObjective]=useState<SpyIntelligenceObjective>('house_resources'),
   [subject,setSubject]=useState(''),[action,setAction]=useState<'reveal'|'revalidate'|'revoke'>('reveal'),
   [reason,setReason]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');

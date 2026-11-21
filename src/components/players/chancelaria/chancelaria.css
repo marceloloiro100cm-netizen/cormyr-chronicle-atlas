@@ -85,3 +85,6 @@
   .chancelaria .ch-back{display:block}
   .chancelaria .ch-list{max-height:none}
 }
+
+/* Pastas e cartas como links (botão direito > abrir em nova guia). */
+.chancelaria a.ch-queue,.chancelaria a.ch-item-open{text-decoration:none}

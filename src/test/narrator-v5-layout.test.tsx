@@ -75,7 +75,7 @@ describe('Visão do Narrador v5: Chancelaria', () => {
  it('lista, lê, marca como lida e responde pelas RPCs existentes', async () => {
   mountChancelaria();
   expect(await screen.findByRole('heading',{name:'A ponte de Emberfall Crossing'})).toBeInTheDocument();
-  expect(screen.getByRole('button',{name:/^Precisa de atenção/})).toHaveTextContent('1');
+  expect(screen.getByRole('link',{name:/^Precisa de atenção/})).toHaveTextContent('1');
   fireEvent.click(screen.getAllByRole('button',{name:'Marcar como lida'})[0]!);
   await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('mark_letter_read',{p_id:LETTER.id}));
   fireEvent.change(screen.getByRole('textbox',{name:'Texto da resposta'}),{target:{value:'A Coroa envia pedreiros.'}});

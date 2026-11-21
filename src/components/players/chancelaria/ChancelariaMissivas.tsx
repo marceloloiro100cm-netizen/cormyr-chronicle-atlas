@@ -10,6 +10,7 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
 import type {Panel} from '@/components/players/panel-data';
+import {readUrlParam,setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
 import {
   buildConversations,conversationUnread,queueMembers,
   type MailRow,type ReplyRow,type Conversation,type QueueId,
@@ -56,9 +57,15 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
 }){
   const qc=useQueryClient();
   const admin=data.admin,uid=data.user.id;
-  const [queue,setQueue]=useState<QueueId>('attention');
-  const [selected,setSelected]=useState<string|null>(null);
-  const [pane,setPane]=useState<'list'|'reader'>('list');
+  // Pasta e carta abertas ficam no endereço (?pasta=all&carta=...): cada carta
+  // pode ser aberta em nova guia. A carta só aparece se estiver na caixa visível.
+  const [queueParam]=useUrlParam('pasta','attention');
+  const queue:QueueId=queueParam in QUEUE_TEXT?queueParam as QueueId:'attention';
+  const [selectedParam]=useUrlParam('carta','');
+  const selected=selectedParam||null;
+  const setSelected=(id:string|null,replace=false)=>setUrlParams({carta:id},{replace});
+  useUrlSearch();
+  const [pane,setPane]=useState<'list'|'reader'>(()=>readUrlParam('carta')?'reader':'list');
   const [search,setSearch]=useState('');
   const [group,setGroup]=useState('');
   const [house,setHouse]=useState('');
@@ -100,7 +107,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
       :Number(conversationUnread(b,ctx))-Number(conversationUnread(a,ctx))||b.lastAt.localeCompare(a.lastAt));
   const current=list.find(c=>c.root.id===selected)??null;
   useEffect(()=>{
-    if(!current&&list[0]&&window.innerWidth>=1000)setSelected(list[0].root.id);
+    if(!current&&list[0]&&window.innerWidth>=1000)setSelected(list[0].root.id,true);
   },[queue,list.length]);// eslint-disable-line react-hooks/exhaustive-deps
   const refresh=()=>{
     void qc.invalidateQueries({queryKey:['chancelaria-mail']});
@@ -152,11 +159,11 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
       <button type="button" className="ch-btn" aria-pressed={timeline} onClick={()=>setTimeline(t=>!t)}>{timeline?'📋 Escrivaninha':'🕰️ Linha do tempo'}</button>
     </div>
     <nav className="ch-queues" aria-label="Pastas">
-      {queues.map(q=>{const n=members(q).length;return <button type="button" key={q} aria-pressed={queue===q}
-        className={'ch-queue'+(queue===q?' on':'')} onClick={()=>{setQueue(q);setPane('list');setSelected(null);}}>
+      {queues.map(q=>{const n=members(q).length;return <a key={q} aria-current={queue===q?'page':undefined}
+        className={'ch-queue'+(queue===q?' on':'')} {...urlLinkProps({pasta:q==='attention'?null:q,carta:null},{onNavigate:()=>setPane('list')})}>
         <span className="ch-q-title">{QUEUE_TEXT[q][0]}</span>
         <span className={'ch-q-count'+(q==='attention'&&n?' hot':'')}>{q==='trash'&&trash.isPending?'…':n}</span>
-        <span className="ch-q-desc">{QUEUE_TEXT[q][1]}</span></button>;})}
+        <span className="ch-q-desc">{QUEUE_TEXT[q][1]}</span></a>;})}
     </nav>
     <p className="ch-note">Mostrando <b>{list.length}</b> conversa(s). <b>A leitura só conta quando você marca.</b> {message&&<span role="status">{message}</span>}</p>
     <div className="ch-ws">
@@ -164,7 +171,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
         {list.length===0&&<p className="ch-empty">Nada nesta pasta.</p>}
         {list.map(c=>{const unread=conversationUnread(c,ctx);return <div key={c.root.id} role="listitem"
           className={'ch-item'+(c.root.id===selected?' sel':'')+(unread?' unread':'')}>
-          <button type="button" className="ch-item-open" onClick={()=>{setSelected(c.root.id);setPane('reader');}}>
+          <a className="ch-item-open" {...urlLinkProps({carta:c.root.id},{onNavigate:()=>setPane('reader')})}>
             <span className="ch-item-top">
               <span className={'ch-kind '+c.kind}>{c.kindLabel}</span>
               <span className="ch-muted">Sem. {c.root.delivery_week??'?'}</span>
@@ -175,7 +182,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
             </span>
             <span className="ch-item-title">{c.root.subject}</span>
             <span className="ch-item-meta">{c.root.sender_name} · {houseName(c.root.origin_house_id)} → {houseName(c.root.recipient_house_id)}</span>
-          </button>
+          </a>
           {queue!=='trash'&&<button type="button" className="ch-readtoggle" aria-label={unread?'Marcar como lida':'Marcar como não lida'}
             title={unread?'Marcar como lida':'Marcar como não lida'} onClick={()=>void(unread?markRead(c):markUnread(c))}>{unread?'✉':'📭'}</button>}
         </div>;})}

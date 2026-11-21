@@ -53,7 +53,7 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getByRole('heading',{level:1,name:'A Folha Sem Selo'})).toBeInTheDocument();
   for(const title of ['Painel do Jornal','Escrever o Jornal','Matérias','Calendário',
    'Redação','Anúncios','Arquivo','Leitura e Alcance','Configurações']){
-   expect(screen.getByRole('button',{name:title})).toBeInTheDocument();
+   expect(screen.getByRole('link',{name:title})).toBeInTheDocument();
   }
   expect(screen.getAllByRole('button',{name:'Publicar Edição'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
   expect(screen.getByText('Nenhuma edição publicada ainda')).toBeInTheDocument();
@@ -62,30 +62,30 @@ describe('Redação A Folha Sem Selo',()=>{
   render(<NewspaperEditorialDesk {...fixture()} missivas={<p>Leitor de missivas</p>}
    publicReads={new Map([['e1',3]])}/>);
   const nav=screen.getByRole('complementary',{name:'Menu de redação'});
-  const labels=[...nav.querySelectorAll('nav button')].map(b=>b.textContent?.trim());
+  const labels=[...nav.querySelectorAll('nav a')].map(b=>b.textContent?.trim());
   expect(labels.indexOf('Missivas')).toBe(labels.indexOf('Configurações')-1);
-  fireEvent.click(screen.getByRole('button',{name:'Missivas'}));
+  fireEvent.click(screen.getByRole('link',{name:'Missivas'}));
   expect(screen.getByText('Leitor de missivas')).toBeInTheDocument();
  });
  it('sem o leitor de missivas, o menu não mostra o item',()=>{
   render(<NewspaperEditorialDesk {...fixture()}/>);
-  expect(screen.queryByRole('button',{name:'Missivas'})).toBeNull();
+  expect(screen.queryByRole('link',{name:'Missivas'})).toBeNull();
  });
  it('abre a redação com um clique mas não concede navegação de Casas',()=>{
   const props=fixture();render(<NewspaperEditorialDesk {...props}/>);
   fireEvent.click(screen.getByRole('button',{name:'Escrever Matéria'}));
   expect(props.onNew).toHaveBeenCalledWith('article');
-  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  fireEvent.click(screen.getByRole('link',{name:'Configurações'}));
   expect(screen.queryByRole('button',{name:/outros módulos de cormyr/i})).not.toBeInTheDocument();
-  expect(screen.queryByRole('button',{name:'Missivas'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('link',{name:'Missivas'})).not.toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Ficha'})).not.toBeInTheDocument();
  });
  it('mostra a Redação vazia e o calendário escreve sobre a data',()=>{
   const p=fixture();
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Redação'}));
+  fireEvent.click(screen.getByRole('link',{name:'Redação'}));
   expect(screen.getByText(/Nenhum funcionário ainda/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button',{name:'Calendário'}));
+  fireEvent.click(screen.getByRole('link',{name:'Calendário'}));
   fireEvent.click(screen.getByRole('button',{name:'Escrever sobre a data'}));
   expect(p.onWriteAboutDate).toHaveBeenCalledWith('Dia de Midwinter',expect.stringContaining('Escreva aqui'));
  });
@@ -114,7 +114,7 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   p.settings={...p.settings,template:'guerra',font_style:'condensado'};
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  fireEvent.click(screen.getByRole('link',{name:'Configurações'}));
   expect(screen.getByLabelText('Pré-visualização do modelo e da fonte')).toBeInTheDocument();
   expect(screen.getAllByText(/Imprensa · Impact/).length).toBeGreaterThan(1);
  });
@@ -129,14 +129,14 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   p.editing=true;p.selectedBlockId='image1';
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   fireEvent.click(screen.getByRole('button',{name:'Duplicar bloco'}));
   expect(p.onDuplicateBlock).toHaveBeenCalledWith('image1');
   fireEvent.change(screen.getByLabelText('Estilo da gravura'),{target:{value:'woodcut'}});
   expect(p.onPatchBlock).toHaveBeenCalledWith('image1',{imageStyle:'woodcut'});
   fireEvent.click(screen.getByRole('button',{name:'Aviso / Destaque'}));
   expect(p.onAddBlock).toHaveBeenCalledWith('notice',6);
-  expect(screen.queryByRole('button',{name:'Missivas'})).not.toBeInTheDocument();
+  expect(screen.queryByRole('link',{name:'Missivas'})).not.toBeInTheDocument();
  });
  it('não permite arquivar rascunhos ainda não publicados',()=>{
   const p=fixture();p.current={
@@ -163,7 +163,7 @@ describe('Redação A Folha Sem Selo',()=>{
   }];
   render(<NewspaperEditorialDesk {...p}/>);
   expect(screen.getByLabelText('1 notícia(s) contratada(s) pendente(s)')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button',{name:/Anúncios/}));
+  fireEvent.click(screen.getByRole('link',{name:/Anúncios/}));
   expect(screen.getByText('Grande feira em Suzail')).toBeInTheDocument();
   expect(screen.getByText(/^Casa Crownsilver ·/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Inserir na edição e editar'}));
@@ -171,7 +171,7 @@ describe('Redação A Folha Sem Selo',()=>{
  });
  it('sem pedidos, Anúncios informa que não há notícias contratadas pendentes',()=>{
   render(<NewspaperEditorialDesk {...fixture()}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Anúncios'}));
+  fireEvent.click(screen.getByRole('link',{name:'Anúncios'}));
   expect(screen.getByText('Nenhuma notícia contratada aguardando publicação.')).toBeInTheDocument();
  });
  it('recusa o pedido com nota obrigatória e devolução de Riqueza',()=>{
@@ -183,7 +183,7 @@ describe('Redação A Folha Sem Selo',()=>{
    created_at:'2026-11-11T12:00:00Z',published_at:null,rejection_note:null,rejected_at:null,seen_at:null,
   }];
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:/Anúncios/}));
+  fireEvent.click(screen.getByRole('link',{name:/Anúncios/}));
   fireEvent.click(screen.getByRole('button',{name:'Recusar'}));
   const confirm=screen.getByRole('button',{name:/Recusar e devolver 1 de Riqueza/});
   expect(confirm).toBeDisabled();
@@ -222,7 +222,7 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   p.editing=true;p.selectedBlockId='b1';
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   fireEvent.click(screen.getByRole('button',{name:'2/3'}));
   expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{span:8});
   fireEvent.click(screen.getByRole('button',{name:'Subtítulo'}));
@@ -246,7 +246,7 @@ describe('Redação A Folha Sem Selo',()=>{
   render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
   fireEvent.click(screen.getByRole('button',{name:'Usar gravura: Mercado de Suzail'}));
   expect(p.onUseStoredEngraving).toHaveBeenCalledWith(original);
-  fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
   fireEvent.click(screen.getByRole('button',{name:'Restaurar'}));
   expect(p.onRestoreRevision).toHaveBeenCalledWith(p.revisions[0]);
  });
@@ -254,12 +254,12 @@ describe('Redação A Folha Sem Selo',()=>{
   const p=fixture();
   p.storyModels=[{id:'m1',name:'Meu modelo',description:'',builtin:false,blocks:[]}];
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('link',{name:'Matérias'}));
   expect(screen.getByText('Escolha o modelo que você quer utilizar.')).toBeInTheDocument();
   expect(screen.getAllByRole('button',{name:'Usar este modelo'})).toHaveLength(7);
   fireEvent.click(screen.getAllByRole('button',{name:'Usar este modelo'})[0]!);
   expect(p.onUseStoryModel).toHaveBeenCalledWith(expect.objectContaining({id:'builtin-corte'}));
-  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('link',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:'Duplicar Entrevista'}));
   const name=screen.getByLabelText('Nome do modelo') as HTMLInputElement;
   expect(name.value).toBe('Cópia de Entrevista');
@@ -281,7 +281,7 @@ describe('Redação A Folha Sem Selo',()=>{
   render(<NewspaperEditorialDesk {...p}/>);
   fireEvent.click(screen.getByRole('button',{name:'Selo ⚠'}));
   expect(p.onPatchBlock).toHaveBeenCalledWith('n1',{icon:'⚠'});
-  fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
   fireEvent.click(screen.getByRole('button',{name:'Excluir edição nº 2'}));
   expect(p.onDeleteEdition).toHaveBeenCalledWith(e);
  });
@@ -295,7 +295,7 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getAllByText(/JORNAL/).length).toBeGreaterThan(0);
   expect(screen.getByRole('button',{name:'Usar gravura: Torre de Suzail'})).toBeTruthy();
   expect(screen.queryByRole('button',{name:'Usar gravura: Praça velha'})).toBeNull();
-  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('link',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:/Gravuras do Reino/}));
   fireEvent.click(screen.getByRole('switch',{name:'Praça velha: aparece no acervo'}));
   expect(p.onToggleEngraving).toHaveBeenCalledWith(off,true);
@@ -304,7 +304,7 @@ describe('Redação A Folha Sem Selo',()=>{
  });
  it('clicar num modelo de matéria mostra a prévia ao lado',()=>{
   render(<NewspaperEditorialDesk {...fixture()}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('link',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:'Entrevista'}));
   expect(screen.getByLabelText(/Prévia do modelo Entrevista/)).toBeTruthy();
  });
@@ -319,7 +319,7 @@ describe('Redação A Folha Sem Selo',()=>{
   };
   p.editing=true;p.selectedBlockId='b1';
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   fireEvent.change(screen.getByLabelText('Fonte do título'),{target:{value:'old-english'}});
   fireEvent.change(screen.getByLabelText('Fonte do texto'),{target:{value:'garamond'}});
   expect(p.onPatchBlock).toHaveBeenCalledWith('b1',{titleFont:'old-english'});
@@ -328,7 +328,7 @@ describe('Redação A Folha Sem Selo',()=>{
  it('salva o subtítulo configurado para aparecer na folha, sem texto fixo',async()=>{
   const p=fixture();
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  fireEvent.click(screen.getByRole('link',{name:'Configurações'}));
   fireEvent.change(screen.getByLabelText('Subtítulo'),{target:{value:'Notícias do Reino'}});
   fireEvent.click(screen.getByRole('button',{name:/Salvar configurações/}));
   expect(p.onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({subtitle:'Notícias do Reino'}));
@@ -336,7 +336,7 @@ describe('Redação A Folha Sem Selo',()=>{
  it('as Configurações funcionam sem edição aberta e mudam a fonte do título do site',async()=>{
   const p=fixture();
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Configurações'}));
+  fireEvent.click(screen.getByRole('link',{name:'Configurações'}));
   expect(screen.queryByText(/Crie uma edição antes/)).toBeNull();
   const title=screen.getByRole('heading',{level:1,name:'A Folha Sem Selo'});
   expect(title.closest('header')?.className).toContain('folha-font-classico');
@@ -372,7 +372,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
  it('Tab recua texto no painel do escritor sem mudar de campo',()=>{
   const p=editingFixture();
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   const input=screen.getByRole('textbox',{name:/^Texto/}) as HTMLTextAreaElement;
   input.focus();input.setSelectionRange(7,7);
   const result=fireEvent.keyDown(input,{key:'Tab'});
@@ -386,7 +386,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
   render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
   expect(screen.queryByRole('button',{name:'Usar gravura: Castelo de Cormyr'})).toBeNull();
   expect(screen.getByText(/Acervo vazio/)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('link',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:/Gravuras do Reino/}));
   fireEvent.click(screen.getByRole('button',{name:'Restaurar gravuras originais do Reino'}));
   expect(p.onRestoreEngravings).toHaveBeenCalled();
@@ -397,7 +397,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
    in_collection:true,created_at:''};
   p.engravings=[original];
   render(<QueryClientProvider client={new QueryClient()}><NewspaperEditorialDesk {...p}/></QueryClientProvider>);
-  fireEvent.click(screen.getByRole('button',{name:'Matérias'}));
+  fireEvent.click(screen.getByRole('link',{name:'Matérias'}));
   fireEvent.click(screen.getByRole('button',{name:/Gravuras do Reino/}));
   expect(screen.getByText(/original do Reino/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Excluir gravura Castelo de Cormyr'}));
@@ -406,7 +406,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
  it('barra de ferramentas: desfazer, refazer, copiar, recortar e colar',()=>{
   const p=editingFixture();p.canUndo=true;p.canRedo=true;p.canPasteBlock=true;
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   fireEvent.click(screen.getByRole('button',{name:/Desfazer/}));
   fireEvent.click(screen.getByRole('button',{name:/Refazer/}));
   fireEvent.click(screen.getByRole('button',{name:/Copiar/}));
@@ -419,7 +419,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
  it('atalhos de teclado valem para o bloco, mas não dentro de um texto',()=>{
   const p=editingFixture();
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   fireEvent.keyDown(document.body,{key:'z',ctrlKey:true});
   fireEvent.keyDown(document.body,{key:'z',ctrlKey:true,shiftKey:true});
   fireEvent.keyDown(document.body,{key:'y',ctrlKey:true});
@@ -437,7 +437,7 @@ describe('Melhorias do Jornal (12/11/2026)',()=>{
  it('Ctrl+C, Ctrl+X e Ctrl+V trabalham com blocos',()=>{
   const p=editingFixture();
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   const setData=vi.fn();
   fireEvent.copy(document.body,{clipboardData:{setData}});
   expect(p.onCopyBlock).toHaveBeenCalledWith('b1');
@@ -476,7 +476,7 @@ describe('Relatório de revisão: bloco fixo, capitular e auditoria',()=>{
   p.current=draftEdition([{id:'b1',type:'article',text:'Título\n\nCorpo do texto',span:6,height:190,pinned:true}]);
   p.history=[p.current];
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   expect((screen.getByRole('button',{name:'Remover bloco'}) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole('button',{name:'Mover bloco para cima'}) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole('button',{name:'2/3'}) as HTMLButtonElement).disabled).toBe(true);
@@ -495,7 +495,7 @@ describe('Relatório de revisão: bloco fixo, capitular e auditoria',()=>{
    newspaper_id:edition.id,created_at:'2026-11-01T10:00:00Z',published_at:'2026-11-02T10:00:00Z',
    rejection_note:null,rejected_at:null,seen_at:null}];
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Arquivo'}));
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
   expect(screen.getByText('Editado pelo Editor-Chefe')).toBeTruthy();
   expect(screen.getByText('Texto original e agressivo')).toBeTruthy();
   expect(screen.getByText(/Texto suavizado pelo editor/)).toBeTruthy();
@@ -523,7 +523,7 @@ describe('Jornal: escrita guiada',()=>{
   const p=fixture();p.current=draft([{...makeNewspaperBlock('headline'),text:'Rei declara paz'}]);
   p.editing=true;p.saveState={status:'failed',dirty:true};
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   expect(screen.getByText(/Falha ao salvar/)).toBeInTheDocument();
   expect(screen.getByText('Manchete: Rei declara paz')).toBeInTheDocument();
  });
@@ -538,7 +538,7 @@ describe('Jornal: escrita guiada',()=>{
   const a={...makeNewspaperBlock('headline'),id:'a',text:'Primeira'},b={...makeNewspaperBlock('article'),id:'b',text:'T\n\nCorpo'};
   p.current=draft([a,b]);p.editing=true;p.selectedBlockId='a';
   render(<NewspaperEditorialDesk {...p}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Escrever o Jornal'}));
+  fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
   fireEvent.keyDown(window,{key:'/'});
   fireEvent.click(screen.getByRole('menuitem',{name:/Citação/}));
   expect(p.onInsertBefore).toHaveBeenCalledWith('quote','b');
