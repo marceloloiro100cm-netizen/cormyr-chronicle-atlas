@@ -1058,9 +1058,17 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
    }
    if(name==='get_campaign_schedule_drafts'){
     if(!admin)denied();
-    return (await cloudEvents()).filter(e=>e['draft']).map(e=>({id:e['id'],date:e['draft'].date,
-     title:e['draft'].title,description:e['draft'].description??'',deleted:e['draft'].deleted===true,
-     version:e['version'],published:e['published']!==null}));
+    // Include already published events, not just uncommitted drafts.
+    // Only the authenticated narrator reaches this branch.
+    return (await cloudEvents()).filter(e=>e['draft']||e['published'])
+     .map(e=>{
+      const value=e['draft']??e['published'];
+      return {id:e['id'],date:value.date,title:value.title,
+       description:value.description??'',deleted:value.deleted===true,
+       version:e['version'],published:e['published']!=null,
+       pending:e['draft']!=null};
+     }).sort((a,b)=>String(a.date).localeCompare(String(b.date))||
+      String(a.id).localeCompare(String(b.id)));
    }
    if(name==='get_campaign_schedule_events'||name==='get_campaign_chronology'||name==='get_newspaper_calendar_events'){
     const year=args['p_year'],month=args['p_month'];
