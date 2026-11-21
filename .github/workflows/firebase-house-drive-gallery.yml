@@ -13,7 +13,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: cormyr-house-drive-gallery
+  group: cormyr-house-drive-gallery-v2
   cancel-in-progress: false
 jobs:
   audit:
