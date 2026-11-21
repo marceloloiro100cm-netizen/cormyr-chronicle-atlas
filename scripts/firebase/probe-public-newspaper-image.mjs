@@ -40,7 +40,17 @@ try{
  const image=await request(images[0].imageSrc);
  print('IMAGE_HTTP',image.status);
  print('IMAGE_CONTENT_TYPE',image.headers.get('content-type')?.split(';')[0]??'unknown');
- if(image.status!==200)process.exit(2);
+ if(image.status!==200){
+  try{
+   const body=await image.json();
+   const keys=body&&typeof body==='object'&&!Array.isArray(body)
+     ?Object.keys(body).filter(k=>/^[A-Za-z]{1,30}$/.test(k)).slice(0,12):[];
+   print('IMAGE_ERROR_FIELDS',keys.length?keys.join(','):'none');
+   const value=body?.error??body?.statusMessage??body?.code??body?.message;
+   print('IMAGE_ERROR_CATEGORY',typeof value==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(value)?value:'unclassified');
+  }catch(_){print('IMAGE_ERROR_CATEGORY','not_json');}
+  process.exit(2);
+ }
  const bytes=Buffer.from(await image.arrayBuffer());
  print('IMAGE_SHA256_MATCH',createHash('sha256').update(bytes).digest('hex')===EXPECTED?'yes':'no');
  if(createHash('sha256').update(bytes).digest('hex')!==EXPECTED)process.exit(2);
