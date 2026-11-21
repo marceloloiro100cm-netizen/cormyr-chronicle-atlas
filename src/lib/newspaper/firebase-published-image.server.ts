@@ -1,4 +1,5 @@
 import {deletedNewspaperIds} from '../../../scripts/firebase/newspaper-deleted.mjs';
+import {createHash} from 'node:crypto';
 /** Only images named in a published, independently reviewed edition may be served. */
 const SNAP=/^[a-f0-9]{64}$/;
 const ID=/^[A-Za-z0-9_-]{1,128}$/;
@@ -32,9 +33,13 @@ export async function readPublishedNewspaperImage({
  const ready=await stage.get();
  if(!ready.exists||ready.data()?.private!==true||ready.data()?.status!=='complete')
   bad(503,'newspaper_image_stage_pending');
- const record=await stage.collection('editions').doc(editionId).get();
+ const cloud=editionId.startsWith('cloud-');
+ const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
+ const record=await (cloud?runtime.collection('publishedNewspapers'):
+  stage.collection('editions')).doc(editionId).get();
  const e=record.exists?record.data():null;
  if(!e||e.id!==editionId||e.cancelledAt!=null||
+    (cloud&&(e.source!=='firebase-cloud'||e.sourceSnapshotId!==snapshotId))||
     !['published','archived'].includes(e.state)||
     !Number.isSafeInteger(e.editionNo)||
     typeof e.publishedAt!=='string'||!Array.isArray(e.blocks))
@@ -46,14 +51,48 @@ export async function readPublishedNewspaperImage({
     typeof block.imagePath!=='string'||!LEGACY.test(block.imagePath)||
     block.imagePath.includes('..')||block.imagePath.includes('//'))
   bad(404,'newspaper_image_not_found');
- // O mesmo arquivo histórico pode estar no prefixo importado ou no canônico.
- // Não existe escolha de caminho pelo visitante.
- let file=bucket.file('migration-staging/campaign-newspapers/'+block.imagePath);
- let [exists]=await file.exists();
- if(!exists){
-  file=bucket.file('campaign-newspapers/'+block.imagePath);
-  [exists]=await file.exists();
+ let file;
+ let expectedHash:string|null=null;
+ if(cloud){
+  if(!new RegExp('^newspaper-media/'+snapshotId+
+    '/editionImage/[0-9a-f-]{36}\\.(?:png|jpg|webp)
+ if(!exists)bad(404,'newspaper_image_not_found');
+ const [meta]=await file.getMetadata();
+ const size=Number(meta?.size);
+ if(!Number.isSafeInteger(size)||size<1||size>MAX_IMAGE_BYTES)
+  bad(404,'newspaper_image_not_found');
+ const [bytes]=await file.download();
+ if(!Buffer.isBuffer(bytes)||bytes.length!==size||
+    expectedHash&&createHash('sha256').update(bytes).digest('hex')!==expectedHash)
+  bad(503,'newspaper_image_integrity_failed');
+ const type=imageType(bytes);
+ if(!type)return bad(503,'newspaper_image_type_invalid');
+ // A signed public edition already has an immutable, reviewed source. The
+ // original image path never appears in the response URL or headers.
+ return {data:bytes,contentType:type};
+}
+export function publishedImageSrc(editionId:string,index:number):string|null{
+ if(!ID.test(editionId)||!Number.isSafeInteger(index)||index<0||index>=80)return null;
+ return '/api/public/newspaper-image?edition='+encodeURIComponent(editionId)+'&index='+index;
+}
+).test(block.imagePath))
+   bad(404,'newspaper_image_not_found');
+  const media=await runtime.collection('newspaperMedia').doc(
+    createHash('sha256').update('newspaper-media:'+block.imagePath).digest('hex')).get();
+  const v=media.data();
+  if(!media.exists||v?.state!=='ready'||v.path!==block.imagePath||
+     v.kind!=='editionImage'||v.editionId!==editionId||
+     v.sourceSnapshotId!==snapshotId||typeof v.sha256!=='string')
+   bad(404,'newspaper_image_not_found');
+  expectedHash=v.sha256;
+  file=bucket.file(block.imagePath);
+ }else{
+  // Imported originals remain at their historical, read-only locations.
+  file=bucket.file('migration-staging/campaign-newspapers/'+block.imagePath);
+  let [found]=await file.exists();
+  if(!found)file=bucket.file('campaign-newspapers/'+block.imagePath);
  }
+ const [exists]=await file.exists();
  if(!exists)bad(404,'newspaper_image_not_found');
  const [meta]=await file.getMetadata();
  const size=Number(meta?.size);
@@ -71,4 +110,43 @@ export async function readPublishedNewspaperImage({
 export function publishedImageSrc(editionId:string,index:number):string|null{
  if(!ID.test(editionId)||!Number.isSafeInteger(index)||index<0||index>=80)return null;
  return '/api/public/newspaper-image?edition='+encodeURIComponent(editionId)+'&index='+index;
+}
+
+/** Public PDF: only a published Cloud edition and its verified media record. */
+export async function readPublishedNewspaperPdf({db,bucket,snapshotId,editionId}:Omit<ImageOptions,'index'>):
+ Promise<{data:Buffer;contentType:'application/pdf'}>{
+ if(!SNAP.test(snapshotId)||!ID.test(editionId)||!editionId.startsWith('cloud-'))
+  bad(404,'newspaper_pdf_not_found');
+ const stage=await db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).get();
+ if(!stage.exists||stage.data()?.status!=='complete'||stage.data()?.private!==true)
+  bad(503,'newspaper_pdf_stage_pending');
+ const runtime=db.collection('campaignCloudRuntime').doc(snapshotId);
+ const item=await runtime.collection('publishedNewspapers').doc(editionId).get();
+ const e=item.data();
+ if(!item.exists||e?.id!==editionId||e.sourceSnapshotId!==snapshotId||
+    e.source!=='firebase-cloud'||!['published','archived'].includes(e.state)||
+    e.cancelledAt!=null||(await deletedNewspaperIds(db,snapshotId)).has(editionId))
+  bad(404,'newspaper_pdf_not_found');
+ const path=e.pdfPath;
+ if(typeof path!=='string'||!new RegExp('^newspaper-media/'+snapshotId+
+   '/editionPdf/[0-9a-f-]{36}\\.pdf$').test(path))
+  bad(404,'newspaper_pdf_not_found');
+ const doc=await runtime.collection('newspaperMedia').doc(
+  createHash('sha256').update('newspaper-media:'+path).digest('hex')).get();
+ const v=doc.data();
+ if(!doc.exists||v?.state!=='ready'||v.path!==path||
+    v.kind!=='editionPdf'||v.sourceSnapshotId!==snapshotId||
+    v.editionId!==editionId||v.contentType!=='application/pdf')
+  bad(404,'newspaper_pdf_not_found');
+ const file=bucket.file(path);
+ const [exists]=await file.exists();if(!exists)bad(404,'newspaper_pdf_not_found');
+ const [meta]=await file.getMetadata(),size=Number(meta?.size);
+ if(!Number.isSafeInteger(size)||size<5||size>MAX_IMAGE_BYTES||size!==v.bytes)
+  bad(404,'newspaper_pdf_not_found');
+ const [bytes]=await file.download();
+ if(!Buffer.isBuffer(bytes)||bytes.length!==size||
+    bytes.subarray(0,5).toString()!=='%PDF-'||
+    createHash('sha256').update(bytes).digest('hex')!==v.sha256)
+  bad(503,'newspaper_pdf_integrity');
+ return {data:bytes,contentType:'application/pdf'};
 }
