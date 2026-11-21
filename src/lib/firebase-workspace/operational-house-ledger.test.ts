@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {mergeHouseLedger} from './operational-house-ledger';
+import {mergeHouseLedger,readOperationalHouseLedger} from './operational-house-ledger';
 const row=(id:string,house:string,version:number,at:string)=>({
  id,house_id:house,action:'domain_edit',explanation:'Edição validada',
  rule:'Correção do domínio',created_at:at,actor:'player-a',
@@ -35,4 +35,38 @@ describe('Livro-razão Firebase por Casa',()=>{
    [],'house-a',1000)).toThrow('house_ledger_export_too_large');
  });
 
+});
+
+describe('Leitura privada sem confundir permissão de leitura com escrita',()=>{
+ const snapshot='a'.repeat(64);
+ const runtime={status:'active',private:true,sourceSnapshotReconciled:true,
+  sourceSnapshotId:snapshot,applicationEnabled:true,
+  houseOpsWriteApproved:false};
+ function dbFor(root:Record<string,unknown>,docs= [{
+  id:'op-1',data:()=>({id:'op-1',actorUid:'player-a',
+   houseId:'house-a',action:'domain_edit',version:2,
+   explanation:'Edição autorizada',rule:'Regra',campaignMonth:18265,
+   created_at:'2026-11-20T10:00:00Z'}),
+ }]){
+  return {collection:()=>({doc:()=>({
+   get:async()=>({exists:true,data:()=>root}),
+   collection:()=>({limit:()=>({get:async()=>({docs})})}),
+  })})};
+ }
+ it('lê histórico da própria Casa mesmo com novas operações bloqueadas',async()=>{
+  const rows=await readOperationalHouseLedger(dbFor(runtime),snapshot,'house-a');
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({house_id:'house-a',id:'op-1',version:2});
+  expect(await readOperationalHouseLedger(dbFor(runtime),snapshot,'house-b')).toEqual([]);
+ });
+ it('não abre acesso se a raiz do Firebase não estiver ativa ou reconciliada',async()=>{
+  for(const change of [
+   {status:'pending'},{private:false},
+   {sourceSnapshotReconciled:false},{sourceSnapshotId:'b'.repeat(64)},
+   {applicationEnabled:false},
+  ]){
+   await expect(readOperationalHouseLedger(dbFor({...runtime,...change}),snapshot,'house-a'))
+    .rejects.toThrow('house_ops_unavailable');
+  }
+ });
 });
