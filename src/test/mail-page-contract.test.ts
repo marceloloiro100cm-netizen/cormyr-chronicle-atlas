@@ -87,6 +87,10 @@ describe('contrato mail_page (porta literal do SQL original)', () => {
     expect(ids(mailPage(ds, {uid: NARRATOR}, {origin: 'none'}))).toEqual(['l1', 'l4']);
     expect(ids(mailPage(ds, {uid: NARRATOR}, {origin: 'fewmerry'}))).toEqual(['l3']);
     expect(ids(mailPage(ds, {uid: NARRATOR}, {house: 'ashkar'}))).toEqual(['l1', 'l2', 'l3']);
+    // Editor-Chefe needs every letter involving Ashkar, not only outgoing mail.
+    expect(ids(mailPage(ds, {uid: EDITOR}, {house: 'ashkar'}))).toEqual(['l1', 'l2', 'l3']);
+    expect(ids(mailPage(ds, {uid: EDITOR}, {origin: 'ashkar'}))).toEqual(['l2']);
+    expect(ids(mailPage(ds, {uid: EDITOR}, {house: 'ashkar', origin: 'ashkar'}))).toEqual(['l2']);
     expect(ids(mailPage(ds, {uid: NARRATOR}, {court: 'ashkar:c1'}))).toEqual(['l2']);
     expect(ids(mailPage(ds, {uid: NARRATOR}, {unit: 'ashkar:u1'}))).toEqual(['l2']);
     expect(ids(mailPage(ds, {uid: NARRATOR}, {unit: 'none'}))).toEqual(['l1', 'l3', 'l4']);
