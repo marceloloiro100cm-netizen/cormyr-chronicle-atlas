@@ -34,3 +34,28 @@ describe('Public Folha masthead and editions visual alignment',()=>{
   expect(css).toContain('.public-folha-head h1{font-size:clamp(1.65rem,6vw,2.1rem)}');
  });
 });
+
+describe('Video-requested newspaper navigation',()=>{
+ it('keeps edition and staff actions inside the top masthead',()=>{
+  const head=source.indexOf('<div className="public-folha-head">');
+  const nav=source.indexOf('<nav className="public-folha-tabs"');
+  const end=source.indexOf('</div>',source.indexOf('<div className="public-folha-head-copy">'));
+  expect(head).toBeGreaterThan(-1);
+  expect(nav).toBeGreaterThan(end);
+  expect(source).toContain('className="public-folha-edition-nav"');
+  expect(source).toContain('className="public-folha-current-edition"');
+ });
+ it('places previous and next controls in the centered header and preserves historical menu',()=>{
+  expect(source).toContain('items[index+1]');
+  expect(source).toContain('items[index-1]');
+  expect(source).toContain('aria-label="Edições publicadas"');
+  expect(source).not.toContain('<div className="public-folha-pager">');
+  expect(css).toContain('.public-folha-edition-nav{');
+  expect(css).toContain('justify-content:center');
+ });
+ it('prevents long headlines and image blocks from stretching the visible published page',()=>{
+  expect(css).toContain('.public-folha-reader .newspaper-page{box-sizing:border-box;min-width:0;max-width:100%}');
+  expect(css).toContain('.public-folha-reader .newspaper-page-masthead h1{');
+  expect(css).toContain('overflow-wrap:break-word;word-break:normal;');
+ });
+});
