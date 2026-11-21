@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {BookOpenCheck,ChevronDown,Eye,Filter,Flame,Newspaper,Search,ShieldCheck} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import './editor-intelligence.css';
 import {CampaignContent} from '@/components/campaign-content';
 import {supabase} from '@/integrations/supabase/client';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
