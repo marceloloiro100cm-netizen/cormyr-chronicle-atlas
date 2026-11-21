@@ -30,7 +30,7 @@ export const Route=createFileRoute('/jornal')({
 type Summary={id:string;title:string;subtitle:string;editionNo:number;publishedAt:string;campaignDate:string|null};
 type ListReply={items:Summary[];staff:(Pick<NewspaperStaffMember,'id'|'name'|'specialty'|'bio'|'sort_order'>&{photo_url?:string|null})[]};
 type EditionReply={id:string;title:string;subtitle:string;editionNo:number;template:string;font_style:string;
-  blocks:unknown[];publishedAt:string;campaignDate:string|null;version:number};
+  blocks:unknown[];pdfSrc?:string|null;publishedAt:string;campaignDate:string|null;version:number};
 
 const VISITOR_KEY='atlas-cormyr-leitor';
 function visitorId():string|null{
@@ -52,7 +52,7 @@ function toEdition(v:EditionReply):NewspaperEdition{
   const template=NEWSPAPER_TEMPLATES.some(t=>t.value===v.template)?v.template as NewspaperTemplate:'classico';
   const font=NEWSPAPER_FONTS.some(f=>f.value===v.font_style)?v.font_style as NewspaperFont:'classico';
   return {id:v.id,edition_no:v.editionNo,campaign_date:v.campaignDate??'',title:v.title,subtitle:v.subtitle,
-    template,font_style:font,state:'published',blocks:safeNewspaperBlocks(v.blocks),pdf_path:null,
+    template,font_style:font,state:'published',blocks:safeNewspaperBlocks(v.blocks),pdf_path:v.pdfSrc??null,
     version:v.version,publication_revision:v.version,created_by:'',updated_at:v.publishedAt,
     published_at:v.publishedAt,archived_at:null,cancelled_at:null,publish_on:null};
 }
