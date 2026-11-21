@@ -13,7 +13,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: cormyr-house-drive-gallery-v4
+  group: cormyr-house-drive-gallery-v5
   cancel-in-progress: false
 jobs:
   audit:
@@ -73,18 +73,27 @@ jobs:
           DRIVE_ACCESS_TOKEN: ${{ steps.reader.outputs.access_token }}
           DRIVE_ROOT_FOLDER_ID: ${{ secrets.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
         run: node scripts/firebase/sync-house-drive-gallery.mjs --collect
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Authenticate isolated Storage-only writer
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-stager@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - name: Create immutable, verified image objects in private bucket
+        run: node scripts/firebase/sync-house-drive-gallery.mjs --publish-storage
       - name: Validate existing protected Firebase operator
         env:
           OPERATOR: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
         run: test -n "$OPERATOR" && test "$OPERATOR" != 'cormyr-gh-reader@cormyr.iam.gserviceaccount.com'
-      - uses: google-github-actions/auth@v3
+      - name: Authenticate Firestore operator separately from Storage writer
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
           service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
           project_id: cormyr
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Verify and publish assets in private Firebase Storage
-        run: node scripts/firebase/sync-house-drive-gallery.mjs --publish
+      - name: Commit reviewed per-House gallery metadata from verified upload receipt
+        run: node scripts/firebase/sync-house-drive-gallery.mjs --publish-metadata
       - name: Purge all ephemeral media
         if: always()
         run: rm -rf .tmp-house-gallery

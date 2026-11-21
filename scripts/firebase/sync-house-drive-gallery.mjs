@@ -111,6 +111,56 @@ async function collect(){
  await writeFile(join(work,'manifest.json'),JSON.stringify({format:1,houses:data.houses,images:entries}),{flag:'wx'});
  console.log('GALLERY_COLLECT verified='+entries.length);
 }
+/**
+ * Restricted GCS staging identity: verifies each source byte and creates
+ * immutable objects only. This phase has no Firestore access or flags.
+ * Its local receipt is available solely to the same protected workflow job.
+ */
+async function publishStorage(){
+ const manifest=JSON.parse(await readFile(join(work,'manifest.json'),'utf8'));
+ const {houses}=await catalog();
+ if(manifest.format!==1||JSON.stringify(houses)!==JSON.stringify(manifest.houses)||
+    !Array.isArray(manifest.images)||manifest.images.length>5000||
+    new Set(manifest.images.map(f=>f.house)).size!==houses.length)
+   throw Error('storage_manifest_invalid');
+ const {initializeApp,applicationDefault}=await import('firebase-admin/app');
+ const {getStorage}=await import('firebase-admin/storage');
+ const app=initializeApp({credential:applicationDefault(),projectId:'cormyr'},'house-drive-storage');
+ const bucket=getStorage(app).bucket(bucketName);
+ const seen=new Set();
+ for(const f of manifest.images){
+  if(!houses.some(h=>h.id===f.house)||!mimeTypes.has(f.mime)||
+     !/^public-house\/[a-z0-9-]{1,80}\/[a-f0-9]{48}$/.test(f.path)||
+     !f.path.startsWith('public-house/'+f.house+'/')||
+     f.file!==f.path.split('/').at(-1)||
+     !/^[a-f0-9]{64}$/.test(f.sha)||!Number.isSafeInteger(f.size)||
+     f.size<1||f.size>max||seen.has(f.path))
+    throw Error('storage_entry_invalid');
+  seen.add(f.path);
+ }
+ for(const f of manifest.images){
+  const bytes=await readFile(join(work,'bytes',f.file));
+  if(bytes.length!==f.size||digest(bytes)!==f.sha||!signature(bytes,f.mime))
+    throw Error('storage_local_integrity_failed');
+  const file=bucket.file('campaign-images/'+f.path);
+  try{
+   await file.save(bytes,{resumable:false,validation:'crc32c',
+     preconditionOpts:{ifGenerationMatch:0},
+     metadata:{contentType:f.mime,cacheControl:'private,no-store'}});
+  }catch(e){
+   if(![409,412].includes(Number(e?.code)))throw e;
+   const [existing]=await file.download();
+   if(digest(existing)!==f.sha)throw Error('storage_existing_object_mismatch');
+  }
+ }
+ const receiptHash=digest(JSON.stringify(manifest.images.map(
+  f=>[f.house,f.path,f.sha,f.size,f.mime]).sort((x,y)=>String(x[1]).localeCompare(String(y[1])))));
+ await writeFile(join(work,'storage-receipt.json'),
+   JSON.stringify({imageCount:manifest.images.length,receiptHash}),
+   {flag:'wx'});
+ console.log('GALLERY_STORAGE_CREATED verified_images='+manifest.images.length);
+}
+
 async function publish(){
  const manifest=JSON.parse(await readFile(join(work,'manifest.json'),'utf8'));
  const {houses}=await catalog();
@@ -118,7 +168,6 @@ async function publish(){
     !Array.isArray(manifest.images)||manifest.images.length>5000)throw Error('manifest_invalid');
  const {initializeApp,applicationDefault}=await import('firebase-admin/app');
  const {getFirestore}=await import('firebase-admin/firestore');
- const {getStorage}=await import('firebase-admin/storage');
  const app=initializeApp({credential:applicationDefault(),projectId:'cormyr'},'house-drive-sync');
  const db=getFirestore(app);
  const snapshots=(await db.collection('campaignWorkspaceImports').limit(8).get()).docs.filter(d=>
@@ -137,7 +186,6 @@ async function publish(){
    s.reviewScope!=='house-gallery-only'))throw Error('gallery_review_stage_conflict');
  const version=Number.isSafeInteger(r.galleryVersion)&&r.galleryVersion>0&&r.galleryVersion===r.publishedGalleryVersion?
   r.galleryVersion:Math.max(0,Number(r.galleryVersion)||0)+1;
- const bucket=getStorage(app).bucket(bucketName);
  const byHouse=new Map(houses.map(h=>[h.id,[]])),docs=[];
  // Validate ALL local bytes before the first cloud write.
  for(const f of manifest.images){
@@ -149,17 +197,13 @@ async function publish(){
   docs.push({...f,bytes:b});byHouse.get(f.house).push({path:f.path,name:title(f.name)});
  }
  if([...byHouse.values()].some(a=>a.length>250))throw Error('house_image_limit');
- for(const f of docs){
-  const file=bucket.file('campaign-images/'+f.path);
-  try{
-   await file.save(f.bytes,{resumable:false,validation:'crc32c',preconditionOpts:{ifGenerationMatch:0},
-    metadata:{contentType:f.mime,cacheControl:'private,no-store'}});
-  }catch(e){
-   if(![409,412].includes(Number(e?.code)))throw e;
-   const [existing]=await file.download();
-   if(digest(existing)!==f.sha)throw Error('storage_checksum_conflict');
-  }
- }
+ // Commit may not begin until the separate Storage-only identity uploaded
+ // every item successfully. The protected job clears the receipt on each collect.
+ const receipt=JSON.parse(await readFile(join(work,'storage-receipt.json'),'utf8'));
+ const receiptHash=digest(JSON.stringify(docs.map(
+  f=>[f.house,f.path,f.sha,f.size,f.mime]).sort((x,y)=>String(x[1]).localeCompare(String(y[1])))));
+ if(receipt.imageCount!==docs.length||receipt.receiptHash!==receiptHash)
+   throw Error('storage_receipt_missing_or_mismatch');
  const refs=[];
  for(const f of docs)refs.push([stage.collection('gallery').doc(digest(f.path)),{
   status:'approved',publicReviewed:true,sourceSnapshotId:snap,version,path:f.path,bucketName,
@@ -201,5 +245,6 @@ async function publish(){
 }
 if(mode==='--scan')await inventory();
 else if(mode==='--collect')await collect();
-else if(mode==='--publish')await publish();
+else if(mode==='--publish-storage')await publishStorage();
+else if(mode==='--publish-metadata')await publish();
 else throw Error('invalid_mode');
