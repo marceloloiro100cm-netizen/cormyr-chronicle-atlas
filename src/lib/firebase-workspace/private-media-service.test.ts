@@ -247,6 +247,7 @@ describe('Item 11, gateway privado do Storage',()=>{
      .rejects.toThrow('private_media_archive_integrity_failed');
    f.replicas.set('campaign-images/'+historical,image);
    state.rows={};
+   state.viewer={uid:'bob',profile:'jogador',playerId:'p2',memberHouseIds:['h2'],editHouseIds:['h2']};
    await expect(f.api.download('valid-token',{action:'download',path:historical}))
      .rejects.toThrow('private_media_denied');
  });
