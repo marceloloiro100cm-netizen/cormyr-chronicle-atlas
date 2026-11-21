@@ -159,15 +159,15 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
  .map((x,index)=>({
   id:typeof x['id']==='string'&&x['id'].length<100?x['id']:`block-${index}`,
   type:['headline','subtitle','article','image','quote','notice'].includes(String(x['type']))?x['type'] as NewspaperBlockType:'article',
-  text:typeof x['text']==='string'?x['text'].slice(0,30000):'',
+  text:typeof x['text']==='string'?x['text']:'',
   ...(typeof x['imagePath']==='string'&&x['imagePath'].length<300?{imagePath:x['imagePath']}:{}),
   ...(typeof x['imageSrc']==='string'&&(
     NEWSPAPER_ENGRAVINGS.some(e=>e.src===x['imageSrc'])||
     /^\/api\/public\/newspaper-image\?edition=[A-Za-z0-9_-]{1,128}&index=(?:0|[1-7]?[0-9])$/.test(x['imageSrc'])
    )?{imageSrc:x['imageSrc']}:{}),
-  ...(typeof x['caption']==='string'?{caption:x['caption'].slice(0,500)}:{}),
-  ...(typeof x['subtitle']==='string'?{subtitle:x['subtitle'].slice(0,500)}:{}),
-  ...(typeof x['byline']==='string'?{byline:x['byline'].slice(0,120)}:{}),
+  ...(typeof x['caption']==='string'?{caption:x['caption']}:{}),
+  ...(typeof x['subtitle']==='string'?{subtitle:x['subtitle']}:{}),
+  ...(typeof x['byline']==='string'?{byline:x['byline']}:{}),
   ...(typeof x['commissionId']==='string'&&/^[0-9a-f-]{36}$/i.test(x['commissionId'])?{commissionId:x['commissionId']}:{}),
   ...(typeof x['icon']==='string'&&NEWSPAPER_NOTICE_ICONS.some(icon=>icon===x['icon'])?{icon:x['icon']}:{}),
   ...(x['align']==='center'||x['align']==='left'?{align:x['align'] as NewspaperTextAlign}:{}),
