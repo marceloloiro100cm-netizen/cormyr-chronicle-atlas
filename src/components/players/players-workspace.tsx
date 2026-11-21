@@ -35,6 +35,7 @@ import {FirebaseRuntimeApprovals} from '@/components/firebase/FirebaseRuntimeApp
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
 import { HouseIdentity } from '@/components/players/house-identity';
+import {HousePlaylistButton} from '@/components/players/house-playlist-button';
 import {heraldicHouseKey,type HeraldicHouse} from '@/lib/house/heraldry';
 import { NarratorMissivasHub, NARRATOR_MENU } from '@/components/players/narrator-missives-hub';
 import {NarratorWorkspace,RepresentationOptions} from '@/components/players/narrator/NarratorWorkspace';
@@ -252,6 +253,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   const conselho=!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar">
       {current&&<HouseIdentity house={current}/>}
+      {current&&<HousePlaylistButton key={current.id} houseName={current.name}/>}
       {data.admin&&<select aria-label="Selecionar casa para administração" value={current?.id??''} onChange={e=>{setHouse(e.target.value);sessionStorage.setItem('campaign-selected-house',e.target.value);}}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select>}
     </div>
     <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button asChild key={id} variant={tab===id?'default':'outline'}><a {...tabLink({aba:id??'casa'},()=>setTab(id??'casa'))} aria-current={tab===id?'page':undefined} aria-label={id==='calendario'&&weekFestivals.unseen?'Calendário: festival nesta semana':id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined}>{label}{id==='calendario'&&weekFestivals.unseen&&<span className="campaign-tab-count" aria-hidden="true">✦</span>}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</a></Button>)}</nav>
