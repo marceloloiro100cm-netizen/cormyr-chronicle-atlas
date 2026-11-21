@@ -40,9 +40,11 @@ export async function readOperationalHouseLedger(
  if(!live.exists||live.data()?.status!=='active'||live.data()?.private!==true||
    live.data()?.sourceSnapshotReconciled!==true||
    live.data()?.sourceSnapshotId!==snapshotId||
-   live.data()?.applicationEnabled!==true||
-   live.data()?.houseOpsWriteApproved!==true)
+   live.data()?.applicationEnabled!==true)
    throw new OperationalLedgerError('house_ops_unavailable');
+ // An authenticated, House-scoped ledger READ does not require the separate
+ // approval for NEW economic WRITES. The write endpoint still checks that
+ // flag transactionally; revoking writes must not hide immutable history.
  const snap=await root.collection('houseOperationLedger').limit(501).get();
  if(!Array.isArray(snap.docs)||snap.docs.length>500)
    throw new OperationalLedgerError('house_ledger_over_limit');
