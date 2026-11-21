@@ -355,7 +355,7 @@ export function createFirebaseCloudNewspaper({
          (input.id!==null&&(typeof input.id!=='string'||!/^cloud-[a-f0-9]{64}$/.test(input.id))))
         deny('invalid_editorial_request',400);
       let content;
-      try{content=validateEditorialContent(input.content);}
+      try{content=validateEditorialContent(input.content,{allowEmptyImages:input.state==='draft'});}
       catch{deny('invalid_editorial_content',400);}
       const id=input.id??'cloud-'+digest('editorial:'+uid+':'+input.requestKey);
       const ref=editions.doc(id),audit=audits.doc('edit-'+digest(uid+':'+input.requestKey));
