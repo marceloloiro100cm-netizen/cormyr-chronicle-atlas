@@ -80,8 +80,9 @@ export async function saveFirebaseStaffPhoto({db,auth,bucket,snapshotId,token,ra
  const imported=await readWorkspaceTable(db,snapshotId,'campaign_newspaper_staff') as Record<string,any>[];
  const saved=await commitNewspaperStaffPhoto({
   db,snapshotId,actorUid:viewer.uid,imported,
-  input:{id:input.id,requestId:input.requestId,photoPath:path,
-   name:input.name,specialty:input.specialty,bio:input.bio,sortOrder:input.sortOrder},
+  input:{...(input.id?{id:input.id}:{}),requestId:input.requestId,photoPath:path,
+   name:input.name,specialty:input.specialty,bio:input.bio,
+   ...(input.sortOrder===undefined?{}:{sortOrder:input.sortOrder})},
  });
  return {id:saved.id,photoPath:path};
 }
