@@ -4,6 +4,7 @@
  * designer. No remote image paths, arbitrary files, unverified commission
  * ownership, scheduled publishing or server-generated fields are accepted.
  */
+import {isNewspaperDate} from './newspaper-core.mjs';
 const kinds=['headline','subtitle','article','image','quote','notice'];
 const fonts=['padrao','old-english','garamond','fraktur','cinzel','georgia','times'];
 const images=['/newspaper/gravuras/castelo_cormyr.jpg','/newspaper/gravuras/conselho_real.jpg','/newspaper/gravuras/mercado_suzail.jpg'];
@@ -21,7 +22,7 @@ const mediaPdf=/^newspaper-media\/[a-f0-9]{64}\/editionPdf\/[0-9a-f-]{36}\.pdf$/
 export function validateEditorialContent(input,{allowEmptyImages=false}={}){
   const invalid=()=>{throw Error('invalid_editorial_content');};
   if(!input||typeof input!=='object'||Array.isArray(input)||
-     Object.keys(input).some(k=>!['title','subtitle','blocks','template','font_style','pdfPath'].includes(k)))invalid();
+     Object.keys(input).some(k=>!['title','subtitle','blocks','template','font_style','pdfPath','publishOn'].includes(k)))invalid();
   const text=(value,max,required=false)=>{
     if(typeof value!=='string'||Buffer.byteLength(value,'utf8')>max||
        (required&&!value.trim()))invalid();
@@ -94,8 +95,11 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
   if(new Set(commissions).size!==commissions.length)invalid();
   if(!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)||input.pdfPath)invalid();
   if(input.pdfPath!==undefined&&input.pdfPath!==null&&!mediaPdf.test(input.pdfPath))invalid();
+  if(input.publishOn!==undefined&&input.publishOn!==null&&
+     (typeof input.publishOn!=='string'||!isNewspaperDate(input.publishOn)))invalid();
   const result={title,subtitle,blocks,
     ...(input.pdfPath?{pdfPath:input.pdfPath}:{}),
+    publishOn:input.publishOn??null,
     ...(input.template!==undefined?{template:input.template}:{}),
     ...(input.font_style!==undefined?{font_style:input.font_style}:{})};
   if(Buffer.byteLength(JSON.stringify(result),'utf8')>240000)invalid();
