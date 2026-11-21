@@ -37,11 +37,15 @@ export interface NarratorWeekDraftView {
   saved?:boolean;
 }
 export interface NarratorWeekHistoryItem {
-  id:string;action:'advance_week'|'launch_firebase_campaign';at:string;
+  id:string;action:'advance_week'|'launch_firebase_campaign'|'set_calendar_date';at:string;
   from:(NarratorWeekDate&{version?:number})|null;to:(NarratorWeekDate&{version?:number})|null;
   fromRound:number|null;toRound:number|null;monthsCrossed:number;reason:string|null;
 }
 export function harptosOrdinal(d:NarratorWeekDate):number;
+export function planCalendarDateChange(input:{live:unknown;request:unknown}):{
+ date:NarratorWeekDate;version:number;monthsCrossed:number;backdated:boolean;
+ openRound:number;reason:string;
+};
 export function planNarratorWeekDraft(input:{
   archivedCalendar:unknown;previous:unknown;request:unknown;
   actorUid:string;at:string;
@@ -67,6 +71,8 @@ export function createFirebaseNarratorWeekDraft(config:{
   save(idToken:string,request:unknown):Promise<NarratorWeekDraftView>;
   advance(idToken:string,request:unknown):Promise<{advanced:true;duplicate:boolean;
     calendar:NarratorWeekDate&{version:number};openRound:number;monthsCrossed?:number;publishedEvents?:number}>;
+  changeDate(idToken:string,request:unknown):Promise<{changed:true;duplicate:boolean;
+    calendar:NarratorWeekDate&{version:number};openRound:number;monthsCrossed:number}>;
   history(idToken:string,limit?:number):Promise<NarratorWeekHistoryItem[]>;
   publishEvents(idToken:string):Promise<{published:number}>;
 };
