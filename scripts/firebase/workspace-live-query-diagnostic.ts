@@ -88,5 +88,62 @@ for(const profile of ['narrador','jogador'] as const){
   console.log('COUNCIL_PROBE '+profile+' BATCH_FAIL '+classify(e));
  }
 }
+// The opening batch can pass while Ficha da Casa stays broken.
+// Check every ACTIVE player's own House and the narrator's official Season 2
+// Houses through the exact read-only kind:'house' route. No raw IDs, names,
+// UID, state or archive content are printed. This is never a write probe.
+let housePass=0,houseFail=0,houseSkipped=0;
+for(const candidate of accounts.filter(a=>
+ ['narrador','jogador'].includes(a.profile)&&a.active===true&&
+ a.requirePasswordChange===false&&typeof a.userId==='string')){
+ let user;
+ try{user=await adminAuth.getUser(candidate.userId);}
+ catch{houseSkipped++;continue;}
+ if(user.disabled||user.uid!==candidate.userId){houseSkipped++;continue;}
+ const auth={verifyIdToken:async()=>({uid:candidate.userId}),
+  getUser:(uid:string)=>adminAuth.getUser(uid)};
+ const service=createWorkspaceService({db,auth,snapshotId,cacheImportedTables:true});
+ let ids:string[];
+ try{
+  if(candidate.profile==='narrador'){
+   const response=await service.execute('internal-readonly-diagnostic',{
+    kind:'query',table:'campaign_houses',steps:[{op:'select',args:['id,active,season']}],
+   });
+   ids=(Array.isArray(response?.data)?response.data:[])
+    .filter((h:{active?:unknown;season?:unknown})=>h.active===true&&h.season===2)
+    .map((h:{id?:unknown})=>h.id)
+    .filter((id:unknown):id is string=>typeof id==='string');
+  }else{
+   ids=(Array.isArray(candidate.memberHouseIds)?candidate.memberHouseIds:[])
+    .filter((id:unknown):id is string=>typeof id==='string');
+  }
+ }catch(e){
+  houseFail++;failed++;
+  console.log('HOUSE_PROBE '+candidate.profile+' DIRECTORY_FAIL '+classify(e));
+  continue;
+ }
+ const unique=[...new Set(ids)];
+ if(unique.length===0||unique.length>25){
+  houseSkipped++;
+  console.log('HOUSE_PROBE '+candidate.profile+' NO_VALID_HOUSES');
+  continue;
+ }
+ for(const id of unique){
+  try{
+   const result=await service.execute('internal-readonly-diagnostic',{
+    kind:'house',houseId:id,
+   });
+   if(!result||typeof result.state!=='object'||result.state===null||
+      !Array.isArray(result.catalog)||!Array.isArray(result.houses)||
+      !Number.isSafeInteger(result.version))throw Error('invalid_house_response');
+   housePass++;
+  }catch(e){
+   houseFail++;failed++;
+   console.log('HOUSE_PROBE '+candidate.profile+' FAIL '+classify(e));
+  }
+ }
+}
+console.log('HOUSE_PROBE RESULT passed='+housePass+
+ ' failed='+houseFail+' skipped='+houseSkipped);
 console.log('COUNCIL_PROBE RESULT failed_checks='+failed);
 if(failed)process.exitCode=1;
