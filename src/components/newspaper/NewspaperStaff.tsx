@@ -15,7 +15,7 @@ export function StaffPhoto({path,name,id,src}:{path:string|null;name:string;id?:
  const photo=useQuery({queryKey:['newspaper-staff-photo',path],queryFn:()=>signedStaffPhoto(path!),
   enabled:Boolean(path)&&!direct,staleTime:45*60*1000,retry:false});
  const image=direct??photo.data;
- if(image&&!failed)return <img className="folha-staff-photo" src={image}
+ if(image&&!failed)return <img key={path??direct} className="folha-staff-photo" src={image}
   alt={`Foto de ${name}`} onError={()=>setFailed(true)}/>;
  // A miniatura de backup pertence ao funcionário exato (ID do acervo de 15/11).
  // Só substitui a foto quando o Storage ainda não contém seu arquivo original.
@@ -31,7 +31,7 @@ export function StaffPhoto({path,name,id,src}:{path:string|null;name:string;id?:
 /** Corpo de funcionários da Redação: foto, nome, especialidade e texto, todos campos livres. */
 export function NewspaperStaff({staff,busy,onSave,onDelete,onReorder}:{
  staff:NewspaperStaffMember[];busy:boolean;
- onSave:(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
+ onSave:(input:{id?:string;requestId:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null)=>Promise<boolean>;
  onDelete:(member:NewspaperStaffMember)=>void;
  /** Leva o funcionário `id` para a posição de `targetId`; a ordem é a que os jogadores veem. */
  onReorder?:(id:string,targetId:string)=>void;
@@ -45,9 +45,17 @@ export function NewspaperStaff({staff,busy,onSave,onDelete,onReorder}:{
  const [specialty,setSpecialty]=useState('');
  const [bio,setBio]=useState('');
  const [photo,setPhoto]=useState<File|null>(null);
+ const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
+ const [preview,setPreview]=useState<string|null>(null);
  const [error,setError]=useState('');
+ useEffect(()=>{
+  if(!photo){setPreview(null);return;}
+  const url=URL.createObjectURL(photo);
+  setPreview(url);
+  return ()=>URL.revokeObjectURL(url);
+ },[photo]);
  const open=(member:NewspaperStaffMember|'new')=>{
-  setEditing(member);setError('');setPhoto(null);
+  setEditing(member);setError('');setPhoto(null);setRequestId(crypto.randomUUID());
   setName(member==='new'?'':member.name);
   setSpecialty(member==='new'?'':member.specialty);
   setBio(member==='new'?'':member.bio);
@@ -56,10 +64,11 @@ export function NewspaperStaff({staff,busy,onSave,onDelete,onReorder}:{
   const problem=validateStaffMember({name,specialty,bio});
   if(problem){setError(problem);return;}
   const ok=await onSave({
-   ...(editing&&editing!=='new'?{id:editing.id}:{}),name,specialty,bio,
+   ...(editing&&editing!=='new'?{id:editing.id}:{}),requestId,name,specialty,bio,
    photoPath:editing&&editing!=='new'?editing.photo_path:null,
   },photo);
   if(ok)setEditing(null);
+  else setError('Não foi possível salvar. Confira o aviso de erro da Redação e tente novamente.');
  };
  return <div className="folha-staff">
   {editing===null&&<button type="button" className="folha-text-action" onClick={()=>open('new')}>
@@ -74,7 +83,19 @@ export function NewspaperStaff({staff,busy,onSave,onDelete,onReorder}:{
     onKeyDown={e=>handleNewspaperTextareaTab(e,setBio)}/></label>
    <label className="newspaper-upload"><ImagePlus size={17}/> {photo?photo.name:'Foto (opcional)'}
     <input type="file" accept="image/png,image/jpeg,image/webp"
-     onChange={e=>{setPhoto(e.target.files?.[0]??null);e.target.value='';}}/></label>
+     onChange={e=>{
+      const selected=e.target.files?.[0]??null;
+      setError('');
+      if(selected&&(!['image/png','image/jpeg','image/webp'].includes(selected.type)||
+         selected.size<1||selected.size>5*1024*1024)){
+       setPhoto(null);setError('A foto deve ser PNG, JPG ou WebP, com no máximo 5 MB.');
+      }else{setPhoto(selected);setRequestId(crypto.randomUUID());}
+      e.target.value='';
+     }}/></label>
+   {preview&&<img src={preview} className="folha-staff-photo"
+    alt={`Prévia da foto de ${name||'funcionário'}`}/>}
+   {!photo&&editing!=='new'&&editing?.photo_path&&
+    <p className="newspaper-notice">A foto existente será mantida se você salvar sem escolher outra.</p>}
    {error&&<p className="newspaper-alert" role="alert">{error}</p>}
    <div className="newspaper-commission-actions">
     <button type="button" className="folha-text-action" disabled={busy} onClick={()=>setEditing(null)}>Cancelar</button>
