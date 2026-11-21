@@ -230,7 +230,11 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
      sourceBlock:placeholder?.id;
     setDraft(old=>old?.id===editionId?{
      ...old,blocks:target?
-      old.blocks.map(b=>b.id===target?{...b,imagePath:path,imageSrc:undefined}:b):
+      old.blocks.map(b=>{
+       if(b.id!==target)return b;
+       const {imageSrc:_unused,...rest}=b;
+       return {...rest,imagePath:path};
+      }):
       [...old.blocks,{...imageBlock,imagePath:path}],
     }:old);
     setBlockId(target??imageBlock.id);
