@@ -7,6 +7,8 @@ import {
  loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,
 } from './firebase-editorial-bridge';
 import {workspaceRequest} from '@/lib/firebase-workspace/client';
+import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
+import {mediaFileBase64} from '@/lib/firebase-workspace/private-media-client';
 import {
  PAPER_BUCKET,COMMISSION_BUCKET,STAFF_BUCKET,ENGRAVINGS_BUCKET,NEWSPAPER_ENGRAVINGS,type NewspaperEngraving,safeNewspaperSettings,type NewspaperSettings,safeNewspaperBlocks,type StoryModel,type NewspaperStaffMember,type NewspaperCommission,type NewspaperRevision,type NewspaperEdition,type NewspaperRead,type NewspaperState,
  type NewspaperTemplate,type NewspaperFont,type NewspaperBlock,
@@ -202,6 +204,37 @@ export async function uploadStaffPhoto(file:File):Promise<string>{
  });
  if(error)throw error;
  return path;
+}
+/** Fotografia da Redação: a API valida Editor-Chefe/Narrador e liga o
+ * arquivo à ficha na mesma operação, sem bucket legado ou URL fornecida pelo browser. */
+export async function saveNewspaperStaffWithPhoto(input:{
+ id?:string;requestId:string;name:string;specialty:string;bio:string;sortOrder?:number;
+},file:File):Promise<void>{
+ if(!isFirebaseNewspaperWorkspace())throw Error('Área editorial Firebase indisponível.');
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)||
+    file.size<1||file.size>5*1024*1024)
+  throw Error('Escolha uma foto PNG, JPG ou WebP de até 5 MB.');
+ const dataBase64=await mediaFileBase64(file);
+ const auth=firebasePilotAuth(),before=auth?.current()?.uid,token=await auth?.getToken();
+ const uid=auth?.current()?.uid;
+ if(!uid||!token||(before&&before!==uid))throw Error('Sessão do Editor-Chefe expirada.');
+ const response=await fetch('/api/firebase-newspaper-staff-photo',{
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+  headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+  body:JSON.stringify({action:'saveStaffPhoto',...input,contentType:file.type,dataBase64}),
+ });
+ if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante o envio da foto.');
+ if(!response.ok)throw Error(response.status===413||response.status===415?
+  'A foto é inválida ou ultrapassa 5 MB. Envie PNG, JPG ou WebP.':
+  response.status===403?'Sua conta não tem permissão para fotos da Redação.':
+  response.status===409?'O cadastro mudou durante o envio. Reabra a ficha e tente novamente.':
+  response.status===503?'O armazenamento de fotos da Redação não está disponível no Firebase.':
+  'Não foi possível salvar a fotografia no Firebase.');
+ const body:unknown=await response.json();
+ if(!body||typeof body!=='object'||!('result' in body)||
+    typeof body.result!=='object'||!body.result||
+    typeof (body.result as {id?:unknown}).id!=='string')
+  throw Error('O Firebase não confirmou a fotografia do funcionário.');
 }
 export async function signedStaffPhoto(path:string):Promise<string>{
  const {data,error}=await db.storage.from(STAFF_BUCKET).createSignedUrl(path,3600);

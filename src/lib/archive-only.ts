@@ -55,6 +55,8 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        pathname === '/api/firebase-house-rules' ||
        pathname === '/api/firebase-private-media' ||
        pathname === '/api/firebase-cloud-newspaper' ||
+       // Staff photo write has its own Firebase-only editor authentication.
+       pathname === '/api/firebase-newspaper-staff-photo' ||
        // These four are READ ONLY, with separate runtime flags, Firebase
        // token validation, strict per-House access and deny-by-default rules.
        pathname === '/api/firebase-cloud-house-quote' ||

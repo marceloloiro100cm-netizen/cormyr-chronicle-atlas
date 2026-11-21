@@ -84,6 +84,13 @@
  * na aba Calendário (some ao abrir a aba) e o aviso "Festival nesta semana"
  * acima do calendário. Nenhuma aba, filtro, controle ou RPC preexistente foi
  * removido ou alterado. Re-captured after review.
+ * 2026-11-21 (playlist das Casas): players-workspace.tsx ganhou só o
+ * HousePlaylistButton de cada Casa, após solicitação expressa do proprietário.
+ * Nenhuma aba, filtro, acesso editorial ou tela do Narrador foi alterada.
+ * 2026-11-21 (foto da Redação, PR #687): NewspaperHub.tsx só direciona
+ * o envio de foto para o Firebase Storage autenticado; a interface e os
+ * demais comandos editoriais permanecem os mesmos. O formulário e a API
+ * tratam prévia, erro, gravação, vínculo e leitura pública do retrato.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -96,11 +103,11 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'730609e7444c1716ebb9e816fc78f3b333339b06',
+  'src/components/players/players-workspace.tsx':'4ca7440409de1560c3e4df94a3bfdc8d2606836d',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
-  'src/components/newspaper/NewspaperHub.tsx':'2a0742b8904376ed9aa8e9d160734c0cbd0db23c',
+  'src/components/newspaper/NewspaperHub.tsx':'1e114bdab2c3982736d37a398fea70d99fde1129',
   'src/components/newspaper/newspaper-editorial.css':'1201a06ca889a61da1a9f905701c0e0107a87b17',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',

@@ -2,6 +2,7 @@ import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight,EyeOff} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {isFirebaseNewspaperWorkspace} from '@/lib/newspaper/firebase-editorial-bridge';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate} from '@/lib/calendar/harptos';
@@ -12,7 +13,7 @@ import {CommissionForm,CommissionInbox} from './NewspaperCommissions';
 import {
  copyCommissionImageToEdition,createNewspaperEdition,deleteNewspaperDraft,getHouseNames,getNewspaperCommissions,rejectNewspaperCommission,
  getNewspaperEditions,getNewspaperReceipts,getNewspaperRevisions,getNewspaperStaff,saveNewspaperStaff,
- deleteNewspaperStaff,reorderNewspaperStaff,uploadStaffPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
+ deleteNewspaperStaff,reorderNewspaperStaff,uploadStaffPhoto,saveNewspaperStaffWithPhoto,getStoryModels,saveStoryModel,deleteStoryModel,deleteNewspaperEdition,
  markNewspaperRead,markNewspaperUnread,updateNewspaperEdition,uploadNewspaperAsset,
  getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,getPublicNewspaperReadCounts,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
@@ -528,12 +529,21 @@ const useStoryModel=async(model:StoryModel)=>{
   setBlockId(block.id);setEditing(true);
   notice('Matéria criada com o título da data. Escreva o texto direto na folha.');
  };
- const saveStaff=async(input:{id?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null):Promise<boolean>=>{
+ const saveStaff=async(input:{id?:string;requestId?:string;name:string;specialty:string;bio:string;photoPath:string|null},photo:File|null):Promise<boolean>=>{
   if(!editor||busy)return false;
   setBusy(true);setError('');
   try{
-   const photoPath=photo?await uploadStaffPhoto(photo):input.photoPath;
-   await saveNewspaperStaff({...input,photoPath,...(input.id?{}:{sortOrder:staff.reduce((m,x)=>Math.max(m,(x.sort_order??0)+1),0)})});
+   const sortOrder=input.id?undefined:staff.reduce((m,x)=>Math.max(m,(x.sort_order??0)+1),0);
+   if(photo&&isFirebaseNewspaperWorkspace()){
+    await saveNewspaperStaffWithPhoto({
+     ...(input.id?{id:input.id}:{}),requestId:input.requestId??crypto.randomUUID(),
+     name:input.name,specialty:input.specialty,bio:input.bio,
+     ...(sortOrder===undefined?{}:{sortOrder}),
+    },photo);
+   }else{
+    const photoPath=photo?await uploadStaffPhoto(photo):input.photoPath;
+    await saveNewspaperStaff({...input,photoPath,...(sortOrder===undefined?{}:{sortOrder})});
+   }
    await qc.invalidateQueries({queryKey:['campaign-newspaper-staff']});
    notice('Funcionário salvo na Redação.');return true;
   }catch(cause){setError(safeError(cause));return false;}
