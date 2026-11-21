@@ -75,7 +75,7 @@ async function inventory(){
     if(depth>4)throw Error('folder_depth_limit');
     for(const f of await children(folderId)){
      if(f.mimeType===FOLDER){
-      if(!/^(missivas?|missivas?legado|gestaodositenaomexer|privado|private)$/.test(norm(f.name)))
+      if(!norm(f.name).startsWith('missiva')&&!/^(gestaodositenaomexer|privado|private)/.test(norm(f.name)))
        await walk(f.id,depth+1);
      }else if(f.mimeType?.startsWith('image/')){
       if(!mimeTypes.has(f.mimeType))throw Error('unsafe_image_type');
