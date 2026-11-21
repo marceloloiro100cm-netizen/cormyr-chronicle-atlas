@@ -47,7 +47,7 @@ export function SpyNarratorOperationalMap({operation}:Props){
    </div>
    <label>Mapa
     <select value={selected} onChange={event=>select(event.target.value)}>
-     <option value="">Reino de Cormyr · 11 regiões</option>
+     <option value="">Reino de Cormyr · {Object.keys(CORMYR_MAPPED_REGIONS).length} regiões</option>
      {regionOptions.map(([id,item])=><option value={id} key={id}>{item.name}</option>)}
     </select>
    </label>
