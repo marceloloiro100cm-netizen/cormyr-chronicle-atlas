@@ -20,7 +20,7 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
  if(new URL(request.url).search||request.headers.has('cookie')||
     crossOriginRejected(request))return fail(403,'access_denied');
  const bearer=request.headers.get('authorization')??'';
- if(!/^Bearer [^\\s]{10,10000}$/.test(bearer))
+ if(!/^Bearer [^\s]{10,10000}$/.test(bearer))
   return fail(401,'authentication_required');
  if(request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json'||
     request.headers.has('content-encoding'))return fail(415,'json_required');
