@@ -41,6 +41,8 @@ describe('Firebase archive-only cutover', () => {
     ['/api/firebase-cloud-newspaper', 'router'],
     ['/api/public/gm-content', 'router'],
     ['/api/public/newspaper', 'router'],
+    ['/api/public/newspaper-image', 'router'],
+    ['/api/public/newspaper-staff-photo', 'router'],
     ['/api/public/time', 'router'],
     ['/api/public/catalog', 'router'],
     ['/api/public/translations', 'router'],
@@ -95,6 +97,17 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(pathname,'serverFn')).toBe(true);
     for(const suffix of ['/','-old','/legacy','/extra'])
       expect(shouldBlockLegacyRequest(pathname+suffix,'router')).toBe(true);
+  });
+
+  it.each([
+    '/api/public/newspaper-image',
+    '/api/public/newspaper-staff-photo',
+  ])('passes the exact GET-only newspaper media route %s to its own guarded handler', endpoint => {
+    for(const handlerType of ['router','api'])
+      expect(shouldBlockLegacyRequest(endpoint,handlerType)).toBe(false);
+    expect(shouldBlockLegacyRequest(endpoint,'serverFn')).toBe(true);
+    for(const suffix of ['/','/extra','-old','-export'])
+      expect(shouldBlockLegacyRequest(endpoint+suffix,'router')).toBe(true);
   });
 
   it('permits only exact Firebase login, reset and independently secured pilot pages', () => {
