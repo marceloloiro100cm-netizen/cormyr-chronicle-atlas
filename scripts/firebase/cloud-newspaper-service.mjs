@@ -396,14 +396,18 @@ export function createFirebaseCloudNewspaper({
         deny('historical_draft_incomplete',400);
        if(commissionIdsOf(approved.blocks).length)
         deny('historical_commissions_require_reconciliation',409);
-       if(draft.pdfPath||source.pdfPath||source.pdf_path)
+       if(draft.pdfPath&&draft.pdfPath!==source.pdfPath)
         deny('historical_pdf_requires_reconciliation',409);
+       if(approved.blocks.some(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc))
+        deny('historical_image_missing',409);
        weeklyEditionGate(config);
        const now=clock();
        if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
         deny('invalid_server_clock',503);
        const next={
-        ...approved,id,editionNo:config.nextNewspaperEditionNo,
+        ...approved,
+        ...(source.pdfPath?{pdfPath:source.pdfPath}:{}),
+        id,editionNo:config.nextNewspaperEditionNo,
         source:'firebase-cloud',sourceHistoricId:input.id,
         sourceSnapshotId:snapshotId,sourceHistoricVersion:source.version,
         state:'published',version:1,campaignDate:calendarDate,
