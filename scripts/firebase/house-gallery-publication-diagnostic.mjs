@@ -30,7 +30,8 @@ const truth=[
   r.galleryVersion>0&&r.galleryVersion===r.publishedGalleryVersion],
 ];
 for(const [name,ok] of truth)console.log('HOUSE_GALLERY_GATE '+name+' '+(ok?'YES':'NO'));
-const success=truth.filter(([name,ok])=>name!=='gallery_existing_approved'&&name!=='gallery_existing_version_current'&&!ok);
+const requiredRuntime=new Set(['runtime_active','runtime_private','runtime_snapshot_matches','source_reconciled','application_enabled','gallery_bucket_unset_or_matches']);
+const success=truth.filter(([name,ok])=>requiredRuntime.has(name)&&!ok);
 console.log('HOUSE_GALLERY_GATE publish_prerequisites '+(success.length===0?'READY':'BLOCKED'));
 
 
