@@ -1,7 +1,19 @@
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
-import {mediaFileBase64} from '@/lib/firebase-workspace/private-media-client';
 
 type Kind='editionImage'|'editionPdf'|'commission'|'engraving';
+function encodeFile(file:File):Promise<string>{
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onerror=()=>reject(Error('Não foi possível ler o arquivo.'));
+  reader.onload=()=>{
+   const value=String(reader.result);
+   const raw=value.slice(value.indexOf(',')+1);
+   if(!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))reject(Error('Arquivo inválido.'));
+   else resolve(raw);
+  };
+  reader.readAsDataURL(file);
+ });
+}
 async function call(body:Record<string,unknown>,binary=false):Promise<any>{
  const auth=firebasePilotAuth(),uid=auth?.current()?.uid;
  const token=await auth?.getToken();
@@ -40,10 +52,13 @@ async function call(body:Record<string,unknown>,binary=false):Promise<any>{
 export async function uploadFirebaseNewspaperMedia(input:{
  kind:Kind;file:File;editionId?:string;houseId?:string;
 }):Promise<string>{
+ const max=input.kind==='commission'||input.kind==='engraving'?5*1024*1024:15*1024*1024;
+ if(input.file.size<1||input.file.size>max)
+  throw Error('Arquivo maior que o limite permitido.');
  const v=await call({action:'upload',kind:input.kind,
   ...(input.editionId?{editionId:input.editionId}:{}),
   ...(input.houseId?{houseId:input.houseId}:{}),
-  contentType:input.file.type,dataBase64:await mediaFileBase64(input.file)}) as {path:string};
+  contentType:input.file.type,dataBase64:await encodeFile(input.file)}) as {path:string};
  if(typeof v.path!=='string')throw Error('O Firebase não confirmou o arquivo.');
  return v.path;
 }
