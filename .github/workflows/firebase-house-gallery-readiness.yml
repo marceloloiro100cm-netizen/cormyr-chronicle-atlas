@@ -1,0 +1,33 @@
+name: Firebase House gallery publication readiness (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/firebase-house-gallery-readiness.yml'
+      - 'scripts/firebase/house-gallery-publication-diagnostic.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check scripts/firebase/house-gallery-publication-diagnostic.mjs
+      - run: node scripts/verify-public-repo.mjs
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Inspect exact read-only Cloud prerequisites
+        run: node scripts/firebase/house-gallery-publication-diagnostic.mjs
