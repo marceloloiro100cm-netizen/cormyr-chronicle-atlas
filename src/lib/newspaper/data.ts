@@ -7,7 +7,7 @@ import {
  loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,loadFirebaseNewspaperRevisions,
 } from './firebase-editorial-bridge';
 import {workspaceRequest} from '@/lib/firebase-workspace/client';
-import {uploadFirebaseNewspaperMedia,readFirebaseNewspaperMedia,cloneFirebaseNewspaperMedia,isFirebaseNewspaperMediaPath} from './firebase-newspaper-media.client';
+import {uploadFirebaseNewspaperMedia,readFirebaseNewspaperMedia,cloneFirebaseNewspaperMedia,isFirebaseNewspaperMediaPath} from './firebase-newspaper-media';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 import {mediaFileBase64} from '@/lib/firebase-workspace/private-media-client';
 import {
