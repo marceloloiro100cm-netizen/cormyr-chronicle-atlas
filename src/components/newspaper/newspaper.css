@@ -482,3 +482,89 @@
 .public-folha-reader{min-width:0}
 .public-folha .folha-team{max-width:1100px;margin:16px auto}
 @media(max-width:860px){.public-folha-layout{grid-template-columns:minmax(0,1fr)}.public-folha-list{position:static;max-height:none}}
+
+
+/* Leitor do Jornal 2026: acompanha as áreas novas do Jogador e Narrador,
+   mantendo o pergaminho histórico somente dentro da edição. */
+.public-folha{
+ background:radial-gradient(ellipse at 100% 0%,#44304b 0%,#28152f 48%,#170d1e 100%);
+ color:#f9ebd3;
+ padding-bottom:44px;
+}
+.public-folha--embed{
+ border:1px solid rgba(196,159,99,.5);
+ border-radius:14px;
+ overflow:hidden;
+ padding:2px 0 28px;
+ background:radial-gradient(ellipse at 100% 0%,#40304b 0%,#27152e 55%,#1b1023 100%);
+}
+.public-folha-head{
+ position:relative;
+ max-width:1400px;
+ margin:18px auto 0;
+ padding:25px clamp(18px,4vw,42px);
+ gap:20px;
+ background:linear-gradient(110deg,rgba(26,11,33,.8),rgba(91,51,70,.4));
+ border:1px solid #8e6a49;
+ border-bottom:3px solid #c99a52;
+ border-radius:12px 12px 0 0;
+ box-shadow:0 14px 36px rgba(5,0,10,.24);
+}
+.public-folha-head>img{width:76px;height:76px;object-fit:contain;filter:drop-shadow(0 6px 6px #130619)}
+.public-folha-head .newspaper-kicker{font:700 .72rem system-ui,sans-serif;letter-spacing:.23em;color:#e8c785}
+.public-folha-head h1{
+ color:#f9e4ae;
+ font:400 clamp(2.1rem,4.6vw,3.7rem)/1.08 "Old English Text MT","UnifrakturCook",Georgia,serif;
+ text-shadow:0 2px 5px #100617;
+}
+.public-folha-head p:last-child{color:#ebdfd1;font:1.02rem/1.5 Georgia,serif}
+.public-folha-tabs{
+ max-width:1400px;
+ margin:0 auto 22px;
+ padding:12px clamp(14px,3vw,28px);
+ background:#221227;
+ border:1px solid rgba(201,154,82,.45);
+ border-top:0;
+ border-radius:0 0 12px 12px;
+}
+.public-folha-tabs button{
+ border:1px solid #826247;border-radius:7px;
+ background:#36203a;color:#f2dec0;
+ padding:0 18px;
+}
+.public-folha-tabs button[aria-pressed=true]{background:#ad7b3c;color:#170d1e;border-color:#efc986}
+.public-folha-tabs button:hover{background:#654456;color:#fff7e5}
+.public-folha-layout{max-width:1500px;gap:22px;padding:0 clamp(14px,3vw,30px);grid-template-columns:minmax(210px,270px) minmax(0,1fr)}
+.public-folha-list{
+ background:#27152f;color:#f6e7d1;border:1px solid #84613c;border-radius:10px;
+ padding:14px 12px;box-shadow:0 12px 24px rgba(0,0,0,.18);
+}
+.public-folha-list h2{font-size:.78rem;color:#e8c785;letter-spacing:.16em}
+.public-folha-list button{background:#35203c;color:#f6e7d1;border:1px solid #6c4d47;border-left:4px solid #a47d48}
+.public-folha-list button:hover{background:#51314e;border-color:#bb9258}
+.public-folha-list button[aria-current=true]{background:#72513c;border-color:#deb878;color:#fff6e6}
+.public-folha-list button strong{font-size:1.05rem}
+.public-folha-reader{background:#201126;border:1px solid #926f48;border-radius:10px;padding:clamp(8px,1.5vw,20px);box-shadow:0 14px 38px #0a031433}
+.public-folha-pager{align-items:center}
+.public-folha-pager button{background:#38223c;color:#f9ebd3;border:1px solid #987752;border-left:3px solid #c39a57}
+.public-folha-pager button:hover:not(:disabled){background:#614054;color:#fff4df}
+.public-folha-status{color:#f9ebd3}
+.public-folha .folha-team{max-width:1400px;margin:0 auto 24px;background:#f0e1bd;border:2px solid #c09455;border-radius:12px;padding:clamp(18px,3vw,30px);box-shadow:0 15px 35px #0c061b33}
+.public-folha .folha-team h3{font-size:clamp(1.7rem,3vw,2.4rem)}
+.public-folha .folha-team-list{gap:20px 28px}
+.public-folha .folha-team-card{grid-template-columns:90px minmax(0,1fr);padding:14px 0 5px;border-top-color:#ba9d67}
+.public-folha .folha-team-card .folha-staff-photo{width:90px;height:104px;object-fit:cover;border:2px solid #a07a44;border-radius:5px;box-shadow:0 5px 12px #59452944}
+.public-folha .folha-team-card strong{font-size:1.26rem}
+.public-folha .folha-team-role{font-size:1rem;color:#674126}
+@media(max-width:860px){
+ .public-folha-layout{grid-template-columns:minmax(0,1fr)}
+ .public-folha-list{position:static;max-height:none}
+ .public-folha-list ul{grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+}
+@media(max-width:520px){
+ .public-folha-head{align-items:flex-start;padding:17px 14px;gap:11px}
+ .public-folha-head>img{width:49px;height:49px}
+ .public-folha-tabs{margin-bottom:12px;padding:10px}
+ .public-folha .folha-team-card{grid-template-columns:68px minmax(0,1fr)}
+ .public-folha .folha-team-card .folha-staff-photo{width:68px;height:82px}
+}

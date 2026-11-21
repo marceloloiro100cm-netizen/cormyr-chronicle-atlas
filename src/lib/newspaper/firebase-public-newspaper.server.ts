@@ -2,6 +2,7 @@
 import {createHash} from 'node:crypto';
 import {deletedNewspaperIds} from '../../../scripts/firebase/newspaper-deleted.mjs';
 import {publishedImageSrc} from './firebase-published-image.server';
+import {publicStaffPhotoSrc} from './firebase-public-staff-photo.server';
 
 /**
  * Leitura PÚBLICA de A Folha Sem Selo (site aberto, sem conta).
@@ -109,7 +110,8 @@ export async function getPublicNewspaper(db:any,snapshotId:string,editionId:unkn
 export function publicStaff(rows:Row[]){
  return rows.filter(r=>r&&typeof r['id']==='string'&&typeof r['name']==='string')
   .map(r=>({id:r['id'],name:String(r['name']).slice(0,120),specialty:String(r['specialty']??'').slice(0,120),
-   bio:String(r['bio']??'').slice(0,3000),sort_order:Number.isSafeInteger(r['sort_order'])?r['sort_order']:0}))
+   bio:String(r['bio']??'').slice(0,3000),sort_order:Number.isSafeInteger(r['sort_order'])?r['sort_order']:0,
+   photo_url:typeof r['photo_path']==='string'&&r['photo_path'].length>0?publicStaffPhotoSrc(r['id']):null}))
   .sort((a,b)=>a.sort_order-b.sort_order||a.name.localeCompare(b.name,'pt-BR')).slice(0,200);
 }
 

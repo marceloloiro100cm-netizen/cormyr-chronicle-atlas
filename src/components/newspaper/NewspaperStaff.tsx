@@ -1,15 +1,22 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {ArrowDown,ArrowUp,GripVertical,ImagePlus,Pencil,Trash2,UserPlus} from 'lucide-react';
 import {signedStaffPhoto} from '@/lib/newspaper/data';
+import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {handleNewspaperTextareaTab} from '@/lib/newspaper/editing';
 import {staffByline,validateStaffMember,type NewspaperStaffMember} from '@/lib/newspaper/model';
 
-export function StaffPhoto({path,name}:{path:string|null;name:string}){
+export function StaffPhoto({path,name,id,src}:{path:string|null;name:string;id?:string;src?:string}){
+ const firebasePhoto=Boolean(path&&id&&firebaseWorkspaceClient());
+ const direct=src??(firebasePhoto?'/api/public/newspaper-staff-photo?staff='+encodeURIComponent(id!):undefined);
+ const [failed,setFailed]=useState(false);
+ useEffect(()=>setFailed(false),[path,direct]);
  const photo=useQuery({queryKey:['newspaper-staff-photo',path],queryFn:()=>signedStaffPhoto(path!),
-  enabled:Boolean(path),staleTime:45*60*1000,retry:false});
- if(photo.data)return <img className="folha-staff-photo" src={photo.data} alt={`Foto de ${name}`}/>;
- return <div className="folha-staff-photo folha-staff-photo-empty" aria-hidden="true">
+  enabled:Boolean(path)&&!direct,staleTime:45*60*1000,retry:false});
+ const image=direct??photo.data;
+ if(image&&!failed)return <img className="folha-staff-photo" src={image}
+  alt={`Foto de ${name}`} onError={()=>setFailed(true)}/>;
+ return <div className="folha-staff-photo folha-staff-photo-empty" aria-label={`Retrato indisponível de ${name}`}>
   {name.trim().slice(0,1).toUpperCase()||'?'}</div>;
 }
 
@@ -83,7 +90,7 @@ export function NewspaperStaff({staff,busy,onSave,onDelete,onReorder}:{
      <button type="button" aria-label={`Descer ${m.name}`} disabled={busy||index===staff.length-1}
       onClick={()=>onReorder?.(m.id,staff[index+1]!.id)}><ArrowDown size={14}/></button>
     </div>}
-    <StaffPhoto path={m.photo_path} name={m.name}/>
+    <StaffPhoto id={m.id} path={m.photo_path} name={m.name}/>
     <div><strong>{m.name}</strong>{m.specialty&&<small>{m.specialty}</small>}
      {m.bio&&<p>{m.bio}</p>}
      <em>Assina: {staffByline(m)}</em></div>
