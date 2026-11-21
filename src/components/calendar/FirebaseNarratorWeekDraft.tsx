@@ -201,6 +201,12 @@ export function FirebaseNarratorWeekDraft(){
     }catch(e){setMessage(e instanceof Error?e.message:'Falha na publicação.');}
     finally{setBusy(false);}
   }
+  // Campanha publicada: o Hub Temporal V2.1 ocupa a tela inteira da seção.
+  if(loaded?.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&loaded.openRound!=null)
+    return <HubTemporal calendar={loaded.operationalCalendar} openRound={loaded.openRound}
+      pendingHouseEffectMonths={loaded.pendingHouseEffectMonths??0}
+      request={requestWeek} advance={advanceWeek} onChanged={()=>void refresh()}
+      tools={<HouseActivationTool onDone={()=>void refresh()}/>}/>;
   return <section aria-label="Configuração de semana pelo Narrador no Firebase"
     className="rounded border border-amber-800/40 p-4 space-y-3">
     <div>
@@ -248,11 +254,6 @@ export function FirebaseNarratorWeekDraft(){
           :'Missivas ainda bloqueadas: os dois runtimes não estão alinhados.'}
         {' '}O histórico importado permanece preservado.
       </p>}
-      {loaded.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&loaded.openRound!=null&&
-        <HubTemporal calendar={loaded.operationalCalendar} openRound={loaded.openRound}
-          pendingHouseEffectMonths={loaded.pendingHouseEffectMonths??0}
-          request={requestWeek} advance={advanceWeek} onChanged={()=>void refresh()}
-          tools={<HouseActivationTool onDone={()=>void refresh()}/>}/>}
       {!loaded.calendarPublished&&loaded.editable&&<form onSubmit={event=>void save(event)} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="text-sm">Ano (CV)
