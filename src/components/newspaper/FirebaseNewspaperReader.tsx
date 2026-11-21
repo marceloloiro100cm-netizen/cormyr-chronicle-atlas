@@ -45,10 +45,11 @@ export function safePublishedBlocks(input:unknown,editionId?:string):DisplayBloc
     const type:DisplayKind=
       kind==='headline'||kind==='subtitle'||kind==='quote'||
       kind==='notice'||kind==='image'||kind==='article'?kind:'article';
-    const str=(key:string,max:number)=>
-      typeof b[key]==='string'?(b[key] as string).slice(0,max):'';
-    const text=str('text',16000),subtitle=str('subtitle',1000);
-    const byline=str('byline',200),caption=str('caption',600);
+    // The trusted public route already bounds the full edition payload.
+    // Do not cut historical prose, captions or bylines while rendering.
+    const str=(key:string)=>typeof b[key]==='string'?b[key] as string:'';
+    const text=str('text'),subtitle=str('subtitle');
+    const byline=str('byline'),caption=str('caption');
     const imageSrc=publicImage(b['imageSrc'])??(
       type==='image'&&typeof b['imagePath']==='string'&&
       /^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/.test(b['imagePath'])&&
