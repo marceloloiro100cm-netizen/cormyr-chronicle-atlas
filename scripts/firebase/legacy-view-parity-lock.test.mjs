@@ -104,6 +104,11 @@
  * must wrap instead of being clipped; old responsive spacing, menus,
  * typography choices and controls were preserved. No hidden interactive
  * element was made newly accessible or removed.
+ * 2026-11-21 (Firebase editorial media): NewspaperHub retains all sections,
+ * controls and filters; only upload, commissioned illustration and engraving
+ * handlers now use an approved Firebase media bridge. Empty image slots are
+ * reused rather than blocking publication. Explicitly reviewed source
+ * contract before updating this UI integrity hash.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -120,7 +125,7 @@ const originals={
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
-  'src/components/newspaper/NewspaperHub.tsx':'b5b12ffae066a05b2e209652f4ce4f23aa640666',
+  'src/components/newspaper/NewspaperHub.tsx':'26087c691d2d8c4277fd9abb386cbdc71aa1e5d6',
   'src/components/newspaper/newspaper-editorial.css':'7983710e5e5a6cc5872cb9b6568fc0a81f4cdd43',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
