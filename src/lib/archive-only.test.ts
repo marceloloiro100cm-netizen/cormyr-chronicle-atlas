@@ -46,6 +46,7 @@ describe('Firebase archive-only cutover', () => {
     ['/api/public/time', 'router'],
     ['/api/public/catalog', 'router'],
     ['/api/public/translations', 'router'],
+    ['/api/public/house-gallery', 'router'],
     ['/api/public/gallery-image', 'router'],
     ['/api/public/jobs/drive-sync', 'router'],
     ['/api/firebase-cloud-treasury', 'router'],
@@ -97,6 +98,16 @@ describe('Firebase archive-only cutover', () => {
     expect(shouldBlockLegacyRequest(pathname,'serverFn')).toBe(true);
     for(const suffix of ['/','-old','/legacy','/extra'])
       expect(shouldBlockLegacyRequest(pathname+suffix,'router')).toBe(true);
+  });
+
+  it('allows only the exact Firebase House gallery list, retaining archive-only protections',()=>{
+    const endpoint='/api/public/house-gallery';
+    for(const type of ['router','api'])
+      expect(shouldBlockLegacyRequest(endpoint,type)).toBe(false);
+    expect(shouldBlockLegacyRequest(endpoint,'serverFn')).toBe(true);
+    for(const suffix of ['/','/legacy','/extra','-old'])
+      expect(shouldBlockLegacyRequest(endpoint+suffix,'router')).toBe(true);
+    expect(shouldBlockLegacyRequest('/api/legacy-gallery','router')).toBe(true);
   });
 
   it.each([
