@@ -75,3 +75,19 @@ test('new legacy layout metadata is strictly bounded and rejects privileged fiel
       /invalid_editorial_content/);
   }
 });
+
+test('registered Firebase media, future schedule and an attached PDF stay bounded',()=>{
+ const snapshot='a'.repeat(64),id='b'.repeat(36);
+ const v={...base(),blocks:[...base().blocks,{
+  id:'illustration',type:'image',text:'',span:6,height:210,
+  imagePath:'newspaper-media/'+snapshot+'/editionImage/'+id+'.png',
+ }],pdfPath:'newspaper-media/'+snapshot+'/editionPdf/'+id+'.pdf',
+ publishOn:'1522-01-20'};
+ assert.deepEqual(validateEditorialContent(v),v);
+ assert.throws(()=>validateEditorialContent({...v,publishOn:'bad date'}),/invalid_editorial_content/);
+ assert.throws(()=>validateEditorialContent({...v,blocks:[...v.blocks.slice(0,1),
+  {...v.blocks[1],imagePath:'newspaper-media/'+snapshot+'/commission/'+id+'.png'}]}),
+  /invalid_editorial_content/);
+ assert.throws(()=>validateEditorialContent({...v,pdfPath:'legacy/private.pdf'}),
+  /invalid_editorial_content/);
+});
