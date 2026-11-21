@@ -11,7 +11,7 @@ export function NewspaperTeam({staff,loading=false}:{staff:(NewspaperStaffMember
   </header>
   {loading?<p role="status">Carregando a equipe…</p>:
    <ul className="folha-team-list">{orderStaff(staff).map(m=><li key={m.id} className="folha-team-card">
-    <StaffPhoto id={m.id} path={m.photo_path} name={m.name} src={m.photo_url??undefined}/>
+    <StaffPhoto id={m.id} path={m.photo_path} name={m.name} {...(m.photo_url?{src:m.photo_url}:{})}/>
     <div>
      <strong>{m.name}</strong>
      {m.specialty.trim()&&<span className="folha-team-role">{m.specialty}</span>}
