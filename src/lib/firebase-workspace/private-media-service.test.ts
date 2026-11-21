@@ -26,6 +26,7 @@ function fixture(afterSave?:(docs:Map<string,any>,blobs:Map<string,Buffer>,path:
   privateMediaReadApproved:true,privateMediaWriteApproved:true,
  }]]);
  const blobs=new Map<string,Buffer>();
+ const replicas=new Map<string,Buffer>();
  const reference=(path:string):any=>({
   path,
   collection:(k:string)=>reference(path+'/'+k),
@@ -56,9 +57,16 @@ function fixture(afterSave?:(docs:Map<string,any>,blobs:Map<string,Buffer>,path:
   exists:async()=>[blobs.has(path)],
   getSignedUrl:async()=>['https://storage.example/signed?exp=60'],
   download:async()=>[blobs.get(path)??Buffer.from('')],
+   getMetadata:async()=>[{size:String(blobs.get(path)?.length??0),
+     crc32c:blobs.get(path)?.toString('base64')??'absent'}],
  })};
- return {docs,blobs,api:createFirebasePrivateMedia({
-  db,auth:{},bucket,snapshotId:snap,
+ const verifiedBucket={file:(path:string)=>({
+  exists:async()=>[replicas.has(path)],
+  getMetadata:async()=>[{size:String(replicas.get(path)?.length??0),
+    crc32c:replicas.get(path)?.toString('base64')??'absent'}],
+ })};
+ return {docs,blobs,replicas,api:createFirebasePrivateMedia({
+  db,auth:{},bucket,verifiedBucket,snapshotId:snap,
  })};
 }
 beforeEach(()=>{
@@ -205,6 +213,43 @@ describe('Item 11, gateway privado do Storage',()=>{
   await expect(f.api.upload('valid-token',body))
    .rejects.toThrow('private_media_integrity_failed');
   expect([...f.docs.keys()].filter(k=>k.includes('/privateMediaAudits/'))).toHaveLength(1);
+ });
+
+ it('leitura histórica exige duas cópias iguais e referência legível',async()=>{
+   const f=fixture(),historical='alice/legacy/portrait.png';
+   f.docs.set('migrationStorageStage/'+snap,{
+     status:'complete',private:true,sourceSnapshotId:snap,
+   });
+   state.rows['campaign_records']=[{content:'[cormyr-image:'+historical+'|Retrato]'}];
+   f.blobs.set('migration-staging/campaign-images/'+historical,image);
+   f.replicas.set('campaign-images/'+historical,image);
+   const got=await f.api.download('valid-token',{action:'download',path:historical});
+   expect(got.bytes).toEqual(image);
+   expect(got.contentType).toBe('image/png');
+   f.docs.set(root,{...f.docs.get(root),privateMediaReadApproved:false});
+   await expect(f.api.download('valid-token',{action:'download',
+     path:'private/'+snap+'/alice/'+body.id+'.png'}))
+     .rejects.toThrow('private_media_not_approved');
+ });
+ it('não entrega imagem antiga se estágio ou cópia falhar',async()=>{
+   const f=fixture(),historical='alice/legacy/portrait.png';
+   state.rows['campaign_records']=[{content:'[cormyr-image:'+historical+'|Retrato]'}];
+   f.blobs.set('migration-staging/campaign-images/'+historical,image);
+   await expect(f.api.download('valid-token',{action:'download',path:historical}))
+     .rejects.toThrow('private_media_archive_not_approved');
+   f.docs.set('migrationStorageStage/'+snap,{
+     status:'complete',private:true,sourceSnapshotId:snap,
+   });
+   await expect(f.api.download('valid-token',{action:'download',path:historical}))
+     .rejects.toThrow('private_media_not_found');
+   f.replicas.set('campaign-images/'+historical,Buffer.from('different'));
+   await expect(f.api.download('valid-token',{action:'download',path:historical}))
+     .rejects.toThrow('private_media_archive_integrity_failed');
+   f.replicas.set('campaign-images/'+historical,image);
+   state.rows={};
+   state.viewer={uid:'bob',profile:'jogador',playerId:'p2',memberHouseIds:['h2'],editHouseIds:['h2']};
+   await expect(f.api.download('valid-token',{action:'download',path:historical}))
+     .rejects.toThrow('private_media_denied');
  });
 
 });

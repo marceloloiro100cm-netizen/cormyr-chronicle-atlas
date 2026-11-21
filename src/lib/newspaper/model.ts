@@ -161,7 +161,10 @@ export function safeNewspaperBlocks(value:unknown):NewspaperBlock[]{
   type:['headline','subtitle','article','image','quote','notice'].includes(String(x['type']))?x['type'] as NewspaperBlockType:'article',
   text:typeof x['text']==='string'?x['text'].slice(0,30000):'',
   ...(typeof x['imagePath']==='string'&&x['imagePath'].length<300?{imagePath:x['imagePath']}:{}),
-  ...(typeof x['imageSrc']==='string'&&NEWSPAPER_ENGRAVINGS.some(e=>e.src===x['imageSrc'])?{imageSrc:x['imageSrc']}:{}),
+  ...(typeof x['imageSrc']==='string'&&(
+    NEWSPAPER_ENGRAVINGS.some(e=>e.src===x['imageSrc'])||
+    /^\/api\/public\/newspaper-image\?edition=[A-Za-z0-9_-]{1,128}&index=(?:0|[1-7]?[0-9])$/.test(x['imageSrc'])
+   )?{imageSrc:x['imageSrc']}:{}),
   ...(typeof x['caption']==='string'?{caption:x['caption'].slice(0,500)}:{}),
   ...(typeof x['subtitle']==='string'?{subtitle:x['subtitle'].slice(0,500)}:{}),
   ...(typeof x['byline']==='string'?{byline:x['byline'].slice(0,120)}:{}),

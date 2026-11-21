@@ -11,6 +11,11 @@ export type PrivateMailImage={
  publicationState:'delivered'|'scheduled';occurredAt:string;
 };
 const id=(v:unknown)=>typeof v==='string'&&v.length>0&&v.length<=128;
+// Historical image tokens were stored under the original campaign-images
+// bucket (before private/{snapshot}/{uid}). Never accept URLs or traversal.
+const legacyPath=(value:string)=>value.length<=300&&
+ /^[A-Za-z0-9_-][A-Za-z0-9_./-]*$/.test(value)&&
+ !value.startsWith('private/')&&!value.includes('..')&&!value.includes('//');
 const ofHouse=(row:Row,h:string)=>
  row['origin_house_id']===h||row['recipient_house_id']===h;
 const caption=(content:string,path:string)=>{
@@ -35,7 +40,7 @@ export function projectPrivateMailGallery(houseId:string,letters:Row[],replies:R
    return;
   const content=r['content'] as string;
   for(const path of privateMediaTokens(content)){
-   if(!PRIVATE_MEDIA_RE.test(path))continue;
+   if(!PRIVATE_MEDIA_RE.test(path)&&!legacyPath(path))continue;
    const key=sourceKind+':'+r['id']+':'+path;
    if(seen.has(key))continue;
    seen.add(key);

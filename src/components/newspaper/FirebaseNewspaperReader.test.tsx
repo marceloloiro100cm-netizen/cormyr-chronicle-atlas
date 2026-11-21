@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it} from 'vitest';
-import {cleanup,render,screen} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {FirebaseNewspaperReader,safePublishedBlocks} from './FirebaseNewspaperReader';
 
 afterEach(cleanup);
@@ -56,13 +56,34 @@ describe('Firebase Cloud — jornal publicado para leitura',()=>{
     ]);
   });
 
+  it('mantém a imagem importada vinculada à edição, sem expor o caminho privado',()=>{
+    const blocks=safePublishedBlocks([{
+      type:'image',imagePath:'writer/legacy/foto.png',caption:'Original da edição',
+    }], 'edition-1');
+    expect(blocks[0]?.imageSrc).toBe('/api/public/newspaper-image?edition=edition-1&index=0');
+    expect(JSON.stringify(blocks)).not.toContain('writer/legacy');
+    const {container}=render(<FirebaseNewspaperReader edition={{
+      ...edition,id:'edition-1',blocks:[{
+        type:'image',imagePath:'writer/legacy/foto.png',caption:'Original da edição',
+      }],
+    }}/>);
+    expect(container.querySelector('img')?.getAttribute('src'))
+      .toBe('/api/public/newspaper-image?edition=edition-1&index=0');
+  });
+
   it('não lê caminhos privados da Storage nem depende da API antiga',()=>{
     const {container}=render(<FirebaseNewspaperReader edition={{
       ...edition,blocks:[{type:'image',imagePath:'bucket/private/picture.jpg',
         caption:'A gravura migrada'}],
     }}/>);
-    expect(container.querySelector('img')).toBeNull();
-    expect(screen.getByText(/Gravura preservada/)).toBeInTheDocument();
+    const img=container.querySelector('img');
+    expect(img?.getAttribute('src')).toBe(
+      '/api/public/newspaper-image?edition=edition-1&index=0'
+    );
+    expect(img?.getAttribute('src')).not.toContain('bucket/private');
+    fireEvent.error(img!);
+    expect(screen.getByText(/Gravura original ainda não disponível/))
+      .toBeInTheDocument();
     expect(screen.getByText('A gravura migrada')).toBeInTheDocument();
   });
 

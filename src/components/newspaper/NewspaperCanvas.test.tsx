@@ -47,6 +47,16 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   expect(container.querySelector('.newspaper-story-notice')).not.toHaveClass('newspaper-story-editable');
  });
 
+ it('preserva apenas o URL interno seguro ao normalizar bloco público',()=>{
+  const route='/api/public/newspaper-image?edition=edition-one&index=2';
+  const safe=safeNewspaperBlocks([{...edition.blocks[2],imagePath:undefined,imageSrc:route}]);
+  expect(safe[0]?.imageSrc).toBe(route);
+  const unsafe=safeNewspaperBlocks([{...edition.blocks[2],imagePath:undefined,
+   imageSrc:'https://evil.example/image.png'}]);
+  expect(unsafe[0]?.imageSrc).toBeUndefined();
+  const {container}=render(<NewspaperCanvas edition={{...edition,state:'published',blocks:safe}}/>);
+  expect(container.querySelector('.newspaper-story-image img')?.getAttribute('src')).toBe(route);
+ });
  it('usa o subtítulo da edição no rodapé em vez do lema fixo, inclusive ao alterá-lo',()=>{
   const {container,rerender}=render(<NewspaperCanvas edition={edition}/>);
   const footer=container.querySelector('.newspaper-colophon');
@@ -87,6 +97,16 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   const newDataTransfer={getData:(type:string)=>type==='application/x-cormyr-newspaper-tool'?'notice':''};
   fireEvent.drop(target,{dataTransfer:newDataTransfer});
   expect(newBlock).toHaveBeenCalledWith('notice','head');
+ });
+ it('usa a rota da edição pública para a gravura legada sem requisitar o Storage antigo',()=>{
+   const published={...edition,state:'published' as const,
+    published_at:'2026-11-20T00:00:00Z'};
+   const {container}=render(<NewspaperCanvas edition={published} editing={false}/>);
+   const img=container.querySelector('.newspaper-story-image img');
+   expect(img?.getAttribute('src')).toBe(
+    '/api/public/newspaper-image?edition=00000000-0000-4000-8000-000000000001&index=2'
+   );
+   expect(img?.getAttribute('src')).not.toContain('id/photo.jpg');
  });
  it('oferece filtros e ampliação de gravura a quem lê, sem ferramentas editoriais',()=>{
   render(<NewspaperCanvas edition={edition} editing={false}/>);

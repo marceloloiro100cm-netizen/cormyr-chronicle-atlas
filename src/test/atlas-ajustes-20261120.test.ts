@@ -72,6 +72,16 @@ describe('Ajustes de 20/11/2026: jornal no site aberto',()=>{
   expect(blocks[1]?.['imageSrc']).toBe('/newspaper/gravuras/porto.webp');
   expect(blocks[2]).not.toHaveProperty('imageSrc');
  });
+ it('não revela o caminho privado de gravuras da edição ao público',()=>{
+  const blocks=publicBlocks([
+   {type:'headline',text:'Folha Sem Selo'},
+   {type:'image',imagePath:'editor/archive/gravura.png',caption:'Gravura'},
+  ],'edition-one');
+  expect(blocks[1]?.['imageSrc'])
+   .toBe('/api/public/newspaper-image?edition=edition-one&index=1');
+  expect(JSON.stringify(blocks)).not.toContain('editor/archive');
+  expect(blocks[1]).not.toHaveProperty('imagePath');
+ });
  it('a equipe pública não expõe fotos privadas e respeita a ordem',()=>{
   const staff=publicStaff([{id:'b',name:'Bia',specialty:'',bio:'',photo_path:'x.jpg',sort_order:1},
    {id:'a',name:'Ana',specialty:'',bio:'',sort_order:0}]);

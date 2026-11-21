@@ -5,6 +5,12 @@
  * and their effects. None of these source files is allowed to be silently
  * redesigned or dropped to "simplify" the Firebase migration.
  *
+ * 2026-11-21 (histórico de imagens, PR #672): o Canvas da Redação
+ * recebe apenas um endereço interno por índice de bloco publicado quando a
+ * imagem veio do acervo histórico. Mantém todos os controles de edição,
+ * recorte, filtro, impressão e layout inalterados; a mudança afeta somente
+ * a origem da imagem no Firebase, com aviso se o arquivo não existir.
+ * Revisão explícita da paridade antes de recapturar SHA-1.
  * The SHA-1 values are Git blob hashes captured on 2026-11-18 from main.
  * 2026-11-19: PR #598 moved the original council JSX verbatim from
  * routes/_authenticated/jogadores.tsx to components/players/players-workspace.tsx
@@ -84,7 +90,7 @@ const originals={
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'f97bb1c10b1ca77771ff1fdc786214c389f99e48',
   'src/components/newspaper/NewspaperHub.tsx':'2a0742b8904376ed9aa8e9d160734c0cbd0db23c',
   'src/components/newspaper/newspaper-editorial.css':'760857899874c1e3167ce578f05d886c78116b34',
-  'src/components/newspaper/NewspaperCanvas.tsx':'bb4fabbaa87b8ff10006c3fab2f302c5c522d196',
+  'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'d6a763834c157a1582db66489469b289836ea476',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',

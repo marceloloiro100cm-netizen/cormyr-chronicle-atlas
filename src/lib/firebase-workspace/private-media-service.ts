@@ -18,8 +18,8 @@ const LEGACY_PATH=/^[A-Za-z0-9_-][A-Za-z0-9_./-]{0,299}$/;
 const LEGACY_LIMIT=20*1024*1024;
 /** Entre requisições (a rota cria o serviço a cada chamada). */
 const legacyCache=new Map<string,{until:number;paths:Promise<Set<string>>}>();
-export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
- db:any;auth:any;bucket:any;snapshotId:string;
+export function createFirebasePrivateMedia({db,auth,bucket,verifiedBucket,snapshotId}:{
+ db:any;auth:any;bucket:any;verifiedBucket?:any;snapshotId:string;
 }){
  if(process.env['CORMYR_FIREBASE_PRIVATE_MEDIA_ENABLED']!=='true')
   privateMediaFail('private_media_disabled',501);
@@ -48,6 +48,24 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
  const approved=async(write=false)=>{
   if(!runtimeApproved(await root.get(),write))
    privateMediaFail('private_media_not_approved',503);
+ };
+ /**
+  * Read-only per-object migration gate, distinct from new media approvals.
+  * Never expose a file merely because it exists: require current authorized
+  * imported content, complete storage stage and two equal private GCS copies.
+  */
+ const approvedLegacy=async()=>{
+  const [runtime,storage]=await Promise.all([
+   root.get(),db.collection('migrationStorageStage').doc(snapshotId).get(),
+  ]);
+  const v=runtime.data(),stage=storage.data();
+  if(!runtime.exists||v?.status!=='active'||v.private!==true||
+     v.sourceSnapshotId!==snapshotId||
+     v.sourceSnapshotReconciled!==true||v.applicationEnabled!==true||
+     !storage.exists||stage?.status!=='complete'||stage.private!==true||
+     stage.sourceSnapshotId!==snapshotId||
+     typeof verifiedBucket?.file!=='function')
+    privateMediaFail('private_media_archive_not_approved',503);
  };
  const visibleReference=async(token:string,path:string)=>{
   // Um brasão importado pertence à Casa. Seus membros e o Narrador
@@ -90,7 +108,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
   * de caminhos autorizados de cada leitor fica em memória por 60 segundos.
   */
  const legacyPaths=(token:string,viewer:{uid:string})=>{
-  const key=viewer.uid+':'+JSON.stringify(viewer);
+  const key=snapshotId+':'+viewer.uid+':'+JSON.stringify(viewer);
   const hit=legacyCache.get(key);
   if(hit&&hit.until>Date.now())return hit.paths;
   const paths=(async()=>{
@@ -113,18 +131,27 @@ export function createFirebasePrivateMedia({db,auth,bucket,snapshotId}:{
  const legacyDownload=async(token:string,path:string)=>{
   if(!LEGACY_PATH.test(path)||path.includes('..')||path.startsWith('private/'))
    privateMediaFail('private_media_path_invalid',400);
-  await approved(false);
+  await approvedLegacy();
   const viewer=await scope(token);
   if(!(await legacyPaths(token,viewer)).has(path))privateMediaFail('private_media_denied');
   const file=bucket.file(LEGACY_PREFIX+path);
-  const [exists]=await file.exists();
-  if(!exists)privateMediaFail('private_media_not_found',404);
-  const [meta]=await file.getMetadata();
+  const checked=verifiedBucket.file('campaign-images/'+path);
+  const [[exists],[mirrorExists]]=await Promise.all([file.exists(),checked.exists()]);
+  if(!exists||!mirrorExists)privateMediaFail('private_media_not_found',404);
+  const [[meta],[mirror]]=await Promise.all([file.getMetadata(),checked.getMetadata()]);
   const size=Number(meta?.size);
-  if(!Number.isSafeInteger(size)||size<1||size>LEGACY_LIMIT)privateMediaFail('private_media_not_found',404);
+  if(!Number.isSafeInteger(size)||size<1||size>LEGACY_LIMIT||
+     Number(mirror?.size)!==size||
+     typeof meta?.crc32c!=='string'||!meta.crc32c||
+     meta.crc32c!==mirror?.crc32c||
+     (meta.md5Hash&&mirror?.md5Hash&&meta.md5Hash!==mirror.md5Hash))
+   privateMediaFail('private_media_archive_integrity_failed',503);
   const [bytes]=await file.download();
+  if(bytes.length!==size)privateMediaFail('private_media_archive_integrity_failed',503);
   const type=['image/png','image/jpeg','image/webp','image/gif'].find(t=>privateMediaType(t)?.magic(bytes));
   if(!type)privateMediaFail('private_media_type_invalid',415);
+  if(JSON.stringify(await scope(token))!==JSON.stringify(viewer))
+   privateMediaFail('private_media_denied');
   return {bytes,contentType:type as string};
  };
  const authorize=async(token:string,path:string)=>{
