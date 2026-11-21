@@ -638,3 +638,41 @@
  .folha-staff-card .folha-staff-photo{max-width:100%;height:auto;aspect-ratio:1}
  .folha-engraving-library{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
 }
+
+/* Celular e tablet: corrigir o rail alto do desktop e revelar todas as abas.
+   Na faixa 761–1020px, o menu já é horizontal, mas a regra @media(min-width:761px)
+   mais abaixo restaurava min-height:100vh do rail, empurrando o jornal para
+   depois de uma página roxa aparentemente vazia. Não esconder as abas atrás
+   de scroll horizontal: mostrar os 10 itens em linhas acessíveis. */
+@media(max-width:1020px){
+ .folha-editorial .folha-layout{
+  grid-template-columns:minmax(0,1fr);align-content:start
+ }
+ .folha-editorial .folha-navigation{
+  min-height:0;height:auto;overflow:visible;padding:10px
+ }
+ .folha-editorial .folha-navigation nav{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:6px;overflow:visible;padding:0
+ }
+ .folha-editorial .folha-navigation nav a{
+  display:flex;min-width:0;width:100%;min-height:44px;
+  white-space:normal;overflow-wrap:anywhere;align-items:center;gap:8px;
+  padding:8px 10px;line-height:1.25
+ }
+ .folha-editorial .folha-navigation nav a svg{flex:none}
+ .folha-editorial .folha-main{min-width:0}
+}
+@media(max-width:600px){
+ .folha-editorial .folha-navigation nav{
+  grid-template-columns:repeat(2,minmax(0,1fr))
+ }
+ .folha-editorial .folha-navigation nav a{
+  padding:8px 7px;font-size:.82rem
+ }
+}
+@media(max-width:340px){
+ .folha-editorial .folha-navigation nav{
+  grid-template-columns:minmax(0,1fr)
+ }
+}
