@@ -67,6 +67,44 @@ export function planWeekAdvance({live,request}){
     version:live.calendarVersion+1,reason:request.reason.trim()};
 }
 
+/**
+ * Change the official Harptos date without delivering letters, opening a
+ * new correspondence round, or mutating the historical imported calendar.
+ * Backdating inside the same month requires explicit acknowledgement and
+ * cannot undo earlier campaign effects.
+ */
+export function planCalendarDateChange({live,request}){
+  if(!request||typeof request!=='object'||Array.isArray(request))
+    deny('date_change_invalid_request',400);
+  const current=live?.calendar;
+  if(!calendarOkay({...current,version:live?.calendarVersion})||
+     !whole(request.expectedCalendarVersion,1,2147483646)||
+     request.expectedCalendarVersion!==live.calendarVersion||
+     !whole(request.expectedOpenRound,1,2147483647)||
+     request.expectedOpenRound!==live.openRound)
+    deny('calendar_version_conflict',409);
+  const input=request.proposedDate;
+  if(!input||typeof input!=='object'||Array.isArray(input)||
+     !validateHarptosDate(input.year,input.month,input.day,input.festival??null))
+    deny('draft_date_invalid',400);
+  const date={year:input.year,month:input.month,day:input.day,
+    festival:input.festival??null};
+  if(sameDate(current,date))deny('date_unchanged',400);
+  if(typeof request.reason!=='string'||!REASON.test(request.reason.trim()))
+    deny('draft_reason_invalid',400);
+  const monthsCrossed=(date.year-current.year)*12+(date.month-current.month);
+  const backdated=harptosOrdinal(date)<harptosOrdinal(current);
+  if(monthsCrossed<0)deny('historical_month_reversal_forbidden',400);
+  if(backdated&&(!request.allowBackdate||
+      request.acknowledgeIrreversibleEffects!==true))
+    deny('date_backdate_acknowledgement_required',409);
+  if(monthsCrossed>3)deny('advance_too_far',400);
+  if(monthsCrossed>0&&request.acknowledgeHouseEffectsPending!==true)
+    deny('house_effects_acknowledgement_required',409);
+  return {date,version:live.calendarVersion+1,monthsCrossed,backdated,
+    openRound:live.openRound,reason:request.reason.trim()};
+}
+
 export function planNarratorWeekDraft({archivedCalendar,previous,request,actorUid,at}){
   if(!UID.test(actorUid??'')||!calendarOkay(archivedCalendar)||
      !request||typeof request!=='object'||Array.isArray(request))
@@ -259,6 +297,66 @@ export function createFirebaseNarratorWeekDraft({
         return {published:true,duplicate:false,calendar,openRound:next.openRound};
       });
     },
+    /** Independent official clock edit; mail round is deliberately unchanged. */
+    async changeDate(token,request){
+      const uid=await authenticate(token);
+      if(!request||typeof request!=='object'||Array.isArray(request)||
+         Object.keys(request).some(k=>!['expectedCalendarVersion','expectedOpenRound',
+           'proposedDate','reason','requestKey','allowBackdate',
+           'acknowledgeIrreversibleEffects','acknowledgeHouseEffectsPending'].includes(k))||
+         typeof request.requestKey!=='string'||
+         !/^[A-Za-z0-9_-]{8,128}$/.test(request.requestKey))
+        deny('date_change_invalid_request',400);
+      return db.runTransaction(async tx=>{
+        const state=await readState(tx,uid);
+        const cloud=db.collection('campaignCloudRuntime').doc(snapshotId);
+        const mail=db.collection('campaignMailRuntime').doc(snapshotId);
+        const [liveDoc,mailDoc]=await Promise.all([tx.get(cloud),tx.get(mail)]);
+        const live=liveDoc.data(),gate=mailDoc.data();
+        if(live?.lastDateChangeKey===request.requestKey&&live.lastDateChangeBy===uid)
+          return {changed:true,duplicate:true,calendar:live.calendar,
+            openRound:live.openRound,monthsCrossed:0};
+        const effective=effectiveCloudCalendar(state.calendar,live,snapshotId);
+        const launched=live?.status==='active'&&live?.private===true&&
+          live?.calendarSource==='operational'&&
+          live?.sourceAuthority==='owner_adopted_firebase'&&
+          live?.sourceSnapshotId===snapshotId&&
+          live?.sourceSnapshotReconciled===true&&
+          live?.applicationEnabled===true&&effective&&
+          live?.publicTimeApproved===true&&
+          live?.publishedTimeVersion===effective.version&&
+          live.calendarVersion===effective.version&&
+          whole(live.openRound,1,2147483647)&&
+          cloudMailRuntimeApproved(live,gate,state.calendar,snapshotId);
+        if(!launched)deny('campaign_not_launched',409);
+        const plan=planCalendarDateChange({live:{...live,calendar:effective},request});
+        const at=now();
+        if(!Number.isFinite(Date.parse(at)))deny('draft_clock_invalid',503);
+        const calendar={...plan.date,version:plan.version};
+        const pending=whole(live.pendingHouseEffectMonths,0,1200)
+          ?live.pendingHouseEffectMonths:0;
+        if(calendar.year>effective.year)for(let year=effective.year;year<calendar.year;year++){
+          tx.create(cloud.collection('characterYearTransitions')
+            .doc('year-'+plan.version+'-'+year+'-'+(year+1)),{
+            id:newId(),sourceSnapshotId:snapshotId,calendarVersion:plan.version,
+            fromYear:year,toYear:year+1,actor:uid,createdAt:at,
+          });
+        }
+        tx.set(cloud,{...live,calendar,calendarVersion:plan.version,
+          publishedTimeVersion:plan.version,
+          pendingHouseEffectMonths:pending+plan.monthsCrossed,
+          lastDateChangeKey:request.requestKey,lastDateChangeBy:uid,
+          lastDateChangedAt:at});
+        tx.set(mail,{...gate,calendarVersion:plan.version,lastDateChangedAt:at});
+        tx.create(audit.doc(newId()),{action:'set_calendar_date',actorUid:uid,at,
+          from:{...effective},to:calendar,fromRound:live.openRound,
+          toRound:live.openRound,monthsCrossed:plan.monthsCrossed,
+          backdated:plan.backdated,reason:plan.reason});
+        return {changed:true,duplicate:false,calendar,
+          openRound:live.openRound,monthsCrossed:plan.monthsCrossed};
+      });
+    },
+
     async advance(token,request){
       const uid=await authenticate(token);
       if(!request||typeof request!=='object'||Array.isArray(request)||
@@ -339,7 +437,7 @@ export function createFirebaseNarratorWeekDraft({
         await readState(tx,uid);
         const docs=await tx.get(audit.limit(500));
         return (docs.docs??[]).map(d=>({id:d.id,...d.data()}))
-          .filter(a=>a.action==='advance_week'||a.action==='launch_firebase_campaign')
+          .filter(a=>['advance_week','launch_firebase_campaign','set_calendar_date'].includes(a.action))
           .sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,limit)
           .map(a=>({id:a.id,action:a.action,at:a.at,
             from:a.from??null,to:a.to??a.calendar??null,
