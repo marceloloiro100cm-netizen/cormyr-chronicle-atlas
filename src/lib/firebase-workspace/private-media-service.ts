@@ -108,7 +108,7 @@ export function createFirebasePrivateMedia({db,auth,bucket,verifiedBucket,snapsh
   * de caminhos autorizados de cada leitor fica em memória por 60 segundos.
   */
  const legacyPaths=(token:string,viewer:{uid:string})=>{
-  const key=viewer.uid+':'+JSON.stringify(viewer);
+  const key=snapshotId+':'+viewer.uid+':'+JSON.stringify(viewer);
   const hit=legacyCache.get(key);
   if(hit&&hit.until>Date.now())return hit.paths;
   const paths=(async()=>{
