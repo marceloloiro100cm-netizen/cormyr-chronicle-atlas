@@ -103,7 +103,7 @@ jobs:
           // GCS assets merely for the anonymous audit.
           const {readFileSync}=await import('node:fs');
           const src=readFileSync('public/cormyr/data.js','utf8');
-          const dataset=JSON.parse(src.slice(src.indexOf('=')+1).trim().replace(/;\\s*$/,''));
+          const dataset=JSON.parse(src.slice(src.indexOf('=')+1).trim().replace(/;\s*$/,''));
           const ids=dataset.regions.flatMap(r=>r.houses).map(h=>h.nobleId);
           if(ids.length!==172||new Set(ids).size!==172)throw Error('source_inventory_invalid');
           let total=0,ok=0;
