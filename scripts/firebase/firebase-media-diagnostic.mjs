@@ -24,6 +24,10 @@ for(const key of ['privateMediaReadApproved','publicGalleryApproved','publicGall
                typeof flags[key]==='string'?flags[key]?'CONFIGURED':'MISSING':'MISSING';
  console.log('MEDIA_DIAG flag_'+key+' '+enabled);
 }
+const stage=await db.collection('migrationStorageStage').doc(snapshot).get();
+console.log('MEDIA_DIAG storage_stage_complete '+
+  (stage.exists&&stage.data()?.status==='complete'&&stage.data()?.private===true&&
+   stage.data()?.sourceSnapshotId===snapshot?'YES':'NO'));
 const editions=await db.collection('migrationNewspaperRuntimeStage').doc(snapshot).collection('editions').limit(101).get();
 const first=editions.docs.map(d=>d.data()).filter(v=>v?.editionNo===1);
 console.log('MEDIA_DIAG issue_one_count '+first.length);
