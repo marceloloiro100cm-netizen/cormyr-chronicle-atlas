@@ -88,6 +88,16 @@ describe('Jornal: editor visual integrado ao banco',()=>{
   fireEvent.drop(target,{dataTransfer:newDataTransfer});
   expect(newBlock).toHaveBeenCalledWith('notice','head');
  });
+ it('usa a rota da edição pública para a gravura legada sem requisitar o Storage antigo',()=>{
+   const published={...edition,state:'published' as const,
+    published_at:'2026-11-20T00:00:00Z'};
+   const {container}=render(<NewspaperCanvas edition={published} editing={false}/>);
+   const img=container.querySelector('.newspaper-story-image img');
+   expect(img?.getAttribute('src')).toBe(
+    '/api/public/newspaper-image?edition=00000000-0000-4000-8000-000000000001&index=2'
+   );
+   expect(img?.getAttribute('src')).not.toContain('id/photo.jpg');
+ });
  it('oferece filtros e ampliação de gravura a quem lê, sem ferramentas editoriais',()=>{
   render(<NewspaperCanvas edition={edition} editing={false}/>);
   expect(screen.queryByRole('button',{name:/arrastar para mudar ordem/i})).not.toBeInTheDocument();
