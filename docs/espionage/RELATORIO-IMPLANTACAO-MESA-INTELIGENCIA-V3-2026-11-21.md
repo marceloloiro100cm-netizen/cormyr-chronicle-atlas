@@ -23,7 +23,7 @@ Preservar a proposta original de mesa única de inteligência, sem copiar os dad
 
 ## 3. Reaproveitamento de recursos já existentes
 
-- **Dossiês completos:** sete atributos de Recursos, registros históricos de Exército/Poses, atualização temporal, versionamento e auditoria administrativa permanecem em `spy-dossier-panel.tsx`, `spy-dossier-report.ts` e serviços existentes.
+- **Dossiês completos:** sete atributos de Recursos, registros históricos de Exército/Posses, atualização temporal, versionamento e auditoria administrativa permanecem em `spy-dossier-panel.tsx`, `spy-dossier-report.ts` e serviços existentes.
 - **Consequências oficiais:** sucesso, fracasso, fuga, prisão, morte, evoluções, versões e idempotência continuam calculados pelo servidor; a V3 acrescenta apenas a explicação pós-resolução.
 - **Contraespionagem:** `SpyNarratorIncidentHistory` continua sendo a origem dos incidentes; a V3 cria acesso rápido, não simula alertas.
 - **HUB Temporal:** mantém consulta e sincronização oficial existentes, sem tocar na data global.
