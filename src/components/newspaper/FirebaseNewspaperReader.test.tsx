@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it} from 'vitest';
-import {cleanup,render,screen} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {FirebaseNewspaperReader,safePublishedBlocks} from './FirebaseNewspaperReader';
 
 afterEach(cleanup);
@@ -76,8 +76,14 @@ describe('Firebase Cloud — jornal publicado para leitura',()=>{
       ...edition,blocks:[{type:'image',imagePath:'bucket/private/picture.jpg',
         caption:'A gravura migrada'}],
     }}/>);
-    expect(container.querySelector('img')).toBeNull();
-    expect(screen.getByText(/Gravura preservada/)).toBeInTheDocument();
+    const img=container.querySelector('img');
+    expect(img?.getAttribute('src')).toBe(
+      '/api/public/newspaper-image?edition=edition-1&index=0'
+    );
+    expect(img?.getAttribute('src')).not.toContain('bucket/private');
+    fireEvent.error(img!);
+    expect(screen.getByText(/Gravura original ainda não disponível/))
+      .toBeInTheDocument();
     expect(screen.getByText('A gravura migrada')).toBeInTheDocument();
   });
 
