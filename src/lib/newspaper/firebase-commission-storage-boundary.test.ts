@@ -9,7 +9,7 @@ vi.mock('@/integrations/supabase/client',()=>({
 vi.mock('./firebase-editorial-bridge',()=>({
  isFirebaseNewspaperWorkspace:()=>true,
 }));
-vi.mock('./firebase-newspaper-media.client',()=>({
+vi.mock('./firebase-newspaper-media',()=>({
  uploadFirebaseNewspaperMedia:state.upload,
  readFirebaseNewspaperMedia:state.read,
  cloneFirebaseNewspaperMedia:state.clone,
