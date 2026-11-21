@@ -459,7 +459,12 @@ describe('real Firebase workspace boundary',()=>{
   await expect(run({kind:'rpc',name:'save_campaign_schedule_event',args:{p_payload:{}}})).rejects.toThrow('access_denied');
   f.scope={uid:'gm',profile:'narrador',playerId:'pg',memberHouseIds:[],editHouseIds:[]};
   const drafts=await run({kind:'rpc',name:'get_campaign_schedule_drafts',args:{}});
-  expect(drafts).toEqual([{id:'evt-bbbbbbbb',date:'1522-01-12',title:'Segredo',description:'',deleted:false,version:1,published:false}]);
+  expect(drafts).toEqual([
+   {id:'evt-aaaaaaaa',date:'1522-01-10',title:'Feira',description:'Mercado',
+    deleted:false,version:2,published:true,pending:false},
+   {id:'evt-bbbbbbbb',date:'1522-01-12',title:'Segredo',description:'',
+    deleted:false,version:1,published:false,pending:true},
+  ]);
   const saved=await run({kind:'rpc',name:'save_campaign_schedule_event',args:{p_payload:{id:null,version:null,date:'1522-01-20',title:'Torneio',description:'',deleted:false}}});
   expect(saved.version).toBe(1);
   expect(f.writes[0].v).toMatchObject({draft:{date:'1522-01-20',title:'Torneio',deleted:false},published:null});
