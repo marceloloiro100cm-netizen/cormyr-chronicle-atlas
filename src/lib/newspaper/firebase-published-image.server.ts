@@ -1,3 +1,4 @@
+import {deletedNewspaperIds} from '../../../scripts/firebase/newspaper-deleted.mjs';
 /** Only images named in a published, independently reviewed edition may be served. */
 const SNAP=/^[a-f0-9]{64}$/;
 const ID=/^[A-Za-z0-9_-]{1,128}$/;
@@ -37,6 +38,8 @@ export async function readPublishedNewspaperImage({
     !['published','archived'].includes(e.state)||
     !Number.isSafeInteger(e.editionNo)||
     typeof e.publishedAt!=='string'||!Array.isArray(e.blocks))
+  bad(404,'newspaper_image_not_found');
+ if((await deletedNewspaperIds(db,snapshotId)).has(editionId))
   bad(404,'newspaper_image_not_found');
  const block=e.blocks[index];
  if(!block||!['image'].includes(block.type??block.kind)||
