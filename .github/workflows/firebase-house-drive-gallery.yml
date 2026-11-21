@@ -36,7 +36,7 @@ jobs:
       - name: Verify 172 Drive House folders and image totals (read-only)
         env:
           DRIVE_ACCESS_TOKEN: ${{ steps.reader.outputs.access_token }}
-          DRIVE_ROOT_FOLDER_ID: ${{ vars.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
+          DRIVE_ROOT_FOLDER_ID: ${{ secrets.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
         run: node scripts/firebase/sync-house-drive-gallery.mjs --scan
   publish:
     needs: audit
@@ -67,7 +67,7 @@ jobs:
       - name: Fetch image bytes to private ephemeral runner
         env:
           DRIVE_ACCESS_TOKEN: ${{ steps.reader.outputs.access_token }}
-          DRIVE_ROOT_FOLDER_ID: ${{ vars.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
+          DRIVE_ROOT_FOLDER_ID: ${{ secrets.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
         run: node scripts/firebase/sync-house-drive-gallery.mjs --collect
       - name: Validate existing protected Firebase operator
         env:
