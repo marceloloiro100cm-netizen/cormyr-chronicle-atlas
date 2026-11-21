@@ -57,13 +57,18 @@ async function handle(request:Request):Promise<Response>{
     return error(401,'authentication_required');
   try{
     const payload=await boundedJson(request);
-    if(!['get','save','publish','advance','history','publishEvents','processHouseMonths'].includes(String(payload['action'])))
+    if(!['get','save','publish','advance','changeDate','history','publishEvents','processHouseMonths'].includes(String(payload['action'])))
       return error(400,'invalid_action');
     if(['history','publishEvents','processHouseMonths'].includes(String(payload['action']))&&Object.keys(payload).length!==1)
       return error(400,'invalid_request');
     if(payload['action']==='advance'&&Object.keys(payload).some(key=>
       !['action','expectedCalendarVersion','expectedOpenRound','proposedDate','reason',
         'acknowledgeHouseEffectsPending','requestKey'].includes(key)))
+      return error(400,'invalid_request');
+    if(payload['action']==='changeDate'&&Object.keys(payload).some(key=>
+      !['action','expectedCalendarVersion','expectedOpenRound','proposedDate',
+        'reason','requestKey','allowBackdate','acknowledgeIrreversibleEffects',
+        'acknowledgeHouseEffectsPending'].includes(key)))
       return error(400,'invalid_request');
     if(payload['action']==='get'&&Object.keys(payload).length!==1)
       return error(400,'invalid_request');
@@ -101,7 +106,17 @@ async function handle(request:Request):Promise<Response>{
         return error(409,'campaign_not_launched');
       return Response.json({result:await monthly(view.operationalCalendar)},{status:200,headers});
     }
-    const result=payload['action']==='advance'
+    const result=payload['action']==='changeDate'
+      ?await service.changeDate(token,{
+        expectedCalendarVersion:payload['expectedCalendarVersion'],
+        expectedOpenRound:payload['expectedOpenRound'],
+        proposedDate:payload['proposedDate'],reason:payload['reason'],
+        requestKey:payload['requestKey'],
+        allowBackdate:payload['allowBackdate'],
+        acknowledgeIrreversibleEffects:payload['acknowledgeIrreversibleEffects'],
+        acknowledgeHouseEffectsPending:payload['acknowledgeHouseEffectsPending'],
+      })
+      :payload['action']==='advance'
       ?await service.advance(token,{
         expectedCalendarVersion:payload['expectedCalendarVersion'],
         expectedOpenRound:payload['expectedOpenRound'],
@@ -124,7 +139,8 @@ async function handle(request:Request):Promise<Response>{
         proposedDate:payload['proposedDate'],openRound:payload['openRound'],
         reason:payload['reason'],
       });
-    if(payload['action']==='advance'&&result&&typeof result==='object'&&'monthsCrossed' in result&&
+    if(['advance','changeDate'].includes(String(payload['action']))&&
+       result&&typeof result==='object'&&'monthsCrossed' in result&&
        (result as {monthsCrossed?:number}).monthsCrossed&&!(result as {duplicate?:boolean}).duplicate){
       let houses=null;
       try{houses=await monthly((result as {calendar:{year:number;month:number;version:number}}).calendar);}
