@@ -25,6 +25,10 @@ jobs:
         run: |
           node --check scripts/firebase/hub-temporal-integrity-readonly.mjs
           node scripts/verify-public-repo.mjs
+      - name: Exercise Firebase Harptos and event contracts without Cloud writes
+        run: |
+          node --test scripts/firebase/cloud-narrator-week-draft.test.mjs
+          node --test scripts/firebase/cloud-schedule-events-core.test.mjs
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
