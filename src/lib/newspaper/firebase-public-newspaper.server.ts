@@ -100,7 +100,10 @@ export async function getPublicNewspaper(db:any,snapshotId:string,editionId:unkn
   throw new PublicNewspaperError('edition_unavailable',404);
  const result={id,title:v['title'],subtitle:v['subtitle']??'',editionNo:v['editionNo'],
   template:v['template']??'classico',font_style:v['font_style']??'classico',
-  blocks:publicBlocks(v['blocks'],id),publishedAt:v['publishedAt'],campaignDate:v['campaignDate']??null,
+  blocks:publicBlocks(v['blocks'],id),
+  pdfSrc:cloudId&&typeof v['pdfPath']==='string'?
+   '/api/public/newspaper-file?edition='+encodeURIComponent(id):null,
+  publishedAt:v['publishedAt'],campaignDate:v['campaignDate']??null,
   version:cloudId?v['version']??1:v['publicationRevision']??1};
  if(Buffer.byteLength(JSON.stringify(result),'utf8')>700_000)fail('edition_response_too_large',503);
  return result;
