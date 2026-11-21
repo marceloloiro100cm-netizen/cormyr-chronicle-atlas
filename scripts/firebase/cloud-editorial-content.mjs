@@ -93,7 +93,7 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
   });
   const commissions=blocks.filter(b=>b.commissionId).map(b=>b.commissionId);
   if(new Set(commissions).size!==commissions.length)invalid();
-  if(!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)||input.pdfPath)invalid();
+  if(!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)&&!input.pdfPath)invalid();
   if(input.pdfPath!==undefined&&input.pdfPath!==null&&!mediaPdf.test(input.pdfPath))invalid();
   if(input.publishOn!==undefined&&input.publishOn!==null&&
      (typeof input.publishOn!=='string'||!isNewspaperDate(input.publishOn)))invalid();
