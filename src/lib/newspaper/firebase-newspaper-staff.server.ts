@@ -135,11 +135,11 @@ export async function commitNewspaperStaffPhoto({db,snapshotId,actorUid,imported
     !/^newspaper-staff\/[a-f0-9]{64}\/[A-Za-z0-9_-]{1,80}\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/.test(input.photoPath)||
     !input.photoPath.startsWith(`newspaper-staff/${snapshotId}/${id}/${input.requestId}.`))
   fail('invalid_staff_photo_path');
- const op=parseStaffOperation('newspaper_staff_save',{
+ const saveOp=parseStaffOperation('newspaper_staff_save',{
   p_id:input.id??null,p_name:input.name,p_specialty:input.specialty,
   p_bio:input.bio,p_photo_path:null,p_sort_order:input.sortOrder??null,
  });
- if(op.action!=='save')fail('invalid_staff');
+ if(saveOp.action!=='save')fail('invalid_staff');
  const ref=staffDoc(db,snapshotId);
  const audits=db.collection('campaignCloudRuntime').doc(snapshotId).collection('newspaperStaffAudits');
  return db.runTransaction(async(tx:any)=>{
@@ -148,23 +148,23 @@ export async function commitNewspaperStaffPhoto({db,snapshotId,actorUid,imported
   const old=before.find(r=>r['id']===id);
   if(!input.id&&old){
    // Retentativa de criação: somente a mesma foto e o mesmo conteúdo.
-   if(old['photo_path']!==input.photoPath||old['name']!==op.name||
-      old['specialty']!==op.specialty||old['bio']!==op.bio)
+   if(old['photo_path']!==input.photoPath||old['name']!==saveOp.name||
+      old['specialty']!==saveOp.specialty||old['bio']!==saveOp.bio)
     fail('staff_photo_conflict',409);
    return {id,rows:before};
   }
   if(input.id&&!old)fail('staff_not_found',404);
   if(input.id&&old&&old['photo_path']===input.photoPath&&
-     old['name']===op.name&&old['specialty']===op.specialty&&old['bio']===op.bio)
+     old['name']===saveOp.name&&old['specialty']===saveOp.specialty&&old['bio']===saveOp.bio)
    return {id,rows:before};
   if(!input.id&&before.length>=MAX_STAFF)fail('staff_too_large',413);
   const now=new Date().toISOString();
   const next=old?
-   before.map(r=>r['id']===id?{...r,name:op.name,specialty:op.specialty,
-    bio:op.bio,photo_path:input.photoPath,updated_at:now}:r):
-   [...before,{id,name:op.name,specialty:op.specialty,bio:op.bio,
+   before.map(r=>r['id']===id?{...r,name:saveOp.name,specialty:saveOp.specialty,
+    bio:saveOp.bio,photo_path:input.photoPath,updated_at:now}:r):
+   [...before,{id,name:saveOp.name,specialty:saveOp.specialty,bio:saveOp.bio,
     photo_path:input.photoPath,
-    sort_order:op.sortOrder??before.reduce((max,r)=>Math.max(max,(r['sort_order']??0)+1),0),
+    sort_order:saveOp.sortOrder??before.reduce((max,r)=>Math.max(max,(r['sort_order']??0)+1),0),
     created_at:now,updated_at:now}];
   const version=(prev.exists&&Number.isSafeInteger(prev.data()?.version)?prev.data().version:0)+1;
   tx.set(ref,{rows:next,version,updatedBy:actorUid,updatedAt:now,sourceSnapshotId:snapshotId});
