@@ -99,7 +99,7 @@ const originals={
   'src/components/newspaper/newspaper-editorial.css':'1201a06ca889a61da1a9f905701c0e0107a87b17',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
-  'src/components/players/ficha-tab.tsx':'78cae8655b839b0b68ec6ecaee5db436e3db7703',
+  'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',
 };
 for(const [path,expected] of Object.entries(originals)){

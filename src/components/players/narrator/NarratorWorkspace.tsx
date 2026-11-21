@@ -1,4 +1,4 @@
-import {lazy,Suspense,useEffect,useRef,useState,type MouseEvent,type ReactNode} from 'react';
+import {lazy,Suspense,useEffect,useRef,useState,type MouseEvent as ReactMouseEvent,type ReactNode} from 'react';
 import {isPlainLeftClick,useUrlSearch} from '@/lib/navigation/url-state';
 import {LanguageSwitcher} from '@/components/language-switcher';
 import {useTranslation} from '@/lib/i18n/context';
@@ -52,7 +52,7 @@ export function NarratorWorkspace({menu,extra,section,onSection,sectionHref,unre
  useUrlSearch();
  // Link real quando há endereço; clique comum continua trocando o módulo aqui mesmo.
  const nav=(id:string)=>sectionHref?{href:sectionHref(id),
-  onClick:(e:MouseEvent<HTMLAnchorElement>)=>{if(!isPlainLeftClick(e))return;e.preventDefault();go(id);}}:null;
+  onClick:(e:ReactMouseEvent<HTMLAnchorElement>)=>{if(!isPlainLeftClick(e))return;e.preventDefault();go(id);}}:null;
  const label=(id:string,name:string)=>id==='missivas'&&unread>0?`${name}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:name;
  const navBody=(id:string,name:string)=><>
   <Icon name={id} size={21}/><span>{SHORT[id]??name}</span>

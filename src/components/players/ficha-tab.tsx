@@ -41,8 +41,8 @@ export function FichaTab({
 }) {
   // Tipo de ficha no endereço (?ficha=personagem): cada uma abre em nova guia.
   const [viewParam] = useUrlParam("ficha", "casa");
-  const view: "house" | "character" | "legacy" | "cloud" =
-    viewParam === "personagem" ? "character" : viewParam === "economia" ? "cloud" : "house";
+  const view = (viewParam === "personagem" ? "character" : viewParam === "economia" ? "cloud" : "house") as
+    "house" | "character" | "legacy" | "cloud";
   const [editingId,setEditingId]=useState<string|null>(null);
   const [creating,setCreating]=useState(false);
   const load=useServerFn(loadHouseHub);
