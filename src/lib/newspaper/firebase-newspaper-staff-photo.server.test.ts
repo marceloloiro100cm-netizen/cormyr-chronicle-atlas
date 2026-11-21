@@ -48,8 +48,8 @@ describe('Fotografias da Redação no Firebase',()=>{
   const first=await create();
   expect(first.id).toBe(requestId);
   expect(first.rows).toHaveLength(2);
-  expect(first.rows[0]?['photo_path']).toBe('retrato-antigo.jpg');
-  expect(first.rows[1]?['photo_path']).toBe(path(requestId));
+  expect(first.rows[0]?.['photo_path']).toBe('retrato-antigo.jpg');
+  expect(first.rows[1]?.['photo_path']).toBe(path(requestId));
   await create();
   expect(store.writes).toBe(1);
   expect(store.audits).toBe(1);
