@@ -21,3 +21,43 @@ jobs:
           node-version: '24'
       - name: Test HTTP response and exact published PNG checksum without exposing image bytes
         run: node scripts/firebase/probe-public-newspaper-image.mjs
+
+  apphosting-runtime-identity-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: cormyr
+      - name: Identify exact App Hosting runtime principal using GET-only metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(gcloud auth print-access-token)"
+          response="$(curl -sS --max-time 15 -w '\n%{http_code}' -H "Authorization: Bearer ${token}" \
+            'https://firebaseapphosting.googleapis.com/v1/projects/cormyr/locations/us-east4/backends/cormyr-preview')"
+          status="${response##*$'\n'}"
+          payload="${response%$'\n'*}"
+          echo "APPHOSTING_BACKEND_HTTP=${status}"
+          if [ "${status}" != 200 ]; then
+            echo "APPHOSTING_RUNTIME_IDENTITY=not_confirmed"
+            exit 2
+          fi
+          printf '%s' "${payload}" | python3 -c '
+          import json,sys,re
+          data=json.load(sys.stdin)
+          email=data.get("serviceAccount","")
+          if re.fullmatch(r"[a-z0-9-]+@cormyr\.iam\.gserviceaccount\.com",email):
+              print("APPHOSTING_RUNTIME_IDENTITY="+email)
+          else:
+              print("APPHOSTING_RUNTIME_IDENTITY=missing_or_custom")
+              sys.exit(2)
+          '
