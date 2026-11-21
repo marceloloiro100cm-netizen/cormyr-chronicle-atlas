@@ -390,13 +390,31 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    // first valid article; an existing draft retains its blocks and version.
    // Verify the registered media and Storage bytes BEFORE creating a new
    // edition. A historical/unavailable source may not leave a stray draft.
-   if(commission.image_path&&isFirebaseNewspaperWorkspace())
-    await preflightNewspaperSourceImage(commission.image_path,'commission');
    const inDraft=Boolean(current&&current.state==='draft');
    if(inDraft&&current!.blocks.some(b=>b.commissionId===commission.id)){
-    const already=current!.blocks.find(b=>b.commissionId===commission.id)!;
+    const already=current!.blocks.find(b=>b.type==='article'&&b.commissionId===commission.id);
+    if(!already)throw Error('O vínculo da matéria precisa ser revisado antes de anexar a imagem.');
+    const photo=current!.blocks.find(b=>b.type==='image'&&b.commissionId===commission.id);
+    if(commission.image_path&&!photo?.imagePath){
+     if(!photo&&current!.blocks.length>=80)throw Error('A edição permite até 80 elementos.');
+     if(isFirebaseNewspaperWorkspace())
+      await preflightNewspaperSourceImage(commission.image_path,'commission');
+     const imagePath=await copyCommissionImageToEdition(
+      current!.id,commission.image_path,commission.id);
+     const createdPhoto=commissionToBlocks(commission,imagePath,houseNames.get(commission.house_id))
+      .find(b=>b.type==='image')!;
+     setDraft(old=>old?.id===current!.id?{...old,blocks:photo?
+      old.blocks.map(b=>b.id===photo.id?{...b,imagePath}:b):
+      [...old.blocks.slice(0,old.blocks.findIndex(b=>b.id===already.id)+1),
+       createdPhoto,
+       ...old.blocks.slice(old.blocks.findIndex(b=>b.id===already.id)+1)]}:old);
+     setBlockId(photo?.id??createdPhoto.id);setEditing(true);
+     notice('Fotografia recuperada. Salve o rascunho para registrar o anexo.');return;
+    }
     setBlockId(already.id);setEditing(true);notice('A notícia já está nesta edição.');return;
    }
+   if(commission.image_path&&isFirebaseNewspaperWorkspace())
+    await preflightNewspaperSourceImage(commission.image_path,'commission');
    if(!inDraft){
     const blocks=commissionToBlocks(commission,undefined,houseNames.get(commission.house_id));
     const created=await createNewspaperEdition({...(await editionSeed()),blocks});

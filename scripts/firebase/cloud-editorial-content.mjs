@@ -44,7 +44,7 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
     ids.add(b.id);
     const out={id:b.id,type:b.type,text:text(b.text,16000)};
     if(b.commissionId!==undefined){
-      if(b.type!=='article'||typeof b.commissionId!=='string'||
+      if(!['article','image'].includes(b.type)||typeof b.commissionId!=='string'||
          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.commissionId))
         invalid();
       out.commissionId=b.commissionId;
@@ -91,8 +91,21 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
     if(b.type==='image'&&!out.imageSrc&&!out.imagePath&&!allowEmptyImages)invalid();
     return out;
   });
-  const commissions=blocks.filter(b=>b.commissionId).map(b=>b.commissionId);
-  if(new Set(commissions).size!==commissions.length)invalid();
+  // A reportagem é a única origem de liquidação de uma notícia paga.
+  // Uma fotografia pode compartilhar o mesmo vínculo, mas nunca sozinha,
+  // nem pode haver duas matérias ou duas fotos para a mesma encomenda.
+  const articleIds=new Set(),photoIds=new Set();
+  for(const b of blocks){
+    if(!b.commissionId)continue;
+    if(b.type==='article'){
+      if(articleIds.has(b.commissionId))invalid();
+      articleIds.add(b.commissionId);
+    }else if(b.type==='image'){
+      if(photoIds.has(b.commissionId))invalid();
+      photoIds.add(b.commissionId);
+    }else invalid();
+  }
+  if([...photoIds].some(id=>!articleIds.has(id)))invalid();
   if(!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)&&!input.pdfPath)invalid();
   if(input.pdfPath!==undefined&&input.pdfPath!==null&&!mediaPdf.test(input.pdfPath))invalid();
   if(input.publishOn!==undefined&&input.publishOn!==null&&

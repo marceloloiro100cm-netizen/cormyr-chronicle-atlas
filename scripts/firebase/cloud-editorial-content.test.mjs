@@ -76,6 +76,20 @@ test('new legacy layout metadata is strictly bounded and rejects privileged fiel
   }
 });
 
+test('commission article and its registered image may share one trusted contract',()=>{
+ const cid='11111111-1111-4111-8111-111111111111',snap='a'.repeat(64);
+ const path='newspaper-media/'+snap+
+  '/editionImage/00000000-0000-4000-8000-000000000001.png';
+ const article={...base().blocks[0],commissionId:cid};
+ const photo={id:'photo',type:'image',text:'',commissionId:cid,
+  imagePath:path,span:6,height:200};
+ const pair={...base(),blocks:[article,photo]};
+ assert.equal(validateEditorialContent(pair).blocks.length,2);
+ assert.throws(()=>validateEditorialContent({...base(),blocks:[photo]}),/invalid_editorial_content/);
+ assert.throws(()=>validateEditorialContent({...base(),blocks:[article,article]}),/invalid_editorial_content/);
+ assert.throws(()=>validateEditorialContent({...base(),blocks:[article,photo,{...photo,id:'photo2'}]}),
+  /invalid_editorial_content/);
+});
 test('registered Firebase media, future schedule and an attached PDF stay bounded',()=>{
  const snapshot='a'.repeat(64),id='b'.repeat(36);
  const v={...base(),blocks:[...base().blocks,{
