@@ -7,8 +7,8 @@ import {createHash,randomUUID} from 'node:crypto';
  * O acervo importado continua imutável. A primeira alteração do Editor-Chefe
  * grava uma cópia operacional versionada em
  * campaignCloudRuntime/{snapshot}/newspaperEditorial/staff, que passa a ser
- * a lista lida por todos. Cada gravação fica auditada. Fotos novas ainda
- * dependem do Storage homologado: aqui só se preserva a foto já existente.
+ * a lista lida por todos. Cada gravação fica auditada. O upload de fotos
+ * usa uma rota própria autenticada e um caminho gerado no servidor.
  */
 export class NewspaperStaffError extends Error{
  constructor(readonly code:string,readonly status:number){super(code);}
@@ -117,5 +117,57 @@ export async function commitNewspaperStaff({db,snapshotId,actorUid,imported,op}:
   tx.create(audits.doc(createHash('sha256').update('staff:'+version+':'+actorUid+':'+now).digest('hex')),
    {action:'staff_'+op.action,actorUid,version,occurredAt:now});
   return rows;
+ });
+}
+
+/**
+ * Só a rota autenticada de fotografias pode invocar esta operação. A RPC
+ * genérica da Redação continua incapaz de escolher caminhos de arquivos.
+ * Um requestId estável evita duplicar funcionário se a resposta HTTP cair.
+ */
+export async function commitNewspaperStaffPhoto({db,snapshotId,actorUid,imported,input}:{
+ db:any;snapshotId:string;actorUid:string;imported:Row[];
+ input:{id?:string;requestId:string;photoPath:string;name:string;
+  specialty:string;bio:string;sortOrder?:number};
+}):Promise<{id:string;rows:Row[]}>{
+ const id=input.id??input.requestId;
+ if(!ID.test(id)||!ID.test(input.requestId)||
+    !/^newspaper-staff\/[a-f0-9]{64}\/[A-Za-z0-9_-]{1,80}\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/.test(input.photoPath)||
+    !input.photoPath.startsWith(`newspaper-staff/${snapshotId}/${id}/${input.requestId}.`))
+  fail('invalid_staff_photo_path');
+ const op=parseStaffOperation('newspaper_staff_save',{
+  p_id:input.id??null,p_name:input.name,p_specialty:input.specialty,
+  p_bio:input.bio,p_photo_path:null,p_sort_order:input.sortOrder??null,
+ });
+ const ref=staffDoc(db,snapshotId);
+ const audits=db.collection('campaignCloudRuntime').doc(snapshotId).collection('newspaperStaffAudits');
+ return db.runTransaction(async(tx:any)=>{
+  const prev=await tx.get(ref);
+  const before=normalize(prev.exists&&Array.isArray(prev.data()?.rows)?prev.data().rows:imported);
+  const old=before.find(r=>r['id']===id);
+  if(!input.id&&old){
+   // Retentativa de criação: somente a mesma foto e o mesmo conteúdo.
+   if(old['photo_path']!==input.photoPath||old['name']!==op.name||
+      old['specialty']!==op.specialty||old['bio']!==op.bio)
+    fail('staff_photo_conflict',409);
+   return {id,rows:before};
+  }
+  if(input.id&&!old)fail('staff_not_found',404);
+  if(!input.id&&before.length>=MAX_STAFF)fail('staff_too_large',413);
+  const now=new Date().toISOString();
+  const next=old?
+   before.map(r=>r['id']===id?{...r,name:op.name,specialty:op.specialty,
+    bio:op.bio,photo_path:input.photoPath,updated_at:now}:r):
+   [...before,{id,name:op.name,specialty:op.specialty,bio:op.bio,
+    photo_path:input.photoPath,
+    sort_order:op.sortOrder??before.reduce((max,r)=>Math.max(max,(r['sort_order']??0)+1),0),
+    created_at:now,updated_at:now}];
+  const version=(prev.exists&&Number.isSafeInteger(prev.data()?.version)?prev.data().version:0)+1;
+  tx.set(ref,{rows:next,version,updatedBy:actorUid,updatedAt:now,sourceSnapshotId:snapshotId});
+  tx.create(audits.doc(createHash('sha256').update(
+   'staff_photo:'+version+':'+actorUid+':'+input.requestId).digest('hex')),
+   {action:old?'staff_photo_update':'staff_photo_create',actorUid,version,
+    staffId:id,occurredAt:now});
+  return {id,rows:next};
  });
 }
