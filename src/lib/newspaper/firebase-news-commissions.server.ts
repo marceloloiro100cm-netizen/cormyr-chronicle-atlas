@@ -268,7 +268,7 @@ export async function readFirebaseCommissions(db:any,snapshot:string,actor:Scope
  const root=rootFor(db,snapshot),rt=await root.get();
  if(!rt.exists)return [];
  assertRuntime(rt.data(),snapshot);
- const docs=await readAllPaged<any>(root.collection('newspaperCommissions'),20_000);
+ const docs:any=await readAllPaged(root.collection('newspaperCommissions'),20_000);
  if(docs.overLimit)fail('newspaper_commissions_limit',503);
  return docs.docs.map((d:any)=>{
   const item=checkedCommission(d.data(),d.id,snapshot);

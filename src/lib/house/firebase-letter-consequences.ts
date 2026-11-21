@@ -136,7 +136,7 @@ export function createFirebaseLetterConsequences({db,snapshotId,now=()=>new Date
     },
     /** Read model: player-safe columns only (no explanation, actor or reason). */
     async list(){
-      const snap=await readAllPaged<{data:()=>Record<string,unknown>}>(records,20_000);
+      const snap=await readAllPaged<{data:()=>Record<string,any>}>(records,20_000);
       if(snap.overLimit)return fail('consequences_too_large',503);
       return snap.docs.map(d=>d.data()).filter(v=>typeof v['id']==='string').map(v=>({
         id:v['id'],letter_id:v['letterId'],house_id:v['houseId'],changes:v['changes'],
