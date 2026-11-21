@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Firebase Admin boundary. */
 /* Fotografia pública apenas dos funcionários presentes na Redação do Jornal. */
+import {createHash} from 'node:crypto';
 import {readWorkspaceTable} from '../../../scripts/firebase/workspace-import.mjs';
 import {readNewspaperStaffOverlay} from './firebase-newspaper-staff.server';
 
@@ -33,9 +34,18 @@ export async function readPublicStaffPhoto({db,bucket,snapshotId,staffId}:{
  const person=rows.find((row:Record<string,unknown>)=>row['id']===staffId);
  const path=person?.['photo_path'];
  if(typeof path!=='string'||!PHOTO.test(path)||path.includes('..')||path.includes('//'))reject(404);
- // Aceita os dois prefixos da migração, sem permitir seleção pelo visitante.
- for(const prefix of ['migration-staging/campaign-newspaper-staff/','campaign-newspaper-staff/']){
-  const file=bucket.file(prefix+path);
+ // Fotos novas: o vínculo do registro determina um caminho exato no Storage.
+ // Fotos legadas continuam nos dois prefixos da migração, sem alterações.
+ const currentPath=path.startsWith('newspaper-staff/')&&
+  /^newspaper-staff\/[a-f0-9]{64}\/[A-Za-z0-9_-]{1,80}\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/.test(path)&&
+  path.startsWith(`newspaper-staff/${snapshotId}/${staffId}/`);
+ if(path.startsWith('newspaper-staff/')&&!currentPath)reject(404);
+ const candidates=currentPath?[path]:[
+  'migration-staging/campaign-newspaper-staff/'+path,
+  'campaign-newspaper-staff/'+path,
+ ];
+ for(const candidate of candidates){
+  const file=bucket.file(candidate);
   const [exists]=await file.exists();
   if(!exists)continue;
   const [meta]=await file.getMetadata();
@@ -45,6 +55,12 @@ export async function readPublicStaffPhoto({db,bucket,snapshotId,staffId}:{
   if(!Buffer.isBuffer(data)||data.length!==size)reject(503);
   const contentType=typeOf(data);
   if(contentType===null)throw new PublicStaffPhotoError(503);
+  if(currentPath){
+   const extra=meta?.metadata;
+   if(extra?.sourceSnapshotId!==snapshotId||extra?.staffId!==staffId||
+      extra?.sha256!==createHash('sha256').update(data).digest('hex'))
+    reject(503);
+  }
   return {data,contentType};
  }
  return reject(404);
