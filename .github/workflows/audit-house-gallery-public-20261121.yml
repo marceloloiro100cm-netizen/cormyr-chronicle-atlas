@@ -8,8 +8,9 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 12
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -97,4 +98,37 @@ jobs:
           }
           console.log('PUBLIC_HOUSE_GALLERY_SMOKE successful_houses='+ready+' total_houses='+houses.length);
           if(ready!==houses.length)process.exit(2);
+          // Prove all House lists are reachable and match the synced Drive
+          // inventory. Download only six sample images above, not 2 GB of
+          // GCS assets merely for the anonymous audit.
+          const {readFileSync}=await import('node:fs');
+          const src=readFileSync('public/cormyr/data.js','utf8');
+          const dataset=JSON.parse(src.slice(src.indexOf('=')+1).trim().replace(/;\\s*$/,''));
+          const ids=dataset.regions.flatMap(r=>r.houses).map(h=>h.nobleId);
+          if(ids.length!==172||new Set(ids).size!==172)throw Error('source_inventory_invalid');
+          let total=0,ok=0;
+          const allPaths=new Set();
+          for(let i=0;i<ids.length;i+=8){
+            const batch=await Promise.all(ids.slice(i,i+8).map(async house=>{
+              const res=await fetch('https://atlas.cormyr.com.br/api/public/house-gallery?house='+house,
+                {signal:AbortSignal.timeout(20000),headers:{Accept:'application/json'}});
+              if(res.status!==200)return {house,count:-1,images:[]};
+              const j=await res.json();
+              if(j.houseId!==house||!Array.isArray(j.images)||j.images.length<1||
+                 j.images.length>250||j.images.some(x=>!x.path.startsWith('public-house/'+house+'/')))
+                return {house,count:-1,images:[]};
+              return {house,count:j.images.length,images:j.images};
+            }));
+            for(const b of batch){
+              if(b.count<1){console.log('ALL_HOUSES_FAILED '+b.house);continue;}
+              ok++;total+=b.count;
+              for(const i of b.images){
+                if(allPaths.has(i.path))throw Error('duplicate_gallery_image');
+                allPaths.add(i.path);
+              }
+            }
+          }
+          console.log('PUBLIC_GALLERY_COMPLETE houses='+ok+' images='+total+
+            ' unique_paths='+allPaths.size);
+          if(ok!==172||total!==766||allPaths.size!==766)process.exit(3);
           NODE
