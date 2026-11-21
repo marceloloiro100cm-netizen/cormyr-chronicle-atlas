@@ -182,7 +182,7 @@ export function createFirebaseCloudNewspaper({
   }
   const editorialView=v=>({
     id:v.id,editionNo:v.editionNo,title:v.title,subtitle:v.subtitle??'',
-    blocks:v.blocks,pdfPath:v.pdfPath??null,version:v.version,state:v.state,
+    blocks:v.blocks,pdfPath:v.pdfPath??null,publishOn:v.publishOn??null,version:v.version,state:v.state,
     ...(v.template?{template:v.template}:{}),
     ...(v.font_style?{font_style:v.font_style}:{}),
     campaignDate:v.campaignDate,publishedAt:v.publishedAt,
@@ -459,13 +459,17 @@ export function createFirebaseCloudNewspaper({
          (input.id!==null&&(typeof input.id!=='string'||!/^cloud-[a-f0-9]{64}$/.test(input.id))))
         deny('invalid_editorial_request',400);
       let content;
-      try{content=validateEditorialContent(input.content,{allowEmptyImages:input.state==='draft'});}
+      try{content=validateEditorialContent(input.content,{allowEmptyImages:input.state==='draft'||input.state==='cancelled'});}
       catch{deny('invalid_editorial_content',400);}
       const id=input.id??'cloud-'+digest('editorial:'+uid+':'+input.requestKey);
       const ref=editions.doc(id),audit=audits.doc('edit-'+digest(uid+':'+input.requestKey));
       const fingerprint=digest(JSON.stringify({...input,content}));
       return db.runTransaction(async tx=>{
         const {calendarDate,config}=await readApproval(uid,tx);
+        if(content.publishOn&&input.state!=='draft')
+          deny('schedule_requires_draft',400);
+        if(content.publishOn&&content.publishOn<=calendarDate)
+          deny('schedule_date_not_future',400);
         const commissionIds=commissionIdsOf(content.blocks);
         if(commissionIds.length>20)deny('edition_commissions_too_many',400);
         if(commissionIds.length&&(
@@ -525,7 +529,9 @@ export function createFirebaseCloudNewspaper({
         const published=input.state==='published';
         const firstPublication=published&&!old?.publishedAt;
         if(firstPublication)weeklyEditionGate(config);
-        const next={...(old??{}),...content,id,source:'firebase-cloud',
+        const next={...(old??{}),...content,
+          publishOn:input.state==='draft'?content.publishOn:null,
+          id,source:'firebase-cloud',
           ...(firstPublication?publishedRoundOf(config):{}),
           sourceSnapshotId:snapshotId,editionNo:old?.editionNo??config.nextNewspaperEditionNo,
           state:input.state,version:input.expectedVersion+1,
