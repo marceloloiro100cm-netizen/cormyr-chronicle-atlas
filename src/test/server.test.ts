@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { isH3SwallowedErrorBody, normalizeCatastrophicSsrResponse } from "../server";
+import { isH3SwallowedErrorBody, normalizeCatastrophicSsrResponse, preventStaleWorkspaceHtml } from "../server";
 import { renderErrorPage } from "../lib/error-page";
 
 describe("normalizeCatastrophicSsrResponse", () => {
@@ -84,5 +84,36 @@ describe("isH3SwallowedErrorBody", () => {
     expect(isH3SwallowedErrorBody("invalid json string")).toBe(false);
     expect(isH3SwallowedErrorBody("{")).toBe(false);
     expect(isH3SwallowedErrorBody("")).toBe(false);
+  });
+});
+
+describe("Firebase editor HTML is never cached across App Hosting releases", () => {
+  it.each(['/firebase-access','/auth','/reset-password','/jornal'])(
+    "marks %s HTML as private no-store while preserving headers and contents",
+    async (path) => {
+      const response = new Response("<main>Redação</main>",{
+        status:200,headers:{'Content-Type':'text/html; charset=utf-8',
+          'Set-Cookie':'session=example; HttpOnly','ETag':'"version-1"'},
+      });
+      const result=preventStaleWorkspaceHtml(
+        new Request('https://atlas.cormyr.com.br'+path),response);
+      expect(result).not.toBe(response);
+      expect(result.headers.get('cache-control')).toContain('no-store');
+      expect(result.headers.get('set-cookie')).toBe('session=example; HttpOnly');
+      expect(result.headers.get('etag')).toBe('"version-1"');
+      expect(await result.text()).toContain('Redação');
+    });
+  it("does not change APIs, asset responses, POST, or non-HTML content",()=>{
+    const scenarios=[
+      ['https://atlas.cormyr.com.br/api/firebase-newspaper-staff-photo','GET','text/html'],
+      ['https://atlas.cormyr.com.br/assets/main-old.js','GET','text/html'],
+      ['https://atlas.cormyr.com.br/firebase-access','POST','text/html'],
+      ['https://atlas.cormyr.com.br/firebase-access','GET','application/json'],
+    ] as const;
+    for(const [url,method,contentType] of scenarios){
+      const response=new Response('ok',{headers:{'content-type':contentType,
+        'Cache-Control':'public, max-age=3600'}});
+      expect(preventStaleWorkspaceHtml(new Request(url,{method}),response)).toBe(response);
+    }
   });
 });
