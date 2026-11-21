@@ -32,3 +32,43 @@ const truth=[
 for(const [name,ok] of truth)console.log('HOUSE_GALLERY_GATE '+name+' '+(ok?'YES':'NO'));
 const success=truth.filter(([name,ok])=>name!=='gallery_existing_approved'&&name!=='gallery_existing_version_current'&&!ok);
 console.log('HOUSE_GALLERY_GATE publish_prerequisites '+(success.length===0?'READY':'BLOCKED'));
+
+
+/** Independently validate the actual House gallery publication stage. */
+const imageStageRef=db.collection('migrationPublicHouseGalleryStage').doc(snap);
+const imageStageDoc=await imageStageRef.get();
+const imageStage=imageStageDoc.data()??{};
+const galleryChecks=[
+ ['gallery_public_approval',r.publicGalleryApproved===true],
+ ['gallery_bucket_matches',r.publicGalleryBucket==='cormyr-migration-homolog-477785088395'],
+ ['gallery_version_published',Number.isSafeInteger(r.galleryVersion)&&r.galleryVersion>0&&r.galleryVersion===r.publishedGalleryVersion],
+ ['gallery_stage_complete',imageStage.status==='complete'],
+ ['gallery_stage_private',imageStage.private===true],
+ ['gallery_stage_snapshot_matches',imageStage.sourceSnapshotId===snap],
+ ['gallery_stage_scope',imageStage.reviewScope==='house-gallery-only'],
+ ['gallery_stage_approved',imageStage.publicReviewApproved===true],
+ ['gallery_stage_digest',typeof imageStage.reviewDigest==='string'&&/^[a-f0-9]{64}$/.test(imageStage.reviewDigest)],
+ ['gallery_stage_version_matches',imageStage.galleryVersion===r.galleryVersion],
+];
+const sampleHouses=['phelles','evenhand','goldfin','blester','axehand','silversword'];
+const samples=await Promise.all(sampleHouses.map(house=>
+  imageStageRef.collection('houseGalleries').doc(house).get()));
+for(let i=0;i<sampleHouses.length;i++){
+ const doc=samples[i].data()??{},house=sampleHouses[i];
+ galleryChecks.push(['gallery_house_'+house,doc.status==='approved'&&
+  doc.publicReviewed===true&&doc.sourceSnapshotId===snap&&
+  doc.version===r.galleryVersion&&doc.houseId===house&&
+  Array.isArray(doc.images)&&doc.images.length>0&&doc.images.length<=250]);
+}
+const [houseTotal,imageTotal]=await Promise.all([
+ imageStageRef.collection('houseGalleries').count().get(),
+ imageStageRef.collection('gallery').count().get(),
+]);
+const houseCount=houseTotal.data().count,imageCount=imageTotal.data().count;
+console.log('HOUSE_GALLERY_INVENTORY houses='+houseCount+' images='+imageCount);
+galleryChecks.push(['gallery_expected_inventory',houseCount===172&&imageCount===766]);
+for(const [name,ok] of galleryChecks)
+ console.log('HOUSE_GALLERY_GATE '+name+' '+(ok?'YES':'NO'));
+const deliveryReady=galleryChecks.every(([,ok])=>ok)&&success.length===0;
+console.log('HOUSE_GALLERY_GATE firestore_delivery '+(deliveryReady?'READY':'BLOCKED'));
+if(!deliveryReady)process.exitCode=2;
