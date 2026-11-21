@@ -140,7 +140,7 @@ function NewspaperImage({block,editing,selected=false,onChange,imageSrcOverride}
       objectPosition:`${focus.x}% ${focus.y}%`,
       ...(cropZoom>1?{transform:`scale(${cropZoom})`,transformOrigin:`${focus.x}% ${focus.y}%`}:{})}:undefined}/>
    </button>:<div className="newspaper-photo-placeholder" role="status">
-    {imageFailed?'Fotografia não localizada no acervo. A referência original foi preservada.':path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
+    {imageFailed?'Imagem original ainda não restaurada no Firebase Storage':path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
    </div>}
   <InlineText tag="figcaption" value={block.caption??''} editing={editing}
    label="Editar legenda da fotografia" single placeholder="Legenda da fotografia" onChange={caption=>onChange?.({caption})}/>
