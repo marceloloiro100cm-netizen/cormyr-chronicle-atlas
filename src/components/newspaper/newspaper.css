@@ -464,9 +464,9 @@
 .public-folha-head h1{margin:2px 0;font:700 clamp(28px,4vw,40px)/1.1 "UnifrakturCook","Old English Text MT",Georgia,serif;color:#241334}
 .public-folha-head p{margin:0;color:#5b4f63}
 .public-folha-tabs{display:flex;gap:8px;max-width:1200px;margin:12px auto;padding:0 20px;flex-wrap:wrap}
-.public-folha-tabs button,.public-folha-pager button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid #c9b48a;border-left:3px solid #c9b48a;border-radius:8px;background:#fffdf8;color:#241334;font:600 14px system-ui,sans-serif;cursor:pointer}
-.public-folha-tabs button:hover,.public-folha-pager button:hover:not(:disabled){border-color:#a98b54;background:#f7f0e2}
-.public-folha-tabs button[aria-pressed=true]{background:#241334;color:#fffdf7;border-color:#a98b54}
+.public-folha-tabs button,.public-folha-pager button,.public-folha-tabs a{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid #c9b48a;border-left:3px solid #c9b48a;border-radius:8px;background:#fffdf8;color:#241334;font:600 14px system-ui,sans-serif;cursor:pointer}
+.public-folha-tabs button:hover,.public-folha-pager button:hover:not(:disabled),.public-folha-tabs a:hover{border-color:#a98b54;background:#f7f0e2}
+.public-folha-tabs button[aria-pressed=true],.public-folha-tabs a[aria-current=page]{background:#241334;color:#fffdf7;border-color:#a98b54}
 .public-folha-pager{display:flex;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .public-folha-pager button:disabled{opacity:.45;cursor:not-allowed}
 .public-folha-status{max-width:1200px;margin:24px auto;padding:0 20px;font-family:system-ui,sans-serif}
@@ -474,9 +474,9 @@
 .public-folha-list{position:sticky;top:12px;background:#fffdf8;border:1px solid #d9ccb2;border-radius:10px;padding:10px;max-height:calc(100vh - 40px);overflow:auto}
 .public-folha-list h2{margin:2px 4px 8px;font:700 12px system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6b5233}
 .public-folha-list ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.public-folha-list button{width:100%;display:grid;gap:2px;text-align:left;border:1px solid #e4dccd;border-left:3px solid #d8cdb8;border-radius:8px;background:#fff;padding:8px 10px;cursor:pointer;color:#231d2a}
-.public-folha-list button:hover{border-color:#a98b54}
-.public-folha-list button[aria-current=true]{background:#241334;color:#fffdf7;border-color:#a98b54}
+.public-folha-list button,.public-folha-list a{width:100%;display:grid;gap:2px;text-align:left;border:1px solid #e4dccd;border-left:3px solid #d8cdb8;border-radius:8px;background:#fff;padding:8px 10px;cursor:pointer;color:#231d2a}
+.public-folha-list button:hover,.public-folha-list a:hover{border-color:#a98b54}
+.public-folha-list button[aria-current=true],.public-folha-list a[aria-current=true]{background:#241334;color:#fffdf7;border-color:#a98b54}
 .public-folha-list span{font:600 11px system-ui,sans-serif;color:inherit;opacity:.8}
 .public-folha-list strong{font:600 15px/1.3 Georgia,serif}
 .public-folha-reader{min-width:0}
@@ -527,23 +527,23 @@
  border-top:0;
  border-radius:0 0 12px 12px;
 }
-.public-folha-tabs button{
+.public-folha-tabs button,.public-folha-tabs a{
  border:1px solid #826247;border-radius:7px;
  background:#36203a;color:#f2dec0;
  padding:0 18px;
 }
-.public-folha-tabs button[aria-pressed=true]{background:#ad7b3c;color:#170d1e;border-color:#efc986}
-.public-folha-tabs button:hover{background:#654456;color:#fff7e5}
+.public-folha-tabs button[aria-pressed=true],.public-folha-tabs a[aria-current=page]{background:#ad7b3c;color:#170d1e;border-color:#efc986}
+.public-folha-tabs button:hover,.public-folha-tabs a:hover{background:#654456;color:#fff7e5}
 .public-folha-layout{max-width:1500px;gap:22px;padding:0 clamp(14px,3vw,30px);grid-template-columns:minmax(210px,270px) minmax(0,1fr)}
 .public-folha-list{
  background:#27152f;color:#f6e7d1;border:1px solid #84613c;border-radius:10px;
  padding:14px 12px;box-shadow:0 12px 24px rgba(0,0,0,.18);
 }
 .public-folha-list h2{font-size:.78rem;color:#e8c785;letter-spacing:.16em}
-.public-folha-list button{background:#35203c;color:#f6e7d1;border:1px solid #6c4d47;border-left:4px solid #a47d48}
-.public-folha-list button:hover{background:#51314e;border-color:#bb9258}
-.public-folha-list button[aria-current=true]{background:#72513c;border-color:#deb878;color:#fff6e6}
-.public-folha-list button strong{font-size:1.05rem}
+.public-folha-list button,.public-folha-list a{background:#35203c;color:#f6e7d1;border:1px solid #6c4d47;border-left:4px solid #a47d48}
+.public-folha-list button:hover,.public-folha-list a:hover{background:#51314e;border-color:#bb9258}
+.public-folha-list button[aria-current=true],.public-folha-list a[aria-current=true]{background:#72513c;border-color:#deb878;color:#fff6e6}
+.public-folha-list button strong,.public-folha-list a strong{font-size:1.05rem}
 .public-folha-reader{background:#201126;border:1px solid #926f48;border-radius:10px;padding:clamp(8px,1.5vw,20px);box-shadow:0 14px 38px #0a031433}
 .public-folha-pager{align-items:center}
 .public-folha-pager button{background:#38223c;color:#f9ebd3;border:1px solid #987752;border-left:3px solid #c39a57}
@@ -600,3 +600,6 @@
  border:2px solid #a07a44;
  border-radius:4px;
 }
+
+/* Abas e edições como links (botão direito > abrir em nova guia). */
+.public-folha-tabs a,.public-folha-list a{text-decoration:none}

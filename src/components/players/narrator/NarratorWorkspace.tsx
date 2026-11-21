@@ -1,4 +1,5 @@
-import {lazy,Suspense,useEffect,useRef,useState,type ReactNode} from 'react';
+import {lazy,Suspense,useEffect,useRef,useState,type MouseEvent as ReactMouseEvent,type ReactNode} from 'react';
+import {isPlainLeftClick,useUrlSearch} from '@/lib/navigation/url-state';
 import {LanguageSwitcher} from '@/components/language-switcher';
 import {useTranslation} from '@/lib/i18n/context';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
@@ -22,9 +23,12 @@ const MOBILE_PRIMARY=['painel','missivas','jornal','calendario'];
  * esquerda (barra inferior no celular) e a área do módulo ocupando a tela.
  * Só organiza a navegação: permissões e ações continuam nos módulos.
  */
-export function NarratorWorkspace({menu,extra,section,onSection,unread,openRound,represent,account,message,onDismissMessage,children}:{
+export function NarratorWorkspace({menu,extra,section,onSection,sectionHref,unread,openRound,represent,account,message,onDismissMessage,children}:{
  menu:ReadonlyArray<NarratorMenuEntry>;extra?:NarratorMenuEntry|null;
- section:string;onSection:(id:string)=>void;unread:number;openRound:number|null;
+ section:string;onSection:(id:string)=>void;
+ /** Endereço de cada módulo: com ele, o menu vira links (botão direito > nova guia). */
+ sectionHref?:((id:string)=>string)|undefined;
+ unread:number;openRound:number|null;
  represent:ReactNode;account:ReactNode;message:string;onDismissMessage:()=>void;children:ReactNode;
 }){
  const {t}=useTranslation();
@@ -45,29 +49,41 @@ export function NarratorWorkspace({menu,extra,section,onSection,unread,openRound
   return()=>{window.removeEventListener('keydown',onKey);document.removeEventListener('mousedown',onClick);};
  },[accountOpen,moreOpen]);
  const go=(id:string)=>{setMoreOpen(false);onSection(id);};
+ useUrlSearch();
+ // Link real quando há endereço; clique comum continua trocando o módulo aqui mesmo.
+ const nav=(id:string)=>sectionHref?{href:sectionHref(id),
+  onClick:(e:ReactMouseEvent<HTMLAnchorElement>)=>{if(!isPlainLeftClick(e))return;e.preventDefault();go(id);}}:null;
  const label=(id:string,name:string)=>id==='missivas'&&unread>0?`${name}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:name;
- const navButton=([id,name]:NarratorMenuEntry)=><button key={id} type="button" className="nw-nav-btn"
-  aria-current={section===id?'page':undefined} aria-label={label(id,name)} title={name} onClick={()=>go(id)}>
+ const navBody=(id:string,name:string)=><>
   <Icon name={id} size={21}/><span>{SHORT[id]??name}</span>
   {id==='missivas'&&unread>0&&<span className="nw-badge" aria-hidden="true">{unread}</span>}
- </button>;
+ </>;
+ const navButton=([id,name]:NarratorMenuEntry)=>{
+  const link=nav(id);
+  return link?<a key={id} className="nw-nav-btn" {...link}
+   aria-current={section===id?'page':undefined} aria-label={label(id,name)} title={name}>{navBody(id,name)}</a>
+  :<button key={id} type="button" className="nw-nav-btn"
+   aria-current={section===id?'page':undefined} aria-label={label(id,name)} title={name} onClick={()=>go(id)}>{navBody(id,name)}</button>;
+ };
  const primary=items.filter(([id])=>MOBILE_PRIMARY.includes(id));
  const secondary=items.filter(([id])=>!MOBILE_PRIMARY.includes(id));
  const inMore=secondary.some(([id])=>id===section);
  return <div className="campaign-theme nw-root">
   <header className="nw-top">
-   <button type="button" className="nw-brand" onClick={()=>go('painel')} aria-label="Atlas Cormyr: abrir o Conselho das casas">
-    <img src={CORMYR_CREST} alt="" width={34} height={42}/>
+   {(()=>{const body=<><img src={CORMYR_CREST} alt="" width={34} height={42}/>
     <span><b>Atlas <em>Cormyr</em></b>
-     <span className="nw-clock"><Suspense fallback={<small>Consultando data oficial…</small>}><PrivateClockBody/></Suspense></span></span>
-   </button>
+     <span className="nw-clock"><Suspense fallback={<small>Consultando data oficial…</small>}><PrivateClockBody/></Suspense></span></span></>;
+    const link=nav('painel');
+    return link?<a className="nw-brand" {...link} aria-label="Atlas Cormyr: abrir o Conselho das casas">{body}</a>
+     :<button type="button" className="nw-brand" onClick={()=>go('painel')} aria-label="Atlas Cormyr: abrir o Conselho das casas">{body}</button>;})()}
    <span className="nw-spacer"/>
-   <button type="button" className={'nw-week'+(openRound===null?' nw-week--closed':'')} onClick={()=>go('calendario')}
-    title="Abrir o Hub Temporal" aria-label={(openRound!==null?`Semana ${openRound} aberta`:'Nenhuma semana aberta')+'. Abrir o Hub Temporal'}>
-    <span className="nw-week-dot" aria-hidden="true"/>
-    <span className="nw-week-long">{openRound!==null?`Semana ${openRound} aberta`:'Sem semana aberta'}</span>
-    <span className="nw-week-short" aria-hidden="true">{openRound!==null?`S${openRound}`:'—'}</span>
-   </button>
+   {(()=>{const props={className:'nw-week'+(openRound===null?' nw-week--closed':''),title:'Abrir o Hub Temporal',
+     'aria-label':(openRound!==null?`Semana ${openRound} aberta`:'Nenhuma semana aberta')+'. Abrir o Hub Temporal'};
+    const body=<><span className="nw-week-dot" aria-hidden="true"/>
+     <span className="nw-week-long">{openRound!==null?`Semana ${openRound} aberta`:'Sem semana aberta'}</span>
+     <span className="nw-week-short" aria-hidden="true">{openRound!==null?`S${openRound}`:'—'}</span></>;
+    const link=nav('calendario');
+    return link?<a {...props} {...link}>{body}</a>:<button type="button" {...props} onClick={()=>go('calendario')}>{body}</button>;})()}
    <div className="nw-represent-wrap">{represent}</div>
    <div className="nw-account" ref={accountRef}>
     <button type="button" className="nw-avatar" aria-haspopup="true" aria-expanded={accountOpen}
@@ -98,8 +114,10 @@ export function NarratorWorkspace({menu,extra,section,onSection,unread,openRound
   {mobile&&moreOpen&&<>
    <div className="nw-scrim" onClick={()=>setMoreOpen(false)} aria-hidden="true"/>
    <div className="nw-more" role="menu" aria-label="Mais módulos">
-    {secondary.map(([id,name])=><button key={id} type="button" role="menuitem" aria-current={section===id?'page':undefined}
-     onClick={()=>go(id)}><Icon name={id} size={21}/>{name}</button>)}
+    {secondary.map(([id,name])=>{const link=nav(id);return link
+     ?<a key={id} role="menuitem" aria-current={section===id?'page':undefined} {...link}><Icon name={id} size={21}/>{name}</a>
+     :<button key={id} type="button" role="menuitem" aria-current={section===id?'page':undefined}
+      onClick={()=>go(id)}><Icon name={id} size={21}/>{name}</button>;})}
    </div>
   </>}
  </div>;

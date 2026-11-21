@@ -72,6 +72,13 @@
  * diagnóstico seguro à falha do carregamento geral. Nenhuma opção de jogo,
  * controle histórico ou filtro original foi removido; hash recapturado
  * após revisão explícita do diff.
+ * 2026-11-21 (links abríveis em nova guia, pedido do proprietário): as abas
+ * do jogador, o menu do Narrador, os tipos de ficha e as seções da Redação
+ * passam de <button> para links reais (<a href>) com o estado no endereço
+ * (src/lib/navigation/url-state.ts): mesmos rótulos, mesma ordem, mesmas
+ * ações e mesmos estilos; o botão direito passa a oferecer "Abrir em nova
+ * guia". newspaper-editorial.css só repete as regras do menu para <a>.
+ * Nenhum controle, filtro ou RPC foi removido. Re-captured after review.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -84,15 +91,15 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'7cd337ddb4cd529370bdb720f9e3a30f2372e728',
+  'src/components/players/players-workspace.tsx':'a335c90dccf10fcdb40ceed57a9939bc8b2636df',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'f97bb1c10b1ca77771ff1fdc786214c389f99e48',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
   'src/components/newspaper/NewspaperHub.tsx':'2a0742b8904376ed9aa8e9d160734c0cbd0db23c',
-  'src/components/newspaper/newspaper-editorial.css':'760857899874c1e3167ce578f05d886c78116b34',
+  'src/components/newspaper/newspaper-editorial.css':'1201a06ca889a61da1a9f905701c0e0107a87b17',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
-  'src/components/players/ficha-tab.tsx':'d6a763834c157a1582db66489469b289836ea476',
+  'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',
 };
 for(const [path,expected] of Object.entries(originals)){

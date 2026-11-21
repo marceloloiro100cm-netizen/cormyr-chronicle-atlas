@@ -50,7 +50,7 @@ describe('Dossiês de espionagem · lotes 4, 5 e 6',()=>{
   expect(component).toContain("readSpyDossiersBrowser(houseId)");
   expect(component).toContain('Nenhuma informação desta categoria foi descoberta.');
   expect(hub).toContain("<SpyPlayerDossiers houseId={house.id}/>");
-  expect(hub).toContain("onClick={()=>setSpyView('dossiers')}");
+  expect(hub).toContain("urlLinkProps({espionagem:'dossies'})");
  });
  it('coloca o gerenciador do narrador abaixo do Hub Temporal com filtros e auditoria',()=>{
   const menu=read('src/components/players/narrator-missives-hub.tsx');

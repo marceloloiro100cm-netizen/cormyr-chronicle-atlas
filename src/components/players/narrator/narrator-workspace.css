@@ -86,8 +86,8 @@
 .nw-bottom .nw-badge{right:calc(50% - 24px)}
 .nw-scrim{position:fixed;inset:0;background:rgb(20 8 28/.5);z-index:64}
 .nw-more{position:fixed;left:0;right:0;bottom:0;z-index:66;background:var(--nw-paper);border-top:2px solid var(--nw-gold);border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));display:grid;gap:4px}
-.nw-more button{display:flex;align-items:center;gap:12px;border:0;background:none;padding:12px;border-radius:8px;font-size:15px;text-align:left;color:var(--foreground);cursor:pointer}
-.nw-more button:hover,.nw-more button[aria-current=page]{background:var(--nw-light)}
+.nw-more button,.nw-more a{display:flex;align-items:center;gap:12px;border:0;background:none;padding:12px;border-radius:8px;font-size:15px;text-align:left;color:var(--foreground);cursor:pointer}
+.nw-more button:hover,.nw-more button[aria-current=page],.nw-more a:hover,.nw-more a[aria-current=page]{background:var(--nw-light)}
 
 @media (max-width:1023px){.nw-represent{max-width:170px}}
 @media (max-width:767px){
@@ -99,3 +99,6 @@
  .nw-page{padding:12px 12px 24px}
  .nw-council-admin{padding:12px}
 }
+
+/* Menus como links (botão direito > abrir em nova guia): mesma aparência dos botões. */
+a.nw-nav-btn,a.nw-brand,a.nw-week,.nw-more a{text-decoration:none}

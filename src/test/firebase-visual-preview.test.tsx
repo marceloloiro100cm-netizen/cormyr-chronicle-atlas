@@ -53,19 +53,19 @@ describe('área interna Firebase com a interface original (prévia visual)', () 
     expect(isVisualPreview()).toBe(true);
     expect(await screen.findByRole('heading', {name: 'Jogador · Casa Ashkar'})).toBeInTheDocument();
     for (const tab of ['Casa', 'Ficha', 'Galeria', 'Calendário', 'Documentos', 'Jornal'])
-      expect(screen.getByRole('button', {name: new RegExp('^' + tab)})).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: /^Batalha/})).toBeNull();
+      expect(screen.getByRole('link', {name: new RegExp('^' + tab)})).toBeInTheDocument();
+    expect(screen.queryByRole('link', {name: /^Batalha/})).toBeNull();
     expect(await screen.findByText('Convocação ao Conselho de Suzail')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', {name: /^Ficha/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Ficha/}));
     expect(await screen.findByRole('heading', {name: 'Casa Ashkar'})).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', {name: /Espionagem/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Espionagem/}));
     expect(await screen.findAllByText(/Sombra das Cinzas/)).not.toHaveLength(0);
 
-    fireEvent.click(screen.getByRole('button', {name: /^Galeria/}));
-    fireEvent.click(screen.getByRole('button', {name: /^Calendário/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Galeria/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Calendário/}));
     expect(await screen.findByText('Calendário de Harptos')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', {name: /^Jornal/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Jornal/}));
     await waitFor(() => expect(screen.queryByRole('heading', {name: 'Calendário de Harptos'})).toBeNull());
 
     unmount();
@@ -76,15 +76,15 @@ describe('área interna Firebase com a interface original (prévia visual)', () 
     mount('narrador');
     expect(await screen.findByRole('heading', {name: 'Conselho do mestre'})).toBeInTheDocument();
     for (const item of ['Conselho das casas', 'Missivas', 'Jornal', 'Hub Temporal', 'Dossiês de Espionagem', 'Eventos', 'Aventuras'])
-      expect(screen.getByRole('button', {name: new RegExp('^' + item)})).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: 'Módulo de batalha'})).toBeNull();
+      expect(screen.getByRole('link', {name: new RegExp('^' + item)})).toBeInTheDocument();
+    expect(screen.queryByRole('link', {name: 'Módulo de batalha'})).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', {name: /^Missivas/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Missivas/}));
     expect(await screen.findByText('Central de missivas')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', {name: /^Hub Temporal/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Hub Temporal/}));
     expect(await screen.findAllByText('Calendário de Harptos')).not.toHaveLength(0);
-    fireEvent.click(screen.getByRole('button', {name: /^Dossiês de Espionagem/}));
-    fireEvent.click(screen.getByRole('button', {name: /^Conselho das casas/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Dossiês de Espionagem/}));
+    fireEvent.click(screen.getByRole('link', {name: /^Conselho das casas/}));
 
     fireEvent.change(screen.getByRole('combobox', {name: 'Acessar como jogador'}), {target: {value: '00000000-0000-4000-8000-000000000fa2'}});
     expect(await screen.findByText(/Representação administrativa/)).toBeInTheDocument();

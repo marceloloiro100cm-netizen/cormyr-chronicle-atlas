@@ -381,7 +381,8 @@ function FirebaseAccess(){
     if(!configured)return;
     // Uma só tela de login: sem sessão, volta para /auth.
     if(!hasStoredFirebaseSession(firebaseAuth()?.current())){
-      void navigate({to:'/auth',search:{next:'/'},replace:true});
+      // Guarda a tela pedida (aba, Casa, carta...) para voltar a ela após o login.
+      void navigate({to:'/auth',search:{next:window.location.pathname+window.location.search},replace:true});
       return;
     }
     void restore();

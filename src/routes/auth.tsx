@@ -34,6 +34,15 @@ function Auth() {
  const [message,setMessage] = useState('');
  useEffect(()=>{const notice=takeLoginMessage();if(notice)setMessage(notice);},[]);
  const [busy,setBusy] = useState(false);
+ // Depois do login, volta à tela da área interna que a pessoa tentou abrir
+ // (link de outra guia ou enviado no grupo). Só aceita /firebase-access.
+ const {next} = Route.useSearch();
+ const insideSearch = next.startsWith('/firebase-access?')
+  ? Object.fromEntries([...new URLSearchParams(next.slice('/firebase-access?'.length))].slice(0,20))
+  : null;
+ const goInside = () => insideSearch
+  ? navigate({to:'/firebase-access',search:insideSearch as never})
+  : navigate({to:'/firebase-access'});
 
  // A single Firebase session is shared with /firebase-access in this tab.
  // Never treat an old Supabase JWT or a House chosen on the login form
@@ -41,7 +50,7 @@ function Auth() {
  useEffect(() => {
   let active = true;
   void firebasePilotAuth()?.getToken().then(token => {
-   if(active && token)void navigate({to:'/firebase-access'});
+   if(active && token)void goInside();
   }).catch(()=>{});
   return () => { active = false; };
  },[navigate]);
@@ -68,7 +77,7 @@ function Auth() {
    setPassword('');
    // The Firebase-only destination independently verifies UID, profile,
    // House scope and runtime; this page never grants a role or a House.
-   await navigate({to:'/firebase-access'});
+   await goInside();
   }catch{
    if(signedIn)auth?.signOut();
    setMessage(firebasePilotLoginFailure(signedIn));
@@ -84,7 +93,7 @@ function Auth() {
    if(!auth)throw Error('Firebase Auth indisponível');
    await auth.signInWithGoogleIdToken(credential,window.location.origin+'/auth');
    signedIn=true;
-   await navigate({to:'/firebase-access'});
+   await goInside();
   }catch(e){
    if(signedIn)auth?.signOut();
    setMessage(e instanceof FirebaseAuthError&&e.code==='ACCOUNT_LINK_REQUIRED'

@@ -223,3 +223,6 @@
  .chn-sign{flex:1 1 100%}
  .chn-toast{left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom))}
 }
+
+/* Pastas e cartas como links (botão direito > abrir em nova guia). */
+a.chn-q,a.chn-it-open{text-decoration:none}

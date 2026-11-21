@@ -9,6 +9,7 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {projectTemporalNotice} from '@/lib/calendar/house-time-impact';
 import { legacyEffectCandidates } from '@/lib/house/holding-accounting';
 import { useCallback, useRef, useState } from 'react';
+import {setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
@@ -75,8 +76,15 @@ type Run=(action:Parameters<ReturnType<typeof useServerFn<typeof houseOperation>
 function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEdit,houseOperationsWritable,houseRulesWritable,npcs,courtMembers,records=[],state,catalog,houses,admin,canEditAttributes,version,ledger,globalCalendar,calendarError,fetchFullLedger,busy,message,error,run}:Props&{state:HouseState;catalog:CatalogItem[];houses:{id:string;name:string;crest:string|null}[];admin:boolean;canEditAttributes:boolean;houseOperationsWritable:boolean;houseRulesWritable:boolean;version:number;ledger:{id:string;action:string;explanation:string;rule:string;created_at:string}[];globalCalendar:CalendarReference|null;calendarError:boolean;fetchFullLedger:()=>Promise<import('@/lib/house/report').ReportLedger[]>;busy:boolean;message:string;error:boolean;run:Run}) {
   const canEdit=houseOperationsWritable&&(admin||playerCanEdit);
   const [graphical,setGraphical]=useState(false);
-  const [spyView,setSpyView]=useState<'operations'|'dossiers'>('operations');
-  const [section,setSection]=useState('overview'),[buy,setBuy]=useState(false),[purchaseItemId,setPurchaseItemId]=useState(''),[importPreview,setImport]=useState<ImportPreview|null>(null),[resource,setResource]=useState<typeof RESOURCE_KEYS[number]>('wealth'),[importDecision,setImportDecision]=useState('');
+  // Seção da ficha e visão de Espionagem ficam no endereço (?parte=army, ?espionagem=dossies):
+  // cada menu pode ser aberto em nova guia. Seção não visível volta à Visão geral.
+  const [spyViewParam]=useUrlParam('espionagem','operations');
+  const spyView:'operations'|'dossiers'=spyViewParam==='dossies'?'dossiers':'operations';
+  const [sectionParam]=useUrlParam('parte','overview');
+  useUrlSearch();
+  const section=NAV.some(([id])=>id===sectionParam&&houseNavigationVisible(id,admin,firebaseWorkspaceClient()!==null))?sectionParam:'overview';
+  const setSection=(id:string)=>setUrlParams({parte:id==='overview'?null:id,espionagem:null,dossie:null,modalidade:null});
+  const [buy,setBuy]=useState(false),[purchaseItemId,setPurchaseItemId]=useState(''),[importPreview,setImport]=useState<ImportPreview|null>(null),[resource,setResource]=useState<typeof RESOURCE_KEYS[number]>('wealth'),[importDecision,setImportDecision]=useState('');
   const active=state.holdings.filter(h=>h.status==='active'),projects=state.projects.filter(p=>p.status==='building');
   const drift=globalCalendar?calendarDrift(state.month,globalCalendar):null;
   const monthly=houseMonthlyOperationReadiness(state,globalCalendar);
@@ -86,7 +94,7 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
   const categories=section==='fortifications'?['fortification']:section==='domains'?['terrain','feature','community']:['estate','lifestyle','personage','settlement','improvement','equipment','vassal'];
   return <div className="house-hub" data-heraldry={heraldicHouse??undefined}><header className="house-header"><HouseHeaderCrest key={house.id} houseName={house.name} theme={heraldicHouse} crest={house.crest} privatePath={state.identity.crestPath}/><div><p className="campaign-eyebrow">REGISTRO DA CASA · {state.phase==='active'?'EM CAMPANHA':state.phase==='review'?'AGUARDANDO APROVAÇÃO':'RASCUNHO'}</p><h2>Casa {house.name}</h2><p>{house.lord_name??'Governante não informado'} · {house.castle??'Sede não informada'} · {globalCalendar?campaignMonth(calendarMonthIndex(globalCalendar)):'Data oficial indisponível'}</p></div><div className="house-header-actions"><Button variant="outline" aria-pressed={graphical} onClick={()=>setGraphical(v=>!v)}><LayoutDashboard size={16}/>Trocar Visão</Button><span className="house-version">v{version}</span></div></header>{graphical?<ResourceChart state={state}/>:<ResourceSummary state={state}/>}
     {representationMode&&<p role="note" className="house-caption">Representação do jogador: visualização somente de leitura. Operações ficam desativadas e dependem de autorização específica.</p>}
-    {!houseOperationsWritable&&<p role="note" className="house-caption">Ficha em consulta: compras e edições bloqueadas até a conciliação e o aceite de segurança no Firebase.</p>}<div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>houseNavigationVisible(id,admin,firebaseWorkspaceClient()!==null)).map(([id,label,Icon])=><Button variant={section===id?'default':'ghost'} aria-current={section===id?'page':undefined} key={id} onClick={()=>setSection(id)}><Icon size={17}/>{label}</Button>)}</nav></aside><main className="house-content">
+    {!houseOperationsWritable&&<p role="note" className="house-caption">Ficha em consulta: compras e edições bloqueadas até a conciliação e o aceite de segurança no Firebase.</p>}<div className="house-layout"><aside className="house-sidebar"><nav aria-label="Gerenciamento da casa">{NAV.filter(([id])=>houseNavigationVisible(id,admin,firebaseWorkspaceClient()!==null)).map(([id,label,Icon])=><Button asChild variant={section===id?'default':'ghost'} key={id}><a {...urlLinkProps({parte:id==='overview'?null:id,espionagem:null,dossie:null,modalidade:null})} aria-current={section===id?'page':undefined}><Icon size={17}/>{label}</a></Button>)}</nav></aside><main className="house-content">
       {(busy||(error&&message))&&<p role={error?'alert':'status'} className={error?'house-warning':'house-save-status'}>{busy?'Salvando…':message}</p>}
       {calendarError&&<p role="alert" className="house-warning">Não foi possível confirmar o período global. Operações mensais dependem do Calendário do Narrador.</p>}
       {admin&&houseOperationsWritable&&state.phase==='active'&&drift&&drift.delta>0&&drift.delta<=120&&<details className="house-ledger">
@@ -173,12 +181,12 @@ function HouseWorkspace({npcManager,representationMode,house,canEdit:playerCanEd
       {section==='army'&&<Army commanders={courtMembers} state={state} houseName={house.name} onImage={args=>run('custom_image',args)} onSiege={args=>run('siege',args)} onSiegeState={(args,reason)=>run('siege_state',args,reason)} admin={admin} onState={args=>run('unit_state',args)} onSurvivors={args=>run('survivors',args)} onTrain={(args,reason)=>run('train_unit',args,reason)} onEdit={args=>run('unit_edit',args)} onGrant={(args,reason)=>run('grant_unit_xp',args,reason)} onRename={args=>run('military_rename',args)} onConfigure={args=>run('military_config',args)} onWarHounds={args=>run('war_hounds',args)} onBroadTraining={args=>run('broad_training',args)} onBuyMilitary={id=>{if(!monthly.allowed)return;setPurchaseItemId(id);setBuy(true);}} canEdit={monthlyCanEdit} busy={busy} onCreate={args=>run('unit',args)} onEquipment={args=>run('equipment',args)}/>}
       {section==='spy'&&<>
        <div className="campaign-tabs" role="group" aria-label="Seções de Espionagem">
-        <Button type="button" variant={spyView==='operations'?'default':'outline'}
-         aria-pressed={spyView==='operations'} onClick={()=>setSpyView('operations')}>
-         <Eye size={16}/>Agentes e Missões</Button>
-        <Button type="button" variant={spyView==='dossiers'?'default':'outline'}
-         aria-pressed={spyView==='dossiers'} onClick={()=>setSpyView('dossiers')}>
-         <ScrollText size={16}/>Dossiê</Button>
+        <Button asChild variant={spyView==='operations'?'default':'outline'}>
+         <a {...urlLinkProps({espionagem:null})} aria-current={spyView==='operations'?'page':undefined}>
+         <Eye size={16}/>Agentes e Missões</a></Button>
+        <Button asChild variant={spyView==='dossiers'?'default':'outline'}>
+         <a {...urlLinkProps({espionagem:'dossies'})} aria-current={spyView==='dossiers'?'page':undefined}>
+         <ScrollText size={16}/>Dossiê</a></Button>
        </div>
        {spyView==='operations'?<>
         <SpyDefensePanel state={state} houseId={house.id}/>
