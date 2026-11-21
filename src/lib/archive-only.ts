@@ -65,6 +65,11 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        // Public newspaper: published editions only, own feature flag and
        // anonymous per-device read counter; never drafts, mail or Houses.
        pathname === '/api/public/newspaper' ||
+       // Exact, GET-only Firebase media routes. Their handlers verify a
+       // published edition / public staff membership, snapshot and Storage
+       // reference server-side; arbitrary object keys remain inaccessible.
+       pathname === '/api/public/newspaper-image' ||
+       pathname === '/api/public/newspaper-staff-photo' ||
        // 20/11/2026 (pedido do proprietário): rotas Firebase que já têm chave
        // própria, Firebase Auth ou segredo do agendador. Cada uma continua
        // falhando fechada (503) sem a chave, o runtime aprovado ou o bucket.
