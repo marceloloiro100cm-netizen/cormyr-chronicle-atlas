@@ -59,6 +59,14 @@ describe('Editor-Chefe: lê Missivas entregues, sem escrever; nenhuma Ficha ou C
    'restore_campaign_letter','edit_campaign_letter','MailComposer','ReplyForm'])
    expect(reader).not.toContain(write);
   expect(reader).toContain("'mail_page'");
+  // The broad House selector uses SQL/Firebase "house" (sender OR recipient).
+  // A separate origin selector keeps exact-sender investigations available.
+  expect(reader).toContain("sel('Casa envolvida','house'");
+  expect(reader).toContain("sel('Casa remetente (opcional)','origin'");
+  expect(reader).toContain('house:filters.house');
+  expect(reader).toContain('origin:filters.origin');
+  expect(reader).toContain('filters.house,filters.origin,search');
+
   const route=source('src/components/players/players-workspace.tsx');
   const editor=source('src/components/newspaper/NewspaperEditorialDesk.tsx');
   expect(route).toContain('<EditorialWorkspace key={approved}');
