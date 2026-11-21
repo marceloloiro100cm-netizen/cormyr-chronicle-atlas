@@ -225,13 +225,15 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    });
    else if(kind==='image'){
     const imageBlock=makeNewspaperBlock('image');
+    const placeholder=current.blocks.find(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc);
+    const target=sourceBlock&&current.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
+     sourceBlock:placeholder?.id;
     setDraft(old=>old?.id===editionId?{
-     ...old,blocks:sourceBlock&&old.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
-      old.blocks.map(b=>b.id===sourceBlock?{...b,imagePath:path}:b):
+     ...old,blocks:target?
+      old.blocks.map(b=>b.id===target?{...b,imagePath:path,imageSrc:undefined}:b):
       [...old.blocks,{...imageBlock,imagePath:path}],
     }:old);
-    setBlockId(sourceBlock&&current.blocks.some(b=>b.id===sourceBlock&&b.type==='image')?
-     sourceBlock:imageBlock.id);
+    setBlockId(target??imageBlock.id);
    }
    notice('Arquivo anexado. Salve o rascunho para registrar a alteração.');
   }catch(cause){setError(safeError(cause));}
@@ -297,7 +299,10 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
     campaign_date:base.campaign_date,title:base.title,
     subtitle:base.subtitle,
     template:base.template,font_style:base.font_style,
-    blocks:nextBlock?[...base.blocks,nextBlock]:[{...makeNewspaperBlock('headline'),text:'Edição disponível em PDF'}],
+    blocks:nextBlock?base.blocks.some(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc)?
+     base.blocks.map(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc?{...b,imagePath:path}:b):
+     [...base.blocks,nextBlock]:
+     [{...makeNewspaperBlock('headline'),text:'Edição disponível em PDF'}],
     pdf_path:kind==='pdf'?path:null,state:'draft',
    });
    setDraft(cloneEditableEdition(result));setSelectedId(result.id);
