@@ -55,7 +55,7 @@ export function publicBlocks(blocks:unknown,editionId?:string):Row[]{
    /^\/(?:newspaper|cormyr|assets|maps)\/[A-Za-z0-9._/%-]+$/.test(rest['imageSrc'])
     ?rest['imageSrc']:undefined;
   const historicSrc=editionId&&
-   (b.type==='image'||b.kind==='image')&&typeof b.imagePath==='string'
+   (b['type']==='image'||b['kind']==='image')&&typeof b['imagePath']==='string'
     ?publishedImageSrc(editionId,i):null;
   const out:Row={...rest};
   if(staticSrc||historicSrc)out['imageSrc']=staticSrc??historicSrc;
