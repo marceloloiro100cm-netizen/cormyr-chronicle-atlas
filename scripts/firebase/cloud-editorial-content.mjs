@@ -99,7 +99,7 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
      (typeof input.publishOn!=='string'||!isNewspaperDate(input.publishOn)))invalid();
   const result={title,subtitle,blocks,
     ...(input.pdfPath?{pdfPath:input.pdfPath}:{}),
-    publishOn:input.publishOn??null,
+    ...(input.publishOn!==undefined?{publishOn:input.publishOn}:{}),
     ...(input.template!==undefined?{template:input.template}:{}),
     ...(input.font_style!==undefined?{font_style:input.font_style}:{})};
   if(Buffer.byteLength(JSON.stringify(result),'utf8')>240000)invalid();
