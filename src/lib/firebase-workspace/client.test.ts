@@ -1,8 +1,9 @@
-import {beforeEach,describe,it,expect,vi} from 'vitest';
+import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
 const session=vi.hoisted(()=>({uid:'a',token:vi.fn()}));
 vi.mock('../auth/firebase-pilot-session',()=>({firebasePilotAuth:()=>({current:()=>({uid:session.uid}),getToken:session.token})}));
 import {workspaceRequest} from './client';
 beforeEach(()=>{session.uid='a';session.token.mockReset().mockResolvedValue('verified-token');vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({result:'source'})}));});
+afterEach(()=>vi.useRealTimers());
 describe('Firebase identity boundary',()=>{
  it('sends only the Firebase bearer without cookies or redirects',async()=>{
   expect(await workspaceRequest({kind:'auth'})).toBe('source');
@@ -47,4 +48,28 @@ describe('Firebase identity boundary',()=>{
   expect(a).toEqual({status:'fulfilled',value:'um'});
   expect(b.status).toBe('rejected');
  });
+ it('returns a retriable timeout instead of leaving a House sheet loading indefinitely',async()=>{
+  vi.useFakeTimers();
+  session.token.mockImplementation(()=>new Promise(()=>{}));
+  const pending=workspaceRequest({kind:'house',houseId:'ashkar'});
+  const checked=expect(pending).rejects.toThrow('A consulta ao Firebase demorou além do limite');
+  await vi.advanceTimersByTimeAsync(18_001);
+  await checked;
+  expect(fetch).not.toHaveBeenCalled();
+ });
+ it('aborts a hung HTTP request without replaying the operation',async()=>{
+  vi.useFakeTimers();
+  let signal:AbortSignal|undefined;
+  vi.mocked(fetch).mockImplementation((_,options)=>new Promise((_resolve,reject)=>{
+   signal=options?.signal as AbortSignal;
+   signal.addEventListener('abort',()=>reject(Error('Aborted')),{once:true});
+  }));
+  const pending=workspaceRequest({kind:'house',houseId:'ashkar'});
+  const checked=expect(pending).rejects.toThrow('A consulta ao Firebase demorou além do limite');
+  await vi.advanceTimersByTimeAsync(18_001);
+  await checked;
+  expect(signal?.aborted).toBe(true);
+  expect(fetch).toHaveBeenCalledTimes(1);
+ });
+
 });
