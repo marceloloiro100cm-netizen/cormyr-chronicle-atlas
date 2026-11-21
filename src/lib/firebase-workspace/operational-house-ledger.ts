@@ -1,4 +1,5 @@
 /** Livro-razão por Casa sem alterar as entradas importadas. */
+import {readAllPaged} from './paged-read';
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 export class OperationalLedgerError extends Error{
  constructor(readonly code:string){super(code);}
@@ -45,8 +46,10 @@ export async function readOperationalHouseLedger(
  // An authenticated, House-scoped ledger READ does not require the separate
  // approval for NEW economic WRITES. The write endpoint still checks that
  // flag transactionally; revoking writes must not hide immutable history.
- const snap=await root.collection('houseOperationLedger').limit(501).get();
- if(!Array.isArray(snap.docs)||snap.docs.length>500)
+ // Lido por inteiro, em páginas: o teto antigo de 500 lançamentos somava
+ // todas as Casas e travaria o livro-razão de todo mundo no meio da temporada.
+ const snap=await readAllPaged<any>(root.collection('houseOperationLedger'),50_000);
+ if(snap.overLimit)
    throw new OperationalLedgerError('house_ledger_over_limit');
  const selected:HouseLedgerRow[]=[];
  for(const doc of snap.docs){

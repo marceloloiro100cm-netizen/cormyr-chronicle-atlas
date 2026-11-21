@@ -13,6 +13,7 @@ import type {Firestore,DocumentSnapshot} from 'firebase-admin/firestore';
 import {RESOURCE_KEYS,type HouseState,type Resource} from './types';
 import {constructionStateHash} from './firebase-construction-transaction';
 import {calculateFirebaseHouseEconomy,verifiedEconomicState} from './firebase-economic-readonly';
+import {readAllPaged} from '../firebase-workspace/paged-read';
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 const KEY=/^[A-Za-z0-9_-]{8,128}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
@@ -135,8 +136,8 @@ export function createFirebaseLetterConsequences({db,snapshotId,now=()=>new Date
     },
     /** Read model: player-safe columns only (no explanation, actor or reason). */
     async list(){
-      const snap=await records.limit(2001).get();
-      if(snap.docs.length>2000)return fail('consequences_too_large',503);
+      const snap=await readAllPaged<{data:()=>Record<string,any>}>(records,20_000);
+      if(snap.overLimit)return fail('consequences_too_large',503);
       return snap.docs.map(d=>d.data()).filter(v=>typeof v['id']==='string').map(v=>({
         id:v['id'],letter_id:v['letterId'],house_id:v['houseId'],changes:v['changes'],
         active:v['active']===true,created_at:v['createdAt']}));
