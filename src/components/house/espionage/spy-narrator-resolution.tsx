@@ -42,13 +42,14 @@ function NarratorDecision({houseId,operation,agent,onResolved}:{
  const [busy,setBusy]=useState(false);
  const [outcome,setOutcome]=useState('');
  const [dossierWarning,setDossierWarning]=useState('');
+ const [resolutionDetails,setResolutionDetails]=useState('');
  const [error,setError]=useState('');
  // Reusar a mesma chave após falha de rede evita dupla homologação.
  const requestKey=useRef<string|null>(null);
  const changed=()=>{requestKey.current=null;setError('');};
  const submit=async(e:React.FormEvent)=>{
   e.preventDefault();if(busy)return;
-  setBusy(true);setError('');setOutcome('');setDossierWarning('');
+  setBusy(true);setError('');setOutcome('');setDossierWarning('');setResolutionDetails('');
   const key=requestKey.current??crypto.randomUUID();
   requestKey.current=key;
   try{
@@ -69,6 +70,25 @@ function NarratorDecision({houseId,operation,agent,onResolved}:{
    setOutcome('Resultado: '+resolutionLabel+
     ' · '+response.rank+' (Astúcia '+response.cunning+'; '+response.cunning+' dados de seis faces)'+
     (response.promoted?' · promovido automaticamente':''));
+   // A difficulty must originate from the authoritative server response.
+   // Do not run a second formula on raw Law or display a fabricated DC.
+   if(response.alreadyApplied&&!response.outcome){
+    setResolutionDetails('Solicitação anterior confirmada sem aplicar um segundo julgamento.');
+   }else{
+    const factors=[
+     'Soma dos dados: '+roll,
+     'Modificador: '+(modifier>=0?'+':'')+modifier,
+     'Total informado: '+(roll+modifier),
+     response.difficulty!==undefined?'Dificuldade homologada: '+response.difficulty:
+      'Dificuldade detalhada: consulte a decisão no histórico',
+     response.failureDegrees!==undefined?'Graus de falha: '+response.failureDegrees:null,
+     response.effectiveFailureDegrees!==undefined?
+      'Graus de falha após melhorias: '+response.effectiveFailureDegrees:null,
+     response.forgedDocuments?'Documentos falsificados aplicados':null,
+     response.aceInTheHole?'Uma carta na manga disponível':null,
+    ].filter((value):value is string=>value!==null);
+    setResolutionDetails(factors.join(' · '));
+   }
    const status=response.intelligenceStatus;
    setDossierWarning(status==='waiting_catalog'
     ?'Missão homologada, mas os segredos aguardam fonte oficial. Reprocesse na fila de Dossiês.'
@@ -146,6 +166,9 @@ function NarratorDecision({houseId,operation,agent,onResolved}:{
    <Gavel size={16}/>{busy?'Resolvendo…':'Resolver missão'}
   </Button>
   {outcome&&<p role="status">{outcome}</p>}
+  {resolutionDetails&&<p role="status" className="spy-narrator-resolution-details">
+   <strong>Memória do julgamento:</strong> {resolutionDetails}
+  </p>}
   {dossierWarning&&<p role="alert" className="house-warning">{dossierWarning}</p>}
   {error&&<p role="alert">{error}</p>}
  </form>;
