@@ -17,7 +17,16 @@ jobs:
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          const houses=['phelles','evenhand','goldfin'];
+          // Compare other read-only Firebase public entrypoints to isolate
+          // an App Hosting runtime/secret problem from a gallery-only gate.
+          for(const endpoint of ['catalog','time','newspaper']){
+            try{
+              const r=await fetch('https://atlas.cormyr.com.br/api/public/'+endpoint,
+                {signal:AbortSignal.timeout(20000),headers:{Accept:'application/json'}});
+              console.log('PUBLIC_BASELINE '+endpoint+' status='+r.status);
+            }catch(e){console.log('PUBLIC_BASELINE '+endpoint+' request_error='+e.name);}
+          }
+          const houses=['phelles','evenhand','goldfin','blester','axehand','silversword'];
           let ready=0;
           for(const house of houses){
             const url='https://atlas.cormyr.com.br/api/public/house-gallery?house='+house;
