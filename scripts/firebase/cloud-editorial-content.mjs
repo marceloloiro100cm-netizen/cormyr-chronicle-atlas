@@ -13,11 +13,15 @@ const alignments=['left','center'];
 const imageStyles=['vintage','woodcut','original'];
 const imageFocus=['top','center','bottom'];
 const noticeIcons=['⚜','📜','🏪','⚔','⚠','👑'];
+// Only paths created by the server-side immutable newsroom registry are accepted.
+// The Cloud transaction also proves the edition and snapshot ownership.
+const mediaImage=/^newspaper-media\/[a-f0-9]{64}\/editionImage\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/;
+const mediaPdf=/^newspaper-media\/[a-f0-9]{64}\/editionPdf\/[0-9a-f-]{36}\.pdf$/;
 
 export function validateEditorialContent(input,{allowEmptyImages=false}={}){
   const invalid=()=>{throw Error('invalid_editorial_content');};
   if(!input||typeof input!=='object'||Array.isArray(input)||
-     Object.keys(input).some(k=>!['title','subtitle','blocks','template','font_style'].includes(k)))invalid();
+     Object.keys(input).some(k=>!['title','subtitle','blocks','template','font_style','pdfPath'].includes(k)))invalid();
   const text=(value,max,required=false)=>{
     if(typeof value!=='string'||Buffer.byteLength(value,'utf8')>max||
        (required&&!value.trim()))invalid();
@@ -31,7 +35,7 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
   const blocks=input.blocks.map(b=>{
     if(!b||typeof b!=='object'||Array.isArray(b)||
        Object.keys(b).some(k=>!['id','type','text','subtitle','byline','caption',
-         'imageSrc','titleFont','bodyFont','span','height',
+         'imageSrc','imagePath','titleFont','bodyFont','span','height',
          'icon','align','imageStyle','autoHeight','imageFocus',
          'focusX','focusY','cropZoom','pinned','dropCap','commissionId'].includes(k))||
        typeof b.id!=='string'||!/^[-a-zA-Z0-9_]{1,100}$/.test(b.id)||
@@ -49,6 +53,10 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
     if(b.imageSrc!==undefined){
       if(!images.includes(b.imageSrc)||b.type!=='image')invalid();
       out.imageSrc=b.imageSrc;
+    }
+    if(b.imagePath!==undefined){
+      if(b.type!=='image'||!mediaImage.test(b.imagePath)||b.imageSrc!==undefined)invalid();
+      out.imagePath=b.imagePath;
     }
     for(const key of ['titleFont','bodyFont'])
       if(b[key]!==undefined){if(!fonts.includes(b[key]))invalid();out[key]=b[key];}
@@ -79,13 +87,15 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
         out[key]=b[key];
       }
     }
-    if(b.type==='image'&&!out.imageSrc&&!allowEmptyImages)invalid();
+    if(b.type==='image'&&!out.imageSrc&&!out.imagePath&&!allowEmptyImages)invalid();
     return out;
   });
   const commissions=blocks.filter(b=>b.commissionId).map(b=>b.commissionId);
   if(new Set(commissions).size!==commissions.length)invalid();
-  if(!blocks.some(b=>b.text.trim()||b.imageSrc))invalid();
+  if(!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)||input.pdfPath)invalid();
+  if(input.pdfPath!==undefined&&input.pdfPath!==null&&!mediaPdf.test(input.pdfPath))invalid();
   const result={title,subtitle,blocks,
+    ...(input.pdfPath?{pdfPath:input.pdfPath}:{}),
     ...(input.template!==undefined?{template:input.template}:{}),
     ...(input.font_style!==undefined?{font_style:input.font_style}:{})};
   if(Buffer.byteLength(JSON.stringify(result),'utf8')>240000)invalid();
