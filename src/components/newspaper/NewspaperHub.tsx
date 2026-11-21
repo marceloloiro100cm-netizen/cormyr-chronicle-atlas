@@ -284,6 +284,12 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
 
  const quickUpload=async(file:File)=>{
   if(!editor||busy)return;
+  // No Cloud edition can reference arbitrary legacy Storage paths.
+  // Avoid creating an empty edition before discovering this limitation.
+  if(isFirebaseNewspaperWorkspace()){
+   setError('Anexos PDF e imagens de edição ainda não possuem upload homologado no Firebase. Nenhum rascunho ou arquivo foi criado.');
+   return;
+  }
   const kind=file.type==='application/pdf'?'pdf':'image';
   if(current){await upload(file,kind);setEditing(true);return;}
   setBusy(true);setError('');
@@ -361,14 +367,27 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   if(!editor||busy)return;
   setBusy(true);setError('');
   try{
-   let base:NewspaperEdition;
-   if(current&&current.state==='draft')base=cloneEditableEdition(current);
-   else{
-    const created=await createNewspaperEdition({...(await editionSeed()),blocks:[]});
-    base=cloneEditableEdition(created);
+   // Never create a contentless Cloud draft. A new commission supplies the
+   // first valid article; an existing draft retains its blocks and version.
+   // Image copying is not yet available on Firebase; fail BEFORE creating
+   // any edition rather than leaving an unusable empty record behind.
+   if(commission.image_path&&isFirebaseNewspaperWorkspace())
+    throw new Error('A imagem desta notícia ainda não pode ser copiada no Firebase. O pedido e sua Riqueza permanecem preservados.');
+   const inDraft=Boolean(current&&current.state==='draft');
+   if(inDraft&&current!.blocks.some(b=>b.commissionId===commission.id)){
+    const already=current!.blocks.find(b=>b.commissionId===commission.id)!;
+    setBlockId(already.id);setEditing(true);notice('A notícia já está nesta edição.');return;
    }
-   const already=base.blocks.find(b=>b.commissionId===commission.id);
-   if(already){setSelectedId(base.id);setDraft(base);setBlockId(already.id);setEditing(true);return;}
+   if(!inDraft){
+    const blocks=commissionToBlocks(commission,undefined,houseNames.get(commission.house_id));
+    const created=await createNewspaperEdition({...(await editionSeed()),blocks});
+    setSelectedId(created.id);setDraft(cloneEditableEdition(created));
+    setBlockId(blocks[0]?.id??null);setEditing(true);
+    notice('Notícia inserida na nova edição em rascunho. Revise antes de publicar.');
+    await refresh();
+    return;
+   }
+   const base=cloneEditableEdition(current!);
    const imagePath=commission.image_path?
     await copyCommissionImageToEdition(base.id,commission.image_path):undefined;
    const blocks=commissionToBlocks(commission,imagePath,houseNames.get(commission.house_id));
