@@ -36,10 +36,27 @@ jobs:
               status=r.status;health=r.headers.get('x-cormyr-gallery-health')||'none';
               if(status===503){
                 const raw=await r.text(),type=r.headers.get('content-type')||'';
-                const bodyCategory=raw.trim()==='{"error":"Galeria indisponível"}'
-                  ?'APP_GALLERY_JSON':raw.includes('Service Unavailable')
-                  ?'GENERIC_SERVICE_UNAVAILABLE':raw.includes('<html')
-                  ?'HTML_ERROR':'OTHER';
+                let bodyCategory='OTHER';
+                try{
+                  const parsed=JSON.parse(raw);
+                  const keys=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)
+                    ?Object.keys(parsed).sort().join(','):'NON_OBJECT';
+                  const err=parsed?.error;
+                  const code=parsed?.code;
+                  bodyCategory=err==='Galeria indisponível'?'APP_GALLERY_JSON':
+                    err==='Galeria temporariamente indisponível'?'APP_TEMP_JSON':
+                    err==='Catálogo temporariamente indisponível'?'CATALOG_JSON':
+                    err==='Internal Server Error'?'INTERNAL_ERROR_JSON':
+                    err==='Service Unavailable'?'SERVICE_UNAVAILABLE_JSON':
+                    'JSON_KEYS_'+(keys==='error'?'ERROR_ONLY':keys==='error,message'?'ERROR_MESSAGE':'OTHER');
+                  console.log('PUBLIC_HOUSE_JSON '+house+' keys_class='+
+                    (keys==='error'?'ERROR_ONLY':keys==='error,message'?'ERROR_MESSAGE':'OTHER')+
+                    ' error_type='+typeof err+' code_type='+typeof code+
+                    ' json_text_bytes='+raw.length);
+                }catch{
+                  bodyCategory=raw.includes('Service Unavailable')?'GENERIC_SERVICE_UNAVAILABLE':
+                    raw.includes('<html')?'HTML_ERROR':'OTHER';
+                }
                 console.log('PUBLIC_HOUSE_RESPONSE '+house+' content_type_class='+
                   (type.includes('application/json')?'JSON':type.includes('text/html')?'HTML':'OTHER')+
                   ' error_body_class='+bodyCategory+
