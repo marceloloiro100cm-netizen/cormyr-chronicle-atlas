@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {deletedNewspaperIds} from '../../../scripts/firebase/newspaper-deleted.mjs';
 import {publishedImageSrc} from './firebase-published-image.server';
 import {publicStaffPhotoSrc} from './firebase-public-staff-photo.server';
+import {releaseDueNewspapers} from './firebase-scheduled-publication.server';
 
 /**
  * Leitura PÚBLICA de A Folha Sem Selo (site aberto, sem conta).
@@ -67,6 +68,8 @@ export function publicBlocks(blocks:unknown,editionId?:string):Row[]{
 
 export async function listPublicNewspapers(db:any,snapshotId:string){
  await stageReady(db,snapshotId);
+ // A data é lida do Hub no servidor, nunca do visitante.
+ try{await releaseDueNewspapers(db,snapshotId);}catch{/* archive remains readable */}
  const snap=await db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).collection('editions').get();
  if(snap.size>100)fail('newspaper_response_too_large',503);
  const root=await cloudRoot(db,snapshotId);
@@ -89,6 +92,7 @@ export async function getPublicNewspaper(db:any,snapshotId:string,editionId:unkn
  if(typeof editionId!=='string'||!SAFE_ID.test(editionId))fail('invalid_edition');
  const id=editionId as string;
  await stageReady(db,snapshotId);
+ try{await releaseDueNewspapers(db,snapshotId);}catch{/* published archive remains readable */}
  const cloudId=id.startsWith('cloud-');
  const root=cloudId?await cloudRoot(db,snapshotId):null;
  if(cloudId&&!root)fail('edition_unavailable',404);
