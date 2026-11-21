@@ -346,6 +346,79 @@ export function createFirebaseCloudNewspaper({
         return editorialView(v);
       });
     },
+    /**
+     * Publish a reviewed historical working copy as a NEW Cloud edition.
+     * The imported numbered source, files and audit trail remain immutable.
+     * Concurrent retries of the same source may not create multiple issues.
+     */
+    async publishHistoricalDraft(token,input){
+      const uid=await actorId(token);
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['action','id','requestKey','expectedVersion'].includes(k))||
+         input.action!=='publishHistoricalDraft'||!historicalDraftId(input.id)||
+         typeof input.requestKey!=='string'||!KEY.test(input.requestKey)||
+         !number(input.expectedVersion,1,2147483646))
+       deny('invalid_historical_publish_request',400);
+      const sourceRef=historicalSource.doc(input.id);
+      const workingRef=historicalDrafts.doc(input.id);
+      const id='cloud-'+digest('publish-historical:'+snapshotId+':'+input.id);
+      const ref=editions.doc(id);
+      const audit=audits.doc('historical-publish-'+digest(input.id));
+      return db.runTransaction(async tx=>{
+       const {calendarDate,config}=await readApproval(uid,tx);
+       const [sourceDoc,draftDoc,publishedDoc,auditDoc]=await Promise.all([
+        tx.get(sourceRef),tx.get(workingRef),tx.get(ref),tx.get(audit),
+       ]);
+       const source=sourceDoc.data(),draft=draftDoc.exists?draftDoc.data():source;
+       if(!sourceDoc.exists||source?.id!==input.id||source.state!=='draft'||
+          !Array.isArray(source.blocks)||!draft||draft.id!==input.id||
+          draft.state!=='draft'||!Array.isArray(draft.blocks)||
+          (draftDoc.exists&&(draft.sourceSnapshotId!==snapshotId||
+            draft.sourceVersion!==source.version))||
+          draft.version!==input.expectedVersion)
+        deny('historical_draft_conflict',409);
+       if(publishedDoc.exists){
+        const existing=publishedDoc.data();
+        if(existing?.sourceHistoricId!==input.id||
+           existing.sourceSnapshotId!==snapshotId)deny('historical_publish_conflict',409);
+        return {...editorialView(existing),duplicate:true};
+       }
+       if(auditDoc.exists)deny('historical_publish_conflict',409);
+       // The draft was validated against imported source on its last save;
+       // recheck its exact image provenance before public circulation.
+       let approved;
+       try{approved=validateHistoricalDraft(source,{
+        title:draft.title,subtitle:draft.subtitle,
+        template:draft.template,font_style:draft.font_style,
+        blocks:draft.blocks,campaignDate:draft.campaignDate,
+       });}catch{deny('historical_draft_invalid',400);}
+       if(!approved.blocks.some(b=>b.type==='article'||b.type==='headline'||b.imagePath||b.imageSrc))
+        deny('historical_draft_incomplete',400);
+       if(commissionIdsOf(approved.blocks).length)
+        deny('historical_commissions_require_reconciliation',409);
+       if(draft.pdfPath||source.pdfPath||source.pdf_path)
+        deny('historical_pdf_requires_reconciliation',409);
+       weeklyEditionGate(config);
+       const now=clock();
+       if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
+        deny('invalid_server_clock',503);
+       const next={
+        ...approved,id,editionNo:config.nextNewspaperEditionNo,
+        source:'firebase-cloud',sourceHistoricId:input.id,
+        sourceSnapshotId:snapshotId,sourceHistoricVersion:source.version,
+        state:'published',version:1,campaignDate:calendarDate,
+        publishedAt:now,cancelledAt:null,createdBy:uid,
+        updatedBy:uid,updatedAt:now,...publishedRoundOf(config),
+       };
+       tx.create(ref,next);
+       tx.create(audit,{action:'publish_historical_draft',editionId:id,
+        historicalEditionId:input.id,actorUid:uid,occurredAt:now,
+        before:null,after:next});
+       tx.update(runtime,{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1,
+        ...lastPublishedRoundOf(config)});
+       return {...editorialView(next),duplicate:false};
+      });
+    },
     /** Revision history is projected from write audits, never a mutable import. */
     async listRevisions(token,input){
       const uid=await actorId(token);
