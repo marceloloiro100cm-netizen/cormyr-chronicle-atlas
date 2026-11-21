@@ -1,0 +1,77 @@
+name: Exportar area interna do Atlas (ZIP)
+on:
+  push:
+    branches:
+      - export-interno-2026-11-20
+    paths:
+      - .github/workflows/exportar-area-interna.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exportar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Montar ZIP somente da area logada
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import subprocess, zipfile, pathlib, json
+          root = pathlib.Path('.')
+          paths = [p.decode('utf-8') for p in subprocess.check_output(['git','ls-files','-z']).split(b'\0') if p]
+          root_files = {'package.json','package-lock.json','bun.lock','tsconfig.json','tsconfig.espionage-live.json','vite.config.ts','vitest.config.ts','eslint.config.js','components.json','drizzle.config.ts','apphosting.yaml'}
+          private_assets = ('public/assets/military-units/','public/battle/','public/house-flags/','public/newspaper/','public/spy-portraits/','public/maps/espionage/')
+          private_routes = ('src/routes/_authenticated/','src/routes/api/','src/routes/firebase-')
+          private_root_routes = {'src/routes/__root.tsx','src/routes/jornal.tsx'}
+          def allowed(path):
+              lower=path.lower()
+              if any(x in lower for x in ('.env', 'service-account', 'credentials.json','private-key','.pem','.p12','.p8','secret.json')):
+                  return False
+              if path in root_files:
+                  return True
+              if path.startswith('firebase/') or path.startswith('drizzle/'):
+                  return True
+              if path.startswith('src/'):
+                  if path.startswith('src/test/') or path.startswith('src/lib/public/'):
+                      return False
+                  if path in ('src/components/campaign-content.tsx','src/lib/campaign-content.ts'):
+                      return False
+                  if path.startswith('src/routes/'):
+                      return path.startswith(private_routes) or path in private_root_routes
+                  return True
+              if path.startswith('scripts/firebase/'):
+                  return path.endswith(('.mjs','.js','.ts')) and not path.endswith(('.test.mjs','.test.js','.test.ts')) and not '/audit-' in path and not '/migration-' in path
+              if path.startswith('scripts/'):
+                  return path.endswith(('.mjs','.js','.ts','.sql')) and any(k in path.lower() for k in ('house','auth','mail','espion','character','temporal','hub','newspaper','battle','private','firebase'))
+              if path.startswith(private_assets):
+                  return True
+              if path=='public/maps/cormyr-regioes.webp':
+                  return True
+              return False
+          chosen = sorted(p for p in paths if allowed(p) and (root/p).is_file())
+          prefix='atlas-cormyr-area-interna'
+          readme = ('ATLAS DE CORMYR - EXPORTACAO DA AREA INTERNA\n'
+                    'Origem: marceloloiro100cm-netizen/cormyr-chronicle-atlas\n'
+                    'Inclui: rotas internas e APIs, HUB, fichas, casas, missivas, espionagem, jornal, batalhas, autenticacao, servicos Firebase, modelos e assets necessarios.\n'
+                    'Exclui: pagina inicial, areas publicas, fontes do portal /public/cormyr, testes, documentacao, arquivos secretos e dados reais do banco.\n'
+                    'IMPORTANTE: este recorte e codigo-fonte para consulta/backup, nao e um projeto independente pronto para publicar.\n'
+                    'As dependencias externas Firebase/Storage nao estao incluidas.\n')
+          target='atlas-cormyr-area-interna.zip'
+          with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
+              for p in chosen:
+                  z.write(p, arcname=prefix+'/'+p)
+              z.writestr(prefix+'/LEIA-ME.txt', readme)
+              z.writestr(prefix+'/LISTA-DE-ARQUIVOS.txt','\n'.join(chosen)+'\n')
+          print('ARQUIVOS',len(chosen),'ZIP_BYTES',pathlib.Path(target).stat().st_size)
+          PY
+      - name: Anexar ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-cormyr-area-interna
+          path: atlas-cormyr-area-interna.zip
+          retention-days: 7
+          if-no-files-found: error
