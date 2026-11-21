@@ -87,13 +87,13 @@ describe('Firebase Cloud — jornal publicado para leitura',()=>{
     expect(screen.getByText('A gravura migrada')).toBeInTheDocument();
   });
 
-  it('ignora blocos inválidos e limita quantidade e tamanho sem falhar',()=>{
+  it('ignora blocos inválidos, limita a quantidade, mas não corta texto histórico',()=>{
     const huge=[...Array.from({length:83},(_,i)=>({
       id:String(i),type:'article',text:'A'.repeat(20000),
     })),null,4,{},[]];
     const normalized=safePublishedBlocks(huge);
     expect(normalized).toHaveLength(80);
-    expect(normalized.every(b=>b.text.length===16000)).toBe(true);
+    expect(normalized.every(b=>b.text.length===20000)).toBe(true);
     expect(safePublishedBlocks({blocks:[]})).toEqual([]);
   });
 });
