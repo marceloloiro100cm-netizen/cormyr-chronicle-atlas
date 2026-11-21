@@ -85,13 +85,15 @@ function InlineText({tag:Tag,value,editing,onChange,className,style,label,single
  return <>{field}<small className={`newspaper-inline-count${count>limit?' newspaper-inline-count-over':''}`}
   aria-live="polite">{count}/{limit} caracteres{count>limit?' · passou do tamanho sugerido':''}</small></>;
 }
-function NewspaperImage({block,editing,selected=false,onChange}:{
+function NewspaperImage({block,editing,selected=false,onChange,imageSrcOverride}:{
  block:NewspaperBlock;editing:boolean;selected?:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
+ imageSrcOverride?:string;
 }){
  const path=block.imagePath;
+ const [imageFailed,setImageFailed]=useState(false);
  const asset=useQuery({queryKey:['newspaper-asset',path],queryFn:()=>signedNewspaperAsset(path!),
-  enabled:Boolean(path),staleTime:45*60*1000,retry:false});
- const src=path?asset.data:block.imageSrc;
+  enabled:Boolean(path)&&!imageSrcOverride,staleTime:45*60*1000,retry:false});
+ const src=imageFailed?undefined:(imageSrcOverride??(path?asset.data:block.imageSrc));
  const [lightbox,setLightbox]=useState(false);
  const [zoom,setZoom]=useState(1);
  useEffect(()=>{
@@ -133,12 +135,12 @@ function NewspaperImage({block,editing,selected=false,onChange}:{
    }}
    title={canCrop?'Arraste para escolher o recorte':'Ampliar fotografia'} aria-label={canCrop?'Arrastar para recortar a fotografia':'Ampliar fotografia'}>
     <img className={`newspaper-filter-${style} ${fixed?'newspaper-img-fixed':'newspaper-img-auto'}`} src={src}
-     alt={block.caption||'Fotografia da edição'} draggable={false}
+     alt={block.caption||'Fotografia da edição'} draggable={false} onError={()=>setImageFailed(true)}
      style={fixed?{height:Math.max(130,block.height-44),
       objectPosition:`${focus.x}% ${focus.y}%`,
       ...(cropZoom>1?{transform:`scale(${cropZoom})`,transformOrigin:`${focus.x}% ${focus.y}%`}:{})}:undefined}/>
    </button>:<div className="newspaper-photo-placeholder" role="status">
-    {path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
+    {imageFailed?'Imagem original ainda não restaurada no Firebase Storage':path&&asset.isError?'Imagem indisponível':path?'Carregando fotografia…':'Adicione uma fotografia na Redação'}
    </div>}
   <InlineText tag="figcaption" value={block.caption??''} editing={editing}
    label="Editar legenda da fotografia" single placeholder="Legenda da fotografia" onChange={caption=>onChange?.({caption})}/>
@@ -176,8 +178,9 @@ function NewspaperPdf({path}:{path:string}){
    <p className="newspaper-pdf-mobile-hint">No celular, utilize “Abrir PDF em tela cheia” para ampliar o texto.</p>
   </section>;
 }
-function NewspaperStory({block,editing,selected=false,onChange}:{
+function NewspaperStory({block,editing,selected=false,onChange,imageSrcOverride}:{
  block:NewspaperBlock;editing:boolean;selected?:boolean;onChange?:(patch:Partial<NewspaperBlock>)=>void;
+ imageSrcOverride?:string;
 }){
  const [heading,...body]=block.text.split('\n');
  const paragraph=body.join('\n').replace(/^\n+/,'').trimEnd();
@@ -198,7 +201,7 @@ function NewspaperStory({block,editing,selected=false,onChange}:{
  if(block.type==='quote')return <InlineText tag="blockquote" className="newspaper-quote" style={bodyStyle}
   value={block.text} editing={editing} label="Editar citação" single placeholder="Escreva a citação"
   onChange={text=>onChange?.({text})}/>;
- if(block.type==='image')return <NewspaperImage block={block} editing={editing} selected={selected} {...(onChange?{onChange}:{})}/>;
+ if(block.type==='image')return <NewspaperImage block={block} editing={editing} selected={selected} {...(onChange?{onChange}:{})} {...(imageSrcOverride?{imageSrcOverride}:{})}/>;
  if(block.type==='notice')return <aside className="newspaper-notice-block">
   <span className="newspaper-notice-seal" aria-hidden="true">{block.icon??'⚜'}</span>
   <div><InlineText tag="h3" value={heading??""} style={titleStyle} editing={editing} label="Editar título do aviso"
@@ -284,7 +287,7 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
   {edition.blocks.length>0&&<div ref={grid} className="newspaper-grid"
    onDragOver={event=>{if(editing)event.preventDefault();}}
    onDrop={event=>drop(event,null)}>
-   {edition.blocks.map(block=><div key={block.id} data-block-id={block.id}
+   {edition.blocks.map((block,index)=><div key={block.id} data-block-id={block.id}
      className={`newspaper-story newspaper-story-${block.type}${editing?' newspaper-story-editable':''}${editing&&selectedId===block.id?' newspaper-story-selected':''}${editing&&block.pinned?' newspaper-story-pinned':''}${dragOver===block.id?' newspaper-drag-over':''}`}
      style={{gridColumn:`span ${block.span}`}}
      onClick={()=>editing&&onSelect?.(block.id)}
@@ -313,6 +316,11 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
        onClick={event=>{event.stopPropagation();onChangeBlock(block.id,{pinned:!block.pinned});}}>
         {block.pinned?'🔒':'🔓'}</button>}
       <NewspaperStory block={block} editing={editing} selected={selectedId===block.id}
+       {...((edition.state==='published'||edition.state==='archived')&&
+          block.type==='image'&&Boolean(block.imagePath)&&
+          /^[A-Za-z0-9_-]{1,128}$/.test(edition.id)&&index<80
+         ?{imageSrcOverride:'/api/public/newspaper-image?edition='+encodeURIComponent(edition.id)+'&index='+index}
+         :{})}
        onChange={patch=>onChangeBlock?.(block.id,patch)}/>
       {editing&&onMoveBlock&&!block.pinned&&<div className="newspaper-move-buttons">
        <button type="button" aria-label="Mover bloco para cima" title="Subir"
