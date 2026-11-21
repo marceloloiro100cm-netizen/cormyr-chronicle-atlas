@@ -6,6 +6,7 @@ on:
       - '.github/workflows/firebase-workspace-runtime-diagnostic.yml'
       - 'scripts/firebase/workspace-runtime-login-diagnostic.mjs'
       - 'scripts/firebase/workspace-live-query-diagnostic.ts'
+      - 'scripts/firebase/firebase-media-diagnostic.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,3 +41,5 @@ jobs:
       - name: Reproduce the Council's authorized read-only query batch
         if: success()
         run: bun scripts/firebase/workspace-live-query-diagnostic.ts
+      - name: Inspect historical newspaper and gallery asset references (read only)
+        run: node scripts/firebase/firebase-media-diagnostic.mjs
