@@ -232,6 +232,10 @@ env:
       - RUNTIME
   # Galeria pública: exige também o segredo CORMYR_FIREBASE_PUBLIC_GALLERY_BUCKET
   # (nome do bucket cormyr-...). Sem ele a rota continua respondendo 503.
+  - variable: CORMYR_FIREBASE_PUBLIC_GALLERY_BUCKET
+    value: "cormyr-migration-homolog-477785088395"
+    availability:
+      - RUNTIME
   - variable: CORMYR_FIREBASE_PUBLIC_GALLERY_ENABLED
     value: "true"
     availability:

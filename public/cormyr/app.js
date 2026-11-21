@@ -244,13 +244,38 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   const previous=state.houseHistory.pop(),target=nobleHouses.find(x=>x.nobleId===previous);
   if(target){state.noble.house=target.nobleId;renderNobility();writeRoute(true);}
  });
- function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=>normalize(x.name)===normalize(q.parent||''));const back=state.houseHistory.length?nobleHouses.find(x=>x.nobleId===state.houseHistory.at(-1)):null;
+  function renderHouseGallery(h){
+  let gallery=document.getElementById('house-gallery');
+  if(!gallery){gallery=document.createElement('section');gallery.id='house-gallery';
+   gallery.className='house-gallery';document.getElementById('noble-detail').append(gallery);}
+  const images=Array.isArray(h.driveGallery)?h.driveGallery:
+   Array.isArray(h.gallery)?h.gallery.filter(x=>x&&typeof x==='object'&&x.path):[];
+  const cards=images.map(image=>{
+   if(!/^public-house\/[a-z0-9-]+\/[A-Za-z0-9_-]+$/.test(image.path))return '';
+   const url='/api/public/gallery-image?path='+encodeURIComponent(image.path);
+   const label=String(image.name||'Imagem da Casa').replace(/\.(png|jpe?g|webp|gif)$/i,'');
+   return '<figure class="castle-gallery-artwork"><div class="castle-frame"><a href="'+url+'" target="_blank" rel="noopener"><img src="'+url+'" alt="'+esc(label)+'" loading="lazy"></a></div><figcaption>'+esc(label)+'</figcaption><a class="quiet" href="'+url+'&download=1&name='+encodeURIComponent(image.name||'imagem')+'">Baixar imagem</a></figure>';
+  }).join('');
+  gallery.innerHTML='<h3>Galeria</h3>'+(cards?'<div class="castle-art-gallery-grid">'+cards+'</div>':
+   '<p class="small">'+(h.galleryLoading?'Consultando imagens…':h.galleryError?'Galeria temporariamente indisponível.':'Nenhuma imagem cadastrada.')+'</p>');
+  gallery.style.display='block';
+ }
+ function loadDriveGallery(h){
+  if(h.galleryLoaded||h.galleryLoading)return;
+  h.galleryLoading=true;
+  fetch('/api/public/house-gallery?house='+encodeURIComponent(h.nobleId),{cache:'no-store'})
+   .then(r=>{if(!r.ok)throw Error('gallery_unavailable');return r.json();})
+   .then(d=>{if(d.houseId!==h.nobleId||!Array.isArray(d.images))throw Error('gallery_invalid');
+     h.driveGallery=d.images;h.galleryLoaded=true;h.galleryError=false;})
+   .catch(()=>{h.galleryError=true;})
+   .finally(()=>{h.galleryLoading=false;if(state.noble.house===h.nobleId)renderHouseGallery(h);});
+ }
+function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=>normalize(x.name)===normalize(q.parent||''));const back=state.houseHistory.length?nobleHouses.find(x=>x.nobleId===state.houseHistory.at(-1)):null;
   const backButton=$('house-history-back');if(backButton){backButton.hidden=!back;backButton.textContent=back?'← Voltar à Casa '+back.name:'← Voltar à casa anterior';}
   const hierarchyLabel='Suserano';const fields=[['Região',h.region],[hierarchyLabel,q.parent|| (q.kind==='crown'?'Coroa reinante':'Não definido no acervo')],['Lorde / Lady',h.leader],['Ramo',h.clanBranch],['Precedência',h.clanRank?'Clã '+h.clanRank:null],['Regência',h.regent],['Idade',h.age],['Raça',h.race],['Títulos e epítetos',h.titles],['Fundação e investiduras',h.founding],['Condição',h.status],['Cores',h.colors],['Símbolo',h.symbol],['Lema',h.motto],['Cidade',h.city],['Castelo',h.castle]].filter(x=>x[1]);
  $('house-details').innerHTML=`<div class="house-detail-grid">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" width="230" height="350">`:'<div class="crest-missing" style="background:var(--purple)">Brasão não localizado no acervo</div>'}<div><p class="eyebrow">${esc(h.region)}</p><h2 id="house-title" tabindex="-1">Casa ${esc(h.name)}</h2>${h.description?`<p>${esc(h.description)}</p>`:''}<dl class="house-data">${fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${k===hierarchyLabel&&parent&&parent.nobleId!==h.nobleId?`<button type="button" class="house-parent-link" data-parent-noble="${esc(parent.nobleId)}">${esc(v)} · Ver ficha</button>`:esc(v)}</dd>`).join('')}</dl></div></div>`;
  $('noble-media').innerHTML=`${musicLinks(h.music,'Música da casa')}<div class="noble-downloads"><a class="quiet" href="${esc(h.crest)}" download="Brasao-${esc(h.nobleId)}.webp">Baixar brasão</a>${h.portrait?`<a class="quiet" href="${esc(h.portrait)}" download="Retrato-${esc(h.nobleId)}.jpg">Baixar imagem do lorde / lady</a>`:''}</div>${h.portrait?`<figure class="noble-portrait"><img src="${esc(h.portrait)}" alt="Imagem de ${esc(h.leader||h.name)}" loading="lazy"><figcaption>${esc(h.leader)}</figcaption></figure>`:'<p class="small">Retrato do lorde ou lady ainda não localizado no acervo.</p>'}`;
- function cleanGalleryTitle(rawName){return !rawName?'':String(rawName).trim().replace(/\.(png|jpe?g|webp|gif|avif|svg)$/i,'').trim();}
- let gallery=document.getElementById('house-gallery');if(!gallery){gallery=document.createElement('section');gallery.id='house-gallery';gallery.className='house-gallery';document.getElementById('noble-detail').append(gallery);}gallery.innerHTML=(h.gallery && h.gallery.length>0)?'<h3>Galeria</h3><div class="castle-art-gallery-grid">'+(h.gallery||[]).map(image=>{const url='/api/public/gallery-image?path='+encodeURIComponent(image.path);const cleanCaption=cleanGalleryTitle(image.name);return `<figure class="castle-gallery-artwork"><div class="castle-gallery-frame"><div class="castle-gallery-mat"><div class="castle-gallery-canvas"><a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${esc(cleanCaption)}" loading="lazy"></a></div></div><span class="castle-frame-corner corner-tl" aria-hidden="true"></span><span class="castle-frame-corner corner-tr" aria-hidden="true"></span><span class="castle-frame-corner corner-bl" aria-hidden="true"></span><span class="castle-frame-corner corner-br" aria-hidden="true"></span></div>${cleanCaption?`<figcaption class="castle-gallery-plaque"><span class="plaque-rivet" aria-hidden="true">•</span><span class="plaque-title">${esc(cleanCaption)}</span><span class="plaque-rivet" aria-hidden="true">•</span></figcaption>`:''}<div style="margin-top: 10px; z-index: 2;"><a class="quiet" href="${url}&download=1&name=${encodeURIComponent(image.name)}" download>Baixar Imagem</a></div></figure>`;}).join('')+'</div>':'';gallery.style.display=(h.gallery && h.gallery.length>0)?'block':'none';
+ renderHouseGallery(h);loadDriveGallery(h);
  $('house-details').querySelector('[data-parent-noble]')?.addEventListener('click',()=>{if(parent)openHouse(parent);});
  loadHouseHistory(h);
  }

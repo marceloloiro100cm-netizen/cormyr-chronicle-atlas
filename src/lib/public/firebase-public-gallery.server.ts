@@ -9,7 +9,7 @@ import type {Firestore} from 'firebase-admin/firestore';
 const SHA=/^[a-f0-9]{64}$/;
 const PATH=/^public-house\/[a-z0-9-]{1,90}\/[A-Za-z0-9_-]{1,130}$/;
 const BUCKET=/^cormyr-[a-z0-9-]{1,120}$/;
-const MAX_BYTES=4*1024*1024;
+const MAX_BYTES=20*1024*1024;
 const TYPES=new Set(['image/png','image/jpeg','image/webp','image/gif']);
 
 export class PublicGalleryError extends Error{

@@ -155,7 +155,7 @@ describe('Firebase-only public gallery image policy',()=>{
       {path:'public-house/other/portrait_01'},
       {storagePath:'private/accounts'},
       {sha256:'wrong'},
-      {sizeBytes:4*1024*1024+1},
+      {sizeBytes:20*1024*1024+1},
       {contentType:'image/svg+xml'},
       {bucketName:'cormyr-other-private'},
     ]){

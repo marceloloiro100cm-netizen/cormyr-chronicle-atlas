@@ -1,0 +1,86 @@
+name: Firebase House Drive gallery sync
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/firebase-house-drive-gallery.yml'
+      - 'scripts/firebase/sync-house-drive-gallery.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cormyr-house-drive-gallery
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check scripts/firebase/sync-house-drive-gallery.mjs
+      - run: node scripts/verify-public-repo.mjs
+      - id: reader
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+      - name: Verify 172 Drive House folders and image totals (read-only)
+        env:
+          DRIVE_ACCESS_TOKEN: ${{ steps.reader.outputs.access_token }}
+          DRIVE_ROOT_FOLDER_ID: ${{ vars.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
+        run: node scripts/firebase/sync-house-drive-gallery.mjs --scan
+  publish:
+    needs: audit
+    environment: firebase-auth-test-activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check still running exact main SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: test "$(gh api "repos/$GH_REPO/branches/main" --jq '.commit.sha')" = "$GITHUB_SHA"
+      - id: reader
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+      - name: Fetch image bytes to private ephemeral runner
+        env:
+          DRIVE_ACCESS_TOKEN: ${{ steps.reader.outputs.access_token }}
+          DRIVE_ROOT_FOLDER_ID: ${{ vars.CORMYR_HOUSE_DRIVE_ROOT_FOLDER_ID }}
+        run: node scripts/firebase/sync-house-drive-gallery.mjs --collect
+      - name: Validate existing protected Firebase operator
+        env:
+          OPERATOR: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+        run: test -n "$OPERATOR" && test "$OPERATOR" != 'cormyr-gh-reader@cormyr.iam.gserviceaccount.com'
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+          project_id: cormyr
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify and publish assets in private Firebase Storage
+        run: node scripts/firebase/sync-house-drive-gallery.mjs --publish
+      - name: Purge all ephemeral media
+        if: always()
+        run: rm -rf .tmp-house-gallery
