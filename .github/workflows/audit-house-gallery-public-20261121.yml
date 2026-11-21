@@ -30,10 +30,10 @@ jobs:
           let ready=0;
           for(const house of houses){
             const url='https://atlas.cormyr.com.br/api/public/house-gallery?house='+house;
-            let status=0,images=[];
+            let status=0,images=[],health='none';
             try{
               const r=await fetch(url,{signal:AbortSignal.timeout(20000),headers:{Accept:'application/json'}});
-              status=r.status;
+              status=r.status;health=r.headers.get('x-cormyr-gallery-health')||'none';
               if(r.status===200){
                 const json=await r.json();
                 if(json.houseId!==house||!Array.isArray(json.images)||json.images.length===0||
@@ -41,7 +41,7 @@ jobs:
                 images=json.images;
               }
             }catch(e){console.log('PUBLIC_HOUSE '+house+' request_error='+e.name);}
-            console.log('PUBLIC_HOUSE '+house+' status='+status+' image_count='+images.length);
+            console.log('PUBLIC_HOUSE '+house+' status='+status+' health='+health+' image_count='+images.length);
             if(status!==200||!images.length)continue;
             const sample=images[0];
             const path=sample.path;
