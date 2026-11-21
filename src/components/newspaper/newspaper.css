@@ -568,3 +568,24 @@
  .public-folha .folha-team-card{grid-template-columns:68px minmax(0,1fr)}
  .public-folha .folha-team-card .folha-staff-photo{width:68px;height:82px}
 }
+
+
+/* Corrige o pergaminho dentro do Jornal público/embutido.
+   Antes --news-ink e --news-paper existiam apenas em .newspaper-hub,
+   mas a página pública monta NewspaperCanvas fora deste contêiner. */
+.newspaper-page{
+ --news-ink:#33281a;
+ --news-paper:#f3e4c7;
+ color:var(--news-ink);
+}
+.public-folha .newspaper-page{
+ color:#33281a;
+ --news-ink:#33281a;
+ --news-paper:#f3e4c7;
+}
+.public-folha .newspaper-page :is(
+ .newspaper-masthead,.newspaper-page-masthead,.newspaper-meta,
+ .newspaper-subtitle,.newspaper-headline,.newspaper-deck,.newspaper-subhead,
+ .newspaper-article,.newspaper-quote,.newspaper-notice-block,
+ .newspaper-colophon,.newspaper-byline,.newspaper-photo figcaption
+){color:#33281a}
