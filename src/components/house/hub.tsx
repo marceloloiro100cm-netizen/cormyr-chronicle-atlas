@@ -47,7 +47,10 @@ const NAV=[['kingdom','Reino · Narrador',LayoutDashboard],['overview','Visão g
 type Props={npcManager?:ReactNode;representationMode?:boolean|undefined;house:{id:string;name:string;region:string|null;crest:string|null;lord_name:string|null;castle:string|null};canEdit:boolean;npcs:{id:string;title:string}[];courtMembers:{id:string;title:string}[];records?:ReconciliationRecord[]};
 export function NobleHouseHub(props:Props) {
   const load=useServerFn(loadHouseHub),fetchFull=useServerFn(loadHouseLedger),operation=useServerFn(houseOperation),qc=useQueryClient();
-  const query=useQuery({queryKey:['noble-house',props.house.id],queryFn:()=>load({data:{houseId:props.house.id}})});
+  // A Cloud request already has a deadline. Never multiply a stalled 18-second
+  // request with React Query's automatic retries; offer explicit recovery.
+  const query=useQuery({queryKey:['noble-house',props.house.id],
+    queryFn:()=>load({data:{houseId:props.house.id}}),retry:false});
   const globalCalendar=useCampaignTime();
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(false);
   // In Firebase, missing capability hints always mean read-only.
@@ -65,7 +68,7 @@ export function NobleHouseHub(props:Props) {
   }
   if(isMonthSensitiveHouseAction(action)){const ready=houseMonthlyOperationReadiness(query.data.state,globalCalendar.isError?null:globalCalendar.data??null);if(!ready.allowed){setMessage(ready.message);setError(true);return false;}}lock.current=true;setBusy(true);setError(false);const payload=JSON.stringify({houseId:props.house.id,action,args,explanation});if(retry.current?.payload!==payload)retry.current={payload,key:crypto.randomUUID()};const key=retry.current.key;try{await operation({data:{houseId:props.house.id,version:query.data.version,key,action,args,explanation}});retry.current=null;await qc.invalidateQueries({queryKey:['noble-house',props.house.id]});setMessage('Salvo no site. Histórico preservado.');return true;}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');setError(true);return false;}finally{lock.current=false;setBusy(false);}},[query.data,operation,props.house.id,props.representationMode,qc,globalCalendar.data,globalCalendar.isError,houseOperationsWritable]);
   if(query.isPending)return <p role="status">Consultando a ficha da casa…</p>;
-  if(query.error||!query.data)return <div role="alert"><p>{query.error?.message??'Ficha indisponível'}</p><Button onClick={()=>query.refetch()}>Tentar novamente</Button></div>;
+  if(query.error||!query.data)return <div role="alert"><p>{query.error?.message??'Ficha indisponível'}</p><p className="house-caption">A ficha original foi preservada. Você pode repetir a consulta sem realizar alterações.</p><Button type="button" onClick={()=>void query.refetch()}>Tentar novamente</Button></div>;
   return <HouseWorkspace key={props.house.id} {...props} canEdit={props.representationMode?false:props.canEdit} houseOperationsWritable={houseOperationsWritable} houseRulesWritable={houseRulesWritable} state={query.data.state} catalog={query.data.catalog} houses={query.data.houses} admin={query.data.admin&&!props.representationMode} canEditAttributes={query.data.canEditAttributes&&!props.representationMode} version={query.data.version} ledger={query.data.ledger} globalCalendar={globalCalendar.isError?null:globalCalendar.data??null} calendarError={globalCalendar.isError} fetchFullLedger={()=>fetchFull({data:{houseId:props.house.id}})} busy={busy} message={message} error={error} run={run}/>;
 }
 type Run=(action:Parameters<ReturnType<typeof useServerFn<typeof houseOperation>>>[0]['data']['action'],args?:Record<string,unknown>,explanation?:string)=>Promise<boolean>;
