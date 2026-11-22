@@ -58,6 +58,37 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getAllByRole('button',{name:'Publicar Edição'}).every(button=>button.hasAttribute('disabled'))).toBe(true);
   expect(screen.getByText('Nenhuma edição publicada ainda')).toBeInTheDocument();
  });
+ it('mostra imediatamente as duas edições publicadas no Arquivo mesmo sem a consulta privada',()=>{
+  const p=fixture();
+  const issue=(no:number):NewspaperEdition=>({
+   id:'00000000-0000-4000-8000-'+String(no).padStart(12,'0'),
+   edition_no:no,campaign_date:'1522-10-20',title:'A Folha Sem Selo',
+   subtitle:'A verdade bem servida',template:'gazeta',font_style:'gotica',
+   state:'published',blocks:[makeNewspaperBlock('article')],pdf_path:null,
+   version:2,publication_revision:2,created_by:'',updated_at:'',
+   published_at:'2026-11-21T00:00:00Z',archived_at:null,cancelled_at:null,
+   archive_preview:true,
+  });
+  p.history=[issue(2),issue(1)];
+  p.archiveNotice='Edições publicadas recuperadas; carregando os rascunhos do arquivo privado.';
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
+  expect(screen.getAllByText(/Nº [12] ·/)).toHaveLength(2);
+  expect(screen.queryByText('Carregando arquivo…')).toBeNull();
+  expect(screen.queryByRole('button',{name:/Excluir edição nº/})).toBeNull();
+  expect(screen.getByText(/Edições publicadas recuperadas/)).toBeTruthy();
+  fireEvent.click(screen.getAllByText(/Nº [12] ·/)[0]!);
+  expect(p.onOpen).toHaveBeenCalledWith(p.history[0]);
+ });
+ it('mostra erro e permite atualizar o arquivo quando a projeção privada falha',()=>{
+  const p=fixture();p.archiveError='Consulta privada indisponível.';
+  p.onRetryArchive=vi.fn();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
+  expect(screen.getByRole('alert').textContent).toContain('Consulta privada indisponível.');
+  fireEvent.click(screen.getByRole('button',{name:'Atualizar arquivo'}));
+  expect(p.onRetryArchive).toHaveBeenCalledOnce();
+ });
  it('Missivas do Editor-Chefe viram item do menu acima de Configurações',()=>{
   render(<NewspaperEditorialDesk {...fixture()} missivas={<p>Leitor de missivas</p>}
    publicReads={new Map([['e1',3]])}/>);
