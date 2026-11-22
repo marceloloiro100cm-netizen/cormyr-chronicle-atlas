@@ -39,8 +39,11 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
  const bearer=request.headers.get('authorization')??'';
  if(!/^Bearer [^\s]{10,10000}$/.test(bearer))
   return fail(401,'authentication_required');
- if(request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json'||
-    request.headers.has('content-encoding'))return fail(415,'json_required');
+ const binaryUpload=request.headers.get('x-cormyr-media-action')==='upload';
+ const mime=request.headers.get('content-type')?.split(';')[0]?.trim();
+ if(request.headers.has('content-encoding')||
+    (binaryUpload?!['image/png','image/jpeg','image/webp','application/pdf'].includes(mime??''):
+      mime!=='application/json'))return fail(415,'media_type_required');
  let phase:'parse'|'sdk'|'service'|'operation'='parse';
  try{
   const reader=request.body?.getReader();
@@ -49,12 +52,34 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   while(true){
    const {done,value}=await reader.read();if(done)break;
    length+=value.byteLength;
-   if(length>21_200_000){await reader.cancel();return fail(413,'body_too_large');}
+   if(length>(binaryUpload?15*1024*1024:21_200_000)){
+    await reader.cancel();return fail(413,'body_too_large');
+   }
    chunks.push(value);
   }
   let payload:unknown;
-  try{payload=JSON.parse(Buffer.concat(chunks).toString('utf8'));}
-  catch{return fail(400,'invalid_json');}
+  if(binaryUpload){
+   const encodedName=request.headers.get('x-cormyr-media-name');
+   let name:string|undefined;
+   if(encodedName!==null){
+    if(encodedName.length>600)return fail(400,'invalid_request');
+    try{name=decodeURIComponent(encodedName);}catch{return fail(400,'invalid_request');}
+   }
+   const kind=request.headers.get('x-cormyr-media-kind');
+   payload={action:'upload',kind,contentType:mime,dataBytes:Buffer.concat(chunks),
+    ...(request.headers.get('x-cormyr-media-edition')?
+     {editionId:request.headers.get('x-cormyr-media-edition')}:{}),
+    ...(request.headers.get('x-cormyr-media-house')?
+     {houseId:request.headers.get('x-cormyr-media-house')}:{}),
+    ...(name!==undefined?{name}:{}),
+    ...(request.headers.get('x-cormyr-media-request-key')?
+     {requestKey:request.headers.get('x-cormyr-media-request-key')}:{}),
+    ...(request.headers.get('x-cormyr-media-atomic-engraving')==='true'?
+     {registerEngraving:true}:{})};
+  }else{
+   try{payload=JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+   catch{return fail(400,'invalid_json');}
+  }
   if(!payload||typeof payload!=='object'||Array.isArray(payload))
    return fail(400,'invalid_request');
   const action=(payload as {action?:unknown}).action;
