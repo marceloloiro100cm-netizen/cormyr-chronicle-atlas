@@ -16,11 +16,15 @@ export type OfflineEditionBackup={
  snapshot:DraftSnapshot;
 };
 type LocalStore=Pick<Storage,'getItem'|'setItem'|'removeItem'>;
+export function browserOfflineStore():LocalStore|null{
+ try{return typeof window==='undefined'?null:window.localStorage;}
+ catch{return null;}
+}
 export function offlineEditionKey(uid:string,id:string):string|null{
  return OWNER.test(uid)&&ID.test(id)?PREFIX+uid+':'+id:null;
 }
-export function writeOfflineEdition(store:LocalStore,uid:string,edition:NewspaperEdition,now=Date.now()):boolean{
- if(edition.state!=='draft'||edition.archive_preview||!Number.isSafeInteger(edition.version)||
+export function writeOfflineEdition(store:LocalStore|null,uid:string,edition:NewspaperEdition,now=Date.now()):boolean{
+ if(!store||edition.state!=='draft'||edition.archive_preview||!Number.isSafeInteger(edition.version)||
     edition.version<1||edition.blocks.length<1||edition.blocks.length>80)return false;
  const key=offlineEditionKey(uid,edition.id);if(!key)return false;
  const item:OfflineEditionBackup={schema:1,owner:uid,editionId:edition.id,
@@ -29,9 +33,9 @@ export function writeOfflineEdition(store:LocalStore,uid:string,edition:Newspape
  if(json.length>MAX_BYTES)return false;
  try{store.setItem(key,json);return true;}catch{return false;}
 }
-export function readOfflineEdition(store:LocalStore,uid:string,edition:NewspaperEdition):OfflineEditionBackup|null{
+export function readOfflineEdition(store:LocalStore|null,uid:string,edition:NewspaperEdition):OfflineEditionBackup|null{
  const key=offlineEditionKey(uid,edition.id);
- if(!key||edition.state!=='draft'||edition.archive_preview)return null;
+ if(!store||!key||edition.state!=='draft'||edition.archive_preview)return null;
  try{
   const raw=store.getItem(key);
   if(!raw||raw.length>MAX_BYTES)return null;
@@ -56,8 +60,8 @@ export function readOfflineEdition(store:LocalStore,uid:string,edition:Newspaper
   return {...item,snapshot:sanitized} as OfflineEditionBackup;
  }catch{return null;}
 }
-export function clearOfflineEdition(store:LocalStore,uid:string,id:string):void{
- const key=offlineEditionKey(uid,id);if(!key)return;
+export function clearOfflineEdition(store:LocalStore|null,uid:string,id:string):void{
+ const key=offlineEditionKey(uid,id);if(!key||!store)return;
  try{store.removeItem(key);}catch{/* storage may be blocked */}
 }
 /** Keep the current Firestore version. A recovered local copy can never
