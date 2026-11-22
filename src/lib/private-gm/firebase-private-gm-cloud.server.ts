@@ -75,9 +75,15 @@ export async function readApprovedFirebasePrivateGmContent(
      runtime['sourceSnapshotId']!==args.snapshotId||
      runtime['sourceSnapshotReconciled']!==true||
      runtime['applicationEnabled']!==true||
-     runtime['privateGmContentApproved']!==true||
-     !validVersion(runtime['gmContentVersion'])||
-     runtime['gmContentVersion']!==runtime['publishedGmContentVersion'])
+     runtime['privateGmContentApproved']!==true)
+    return reject(503);
+  // Historic imported GM content has no versioned editing/publishing pipeline.
+  // The Narrator's explicit, audited runtime approval is its publication gate.
+  // If version metadata exists, preserve the stricter matching-version check.
+  const gmVersion=runtime['gmContentVersion'];
+  const publishedVersion=runtime['publishedGmContentVersion'];
+  if((gmVersion!==undefined||publishedVersion!==undefined)&&
+     (!validVersion(gmVersion)||gmVersion!==publishedVersion))
     return reject(503);
 
   const stageRef=args.db.collection('migrationPrivateGmStage').doc(args.snapshotId);

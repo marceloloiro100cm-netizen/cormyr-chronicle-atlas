@@ -63,6 +63,33 @@ describe('Firebase-only narrator GM material',()=>{
     expect(f.reads).toContain(access);
     expect(f.reads).toContain(docPath);
   });
+  it('reads the imported, explicitly approved GM archive even without legacy version fields',async()=>{
+    // No production write path initializes these version fields. A reviewed
+    // immutable import must not be blocked solely because they are absent.
+    const f=fixture();
+    const runtimeDoc={...(f.docs[runtime] as Record<string,unknown>)};
+    delete runtimeDoc['gmContentVersion'];
+    delete runtimeDoc['publishedGmContentVersion'];
+    f.docs[runtime]=runtimeDoc;
+    const result=await f.run();
+    expect(result.events).toHaveLength(1);
+    expect(f.reads).toContain(docPath);
+  });
+  it('still requires approval and refuses half-versioned or stale published data',async()=>{
+    const cases=[
+      {privateGmContentApproved:false,gmContentVersion:undefined,publishedGmContentVersion:undefined},
+      {gmContentVersion:5,publishedGmContentVersion:undefined},
+      {gmContentVersion:undefined,publishedGmContentVersion:4},
+      {gmContentVersion:5,publishedGmContentVersion:4},
+      {gmContentVersion:0,publishedGmContentVersion:0},
+    ];
+    for(const patch of cases){
+      const f=fixture();
+      f.docs[runtime]={...(f.docs[runtime] as object),...patch};
+      await denied(f.run(),503);
+      expect(f.reads).not.toContain(docPath);
+    }
+  });
   it('denies player and editor without reading the private payload',async()=>{
     for(const p of ['jogador','editor']){
       const f=fixture({},p);

@@ -19,10 +19,17 @@ function useGmContent() {
         credentials:'omit',cache:'no-store',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) throw new Error('A sessão do Firebase expirou. Entre novamente.');
       if (res.status === 403) throw new Error('Este acervo é exclusivo do Narrador.');
+      if (res.status === 503) throw new Error(
+        'O acervo de Eventos e Aventuras não está disponível no Firebase. Verifique a importação privada e a aprovação em Contas.');
       if (!res.ok) throw new Error('Não foi possível carregar o acervo do Narrador.');
-      return res.json() as Promise<GmContent>;
+      const content=await res.json() as GmContent;
+      if(!Array.isArray(content.events)||!Array.isArray(content.adventures))
+        throw new Error('O acervo do Narrador retornou um formato inválido.');
+      return content;
     },
+    retry: false,
     staleTime: 0,
     gcTime: 0,
   });

@@ -20,9 +20,13 @@ Em Cloud, são exigidos:
   `requirePasswordChange=false`, `userId=<uid>`.
 - `campaignCloudRuntime/<snapshot>` ativo, privado,
   `sourceSnapshotId=<snapshot>`, `sourceSnapshotReconciled=true`,
-  `applicationEnabled=true`, `privateGmContentApproved=true`,
-  `gmContentVersion` inteiro positivo idêntico a
-  `publishedGmContentVersion`.
+  `applicationEnabled=true`, `privateGmContentApproved=true`.
+  **Acervo importado sem editor versionado:** não requer campos de versão,
+  pois não existe fluxo de gravação que os inicialize no runtime. Se
+  `gmContentVersion` ou `publishedGmContentVersion` estiver presente,
+  ambos devem existir, ser inteiros positivos e corresponder exatamente.
+  A aprovação do Narrador em **Contas > Aprovações**, com auditoria, continua
+  obrigatória mesmo quando não há versões.
 - `migrationPrivateGmStage/<snapshot>` completo, privado,
   `formatVersion=1`, `counts.content>=1`.
 - Documento `content/<sha256("gm:atlas")>` com `id=atlas` e
