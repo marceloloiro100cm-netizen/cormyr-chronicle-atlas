@@ -1049,6 +1049,73 @@ test('Narrator can answer a historical reply, preserving its archived parent and
  }),'reply_not_authorized',403);
 });
 
+test('Narrator replies to the House after a legacy general broadcast was answered in a closed week',async()=>{
+ const gm=fixture('narrador'),id='cavaleiro-bandido',replyId='historical-ashkar-response';
+ const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
+ gm.records.set(path,{
+  sourceId:id,senderUid:'player-1',
+  recipientKind:'narrator',recipientHouseId:null,recipientPlayerId:null,
+  originHouseId:null,letterKind:'geral',
+  publicationState:'delivered',deletedAt:null,
+  subject:'Cavaleiro Bandido',content:'Relato do narrador da Semana 2',
+ });
+ const previous=structuredClone(gm.records.get(path));
+ const history='migrationMailHistoryStage/'+snapshot;
+ const responsePath=history+'/replies/'+h('reply:'+replyId);
+ gm.records.set(history,{status:'complete',private:true});
+ gm.records.set(responsePath,{
+  sourceId:replyId,letterId:h('letter:'+id),
+  authorUid:'historical-ashkar-player',recipientUid:'player-1',
+  publicationState:'delivered',deletedAt:null,
+  content:'Dois soldados irão ao amanhecer',
+ });
+ gm.records.set('migrationDomainStage/'+snapshot+'/access/historical-ashkar-player',{
+  userId:'historical-ashkar-player',profile:'jogador',
+  editHouseIds:['house-a'],memberHouseIds:['house-a'],
+ });
+ const prevResponse=structuredClone(gm.records.get(responsePath));
+ const sent=await gm.service().reply(sampleToken,{
+  requestKey:'reply-cavaleiro-bandido-3',letterId:id,
+  replyId,content:'Ordem recebida. Prossigam na Semana 3.',
+ });
+ const created=gm.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+sent.id);
+ assert.equal(created.originHouseId,null);
+ assert.equal(created.recipientHouseId,'house-a');
+ assert.equal(created.recipientKind,'house');
+ assert.equal(created.replyToId,replyId);
+ assert.equal(created.threadRootId,id);
+ assert.equal(created.creationRound,3);
+ assert.deepEqual(gm.records.get(path),previous);
+ assert.deepEqual(gm.records.get(responsePath),prevResponse);
+});
+test('Legacy broadcast reply rejects a forged or ambiguous responding House',async()=>{
+ const gm=fixture('narrador'),id='cavaleiro-bandido-no-house',replyId='historical-ambiguous';
+ gm.records.set('migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id),{
+  sourceId:id,senderUid:'player-1',recipientKind:'narrator',
+  recipientHouseId:null,recipientPlayerId:null,originHouseId:null,
+  letterKind:'geral',publicationState:'delivered',deletedAt:null,
+  subject:'Cavaleiro Bandido',content:'Relato',
+ });
+ const history='migrationMailHistoryStage/'+snapshot;
+ gm.records.set(history,{status:'complete',private:true});
+ gm.records.set(history+'/replies/'+h('reply:'+replyId),{
+  sourceId:replyId,letterId:h('letter:'+id),authorUid:'unknown-player',
+  recipientUid:'player-1',publicationState:'delivered',deletedAt:null,
+  content:'Resposta sem Casa autenticada',
+ });
+ const run=()=>gm.service().reply(sampleToken,{
+  requestKey:'no-house-legacy',letterId:id,replyId,content:'Teste',
+ });
+ await rejects(run,'reply_house_unverified',409);
+ gm.records.set('migrationDomainStage/'+snapshot+'/access/unknown-player',{
+  userId:'unknown-player',profile:'jogador',
+  editHouseIds:['house-a','house-b'],memberHouseIds:['house-a','house-b'],
+ });
+ await rejects(run,'reply_house_unverified',409);
+ assert.equal([...gm.records.keys()].some(x=>x.startsWith(
+  'campaignCloudRuntime/'+snapshot+'/letters/')),false);
+});
+
 test('House answers a legacy Narrator reply to its originally addressed letter',async()=>{
  const f=fixture(),id='root-house-to-narrator',replyId='reply-from-narrator';
  const path='migrationDomainStage/'+snapshot+'/letters/'+h('letter:'+id);
