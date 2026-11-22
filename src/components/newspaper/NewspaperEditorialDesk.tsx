@@ -75,7 +75,7 @@ export interface NewspaperEditorialProps{
  onUseStoryModel:(model:StoryModel)=>void;
  onSaveStoryModel:(input:{id?:string;name:string;description:string;blocks:NewspaperBlock[]})=>Promise<boolean>;
  onDeleteStoryModel:(model:StoryModel)=>void;
- /** Exclui uma edição do Arquivo (o número volta a ficar livre). */
+ /** Descarta exclusivamente rascunhos; números publicados são permanentes. */
  onDeleteEdition:(edition:NewspaperEdition)=>void;
  /** Gravuras do Reino enviadas pelo Editor-Chefe. */
  engravings:NewspaperEngraving[];
@@ -445,9 +445,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <div className="folha-archive-list">{history.map(e=><div className="folha-archive-row" key={e.id}>
          <button type="button" onClick={()=>browseEdition(e)}><span>Nº {e.edition_no} · {formatDate(e.campaign_date)}</span>
          <strong>{e.title}</strong><small>{newspaperStatus(e.state)}</small></button>
-         <button type="button" className="folha-archive-trash" disabled={busy}
-          aria-label={`Excluir edição nº ${e.edition_no}`} title="Excluir edição"
-          onClick={()=>props.onDeleteEdition(e)}><Trash2 size={18}/></button></div>)}</div>}
+         {e.state==='draft'&&<button type="button" className="folha-archive-trash" disabled={busy}
+          aria-label={`Excluir rascunho nº ${e.edition_no}`} title="Descartar rascunho"
+          onClick={()=>props.onDeleteEdition(e)}><Trash2 size={18}/></button>}</div>)}</div>}
        {!props.loading&&history.length===0&&<p className="folha-empty-copy">O arquivo ainda não possui edições.</p>}
        <NewspaperAudit commissions={props.commissions} editions={history} houseNames={props.houseNames}/>
        {current&&<div className="folha-revisions">
