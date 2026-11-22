@@ -1,0 +1,551 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "title": "Timeline Cormyr.docx",
+    "url": "https://docs.google.com/document/d/1WriDM8NLZvLOMU8qNk2i7i3O1j4bVLRn/edit",
+    "datePrecision": "year",
+    "language": "pt-BR"
+  },
+  "events": [
+    {
+      "id": "timeline-1350-01",
+      "year": 1350,
+      "title": "Nasce Mephisto Phelles nas Helmlands, filho de Malakias Phelles, nobre de Cormyr",
+      "description": "Nasce Mephisto Phelles nas Helmlands, filho de Malakias Phelles, nobre de Cormyr. Casa Phelles na época uma casa menor vassala a Aunkspear.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1362-01",
+      "year": 1362,
+      "title": "Primeiros sinais de atividade dracônica anormal surgem nas Stonelands, com relatos de cultistas ligados ao (Culto do Dragão)…",
+      "description": "Primeiros sinais de atividade dracônica anormal surgem nas Stonelands, com relatos de cultistas ligados ao (Culto do Dragão) Cult of the Dragon reunindo artefatos antigos.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1365-01",
+      "year": 1365,
+      "title": "Fendescama é formada, com Mephisto Phelles, o mago Merlin Meliholi (M), o ragner Feanor Meliholi, o guerreiro Thorum, a…",
+      "description": "Fendescama é formada, com Mephisto Phelles, o mago Merlin Meliholi (M), o ragner Feanor Meliholi, o guerreiro Thorum, a druida Kelpie, o clérigo de Valkur Kvothe, Bran Hargryphon, Randal Morn e outros. Se aventurando no norte de Cormyr e e Terra dos Vales (Dalelands). A Fendesmaca vai rastrear e enfrentar o Culto do Dragão em diferentes ocasiões nos anos seguintes.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1371-01",
+      "year": 1371,
+      "title": "A Batalha das Cinco Cores acontece no então chamado Pântano de Tun",
+      "description": "A Batalha das Cinco Cores acontece no então chamado Pântano de Tun. Terminando com o pântano virando a Floresta de Ferlin, e o Árvore dos Cavaleiros sendo criado no centro.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1372-01",
+      "year": 1372,
+      "title": "O Lich Garkel elimina a dinastia Obarskyr e causa a morte de Azoun IV",
+      "description": "O Lich Garkel elimina a dinastia Obarskyr e causa a morte de Azoun IV. Fendescama derrota: Vinte dragões na praça de Suzail, a deusa Tiamat, o lich Garkele, o lich Sammaster, e um batalhão de abishais. Após essas vitória cruciais para existência de Cormyr, Mephisto é coroado Rei de Cormyr por Torm e Bahamut no campo de vitória da Praça de Suzail.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1372-02",
+      "year": 1372,
+      "title": "O enclave Netherese de Thultanthar (City of Shade) surgiu no céu sobre Myth Drannor, a companhia de Mephisto Phelles, Fëanor…",
+      "description": "O enclave Netherese de Thultanthar (City of Shade) surgiu no céu sobre Myth Drannor, a companhia de Mephisto Phelles, Fëanor Meliholi, Merlin Meliholi, e Randal Morn derrotaram a cidade. A batalha termina com a ilha voadora e cidade de Thultanthar colapsando e caindo em Nyth Drannor, danificando o Mythal e corrompendo sua forma e função pela magia netherese-shar de Thultanthar. Ilsevele e seus súditos sobreviventes escolheram retornar para Evermeet, no então chamado Retiro dos Elfos. Deixando Myth Drannor abandonada e com efeitos arcanos de Mythal, Netheril e Shar oscilando suas matas.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1374-01",
+      "year": 1374,
+      "title": "Rebeliões isoladas de casas ainda leais aos Obarskyr eclodem no interior de Cormyr, sendo rapidamente sufocadas pelos Purple…",
+      "description": "Rebeliões isoladas de casas ainda leais aos Obarskyr eclodem no interior de Cormyr, sendo rapidamente sufocadas pelos Purple Dragons em campanhas relâmpagos.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1376-01",
+      "year": 1376,
+      "title": "Mephisto lidera a Purga de Immersea, eliminando uma célula remanescente de necromantes ligados a Garkel",
+      "description": "Mephisto lidera a Purga de Immersea, eliminando uma célula remanescente de necromantes ligados a Garkel.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1378-01",
+      "year": 1378,
+      "title": "Tensões com Sembia aumentam após escaramuças comerciais no Mar das Estrelas Caídas, marcando o início de uma rivalidade prolongada",
+      "description": "Tensões com Sembia aumentam após escaramuças comerciais no Mar das Estrelas Caídas, marcando o início de uma rivalidade prolongada.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1380-01",
+      "year": 1380,
+      "title": "Mephisto parte para Evermeet em busca de Ilsevele Miritar, deixando o reino sem liderança direta",
+      "description": "Mephisto parte para Evermeet em busca de Ilsevele Miritar, deixando o reino sem liderança direta.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1381-01",
+      "year": 1381,
+      "title": "Casas nobres começam a formar milícias privadas em Suzail, antecipando uma possível crise sucessória",
+      "description": "Casas nobres começam a formar milícias privadas em Suzail, antecipando uma possível crise sucessória.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1382-01",
+      "year": 1382,
+      "title": "Conflitos armados limitados eclodem nos distritos portuários de Suzail entre facções rivais, marcando o início efetivo do…",
+      "description": "Conflitos armados limitados eclodem nos distritos portuários de Suzail entre facções rivais, marcando o início efetivo do Reino Sem Trono.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1383-01",
+      "year": 1383,
+      "title": "Um mago de guerra tenta se autoproclamar regente supremo, sendo executado publicamente pelos próprios War Wizards para…",
+      "description": "Um mago de guerra tenta se autoproclamar regente supremo, sendo executado publicamente pelos próprios War Wizards para evitar colapso institucional.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1384-01",
+      "year": 1384,
+      "title": "Mercenários sembianos são secretamente financiados para desestabilizar Cormyr, agravando a guerra civil",
+      "description": "Mercenários sembianos são secretamente financiados para desestabilizar Cormyr, agravando a guerra civil. Durante a ausência do Rei, os War Wizards tentam governar sob comando de Selvare Arcantlet e Morgan Truesilver, mas as casas nobres na capital continuam brigando por disputas de terras e escolhendo quem tem o maior claim para assumir o trono como regente.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1385-01",
+      "year": 1385,
+      "title": "Nasce Olivier Phelles em Evermeet, enquanto o caos político atinge seu ápice em Suzail, depois de cinco anos sem seu Rei no trono",
+      "description": "Nasce Olivier Phelles em Evermeet, enquanto o caos político atinge seu ápice em Suzail, depois de cinco anos sem seu Rei no trono.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1386-01",
+      "year": 1386,
+      "title": "Mephisto retorna a Cormyr com sua filha, reassume o trono, frustra pretensões políticas e restaura a ordem no reino",
+      "description": "Mephisto retorna a Cormyr com sua filha, reassume o trono, frustra pretensões políticas e restaura a ordem no reino.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1387-01",
+      "year": 1387,
+      "title": "A coroa envia colonos para Ferlin, incluindo refugiados vindos de Chult, iniciando uma nova fase de expansão territorial em…",
+      "description": "A coroa envia colonos para Ferlin, incluindo refugiados vindos de Chult, iniciando uma nova fase de expansão territorial em novas terras.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1388-01",
+      "year": 1388,
+      "title": "A Boa Terra Verde de Ferlin é estabelecida como posto avançado militar e arcano para conter ameaças vindas das florestas…",
+      "description": "A Boa Terra Verde de Ferlin é estabelecida como posto avançado militar e arcano para conter ameaças vindas das florestas recém-transformadas, que ainda carrega criaturas e magias do pântano milenar de Tun.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1390-01",
+      "year": 1390,
+      "title": "Mephisto Phelles firma uma aliança estratégica entre Cormyr e outros reinos de Faerun: Tethyr, Waterdeep, Impiltur,…",
+      "description": "Mephisto Phelles firma uma aliança estratégica entre Cormyr e outros reinos de Faerun: Tethyr, Waterdeep, Impiltur, Chessenta e Rashemen. No chamado Concórdia das Seis Coroas.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1391-01",
+      "year": 1391,
+      "title": "A aliança firmada pelo Rei Mephisto começa a ser testada quando corsários de Chessenta entram em conflito com navios de…",
+      "description": "A aliança firmada pelo Rei Mephisto começa a ser testada quando corsários de Chessenta entram em conflito com navios de Cormyr no Sea of Fallen Stars, exigindo intervenção diplomática direta da coroa.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1392-01",
+      "year": 1392,
+      "title": "Em resposta às tensões marítimas, Mephisto cria a Primeira Frota Real de Cormyr, no comando dos Truesilvers, estabelecendo…",
+      "description": "Em resposta às tensões marítimas, Mephisto cria a Primeira Frota Real de Cormyr, no comando dos Truesilvers, estabelecendo presença naval permanente nas rotas comerciais orientais.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1393-01",
+      "year": 1393,
+      "title": "Agentes de Thay são descobertos infiltrados em Suzail tentando manipular casas nobres, sendo executados pelos War Wizards…",
+      "description": "Agentes de Thay são descobertos infiltrados em Suzail tentando manipular casas nobres, sendo executados pelos War Wizards após um julgamento secreto.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1394-01",
+      "year": 1394,
+      "title": "Um levante de mercadores em Marsember contra tarifas reais resulta em combates urbanos limitados e na imposição de um novo…",
+      "description": "Um levante de mercadores em Marsember contra tarifas reais resulta em combates urbanos limitados e na imposição de um novo código comercial pela coroa.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1395-01",
+      "year": 1395,
+      "title": "Criaturas aberrantes emergem próximas às ruínas de Myth Drannor, levando Mephisto a enviar expedições conjuntas com elfos de…",
+      "description": "Criaturas aberrantes emergem próximas às ruínas de Myth Drannor, levando Mephisto a enviar expedições conjuntas com elfos de Deepingdale e Evermeet para conter a ameaça.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1396-01",
+      "year": 1396,
+      "title": "Um enclave do Cult of the Dragon é destruído nas Stonelands após tentar reerguer antigos rituais dracônicos ligados à queda…",
+      "description": "Um enclave do Cult of the Dragon é destruído nas Stonelands após tentar reerguer antigos rituais dracônicos ligados à queda de Sammaster.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1397-01",
+      "year": 1397,
+      "title": "Gigantes descem das Storm Horns e atacam caravanas ao norte, sendo repelidos por uma coalizão de cavaleiros de Cormyr e…",
+      "description": "Gigantes descem das Storm Horns e atacam caravanas ao norte, sendo repelidos por uma coalizão de cavaleiros de Cormyr e aliados de Waterdeep.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1399-01",
+      "year": 1399,
+      "title": "Espiões de Sembia são capturados fomentando instabilidade econômica em Suzail, aumentando as tensões entre os dois reinos",
+      "description": "Espiões de Sembia são capturados fomentando instabilidade econômica em Suzail, aumentando as tensões entre os dois reinos.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1401-01",
+      "year": 1401,
+      "title": "Um dragão verde ancestral é avistado nas florestas de Hullack, sendo eventualmente abatido pela casa Orthwood, após devastar…",
+      "description": "Um dragão verde ancestral é avistado nas florestas de Hullack, sendo eventualmente abatido pela casa Orthwood, após devastar três assentamentos fronteiriços.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1403-01",
+      "year": 1403,
+      "title": "Cormyr envia auxílio militar a Impiltur para conter incursões demoníacas vindas do Norte",
+      "description": "Cormyr envia auxílio militar a Impiltur para conter incursões demoníacas vindas do Norte.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1405-01",
+      "year": 1405,
+      "title": "Um conflito religioso emerge em Suzail entre devotos de Torm e Tyr, sendo resolvido com intervenção direta do rei",
+      "description": "Um conflito religioso emerge em Suzail entre devotos de Torm e Tyr, sendo resolvido com intervenção direta do rei.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1409-01",
+      "year": 1409,
+      "title": "Uma conspiração envolvendo três casas nobres de Cormyr é descoberta, revelando planos de restaurar a linhagem Obarskyr,…",
+      "description": "Uma conspiração envolvendo três casas nobres de Cormyr é descoberta, revelando planos de restaurar a linhagem Obarskyr, casas Garthhawk, Jarthoon e Turcassan são exiladas.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1410-01",
+      "year": 1410,
+      "title": "Mephisto lidera pessoalmente uma campanha nas Stonelands para eliminar fortalezas de monstros que ameaçavam rotas comerciais",
+      "description": "Mephisto lidera pessoalmente uma campanha nas Stonelands para eliminar fortalezas de monstros que ameaçavam rotas comerciais.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1412-01",
+      "year": 1412,
+      "title": "Um portal instável para o Plano Elemental do Fogo se abre próximo a Tilverton, sendo selado por aventureiros e War Wizards…",
+      "description": "Um portal instável para o Plano Elemental do Fogo se abre próximo a Tilverton, sendo selado por aventureiros e War Wizards após grande destruição local. Nessa época a região das Stonelands ainda é independente, com a cidade-estado de Tilverton, entre Cormyr e Vale. Ainda assim Cormyr não deixou a cidade-estado vizinha cair.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1415-01",
+      "year": 1415,
+      "title": "Relações Cormyr e Waterdeep atingem seu auge com acordos comerciais e intercâmbio militar",
+      "description": "Relações Cormyr e Waterdeep atingem seu auge com acordos comerciais e intercâmbio militar.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1418-01",
+      "year": 1418,
+      "title": "Piratas organizados passam a operar na Dragon Coast, iniciando uma guerra naval prolongada contra forças de Cormyr",
+      "description": "Piratas organizados passam a operar na Dragon Coast, iniciando uma guerra naval prolongada contra forças de Cormyr.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1420-01",
+      "year": 1420,
+      "title": "Mephisto estabelece guarnições permanentes na Dragon Coast, uma região independente, para conter ameaças marítimas e…",
+      "description": "Mephisto estabelece guarnições permanentes na Dragon Coast, uma região independente, para conter ameaças marítimas e garantir controle estratégico da região. Mesmo não sendo Cormyr, as cidades recebem de braços abertos os Purple Dragons e a proteção.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1423-01",
+      "year": 1423,
+      "title": "Um culto dedicado a Tiamat ressurge nas sombras nas Horselands, sendo eliminado por aventureiros antes de completar um…",
+      "description": "Um culto dedicado a Tiamat ressurge nas sombras nas Horselands, sendo eliminado por aventureiros antes de completar um ritual de invocação.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1425-01",
+      "year": 1425,
+      "title": "Uma praga mágica atinge assentamentos em Ferlin, sendo contida após intervenção de um jovem mago de guerra, Laguna ganha seu…",
+      "description": "Uma praga mágica atinge assentamentos em Ferlin, sendo contida após intervenção de um jovem mago de guerra, Laguna ganha seu posto como War Wizard.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1428-01",
+      "year": 1428,
+      "title": "Por ordens do Rei-Bardo, o Encontro dos Escudos, um torneio continental, acontece em Suzail reunindo campeões de diversos…",
+      "description": "Por ordens do Rei-Bardo, o Encontro dos Escudos, um torneio continental, acontece em Suzail reunindo campeões de diversos reinos aliados, consolidando a influência diplomática de Cormyr.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1430-01",
+      "year": 1430,
+      "title": "Um ataque coordenado de monstros nas Stonelands testa as defesas do reino, revelando falhas que levam à futura construção de…",
+      "description": "Um ataque coordenado de monstros nas Stonelands testa as defesas do reino, revelando falhas que levam à futura construção de fortalezas.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1433-01",
+      "year": 1433,
+      "title": "Espiões de Sembia conseguem infiltrar-se temporariamente nos War Wizards, causando uma crise interna",
+      "description": "Espiões de Sembia conseguem infiltrar-se temporariamente nos War Wizards, causando uma crise interna.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1435-01",
+      "year": 1435,
+      "title": "Mephisto começa a se afastar gradualmente da linha de frente militar, delegando responsabilidades estratégicas aos seus generais",
+      "description": "Mephisto começa a se afastar gradualmente da linha de frente militar, delegando responsabilidades estratégicas aos seus generais.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1438-01",
+      "year": 1438,
+      "title": "Primeiras expedições profundas em Myth Drannor revelam artefatos antigos e perigos crescentes ligados ao mythal instável",
+      "description": "Primeiras expedições profundas em Myth Drannor revelam artefatos antigos e perigos crescentes ligados ao mythal instável.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1440-01",
+      "year": 1440,
+      "title": "Tensões internas diminuem e Cormyr entra em um período de relativa estabilidade e prosperidade econômica",
+      "description": "Tensões internas diminuem e Cormyr entra em um período de relativa estabilidade e prosperidade econômica.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1443-01",
+      "year": 1443,
+      "title": "Jovens nobres, incluindo Olivier, iniciam treinamento intensivo na Academia dos Purple Dragons",
+      "description": "Jovens nobres, incluindo Olivier, iniciam treinamento intensivo na Academia dos Purple Dragons.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1445-01",
+      "year": 1445,
+      "title": "Um ataque de assassinos ligados a Thay contra oficiais de alto escalão e a princesa Olivier falha, levando a uma repressão…",
+      "description": "Um ataque de assassinos ligados a Thay contra oficiais de alto escalão e a princesa Olivier falha, levando a uma repressão severa contra agentes estrangeiros.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1447-01",
+      "year": 1447,
+      "title": "Relatórios indicam aumento de atividade mágica incomum nas fronteiras, prenunciando conflitos futuros",
+      "description": "Relatórios indicam aumento de atividade mágica incomum nas fronteiras, prenunciando conflitos futuros.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1449-01",
+      "year": 1449,
+      "title": "Olivier se forma na Academia dos Purple Dragons e parte como aventureira com suas companheiras, formando a Ordem de Ferro",
+      "description": "Olivier se forma na Academia dos Purple Dragons e parte como aventureira com suas companheiras, formando a Ordem de Ferro. Elas derrotam forças aberrante nas cavernas ao leste de Tethyr, evitando a abertura de um portal.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1450-01",
+      "year": 1450,
+      "title": "Olivier é coroada rainha após seu período de aventuras, enquanto Mephisto se retira para missões diplomáticas por Faerûn",
+      "description": "Olivier é coroada rainha após seu período de aventuras, enquanto Mephisto se retira para missões diplomáticas por Faerûn.\nNo mesmo ano, Olivier usa de magia para ocultar a gravidez, e nasce Meriadoc Phelles em segredo, sendo criado como um serviçal do castelo. Nem o jovem Meriadoc nem os nobres sabem de seu sangue real, apenas a Rainha e conselheiros próximos.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1451-01",
+      "year": 1451,
+      "title": "Olivier promove o “Édito de Ferro”, reorganizando os Purple Dragons e criando uma cadeia de comando mais rígida para evitar…",
+      "description": "Olivier promove o “Édito de Ferro”, reorganizando os Purple Dragons e criando uma cadeia de comando mais rígida para evitar novas crises internas e melhorar o exército, oficiais são obrigados a frequentar a academia e se formar com notas mínimas, e tropas devem executar exercícios de treino ao comando da coroa.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1453-01",
+      "year": 1453,
+      "title": "A Rainha inicia uma guerra contra Mulhorand, Cormyr expande sua marinha e fortalece suas rotas comerciais no Sea of Fallen Stars",
+      "description": "A Rainha inicia uma guerra contra Mulhorand, Cormyr expande sua marinha e fortalece suas rotas comerciais no Sea of Fallen Stars.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1454-01",
+      "year": 1454,
+      "title": "Piratas de Kelthann passam a atacar rotas comerciais de Cormyr, levando a campanhas navais no litoral",
+      "description": "Piratas de Kelthann passam a atacar rotas comerciais de Cormyr, levando a campanhas navais no litoral.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1455-01",
+      "year": 1455,
+      "yearEnd": 1460,
+      "title": "Olivier lidera uma longa campanha nas Stonelands para erradicar monstros, ninhos de criaturas, e garantir segurança que a…",
+      "description": "Olivier lidera uma longa campanha nas Stonelands para erradicar monstros, ninhos de criaturas, e garantir segurança que a região não vai gerar mais problemas, como tem feito nas últimas décadas para Tilverton, Norte de Cormyr e Vales. É chamada de A Marcha de Ferro, e envolve quase todas as casas militares de Cormyr, juntando 100 mil soldados sob o comando da Rainha de Ferro, e sendo um evento cultural entre as tropas de Cormyr, bem lembrado até hoje. Sendo aproveitado pela Rainha para trocar conhecimentos e estratégias entre cada região.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1457-01",
+      "year": 1457,
+      "title": "Um dragão azul ancestral é derrotado nas Stonelands após devastar duas fortalezas em construção",
+      "description": "Um dragão azul ancestral é derrotado nas Stonelands após devastar duas fortalezas em construção.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1458-01",
+      "year": 1458,
+      "title": "Honrando a Concórdia das Seis Coroas, Rainha Olivier envia Purple Dragons para Rashemen, para ensinar táticas contra-dragões",
+      "description": "Honrando a Concórdia das Seis Coroas, Rainha Olivier envia Purple Dragons para Rashemen, para ensinar táticas contra-dragões. E recebe um pelotão de Rashemitas, para reforçar as tropas de Cormyr contra ameaças mágicas. São guerreiros acostumados a enfrentar Thay e trocam técnicas com Cormyr. O exercício dura dois anos, com alguns Rashemitas escolhendo viver em Cormyr no final.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1461-01",
+      "year": 1461,
+      "title": "Castelo Aris, Castelo Crag, Castelo Gávea, Castelo Findavanço, Castelo Westkeep e Forte Helm são concluídas nas fronteiras,…",
+      "description": "Castelo Aris, Castelo Crag, Castelo Gávea, Castelo Findavanço, Castelo Westkeep e Forte Helm são concluídas nas fronteiras, consolidando o avanço militar e territorial de Cormyr.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1463-01",
+      "year": 1463,
+      "title": "Primeiras rotas comerciais seguras são estabelecidas ligando Cormyr diretamente a Tethyr e Amn",
+      "description": "Primeiras rotas comerciais seguras são estabelecidas ligando Cormyr diretamente a Tethyr e Amn.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1467-01",
+      "year": 1467,
+      "title": "Em Waterdeep, Meriadoc participa dos Ecos de Vexilanthus, restabelece a ordenação com gigantes e se torna um gigante de fogo…",
+      "description": "Em Waterdeep, Meriadoc participa dos Ecos de Vexilanthus, restabelece a ordenação com gigantes e se torna um gigante de fogo por ordem do Rei dos Gigantes, Hekaton Rei da Tempestade.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1469-01",
+      "year": 1469,
+      "title": "Um levante de orcs nas Sunset Mountains é contido por uma aliança entre Cormyr e anões de Mithral Hall",
+      "description": "Um levante de orcs nas Sunset Mountains é contido por uma aliança entre Cormyr e anões de Mithral Hall.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1472-01",
+      "year": 1472,
+      "title": "Meriadoc retorna a Suzail, já ciente do seu sangue real, reencontra sua mãe Olivier e é oficialmente reconhecido como…",
+      "description": "Meriadoc retorna a Suzail, já ciente do seu sangue real, reencontra sua mãe Olivier e é oficialmente reconhecido como herdeiro do trono.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1493-01",
+      "year": 1493,
+      "title": "A Companhia Consorte é formada em Candlekeep sob o chamado de Cedric Commonbrok",
+      "description": "A Companhia Consorte é formada em Candlekeep sob o chamado de Cedric Commonbrok. Seus membros sendo:\nArthur Grandragon, um paladino com família nobre em Waterdeep;\nKarma Flavo, um monge bugbear de Ilmalter de Damara;\nWorist Jansen um gnomo Shadow Thieves;\nLaguna Quistis, um elfo de Myth Drannor radicado Cormyriano, membro dos War Wizards;\nEnguerrand, um kenku viajante e criminoso.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1498-01",
+      "year": 1498,
+      "title": "As Tábuas do Destino são quebradas e tem início o Time of Troubles, trazendo os deuses ao plano material",
+      "description": "As Tábuas do Destino são quebradas e tem início o Time of Troubles, trazendo os deuses ao plano material. Suzail recebe Bahamut, e por ser um local que reconhece aventureiros como profissão, aqui tentam criar um ritual para restaurar as Tábuas do Destino. Dez grupos de aventureiros muito experientes são enviados por toda Toril para juntar a essência de todos os deuses e retornar a Suzail para completar o ritual. Essas buscas vão levar dois anos para serem feitas. Entre os grupos está a Companhia Consorte.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1499-01",
+      "year": 1499,
+      "title": "O deus Helm luta contra Mystra no Leste de Anauroch, no Forte Winters",
+      "description": "O deus Helm luta contra Mystra no Leste de Anauroch, no Forte Winters.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1499-02",
+      "year": 1499,
+      "title": "Meriadoc tem um filho, Musgrave, mas sua esposa morre durante o parto",
+      "description": "Meriadoc tem um filho, Musgrave, mas sua esposa morre durante o parto.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1500-01",
+      "year": 1500,
+      "title": "Kyran Evenhand e Bahamut conduzem, na capital Suzail, um grande ritual destinado a encerrar o Time of Troubles, culminando…",
+      "description": "Kyran Evenhand e Bahamut conduzem, na capital Suzail, um grande ritual destinado a encerrar o Time of Troubles, culminando na Batalha de Suzail, onde forças mortais e divinas colidem, incluindo Tiamat, Bahamut e a Companhia Consorte; nesse confronto decisivo, Mephisto Phelles morre como herói, selando o destino do reino à vitória. \n\nNa derradeira batalha, Mephisto ergue-se aos céus montados nas costas de Bahamut (o Deus que o corou rei), rasgando o céu de Suzail ao som de sua gaita de fole, cuja melodia ecoava como um chamado à resistência. Enquanto Tiamat e o Dragão de Platina travam sua luta eterna nos céus em chamas, Mephisto tocava sua despedida ao reino, inspirando não apenas Bahamut, mas todos aqueles que ainda empunhavam armas pela luz e pela esperança naquele momento em toda Toril. \n\nTiamat sempre se lembrou do Bardo que a desafiou no pântano de Tun, e viu mais uma vez o bardo agora nas costas de Bahamut lutando contra ela.\nAo seu lado, Randal Morn avançava montado em Feanor, agora em sua forma dracônica, brandindo sua lâmina vorpal contra as forças que ameaçam consumir o mundo. \nEnquanto os últimos membros dos Fendescama convergem para o campo final. Ali, entre fogo, sangue e trovões, Randal e Feanor testemunham o último suspiro de seu antigo companheiro e líder.\nNos desdobramentos finais, Arthur Grandragon é elevado a lorde de Eveningstar nas Helmlands, Karma parte em jornada para Chult, Worist abandona a vida de aventuras e abre uma padaria em Suzail, Laguna retorna aos War Wizards, e Enguerrand segue viajando por Toril.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1501-01",
+      "year": 1501,
+      "title": "Toril se recupera dos dois anos que os Deuses estavam no plano material, e os clérigos sem poderes",
+      "description": "Toril se recupera dos dois anos que os Deuses estavam no plano material, e os clérigos sem poderes. Uma era curta de alguns anos de recuperação começa.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1504-01",
+      "year": 1504,
+      "title": "Tensões aumentam nos Vales com movimentações militares de Sembia",
+      "description": "Tensões aumentam nos Vales com movimentações militares de Sembia.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1505-01",
+      "year": 1505,
+      "title": "Olivier abdica do trono em favor de Meriadoc e se retira para Highmoon, capital de Deepingdale, onde passa a liderar…",
+      "description": "Olivier abdica do trono em favor de Meriadoc e se retira para Highmoon, capital de Deepingdale, onde passa a liderar esforços élficos para restaurar Myth Drannor de dentro da Terra dos Vales.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1508-01",
+      "year": 1508,
+      "title": "Primeiros conflitos indiretos entre Thay e Cormyr começam por meio de agentes e magia de guerra nos Vales",
+      "description": "Primeiros conflitos indiretos entre Thay e Cormyr começam por meio de agentes e magia de guerra nos Vales.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1509-01",
+      "year": 1509,
+      "title": "Relatos indicam o retorno de Garkel em forma lich, operando nas sombras ao norte, costurando para que Thay patrocine a…",
+      "description": "Relatos indicam o retorno de Garkel em forma lich, operando nas sombras ao norte, costurando para que Thay patrocine a Sembia, na guerra por Myth Drannor. E que Vaasa ataque Damara, tudo com a intenção e começar a desestabilizar a coroa de Cormyr, e seus aliados: Companhia Consorte.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1510-01",
+      "year": 1510,
+      "title": "A campanha consorte é chamada por Darin Coroa-de-Caça para ajudar o reino",
+      "description": "A campanha consorte é chamada por Darin Coroa-de-Caça para ajudar o reino. É descoberto que o rei foi sequestrado por Garkel, Musgrave assume como príncipe regente. Arthur vira Inquisidor Real, e o resto da Consorte conselheiros do Príncipe.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1510-02",
+      "year": 1510,
+      "title": "They e Sembia formam uma aliança, e a Sembia começa a atacar os Vales enquanto Thay procura por Myth Drannor em incursos na mata",
+      "description": "They e Sembia formam uma aliança, e a Sembia começa a atacar os Vales enquanto Thay procura por Myth Drannor em incursos na mata. Procurando pelo Mythal.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1511-01",
+      "year": 1511,
+      "title": "A Companhia Consorte finalmente encontra a perdida cidade de Myth Drannor",
+      "description": "A Companhia Consorte finalmente encontra a perdida cidade de Myth Drannor. Randal e Olivier lutam contra o Dragãoduque Branco, enquanto a Consorte enfrenta um Elder Brain e um exército de Mindflayers que viviam na caída Myth Drannor. Worist se sacrifica para derrotar o Elder Brain, e Olivier e a Consorte tomam Myth Drannor, terminando com os planos de Thay de ter o Mythal. Tem inicio o repovoamento de Myth Drannor, e a retomada do império de Cormanthyr.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1513-01",
+      "year": 1513,
+      "title": "Após uma incursão ao Shadowfell a Consorte vai até Gloomwrought, no Shadowfell, e encontra o verdadeiro Rei Meriadoc, no…",
+      "description": "Após uma incursão ao Shadowfell a Consorte vai até Gloomwrought, no Shadowfell, e encontra o verdadeiro Rei Meriadoc, no covil de Garkel. Resgatando-o e Cormyr inicia a campanha para conquistar a Dragon Coast, elevando Arthur a Duque da região. Algumas cidades se curvam de bom grado por simpatia a Cormyr. Arthur mudando sua casa de Eveningstar para Elversult, capital da Dragon Coast. Entretando Westgate não se dobra, permanecendo a única cidade da costa do dragão que não faz parte de Cormyr.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1517-01",
+      "year": 1517,
+      "title": "O Lich Garkel costura um plano para por Damara e Silverymoon em cheque de destruição se o Rei Meriadoc não entregasse a…",
+      "description": "O Lich Garkel costura um plano para por Damara e Silverymoon em cheque de destruição se o Rei Meriadoc não entregasse a Costa do Dragão ao Lich. Em uma decisão estratégica controversa, a coroa entrega a Dragon Coast a Garkel para salvar milhares de vidas nos reinos do norte. Arthur deixa Faerun para viver na Feywild.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1518-01",
+      "year": 1518,
+      "title": "O Rei de Fogo Meriadoc garante que Damara e Silverymoon estão seguras, reúne os exércitos de Cormyr e marcha para retomar a região",
+      "description": "O Rei de Fogo Meriadoc garante que Damara e Silverymoon estão seguras, reúne os exércitos de Cormyr e marcha para retomar a região. Morrendo ao lado de Garkel na batalha final pela Dragon Coast, mas garantindo a vitória do reino. Após a morte de Meriadoc, Musgrave Phelles é coroado rei de Cormyr.",
+      "scope": "kingdom"
+    },
+    {
+      "id": "timeline-1520-01",
+      "year": 1520,
+      "title": "Azoun VI Obarskyr reivindica o trono de Cormyr, iniciando uma divisão política profunda no reino",
+      "description": "Azoun VI Obarskyr reivindica o trono de Cormyr, iniciando uma divisão política profunda no reino. O reino permanece dividido entre a Casa Phelles e os partidários de Obarskyr, com uma nova guerra civil se desenhando no horizonte.",
+      "scope": "kingdom"
+    }
+  ]
+}
