@@ -24,6 +24,7 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   return fail(401,'authentication_required');
  if(request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json'||
     request.headers.has('content-encoding'))return fail(415,'json_required');
+ let phase:'parse'|'sdk'|'service'|'operation'='parse';
  try{
   const reader=request.body?.getReader();
   if(!reader)return fail(400,'invalid_request');
@@ -41,6 +42,7 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
    return fail(400,'invalid_request');
   const action=(payload as {action?:unknown}).action;
   if(!['upload','clone','read'].includes(String(action)))return fail(400,'invalid_action');
+  phase='sdk';
   const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore},{getStorage}]=
     await Promise.all([
      import('firebase-admin/app'),import('firebase-admin/auth'),
@@ -50,11 +52,13 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   const app=getApps().find(a=>a.name===name)??initializeApp({
    projectId:'cormyr',credential:applicationDefault(),
   },name);
+  phase='service';
   const media=createNewspaperMediaService({
    db:getFirestore(app),auth:getAuth(app),snapshotId,
    bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
   });
   const token=bearer.slice(7);
+  phase='operation';
   if(action==='read'){
    const result=await media.read(token,(payload as {path?:unknown}).path);
    return new Response(new Uint8Array(result.bytes),{status:200,
@@ -67,7 +71,16 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
  }catch(e){
   if(e instanceof NewspaperMediaError||e instanceof CloudAccessError)
    return fail(e.status,e.code);
-  return fail(503,'newspaper_media_unavailable');
+  // Firebase Admin errors and worker failures are intentionally opaque.
+  // Return a fixed phase identifier, never a message, token, object path,
+  // UID or provider stack. This makes repeat failures actionable.
+  const known={
+   parse:'media_parse_backend_unavailable',
+   sdk:'media_sdk_initialization_failed',
+   service:'media_service_initialization_failed',
+   operation:'media_operation_unavailable',
+  } as const;
+  return fail(503,known[phase]);
  }
 }
 export const Route=createFileRoute('/api/firebase-newspaper-media')({
