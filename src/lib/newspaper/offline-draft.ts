@@ -25,7 +25,7 @@ export function offlineEditionKey(uid:string,id:string):string|null{
 }
 export function writeOfflineEdition(store:LocalStore|null,uid:string,edition:NewspaperEdition,now=Date.now()):boolean{
  if(!store||edition.state!=='draft'||edition.archive_preview||!Number.isSafeInteger(edition.version)||
-    edition.version<1||edition.blocks.length<1||edition.blocks.length>80)return false;
+    edition.version<1||edition.blocks.length>80)return false;
  const key=offlineEditionKey(uid,edition.id);if(!key)return false;
  const item:OfflineEditionBackup={schema:1,owner:uid,editionId:edition.id,
   baseVersion:edition.version,updatedAt:now,snapshot:snapshotOf(edition)};
@@ -43,11 +43,11 @@ export function readOfflineEdition(store:LocalStore|null,uid:string,edition:News
   const snap=item.snapshot;
   if(item.schema!==1||item.owner!==uid||item.editionId!==edition.id||
      !Number.isSafeInteger(item.baseVersion)||item.baseVersion!<1||
-     !Number.isFinite(item.updatedAt)||!snap||typeof snap!=='object'||
+     (typeof item.updatedAt!=='number'||!Number.isFinite(item.updatedAt))||!snap||typeof snap!=='object'||
      typeof snap.title!=='string'||typeof snap.subtitle!=='string'||
      typeof snap.campaign_date!=='string'||typeof snap.template!=='string'||
      typeof snap.font_style!=='string'||!Array.isArray(snap.blocks)||
-     snap.blocks.length<1||snap.blocks.length>80||
+     snap.blocks.length>80||
      typeof snap.pdf_path!=='string'&&snap.pdf_path!==null)
     return null;
   const blocks=safeNewspaperBlocks(snap.blocks);
