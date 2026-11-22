@@ -55,7 +55,9 @@
     for(let m=0;m<12;m++){
       [[1,'Ver a Justiça'],[13,'Mutilamento'],[22,'O Vínculo']].forEach(([d,n])=>
         add(m,d,'Tyr · '+n,'tyr-'+m+'-'+d));
-      add(m,waukeen[m][0],'Waukeen · '+waukeen[m][1],'waukeen-'+m);
+      // Sornyn in Flamerule lasts three days (3–5), per the canonical calendar.
+      for(let day=waukeen[m][0];day<=(m===6?5:waukeen[m][0]);day++)
+        add(m,day,'Waukeen · '+waukeen[m][1],'waukeen-'+m+'-'+day);
     }
     seasons.forEach(([m,d,n])=>add(m,d,n,'season-'+m));
     return result;
