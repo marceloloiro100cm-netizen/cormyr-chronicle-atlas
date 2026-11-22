@@ -19,7 +19,7 @@ const noticeIcons=['⚜','📜','🏪','⚔','⚠','👑'];
 const mediaImage=/^newspaper-media\/[a-f0-9]{64}\/editionImage\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/;
 const mediaPdf=/^newspaper-media\/[a-f0-9]{64}\/editionPdf\/[0-9a-f-]{36}\.pdf$/;
 
-export function validateEditorialContent(input,{allowEmptyImages=false}={}){
+export function validateEditorialContent(input,{allowEmptyImages=false,allowIncompleteDraft=false}={}){
   const invalid=()=>{throw Error('invalid_editorial_content');};
   if(!input||typeof input!=='object'||Array.isArray(input)||
      Object.keys(input).some(k=>!['title','subtitle','blocks','template','font_style','pdfPath','publishOn'].includes(k)))invalid();
@@ -28,10 +28,10 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
        (required&&!value.trim()))invalid();
     return value;
   };
-  const title=text(input.title,180,true).trim(),subtitle=text(input.subtitle,280);
+  const title=text(input.title,180,!allowIncompleteDraft).trim(),subtitle=text(input.subtitle,280);
   if(input.template!==undefined&&!templates.includes(input.template))invalid();
   if(input.font_style!==undefined&&!styles.includes(input.font_style))invalid();
-  if(!Array.isArray(input.blocks)||input.blocks.length<1||input.blocks.length>80)invalid();
+  if(!Array.isArray(input.blocks)||(!allowIncompleteDraft&&input.blocks.length<1)||input.blocks.length>80)invalid();
   const ids=new Set();
   const blocks=input.blocks.map(b=>{
     if(!b||typeof b!=='object'||Array.isArray(b)||
@@ -106,7 +106,7 @@ export function validateEditorialContent(input,{allowEmptyImages=false}={}){
     }else invalid();
   }
   if([...photoIds].some(id=>!articleIds.has(id)))invalid();
-  if(!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)&&!input.pdfPath)invalid();
+  if(!allowIncompleteDraft&&!blocks.some(b=>b.text.trim()||b.imageSrc||b.imagePath)&&!input.pdfPath)invalid();
   if(input.pdfPath!==undefined&&input.pdfPath!==null&&!mediaPdf.test(input.pdfPath))invalid();
   if(input.publishOn!==undefined&&input.publishOn!==null&&
      (typeof input.publishOn!=='string'||!isNewspaperDate(input.publishOn)))invalid();
