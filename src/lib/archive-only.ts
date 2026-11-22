@@ -76,6 +76,8 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        // própria, Firebase Auth ou segredo do agendador. Cada uma continua
        // falhando fechada (503) sem a chave, o runtime aprovado ou o bucket.
        pathname === '/api/public/time' ||
+       // GET-only public projection, including only separately approved events.
+       pathname === '/api/public/calendar-events' ||
        pathname === '/api/public/catalog' ||
        pathname === '/api/public/translations' ||
        // Public House gallery index: Firebase-only, independently approved
