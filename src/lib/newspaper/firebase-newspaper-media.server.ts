@@ -93,6 +93,30 @@ export const validateNewspaperMediaUpload=(raw:unknown)=>{
 };
 const extension=(type:string)=>type==='image/png'?'png':type==='image/webp'?'webp':
  type==='image/jpeg'?'jpg':'pdf';
+/** Retry-safe, account-scoped paths. A new upload key never reuses a prior
+ * object's name; the same key cannot replace different bytes. */
+const scopedUuid=(label:string,snapshot:string,uid:string,requestKey:string)=>{
+ const hash=createHash('sha256').update(label+':'+snapshot+':'+uid+':'+requestKey).digest('hex');
+ return hash.slice(0,8)+'-'+hash.slice(8,12)+'-4'+hash.slice(13,16)+
+  '-8'+hash.slice(17,20)+'-'+hash.slice(20,32);
+};
+export function mediaEngravingIdentifiers(snapshot:string,uid:string,requestKey:string){
+ if(!SNAP.test(snapshot)||!uid||!/^[a-f0-9-]{36}$/.test(requestKey))
+  fail('invalid_media');
+ return {
+  mediaUuid:scopedUuid('media',snapshot,uid,requestKey),
+  engravingId:scopedUuid('engraving',snapshot,uid,requestKey),
+ };
+}
+const engravingOverlayRowId=(id:string)=>createHash('sha256')
+ .update('campaign_newspaper_engravings:'+JSON.stringify(id)).digest('hex');
+const registryConflict=(previous:unknown,current:Entry,actor:string)=>{
+ const v=previous as (Entry&{state?:string})|undefined;
+ return !v||v.path!==current.path||v.sha256!==current.sha256||
+  v.kind!==current.kind||v.sourceSnapshotId!==current.sourceSnapshotId||
+  v.createdBy!==actor||v.state!=='ready';
+};
+
 export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=process.env}:{
  db:any;auth:any;bucket:any;snapshotId:string;env?:NodeJS.ProcessEnv
 }){
@@ -157,21 +181,85 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
     }else if(!v.editionId||v.houseId)fail('invalid_media_scope');
     else await edition(v.editionId!);
    }
-   const path=newspaperMediaPath(snapshotId,v.kind,extension(v.contentType));
+   const ids=v.kind==='engraving'&&v.requestKey?
+    mediaEngravingIdentifiers(snapshotId,s.uid,v.requestKey):null;
+   const path=ids?'newspaper-media/'+snapshotId+'/'+v.kind+'/'+ids.mediaUuid+
+     '.'+extension(v.contentType):
+    newspaperMediaPath(snapshotId,v.kind,extension(v.contentType));
    const sha256=createHash('sha256').update(v.bytes).digest('hex');
+   const actorDigest=createHash('sha256').update('media-actor:'+s.uid).digest('hex');
+   const now=new Date().toISOString();
    const doc:Entry&{state:'ready'}={path,kind:v.kind,contentType:v.contentType,
     bytes:v.bytes.length,sha256,sourceSnapshotId:snapshotId,createdBy:s.uid,
-    createdAt:new Date().toISOString(),editionId:v.editionId??null,
+    createdAt:now,editionId:v.editionId??null,
     houseId:v.houseId??null,state:'ready'};
+   const file=bucket.file(path);
    try{
-    await bucket.file(path).save(v.bytes,{resumable:false,validation:'crc32c',
+    await file.save(v.bytes,{resumable:false,validation:'crc32c',
      preconditionOpts:{ifGenerationMatch:0},
      metadata:{contentType:v.contentType,cacheControl:'private, no-store',
-      metadata:{sourceSnapshotId:snapshotId,sha256,kind:v.kind}}});
-   }catch(error){fail(classifyNewspaperStorageError(error),503);}
-   // Never delete an object if the metadata write fails: it may have been
-   // committed or another request may reference it. No successful upload
-   // response is returned until the registry is committed.
+      metadata:{sourceSnapshotId:snapshotId,sha256,kind:v.kind,actorDigest}}});
+   }catch(error){
+    // The first attempt may have stored the object before its response was
+    // lost. Only the SAME authenticated uploader and exact bytes may resume.
+    const e=error as {code?:unknown;statusCode?:unknown};
+    const duplicate=ids&&(e?.code===412||e?.statusCode===412||
+     e?.code==='412'||e?.code==='conditionNotMet');
+    if(!duplicate)fail(classifyNewspaperStorageError(error),503);
+    let metadata:any;
+    try{[metadata]=await file.getMetadata();}
+    catch{fail('media_storage_unavailable',503);}
+    if(metadata?.metadata?.sha256!==sha256||
+       metadata?.metadata?.actorDigest!==actorDigest||
+       metadata?.metadata?.sourceSnapshotId!==snapshotId||
+       metadata?.metadata?.kind!==v.kind||
+       metadata?.contentType!==v.contentType)
+      fail('media_upload_key_conflict',409);
+   }
+   // A gravura and its private media registry are committed together, not
+   // via a second browser request that could fail after uploading the file.
+   // The stable request key lets a retry complete an interrupted Firestore
+   // transaction without creating a second object or catalogue entry.
+   if(v.registerEngraving){
+    if(!ids||!v.name)fail('invalid_media');
+    const rowRef=runtime.collection('workspaceTableRows')
+     .doc(engravingOverlayRowId(ids.engravingId));
+    const mediaRef=registry.doc(newspaperMediaDocId(path));
+    const auditRef=runtime.collection('workspaceTableAudits').doc(createHash('sha256')
+     .update('engraving-upload:'+ids.engravingId).digest('hex'));
+    const row={id:ids.engravingId,name:v.name.slice(0,80),image_path:path,
+     public_src:null,in_collection:true,created_at:now};
+    try{
+     await db.runTransaction(async(tx:any)=>{
+      const [stored,overlay,audit]=await Promise.all([
+       tx.get(mediaRef),tx.get(rowRef),tx.get(auditRef),
+      ]);
+      if(stored.exists&&registryConflict(stored.data(),doc,s.uid))
+       fail('media_upload_key_conflict',409);
+      if(overlay.exists&&
+        (overlay.data()?.table!=='campaign_newspaper_engravings'||
+         overlay.data()?.deleted!==false||
+         overlay.data()?.row?.image_path!==path||
+         overlay.data()?.row?.name!==row.name))
+       fail('media_upload_key_conflict',409);
+      if(!stored.exists)tx.create(mediaRef,doc);
+      if(!overlay.exists)tx.create(rowRef,{
+       table:'campaign_newspaper_engravings',key:ids.engravingId,row,
+       deleted:false,version:1,updatedBy:s.uid,updatedAt:now,
+       sourceSnapshotId:snapshotId,
+      });
+      if(!audit.exists)tx.create(auditRef,{
+       table:'campaign_newspaper_engravings',key:ids.engravingId,
+       action:'write',version:1,actorUid:s.uid,occurredAt:now,
+      });
+     });
+    }catch(error){
+     if(error instanceof NewspaperMediaError)throw error;
+     fail('media_registry_unavailable',503);
+    }
+    return {path,engravingId:ids.engravingId};
+   }
+   // All other media keep their existing private registry contract.
    try{await registry.doc(newspaperMediaDocId(path)).create(doc);}
    catch{fail('media_registry_unavailable',503);}
    return {path};
