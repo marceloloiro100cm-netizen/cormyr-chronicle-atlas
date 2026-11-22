@@ -8,6 +8,7 @@ on:
       - 'scripts/firebase/workspace-live-query-diagnostic.ts'
       - 'scripts/firebase/firebase-media-diagnostic.mjs'
       - 'scripts/firebase/newspaper-media-503-logs-readonly.mjs'
+      - 'scripts/firebase/newspaper-media-failure-cause-readonly.mjs'
       - 'scripts/firebase/newspaper-third-draft-recovery-readonly.mjs'
   workflow_dispatch:
 permissions:
@@ -29,6 +30,7 @@ jobs:
         run: |
           node --check scripts/firebase/workspace-runtime-login-diagnostic.mjs
           node --check scripts/firebase/newspaper-media-503-logs-readonly.mjs
+          node --check scripts/firebase/newspaper-media-failure-cause-readonly.mjs
           node --check scripts/firebase/newspaper-third-draft-recovery-readonly.mjs
           node scripts/verify-public-repo.mjs
       - name: Exchange OIDC for existing read-only service account
@@ -49,5 +51,7 @@ jobs:
         run: node scripts/firebase/firebase-media-diagnostic.mjs
       - name: Inspect aggregate Cloud Run media 503 counts (read only; no log output)
         run: node scripts/firebase/newspaper-media-503-logs-readonly.mjs
+      - name: Classify media gateway versus handler responses (no identities or files)
+        run: node scripts/firebase/newspaper-media-failure-cause-readonly.mjs
       - name: Inventory third-edition recoverable drafts (read only; no article text)
         run: node scripts/firebase/newspaper-third-draft-recovery-readonly.mjs

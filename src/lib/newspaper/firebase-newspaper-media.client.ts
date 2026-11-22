@@ -34,6 +34,12 @@ export function newspaperMediaErrorMessage(status:number,code:unknown):string{
     return 'A API do Jornal falhou ao receber o arquivo. Verifique o limite da requisição e o servidor.';
    case 'media_operation_unavailable':
     return 'O envio falhou em uma operação interna do Firebase, antes de ser confirmado. Verifique os logs do App Hosting para a etapa exata.';
+   case 'media_integrity':
+    return 'O objeto no Storage não corresponde ao registro original. Preserve o arquivo e solicite reconciliação.';
+   case 'media_503_no_handler':
+    return 'O gateway do App Hosting retornou HTTP 503 sem resposta da API do Jornal. Verifique a instância, a revisão e os logs de infraestrutura; isso não comprova falha de permissão.';
+   case 'media_503_unexpected_reply':
+    return 'A API do Jornal respondeu HTTP 503 em formato inesperado. O arquivo não foi confirmado; verifique os logs do servidor.';
    default:
     return 'Serviço de mídia do Jornal indisponível (HTTP 503). A causa precisa ser verificada no Firebase; isso não comprova falta de autorização.';
   }
@@ -46,6 +52,9 @@ export function newspaperMediaErrorMessage(status:number,code:unknown):string{
   409:'A edição mudou ou já foi publicada. Reabra um rascunho.',
   413:'Arquivo acima do limite permitido.',
   415:'Envie um arquivo PNG, JPG, WebP ou PDF válido.',
+  500:'Erro interno ao processar a gravura. Preserve o arquivo e verifique o App Hosting.',
+  502:'O gateway do App Hosting não recebeu uma resposta válida do serviço de imagens.',
+  504:'O serviço de imagens não respondeu dentro do prazo do gateway.',
  };
  return messages[status]??'Falha na operação com o armazenamento do Jornal.';
 }
@@ -55,24 +64,70 @@ const SAFE_503=new Set([
  'migration_stage_not_ready','invalid_server_configuration','cloud_read_disabled',
  'media_not_ready','media_sdk_initialization_failed','media_service_initialization_failed',
  'media_runtime_lookup_failed','media_scope_backend_unavailable',
- 'media_parse_backend_unavailable','media_operation_unavailable',
+ 'media_parse_backend_unavailable','media_operation_unavailable','media_integrity',
 ]);
-export function newspaperMediaDiagnosticCode(status:number,raw:unknown):string|null{
+export function newspaperMediaDiagnosticCode(status:number,raw:unknown,handlerReached?:boolean):string|null{
  if(status!==503)return null;
- return typeof raw==='string'&&SAFE_503.has(raw)?raw:'http_503_unclassified';
+ if(typeof raw==='string'&&SAFE_503.has(raw))return raw;
+ if(handlerReached===false)return 'media_503_no_handler';
+ if(handlerReached===true)return 'media_503_unexpected_reply';
+ return 'http_503_unclassified';
 }
-function encodeFile(file:File):Promise<string>{
- return new Promise((resolve,reject)=>{
-  const reader=new FileReader();
-  reader.onerror=()=>reject(Error('Não foi possível ler o arquivo.'));
-  reader.onload=()=>{
-   const value=String(reader.result);
-   const raw=value.slice(value.indexOf(',')+1);
-   if(!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))reject(Error('Arquivo inválido.'));
-   else resolve(raw);
-  };
-  reader.readAsDataURL(file);
+/** One safe decoder for JSON errors from the API and opaque gateway errors. */
+async function mediaFailure(response:Response):Promise<Error>{
+ let code:unknown=null;
+ try{
+  const value:unknown=await response.clone().json();
+  if(value&&typeof value==='object'&&!Array.isArray(value))
+   code=(value as Record<string,unknown>)['error'];
+ }catch{/* Gateway responses may be HTML or empty. */}
+ const reached=response.headers.get('x-cormyr-media-handler')==='v2';
+ const detail=newspaperMediaDiagnosticCode(response.status,code,reached);
+ const message=newspaperMediaErrorMessage(response.status,detail??code);
+ return Error(detail?message+' (Diagnóstico: '+detail+')':message);
+}
+/** Media bytes travel unchanged, without 33% base64 expansion or JSON
+ * decoding on the frontend/server. The bearer remains a same-origin header. */
+type UploadInput={
+ kind:Kind;file:File;editionId?:string;houseId?:string;
+ name?:string;requestKey?:string;registerEngraving?:boolean;
+};
+async function uploadRaw(input:UploadInput):Promise<{path:string;engravingId?:string}>{
+ const max=input.kind==='commission'||input.kind==='engraving'?5*1024*1024:15*1024*1024;
+ if(input.file.size<1||input.file.size>max)
+  throw Error('Arquivo maior que o limite permitido.');
+ if(!['image/png','image/jpeg','image/webp','application/pdf'].includes(input.file.type))
+  throw Error('Formato inválido. Use PNG, JPG, WebP ou PDF.');
+ const auth=firebasePilotAuth(),uid=auth?.current()?.uid;
+ const token=await auth?.getToken();
+ if(!uid||!token||auth?.current()?.uid!==uid)
+  throw Error('Sua sessão Firebase expirou. Entre novamente.');
+ const headers:Record<string,string>={
+  'Authorization':'Bearer '+token,
+  'Content-Type':input.file.type,
+  'X-Cormyr-Media-Action':'upload',
+  'X-Cormyr-Media-Kind':input.kind,
+ };
+ if(input.editionId)headers['X-Cormyr-Media-Edition']=input.editionId;
+ if(input.houseId)headers['X-Cormyr-Media-House']=input.houseId;
+ if(input.name!==undefined)headers['X-Cormyr-Media-Name']=encodeURIComponent(input.name);
+ if(input.requestKey)headers['X-Cormyr-Media-Request-Key']=input.requestKey;
+ if(input.registerEngraving)headers['X-Cormyr-Media-Atomic-Engraving']='true';
+ const response=await fetch('/api/firebase-newspaper-media',{
+  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+  headers,body:input.file,
  });
+ if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante o envio.');
+ if(!response.ok)throw await mediaFailure(response);
+ const value:unknown=await response.json();
+ if(!value||typeof value!=='object'||!('result' in value)||
+    !value.result||typeof value.result!=='object')
+  throw Error('O Firebase não confirmou o arquivo.');
+ const result=value.result as Record<string,unknown>;
+ if(typeof result['path']!=='string'||!isFirebaseNewspaperMediaPath(result['path']))
+  throw Error('O Firebase devolveu um caminho inválido para o arquivo.');
+ return {path:result['path'],
+  ...(typeof result['engravingId']==='string'?{engravingId:result['engravingId']}:{})};
 }
 async function call(body:Record<string,unknown>,binary=false):Promise<any>{
  const auth=firebasePilotAuth(),uid=auth?.current()?.uid;
@@ -85,17 +140,7 @@ async function call(body:Record<string,unknown>,binary=false):Promise<any>{
   body:JSON.stringify(body),
  });
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante o envio.');
- if(!response.ok){
-  let code:unknown=null;
-  try{
-   const body:unknown=await response.clone().json();
-   if(body&&typeof body==='object'&&!Array.isArray(body))
-    code=(body as Record<string,unknown>)['error'];
-  }catch{/* A response without JSON is still an error. */}
-  const detail=newspaperMediaDiagnosticCode(response.status,code);
-  const message=newspaperMediaErrorMessage(response.status,code);
-  throw Error(detail?message+' (Diagnóstico: '+detail+')':message);
- }
+ if(!response.ok)throw await mediaFailure(response);
  if(binary){
   const blob=await response.blob();
   if(!['image/png','image/jpeg','image/webp','application/pdf'].includes(blob.type))
@@ -110,15 +155,18 @@ async function call(body:Record<string,unknown>,binary=false):Promise<any>{
 export async function uploadFirebaseNewspaperMedia(input:{
  kind:Kind;file:File;editionId?:string;houseId?:string;
 }):Promise<string>{
- const max=input.kind==='commission'||input.kind==='engraving'?5*1024*1024:15*1024*1024;
- if(input.file.size<1||input.file.size>max)
-  throw Error('Arquivo maior que o limite permitido.');
- const v=await call({action:'upload',kind:input.kind,
-  ...(input.editionId?{editionId:input.editionId}:{}),
-  ...(input.houseId?{houseId:input.houseId}:{}),
-  contentType:input.file.type,dataBase64:await encodeFile(input.file)}) as {path:string};
- if(typeof v.path!=='string')throw Error('O Firebase não confirmou o arquivo.');
- return v.path;
+ return (await uploadRaw(input)).path;
+}
+/** One authenticated operation confirms BOTH Storage and the catalogue row.
+ * Retrying the same request key resumes an interrupted attempt idempotently. */
+export async function uploadFirebaseEngraving(
+ file:File,name:string,requestKey:string,
+):Promise<{path:string;engravingId:string}>{
+ const result=await uploadRaw({kind:'engraving',file,name,requestKey,registerEngraving:true});
+ if(typeof result.engravingId!=='string'||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(result.engravingId))
+  throw Error('O Firebase não confirmou o registro da gravura.');
+ return {path:result.path,engravingId:result.engravingId};
 }
 export async function readFirebaseNewspaperMedia(path:string):Promise<string>{
  return call({action:'read',path},true) as Promise<string>;

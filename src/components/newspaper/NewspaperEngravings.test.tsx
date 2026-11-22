@@ -15,12 +15,12 @@ describe('Gravuras do Reino: selecionar e enviar',()=>{
   expect(screen.getByText('Grandragon.png')).toBeTruthy();
   fireEvent.change(screen.getByPlaceholderText('Ex.: Torre de Suzail'),{target:{value:'Gravura Grandragon'}});
   fireEvent.click(screen.getByRole('button',{name:'Enviar gravura'}));
-  await waitFor(()=>expect(upload).toHaveBeenCalledWith(file,'Gravura Grandragon'));
+  await waitFor(()=>expect(upload).toHaveBeenCalledWith(file,'Gravura Grandragon',expect.stringMatching(/^[a-f0-9-]{36}$/)));
   await waitFor(()=>expect(screen.getByText('Escolher imagem')).toBeTruthy());
   expect(upload).toHaveBeenCalledTimes(1);
  });
  it('preserva seleção quando o armazenamento falha, permitindo repetir sem perder o arquivo',async()=>{
-  const upload=vi.fn(async()=>false);
+  const upload=vi.fn(async(_file:File,_name:string,_key?:string)=>false);
   render(<NewspaperEngravings items={[]} busy={false}
    onUpload={upload} onToggle={vi.fn()} onDelete={vi.fn()} onRestore={vi.fn()}/>);
   const file=new File(['imagem'],'Grandragon.png',{type:'image/png'});
@@ -28,5 +28,9 @@ describe('Gravuras do Reino: selecionar e enviar',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Enviar gravura'}));
   await waitFor(()=>expect(upload).toHaveBeenCalledTimes(1));
   expect(screen.getByText('Grandragon.png')).toBeTruthy();
+  const key=upload.mock.calls[0]![2];
+  fireEvent.click(screen.getByRole('button',{name:'Enviar gravura'}));
+  await waitFor(()=>expect(upload).toHaveBeenCalledTimes(2));
+  expect(upload.mock.calls[1]![2]).toBe(key);
  });
 });

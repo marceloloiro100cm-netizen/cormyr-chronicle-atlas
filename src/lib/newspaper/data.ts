@@ -7,7 +7,7 @@ import {
  loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,loadFirebaseNewspaperRevisions,
 } from './firebase-editorial-bridge';
 import {workspaceRequest} from '@/lib/firebase-workspace/client';
-import {uploadFirebaseNewspaperMedia,readFirebaseNewspaperMedia,cloneFirebaseNewspaperMedia,isFirebaseNewspaperMediaPath} from './firebase-newspaper-media';
+import {uploadFirebaseNewspaperMedia,uploadFirebaseEngraving,readFirebaseNewspaperMedia,cloneFirebaseNewspaperMedia,isFirebaseNewspaperMediaPath} from './firebase-newspaper-media';
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 import {mediaFileBase64} from '@/lib/firebase-workspace/private-media-client';
 import {
@@ -372,14 +372,14 @@ export async function getEngravings():Promise<NewspaperEngraving[]>{
  if(error)throw error;
  return (data??[]) as NewspaperEngraving[];
 }
-export async function uploadEngraving(file:File,name:string):Promise<void>{
+export async function uploadEngraving(file:File,name:string,requestKey?:string):Promise<void>{
  if(isFirebaseNewspaperWorkspace()){
   if(file.size>5*1024*1024)throw Error('A gravura deve ter no máximo 5 MB.');
-  const path=await uploadFirebaseNewspaperMedia({kind:'engraving',file});
   const label=name.trim()||file.name.replace(/\.[^.]+$/,'').slice(0,80)||'Gravura';
-  const {error}=await db.from('campaign_newspaper_engravings')
-   .insert({name:label.slice(0,80),image_path:path});
-  if(error)throw error;
+  // The same authenticated backend transaction commits the GCS file registry
+  // and the corresponding private editorial archive row. No second call and
+  // no false confirmation if only the bytes were stored.
+  await uploadFirebaseEngraving(file,label.slice(0,80),requestKey??crypto.randomUUID());
   return;
  }
  if(file.size>5*1024*1024)throw new Error('A gravura deve ter no máximo 5 MB.');
