@@ -1,6 +1,6 @@
 import {validateEditorialContent} from './cloud-editorial-content.mjs';
 import {validateHistoricalDraft,historicalDraftId} from './cloud-newspaper-legacy-draft.mjs';
-import {deletedNewspaperIds} from './newspaper-deleted.mjs';
+import {deletedNewspaperIds,deletedEditionDocId} from './newspaper-deleted.mjs';
 import {commissionIdsOf} from './newspaper-core.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {currentAccountAccess,chooseCurrentAccountAccess} from './operational-account-access.mjs';
@@ -398,10 +398,13 @@ export function createFirebaseCloudNewspaper({
       const audit=audits.doc('historical-publish-'+digest(input.id));
       return db.runTransaction(async tx=>{
        const {calendarDate,config}=await readApproval(uid,tx);
-       const [sourceDoc,draftDoc,publishedDoc,auditDoc]=await Promise.all([
-        tx.get(sourceRef),tx.get(workingRef),tx.get(ref),tx.get(audit),
+       const tombstone=runtime.collection('newspaperDeletedEditions').doc(deletedEditionDocId(input.id));
+       const [sourceDoc,draftDoc,publishedDoc,auditDoc,deletedDoc]=await Promise.all([
+        tx.get(sourceRef),tx.get(workingRef),tx.get(ref),tx.get(audit),tx.get(tombstone),
        ]);
        const source=sourceDoc.data(),draft=draftDoc.exists?draftDoc.data():source;
+       if(deletedDoc.exists&&deletedDoc.data()?.deleted===true)
+        deny('historical_draft_deleted',409);
        if(!sourceDoc.exists||source?.id!==input.id||source.state!=='draft'||
           !Array.isArray(source.blocks)||!draft||draft.id!==input.id||
           draft.state!=='draft'||!Array.isArray(draft.blocks)||
@@ -525,11 +528,12 @@ export function createFirebaseCloudNewspaper({
         const paths=[...imagePaths,...(content.pdfPath?[content.pdfPath]:[])];
         const mediaRefs=paths.map(path=>runtime.collection('newspaperMedia')
          .doc(digest('newspaper-media:'+path)));
-        const [oldDoc,auditDoc,commissionDocs,mediaDocs,officialNo]=await Promise.all([
+        const tombstone=runtime.collection('newspaperDeletedEditions').doc(deletedEditionDocId(id));
+        const [oldDoc,auditDoc,commissionDocs,mediaDocs,officialNo,deletedDoc]=await Promise.all([
          tx.get(ref),tx.get(audit),
          Promise.all(commissionRefs.map(doc=>tx.get(doc))),
          Promise.all(mediaRefs.map(doc=>tx.get(doc))),
-         nextOfficialEditionNo(tx,config),
+         nextOfficialEditionNo(tx,config),tx.get(tombstone),
         ]);
         for(let i=0;i<paths.length;i++){
          const entry=mediaDocs[i].data(),path=paths[i];
@@ -541,6 +545,8 @@ export function createFirebaseCloudNewspaper({
             typeof entry.sha256!=='string'||!/^[a-f0-9]{64}$/.test(entry.sha256))
            deny('unverified_editorial_media',409);
         }
+        if(deletedDoc.exists&&deletedDoc.data()?.deleted===true)
+          deny('editorial_draft_deleted',409);
         if(auditDoc.exists){
           const prior=auditDoc.data();
           if(prior.actorUid!==uid||prior.requestFingerprint!==fingerprint)
