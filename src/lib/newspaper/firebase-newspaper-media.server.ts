@@ -45,24 +45,51 @@ export const isNewspaperMediaPath=(path:unknown,snapshot:string,kind?:Kind):path
  new RegExp('^newspaper-media/'+snapshot+'/'+(kind??'(?:editionImage|editionPdf|commission|engraving)')+
  '/[0-9a-f]{8}-[0-9a-f-]{27,36}\\.(?:png|jpe?g|webp|pdf)$').test(path)&&
  !path.includes('..');
+/**
+ * Accept the legacy base64 JSON transport and the new byte transport used
+ * by the authenticated same-origin upload route. A browser cannot forge a
+ * Node Buffer through JSON, so binary input stays server-owned.
+ */
 export const validateNewspaperMediaUpload=(raw:unknown)=>{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))fail('invalid_media');
  const v=raw as Record<string,unknown>;
- if(v['action']!=='upload'||!KINDS.includes(v['kind'] as Kind)||
-    typeof v['dataBase64']!=='string'||v['dataBase64'].length>21_000_000||
-    !/^[A-Za-z0-9+/]+={0,2}$/.test(v['dataBase64'])||
+ const kind=v['kind'] as Kind;
+ const binary=Buffer.isBuffer(v['dataBytes']);
+ const base64=typeof v['dataBase64']==='string'&&
+  v['dataBase64'].length<=21_000_000&&
+  /^[A-Za-z0-9+/]+={0,2}$/.test(v['dataBase64']);
+ if(v['action']!=='upload'||!KINDS.includes(kind)||
+    Number(binary)+Number(base64)!==1||
     (v['editionId']!==undefined&&typeof v['editionId']!=='string')||
     (v['houseId']!==undefined&&typeof v['houseId']!=='string')||
-    Object.keys(v).some(k=>!['action','kind','editionId','houseId','dataBase64','contentType'].includes(k)))
+    Object.keys(v).some(k=>!['action','kind','editionId','houseId',
+      'dataBase64','dataBytes','contentType','requestKey',
+      'registerEngraving','name'].includes(k)))fail('invalid_media');
+ if(v['registerEngraving']!==undefined&&
+    (kind!=='engraving'||v['registerEngraving']!==true))fail('invalid_media');
+ if(v['name']!==undefined&&
+    (kind!=='engraving'||typeof v['name']!=='string'||
+     !v['name'].trim()||Buffer.byteLength(v['name'],'utf8')>160))
    fail('invalid_media');
- const bytes=Buffer.from(v['dataBase64'] as string,'base64');
- if(bytes.length<1||bytes.length>SIZE||bytes.toString('base64')!==v['dataBase64'])fail('invalid_media_size',413);
+ if(v['registerEngraving']===true&&(!v['name']||!v['requestKey']))
+   fail('invalid_media');
+ if(v['requestKey']!==undefined&&
+    (kind!=='engraving'||typeof v['requestKey']!=='string'||
+     !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v['requestKey'])))
+   fail('invalid_media');
+ const bytes=binary?v['dataBytes'] as Buffer:
+  Buffer.from(v['dataBase64'] as string,'base64');
+ if(bytes.length<1||bytes.length>SIZE||
+    (!binary&&bytes.toString('base64')!==v['dataBase64']))fail('invalid_media_size',413);
  const type=detected(bytes);
  if(!type||type!==v['contentType']||
-    (v['kind']==='editionPdf'?type!=='application/pdf':!IMAGE.includes(type)))
+    (kind==='editionPdf'?type!=='application/pdf':!IMAGE.includes(type)))
    fail('invalid_media_type',415);
- return {kind:v['kind'] as Kind,editionId:v['editionId'] as string|undefined,
-  houseId:v['houseId'] as string|undefined,bytes,contentType:type as string};
+ return {kind,editionId:v['editionId'] as string|undefined,
+  houseId:v['houseId'] as string|undefined,bytes,contentType:type as string,
+  name:typeof v['name']==='string'?v['name'].trim():undefined,
+  requestKey:v['requestKey'] as string|undefined,
+  registerEngraving:v['registerEngraving']===true};
 };
 const extension=(type:string)=>type==='image/png'?'png':type==='image/webp'?'webp':
  type==='image/jpeg'?'jpg':'pdf';
