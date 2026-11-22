@@ -123,9 +123,6 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const [offlineRecovery,setOfflineRecovery]=useState<OfflineEditionBackup|null>(null);
  const [offlineStorageDenied,setOfflineStorageDenied]=useState(false);
  const recoveryChecked=useRef(new Set<string>());
- const lastDraft=useRef<NewspaperEdition|null>(null);
- const lastSelected=useRef<NewspaperEdition|null>(null);
- const lastBusy=useRef(false);
  const retryTimer=useRef<number|undefined>(undefined);
  const [discardBackup,setDiscardBackup]=useState<NewspaperEdition|null>(null);
  const discardTimer=useRef<number|undefined>(undefined);
@@ -148,7 +145,6 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBlockId(edition.state==='draft'?edition.blocks[0]?.id??null:null);
  },[editorial,editor,selectedId,editions.data]);
  const selected=history.find(e=>e.id===selectedId);
- lastDraft.current=draft;lastSelected.current=selected??null;lastBusy.current=busy;
  const current=draft?.id===selectedId&&
     !(draft.archive_preview&&selected&&!selected.archive_preview)
     ?draft:selected??null;
@@ -279,7 +275,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   const state=nextState??current.state;
   const problem=validateNewspaperEdition(current);
   // Permite cancelar mesmo uma edição ainda incompleta.
-  if(problem&&state!=='cancelled'){setError(problem);return;}
+  // Incomplete drafts must be saveable; publishing still requires review.
+  if(problem&&state==='published'){setError(problem);return;}
   if(state==='cancelled'&&!window.confirm('Cancelar o envio desta edição? Ela ficará invisível aos jogadores, mas preservada no histórico editorial.'))return;
   setBusy(true);setError('');
   try{
@@ -531,12 +528,29 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const revisionsQuery=useQuery({queryKey:['campaign-newspaper-revisions',current?.id],
   queryFn:()=>getNewspaperRevisions(current!.id),enabled:Boolean(editorial&&editor&&current?.id),
   staleTime:20_000,retry:false});
- // Salvamento automático: só rascunhos, depois de 8 s sem digitar, e em silêncio se a edição
- // ainda estiver incompleta (o botão Salvar continua mostrando o motivo).
+ // Keep the existing 8-second save after a pause, plus a hard one-minute
+ // fallback for editors who type continuously. An incomplete draft is valid
+ // for persistence: publication validation is NOT an autosave gate.
  useEffect(()=>{
-  if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft')return;
+  if(!editorial||!editor)return;
+  const everyMinute=window.setInterval(()=>setMinuteTick(t=>t+1),60_000);
+  const onReconnect=()=>setRetryTick(t=>t+1);
+  window.addEventListener('online',onReconnect);
+  return()=>{window.clearInterval(everyMinute);
+   window.removeEventListener('online',onReconnect);};
+ },[editorial,editor]);
+ useEffect(()=>{
+  if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft'||
+     offlineRecovery?.editionId===draft.id)return;
+  const periodicDue=minuteTick>minuteHandled.current;
   const timer=window.setTimeout(()=>{
-   if(autosaving.current||validateNewspaperEdition(draft))return;
+   if(periodicDue)minuteHandled.current=minuteTick;
+   if(autosaving.current)return;
+   if(typeof navigator!=='undefined'&&navigator.onLine===false){
+    setSaveStatus('failed');
+    setMessage('Sem conexão. Sua edição permanece guardada neste dispositivo e será enviada ao reconectar.');
+    return;
+   }
    autosaving.current=true;setSaveStatus('saving');
    void updateNewspaperEdition(draft,{
     campaign_date:draft.campaign_date,title:draft.title.trim(),subtitle:draft.subtitle,
@@ -566,9 +580,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
      retryTimer.current=window.setTimeout(()=>setRetryTick(tick=>tick+1),20_000);
     }
    }).finally(()=>{autosaving.current=false;});
-  },8000);
+  },periodicDue?0:8000);
   return()=>window.clearTimeout(timer);
- },[editorial,editor,dirty,busy,draft,retryTick]);
+ },[editorial,editor,dirty,busy,draft,retryTick,minuteTick,offlineRecovery]);
  useEffect(()=>{setSaveStatus('idle');setSavedAt('');},[selectedId]);
  useEffect(()=>{
   if(!dirty||!editor)return;
@@ -951,6 +965,9 @@ const useStoryModel=async(model:StoryModel)=>{
   onUndo={undo} onRedo={redo} onCopyBlock={copyBlock} onCutBlock={cutBlock}
   onPasteBlock={(text,files)=>{void pasteBlocks(text,files);}}
   saveState={{status:saveStatus,...(savedAt?{at:savedAt}:{}),dirty}}
+  offlineRecovery={offlineRecovery}
+  offlineStorageDenied={offlineStorageDenied}
+  onRecoverOffline={recoverLocal} onDiscardOffline={discardLocal}
   canRestoreDiscard={discardBackup!==null} onRestoreDiscard={restoreDiscard}
   onConvertBlock={convertEditorialBlock}
   dirty={dirty} onDiscard={discardChanges} onDeleteDraft={()=>{void deleteDraft();}}
