@@ -248,6 +248,19 @@ test('drafts do not consume official numbers and a stale sequence is recovered a
   assert.equal(old.editionNo,3);
 });
 
+test('deleted draft cannot be published or consume an issue number',async()=>{
+  const f=fixture(),srv=f.service();
+  const draft=await srv.saveEdition(token,rich());
+  await markNewspaperDeleted(f.db,snapshot,{id:draft.id,actorUid:'editor-1',state:'draft'});
+  await denied(()=>srv.saveEdition(token,rich({
+    id:draft.id,expectedVersion:1,state:'published',requestKey:'draft-removed-publication-001',
+  })),'editorial_draft_deleted',409);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,13);
+  await assert.rejects(()=>markNewspaperDeleted(f.db,snapshot,{
+    id:'imported-12',actorUid:'editor-1',state:'draft',
+  }),error=>error?.status===409&&error.message==='published_edition_immutable');
+});
+
 test('issued editions cannot be tombstoned even through the general delete RPC',async()=>{
   await assert.rejects(
     ()=>markNewspaperDeleted({},snapshot,{
