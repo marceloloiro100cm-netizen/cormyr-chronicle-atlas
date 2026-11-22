@@ -73,11 +73,11 @@ describe('Redação A Folha Sem Selo',()=>{
   p.archiveNotice='Edições publicadas recuperadas; carregando os rascunhos do arquivo privado.';
   render(<NewspaperEditorialDesk {...p}/>);
   fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
-  expect(screen.getAllByText(/Nº [12] ·/)).toHaveLength(2);
+  expect(screen.getAllByRole('button',{name:/Nº [12] ·/})).toHaveLength(2);
   expect(screen.queryByText('Carregando arquivo…')).toBeNull();
   expect(screen.queryByRole('button',{name:/Excluir edição nº/})).toBeNull();
   expect(screen.getByText(/Edições publicadas recuperadas/)).toBeTruthy();
-  fireEvent.click(screen.getAllByText(/Nº [12] ·/)[0]!);
+  fireEvent.click(screen.getAllByRole('button',{name:/Nº [12] ·/})[0]!);
   expect(p.onOpen).toHaveBeenCalledWith(p.history[0]);
  });
  it('mostra erro e permite atualizar o arquivo quando a projeção privada falha',()=>{
