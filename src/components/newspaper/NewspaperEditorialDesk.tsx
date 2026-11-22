@@ -24,6 +24,7 @@ import {NewspaperShortcutHelp,NewspaperSlashMenu} from './NewspaperKeyboardUi';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
+import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar';
 import {NewspaperAudit} from './NewspaperAudit';
 import {NewspaperStaff} from './NewspaperStaff';
 import {NewspaperStoryModels} from './NewspaperStoryModels';
@@ -238,11 +239,15 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  };
  return <div className="folha-editorial" aria-label="Redação A Folha Sem Selo">
   <header className={`folha-topbar folha-font-${identity.font_style}`}>
-   <div className="folha-top-brand">
-    <p><span aria-hidden="true">✦</span> JORNAL</p>
-    <h1>{identity.title}</h1>
-    {identity.subtitle&&<span className="folha-top-slogan">{identity.subtitle}</span>}
-   </div>
+   <a className="folha-top-brand folha-site-home" href="/cormyr/index.html"
+     aria-label="Atlas Cormyr: voltar ao site público">
+    <img src="/cormyr/assets/cormyr.jpg" width={35} height={45} alt="Brasão de Cormyr"/>
+    <span className="folha-site-home-title">
+     <p><span aria-hidden="true">✦</span> JORNAL</p>
+     <h1>{identity.title}</h1>
+     {identity.subtitle&&<span className="folha-top-slogan">{identity.subtitle}</span>}
+    </span>
+   </a>
    <div className="folha-top-account">
     <button type="button" className="folha-role" aria-expanded={profileOpen}
       onClick={()=>setProfileOpen(value=>!value)}>
@@ -405,6 +410,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          const draft=dateStoryDraft(date,title);
          setSection('capa');setFullPreview(false);props.onWriteAboutDate(draft.title,draft.body);
         }}/>
+       <div className="folha-calendar-public"><PublicChronicleCalendar/></div>
       </section>}
 
       {section==='redacao'&&<section className="folha-section-content">

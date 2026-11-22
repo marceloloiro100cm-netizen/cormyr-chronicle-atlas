@@ -676,3 +676,10 @@
   grid-template-columns:minmax(0,1fr)
  }
 }
+
+/* Cormyr crest/title returns to the public Atlas; preserves editorial masthead. */
+.folha-site-home{display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit}
+.folha-site-home>img{object-fit:contain;flex:none;max-width:35px;height:45px}
+.folha-site-home-title{min-width:0;display:block}
+.folha-site-home:focus-visible{outline:3px solid #c59e57;outline-offset:4px}
+.folha-calendar-public{margin-top:24px}

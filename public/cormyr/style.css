@@ -437,3 +437,7 @@
 
 /* Menu principal como links (botão direito > abrir em nova guia). */
 .nav a{text-decoration:none;cursor:pointer}
+
+/* Public Chronicle calendar: full-width read-only embed below Jornal. */
+.chronicle-frame{display:block;width:100%;height:max(930px,calc(100vh - 210px));min-height:930px;border:1px solid #dddce5;border-radius:10px;background:#f5f4f8}
+@media(max-width:700px){.chronicle-frame{height:1100px;min-height:1000px}}

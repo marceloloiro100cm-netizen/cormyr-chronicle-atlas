@@ -139,7 +139,7 @@ export function visibleForRegions(item,regions){
 }
 /** Valida e monta o documento de festival (cadastro ou edição). */
 export function planFestivalSave(previous,payload,{deny,newId,uid,at}){
-  const keys=['id','version','name','scope','region','date','repeat','durationDays','notify','description'];
+  const keys=['id','version','name','scope','region','date','repeat','durationDays','notify','description','public'];
   if(!payload||typeof payload!=='object'||Array.isArray(payload)||
      Object.keys(payload).some(k=>!keys.includes(k)))deny('invalid_festival',400);
   const {id,version,name,scope,region,date,repeat,durationDays,notify,description}=payload;
@@ -151,10 +151,12 @@ export function planFestivalSave(previous,payload,{deny,newId,uid,at}){
      !d||!harptosDateValid(d)||!['once','yearly'].includes(repeat)||
      !Number.isInteger(durationDays)||durationDays<1||durationDays>30||
      typeof notify!=='boolean'||
+     (payload.public!==undefined&&typeof payload.public!=='boolean')||
      (description!==undefined&&(typeof description!=='string'||description.length>600)))
     deny('invalid_festival',400);
   const body={name:name.trim(),scope,region:scope==='region'?region:null,date:d,
-    repeat,durationDays,notify,description:(description??'').trim(),deleted:false,
+    repeat,durationDays,notify,description:(description??'').trim(),
+    ...(payload.public===true?{public:true}:{}),deleted:false,
     updatedAt:at,updatedBy:uid};
   if(id===null||id===undefined){
     if(previous||(version!==null&&version!==undefined))deny('invalid_festival',400);

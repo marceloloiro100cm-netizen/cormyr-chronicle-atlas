@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Calendário público de Cormyr: crônicas anuais, festas de Harptos e acontecimentos oficiais do Reino.">
+  <title>Calendário público · Atlas Cormyr</title>
+  <link rel="stylesheet" href="/cormyr/public-calendar.css?v=20261122a">
+  <script src="/cormyr/public-calendar.js?v=20261122a" defer></script>
+</head>
+<body>
+<main class="chronicle" id="chronicle-calendar">
+  <header class="chronicle-heading">
+    <div>
+      <p class="chronicle-eyebrow">CRÔNICAS E DATAS DE CORMYR</p>
+      <h1>Calendário do Reino</h1>
+      <p>Consulte os acontecimentos públicos ao longo dos anos, os festivais de Harptos e as crônicas de todas as regiões.</p>
+    </div>
+    <a class="chronicle-back" href="/cormyr/index.html">Reino e regiões</a>
+  </header>
+  <section class="chronicle-control" aria-label="Navegar no tempo">
+    <div class="chronicle-years">
+      <button type="button" id="chronicle-prev-year" aria-label="Ano anterior">‹</button>
+      <label for="chronicle-year">Ano <span>CV</span><input type="number" id="chronicle-year" min="1" max="9999" value="1522" inputmode="numeric"></label>
+      <button type="button" id="chronicle-next-year" aria-label="Ano seguinte">›</button>
+      <button type="button" id="chronicle-current" class="chronicle-ghost">Data oficial</button>
+    </div>
+    <div class="chronicle-controls-grid">
+      <label for="chronicle-mode">Exibir<select id="chronicle-mode"><option value="year">Ano inteiro</option><option value="month">Mês</option><option value="tenday">Désdia (10 dias)</option><option value="day">Dia</option></select></label>
+      <label for="chronicle-month">Mês<select id="chronicle-month"></select></label>
+      <label for="chronicle-tenday">Désdia<select id="chronicle-tenday"><option value="1">1ª · dias 1–10</option><option value="2">2ª · dias 11–20</option><option value="3">3ª · dias 21–30</option></select></label>
+      <label for="chronicle-day">Dia<select id="chronicle-day"></select></label>
+      <label for="chronicle-region">Abrangência<select id="chronicle-region"><option value="all">Reino e todas as regiões</option><option value="kingdom">Reino inteiro</option><option value="1">Costa do Dragão (grupo 1)</option><option value="2">Horselands (grupo 2)</option></select></label>
+      <label for="chronicle-search">Pesquisar<input type="search" id="chronicle-search" placeholder="Acontecimento, personagem, local..."></label>
+    </div>
+    <div class="chronicle-bottom">
+      <div class="chronicle-steps"><button id="chronicle-previous" type="button">Anterior</button><span id="chronicle-period" role="status"></span><button id="chronicle-next" type="button">Seguinte</button></div>
+      <p id="chronicle-official" role="status">Consultando a data oficial…</p>
+    </div>
+  </section>
+  <p class="chronicle-note">Esta é uma consulta histórica. Navegar no calendário <strong>não avança a data oficial</strong>, não abre semanas, não envia missivas e não modifica fichas.</p>
+  <section class="chronicle-section" aria-labelledby="chronicle-year-heading">
+    <div class="chronicle-section-header"><div><p class="chronicle-eyebrow">SEM DIA OU MÊS DEFINIDO</p><h2 id="chronicle-year-heading">Crônicas do ano</h2></div><span id="chronicle-year-count"></span></div>
+    <div id="chronicle-year-events" class="chronicle-list" aria-live="polite"><p>Consultando as crônicas…</p></div>
+  </section>
+  <section class="chronicle-section" aria-labelledby="chronicle-dated-heading">
+    <div class="chronicle-section-header"><div><p class="chronicle-eyebrow">DATAS PÚBLICAS DE HARPTOS</p><h2 id="chronicle-dated-heading">Festas e eventos publicados</h2></div><span id="chronicle-dated-count"></span></div>
+    <div id="chronicle-dated-events" class="chronicle-list" aria-live="polite"><p>Consultando o calendário…</p></div>
+    <p id="chronicle-cloud-note" class="chronicle-cloud-note" role="status"></p>
+  </section>
+  <footer class="chronicle-footer">As crônicas anuais preservam a precisão temporal do documento original: um acontecimento sem data específica não é atribuído artificialmente a um dia. Missivas, eventos de Casas e material privado do Narrador não integram este calendário.</footer>
+</main>
+</body>
+</html>

@@ -1077,7 +1077,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       return {id:e['id'],date:value.date,title:value.title,
        description:value.description??'',deleted:value.deleted===true,
        version:e['version'],published:e['published']!=null,
-       pending:e['draft']!=null,
+       pending:e['draft']!=null,...(value.public===true?{public:true}:{}),
        scope:value.scope==='region'?'region':'kingdom',region:value.scope==='region'?value.region??null:null};
      }).sort((a,b)=>String(a.date).localeCompare(String(b.date))||
       String(a.id).localeCompare(String(b.id)));
