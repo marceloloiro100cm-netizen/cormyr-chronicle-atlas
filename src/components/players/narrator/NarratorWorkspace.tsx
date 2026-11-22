@@ -73,9 +73,8 @@ export function NarratorWorkspace({menu,extra,section,onSection,sectionHref,unre
    {(()=>{const body=<><img src={CORMYR_CREST} alt="" width={34} height={42}/>
     <span><b>Atlas <em>Cormyr</em></b>
      <span className="nw-clock"><Suspense fallback={<small>Consultando data oficial…</small>}><PrivateClockBody/></Suspense></span></span></>;
-    const link=nav('painel');
-    return link?<a className="nw-brand" {...link} aria-label="Atlas Cormyr: abrir o Conselho das casas">{body}</a>
-     :<button type="button" className="nw-brand" onClick={()=>go('painel')} aria-label="Atlas Cormyr: abrir o Conselho das casas">{body}</button>;})()}
+    return <a className="nw-brand" href="/cormyr/index.html"
+      aria-label="Atlas Cormyr: voltar ao site público">{body}</a>;})()}
    <span className="nw-spacer"/>
    {(()=>{const props={className:'nw-week'+(openRound===null?' nw-week--closed':''),title:'Abrir o Hub Temporal',
      'aria-label':(openRound!==null?`Semana ${openRound} aberta`:'Nenhuma semana aberta')+'. Abrir o Hub Temporal'};
