@@ -145,6 +145,8 @@
  * e o callback de arquivo recusa qualquer edição que não seja rascunho.
  * Os menus, a ordem, os filtros, a escrita, as imagens, as revisões e
  * todas as seções originais permanecem. Mudanças expressas pelo dono.
+ * Public archive fast-path is read-only and sourced from the same published
+ * allowlist; the layout only gains a loading-status hint and retry action.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -160,8 +162,8 @@ const originals={
   'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'b9217eacd2033a1f235b0863e6e51d0cc8e60a03',
-  'src/components/newspaper/NewspaperHub.tsx':'d29bbd3a3f7c308db240afd55f80108531ff2858',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'6b8af9e8cafda3a6ae3118d663cc83260ef2f986',
+  'src/components/newspaper/NewspaperHub.tsx':'9437836ed9db86994b682a296c50018b6917088f',
   'src/components/newspaper/newspaper-editorial.css':'4c80d483ffbb0f437b5a4856557f0fd04f855e60',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
