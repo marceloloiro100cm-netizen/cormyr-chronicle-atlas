@@ -131,6 +131,15 @@
  * jornal para fora da primeira tela. As 10 abas existentes passam a se
  * distribuir em linhas visíveis em tablets e celulares, sem excluir ações.
  * A paridade do arquivo de estilo foi recapturada após revisão do diff.
+ * 2026-11-22 (Calendário público anual, PR #708): o proprietário autorizou
+ * expressamente adições: players-workspace preserva o calendário original e
+ * acrescenta uma consulta pública somente leitura; NewspaperEditorialDesk
+ * preserva as nove seções, a função Escrever sobre a data e todos os comandos,
+ * e acrescenta consulta anual mais link de retorno ao Atlas no brasão/título;
+ * newspaper-editorial.css adiciona apenas regras isoladas de layout desse link.
+ * Conferidos também os contratos de menu, filtros, navegação e o teste de
+ * segregação de dados públicos. Os três SHA-1 foram atualizados após revisão
+ * da diferença, não como autorização para remover controles existentes.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -143,12 +152,12 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'4ca7440409de1560c3e4df94a3bfdc8d2606836d',
+  'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'f6f1cf4f106580ddb62e813a27c5a0f4bf9f2f10',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'0a0c2d19058e700cdb2a97127e847cc0c1f80e4b',
   'src/components/newspaper/NewspaperHub.tsx':'50d897ac44662ddf37bc794adba1114e5b513ff7',
-  'src/components/newspaper/newspaper-editorial.css':'6b20d2e36145a88ead599c37373a09895a2ac40b',
+  'src/components/newspaper/newspaper-editorial.css':'4c80d483ffbb0f437b5a4856557f0fd04f855e60',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
