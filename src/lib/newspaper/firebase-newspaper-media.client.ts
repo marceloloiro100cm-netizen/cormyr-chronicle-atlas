@@ -49,6 +49,18 @@ export function newspaperMediaErrorMessage(status:number,code:unknown):string{
  };
  return messages[status]??'Falha na operação com o armazenamento do Jornal.';
 }
+const SAFE_503=new Set([
+ 'newspaper_media_unavailable','newspaper_media_disabled','media_not_approved',
+ 'media_storage_permission_denied','media_storage_unavailable','media_registry_unavailable',
+ 'migration_stage_not_ready','invalid_server_configuration','cloud_read_disabled',
+ 'media_not_ready','media_sdk_initialization_failed','media_service_initialization_failed',
+ 'media_runtime_lookup_failed','media_scope_backend_unavailable',
+ 'media_parse_backend_unavailable','media_operation_unavailable',
+]);
+export function newspaperMediaDiagnosticCode(status:number,raw:unknown):string|null{
+ if(status!==503)return null;
+ return typeof raw==='string'&&SAFE_503.has(raw)?raw:'http_503_unclassified';
+}
 function encodeFile(file:File):Promise<string>{
  return new Promise((resolve,reject)=>{
   const reader=new FileReader();
@@ -80,7 +92,9 @@ async function call(body:Record<string,unknown>,binary=false):Promise<any>{
    if(body&&typeof body==='object'&&!Array.isArray(body))
     code=(body as Record<string,unknown>)['error'];
   }catch{/* A response without JSON is still an error. */}
-  throw Error(newspaperMediaErrorMessage(response.status,code));
+  const detail=newspaperMediaDiagnosticCode(response.status,code);
+  const message=newspaperMediaErrorMessage(response.status,code);
+  throw Error(detail?message+' (Diagnóstico: '+detail+')':message);
  }
  if(binary){
   const blob=await response.blob();
