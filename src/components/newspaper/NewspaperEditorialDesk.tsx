@@ -692,8 +692,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        {props.dirty&&<button type="button" disabled={busy} onClick={props.onDiscard}>Descartar alterações</button>}
        {current.state==='draft'&&<button type="button" disabled={busy}
         onClick={props.onDeleteDraft}><Trash2 size={15}/> Excluir rascunho</button>}
-       {current.state!=='cancelled'&&current.state!=='draft'&&<button type="button" disabled={busy}
-        onClick={props.onCancel}>Cancelar envio</button>}
+       {current.state==='published'&&<small className="folha-field-hint">Edição publicada: preservada permanentemente. Use Arquivar para mantê-la no acervo.</small>}
        {current.state==='cancelled'&&<button type="button" disabled={busy}
         onClick={()=>{props.onPatch({state:'draft'});props.onEdit();}}>Reabrir rascunho</button>}
        {current.state==='archived'&&<button type="button" disabled={busy}
