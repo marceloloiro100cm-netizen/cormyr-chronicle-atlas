@@ -5,7 +5,8 @@
 import {firebaseWorkspaceClient} from '../firebase-workspace/state';
 import {workspaceRequest} from '../firebase-workspace/client';
 import {firebasePilotAuth} from '../auth/firebase-pilot-session';
-import {safeNewspaperBlocks,type NewspaperEdition,type NewspaperBlock,type NewspaperRevision,
+import {safeNewspaperBlocks,NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,
+ type NewspaperEdition,type NewspaperBlock,type NewspaperRevision,
  type NewspaperState,type NewspaperTemplate,type NewspaperFont} from './model';
 
 const CLOUD=/^cloud-[a-f0-9]{64}$/;
@@ -109,8 +110,9 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
    const list=await request<EditorialList>({action:'listEditorial'});
    if(!Array.isArray(list.items)||list.items.length>100)
     throw Error('Histórico editorial maior que o limite de segurança.');
-   if(Number.isSafeInteger(list.nextOfficialEditionNo)&&list.nextOfficialEditionNo!>=1)
-    nextOfficialNumber=list.nextOfficialEditionNo!;
+   if(typeof list.nextOfficialEditionNo==='number'&&
+      Number.isSafeInteger(list.nextOfficialEditionNo)&&list.nextOfficialEditionNo>=1)
+    nextOfficialNumber=list.nextOfficialEditionNo;
    cloud=await Promise.all(list.items.map(item=>{
     if(!CLOUD.test(item.id))throw Error('Identificador editorial inválido.');
     return request<CloudEdition>({action:'getEditorial',id:item.id});
@@ -162,7 +164,8 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
   const edition:NewspaperEdition={
    id:item.id,edition_no:item.editionNo,campaign_date:v.campaignDate,
    title:v.title,subtitle:typeof v.subtitle==='string'?v.subtitle:'',
-   template:'classico',font_style:'classico',
+   template:NEWSPAPER_TEMPLATES.some(t=>t.value===v.template)?v.template as NewspaperTemplate:'classico',
+   font_style:NEWSPAPER_FONTS.some(t=>t.value===v.font_style)?v.font_style as NewspaperFont:'classico',
    state:'published',blocks:safeNewspaperBlocks(v.blocks as NewspaperBlock[]),
    pdf_path:null,publish_on:null,
    version:typeof v.version==='number'&&Number.isSafeInteger(v.version)&&v.version>0?v.version:1,
