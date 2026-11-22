@@ -1,0 +1,82 @@
+name: Firebase Hub — ajustar data na Semana 3 (21 Marpenoth 1522)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/firebase/repair-calendar-date-marpenoth-20261121*.mjs'
+      - '.github/workflows/firebase-marpenoth-date-only-20261121.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cormyr-marpenoth-third-desdia-date-only
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Offline date-only safety tests
+    if: github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: |
+          node --check scripts/firebase/repair-calendar-date-marpenoth-20261121.mjs
+          node --test scripts/firebase/repair-calendar-date-marpenoth-20261121.test.mjs
+          node scripts/verify-public-repo.mjs
+
+  set-official-date:
+    name: Protected one-off Firestore date change
+    needs: tests
+    if: >-
+      github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      github.event.head_commit.message == 'fix(firebase): set 21 Marpenoth inside week 3'
+    environment: firebase-auth-test-activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GOOGLE_CLOUD_PROJECT: cormyr
+      CORMYR_AUTH_TEST_OPERATOR: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+      CORMYR_DATE_ONLY_ACK: OWNER_SET_21_MARPENOTH_WEEK_3_20261121
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Require existing authorized operator, not readonly service account
+        run: |
+          test -n "$CORMYR_AUTH_TEST_OPERATOR"
+          test "$CORMYR_AUTH_TEST_OPERATOR" != 'cormyr-gh-reader@cormyr.iam.gserviceaccount.com'
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: ${{ vars.CORMYR_FIREBASE_AUTH_TEST_OPERATOR }}
+          project_id: cormyr
+      - name: Install locked Firebase Admin
+        run: bun install --frozen-lockfile
+      - name: Check current Week 3 / 20 Marpenoth and aligned mail version
+        run: node scripts/firebase/repair-calendar-date-marpenoth-20261121.mjs --check
+      - name: Atomically update only official date and clock version (no week advance)
+        run: node scripts/firebase/repair-calendar-date-marpenoth-20261121.mjs --apply
+      - name: Re-read Firestore after transaction
+        run: node scripts/firebase/repair-calendar-date-marpenoth-20261121.mjs --check
+      - name: Record exact scope
+        if: always()
+        run: |
+          echo 'Only operational clock date: 20 -> 21 Marpenoth 1522; week remains 3.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Mail version is synchronized in the same transaction; no letter, newspaper, event, spy, House or historical archive is updated.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Date-only correction fails closed on unexpected state or conflicting writes.' >> "$GITHUB_STEP_SUMMARY"
