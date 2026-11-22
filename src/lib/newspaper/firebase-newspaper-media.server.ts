@@ -18,6 +18,18 @@ export class NewspaperMediaError extends Error{
  constructor(readonly code:string,readonly status:number=400){super(code);}
 }
 const fail=(code:string,status=400):never=>{throw new NewspaperMediaError(code,status);};
+/** A Cloud error is untrusted. Classify only the denied status, without
+ * leaking provider diagnostics or any bucket/object metadata. */
+export function classifyNewspaperStorageError(error:unknown):
+ 'media_storage_permission_denied'|'media_storage_unavailable'{
+ if(error&&typeof error==='object'){
+  const e=error as {code?:unknown;statusCode?:unknown;status?:unknown};
+  if([e.code,e.statusCode,e.status].some(v=>v===403||v===7||
+     v==='403'||v==='PERMISSION_DENIED'))
+   return 'media_storage_permission_denied';
+ }
+ return 'media_storage_unavailable';
+}
 export const newspaperMediaDocId=(path:string)=>createHash('sha256').update('newspaper-media:'+path).digest('hex');
 export const newspaperMediaPath=(snapshot:string,kind:Kind,ext:string)=>`newspaper-media/${snapshot}/${kind}/${randomUUID()}.${ext}`;
 const detected=(b:Buffer):string|null=>{
@@ -113,11 +125,17 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
     bytes:v.bytes.length,sha256,sourceSnapshotId:snapshotId,createdBy:s.uid,
     createdAt:new Date().toISOString(),editionId:v.editionId??null,
     houseId:v.houseId??null,state:'ready'};
-   await bucket.file(path).save(v.bytes,{resumable:false,validation:'crc32c',
-    preconditionOpts:{ifGenerationMatch:0},
-    metadata:{contentType:v.contentType,cacheControl:'private, no-store',
-     metadata:{sourceSnapshotId:snapshotId,sha256,kind:v.kind}}});
-   await registry.doc(newspaperMediaDocId(path)).create(doc);
+   try{
+    await bucket.file(path).save(v.bytes,{resumable:false,validation:'crc32c',
+     preconditionOpts:{ifGenerationMatch:0},
+     metadata:{contentType:v.contentType,cacheControl:'private, no-store',
+      metadata:{sourceSnapshotId:snapshotId,sha256,kind:v.kind}}});
+   }catch(error){fail(classifyNewspaperStorageError(error),503);}
+   // Never delete an object if the metadata write fails: it may have been
+   // committed or another request may reference it. No successful upload
+   // response is returned until the registry is committed.
+   try{await registry.doc(newspaperMediaDocId(path)).create(doc);}
+   catch{fail('media_registry_unavailable',503);}
    return {path};
   },
   async clone(token:string,raw:unknown){
