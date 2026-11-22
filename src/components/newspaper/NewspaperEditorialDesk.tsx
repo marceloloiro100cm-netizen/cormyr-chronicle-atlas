@@ -44,6 +44,8 @@ const NAV=[
  {id:'configuracoes',label:'Configurações',icon:Settings},
 ] as const;
 type Section=typeof NAV[number]['id'];
+/** Drafts may retain imported technical numbers; none are official issues. */
+const issueLabel=(edition:NewspaperEdition)=>edition.state==='draft'? 'Rascunho (sem número oficial)':`Nº ${edition.edition_no}`;
 
 export interface NewspaperEditorialProps{
  userId:string;
@@ -299,7 +301,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          onChange={e=>{const next=history.find(x=>x.id===e.target.value);if(next)browseEdition(next);}}>
          {!current&&<option value="">Sem edição aberta</option>}
          {history.map(e=><option key={e.id} value={e.id}>
-          Nº {e.edition_no} · {dateLabel(e.campaign_date)} · {newspaperStatus(e.state)}</option>)}
+          {issueLabel(e)} · {dateLabel(e.campaign_date)} · {newspaperStatus(e.state)}</option>)}
         </select>
         <button type="button" disabled={busy} onClick={()=>{setSection('capa');props.onNew();}}>
          Próxima edição</button>
@@ -443,7 +445,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        <h3>Arquivo de edições</h3><p>Consulte e retome edições antigas, inclusive rascunhos e envios cancelados.</p>
        {props.loading?<p role="status">Carregando arquivo…</p>:
         <div className="folha-archive-list">{history.map(e=><div className="folha-archive-row" key={e.id}>
-         <button type="button" onClick={()=>browseEdition(e)}><span>Nº {e.edition_no} · {formatDate(e.campaign_date)}</span>
+         <button type="button" onClick={()=>browseEdition(e)}><span>{issueLabel(e)} · {formatDate(e.campaign_date)}</span>
          <strong>{e.title}</strong><small>{newspaperStatus(e.state)}</small></button>
          {e.state==='draft'&&<button type="button" className="folha-archive-trash" disabled={busy}
           aria-label={`Excluir rascunho nº ${e.edition_no}`} title="Descartar rascunho"
@@ -451,7 +453,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        {!props.loading&&history.length===0&&<p className="folha-empty-copy">O arquivo ainda não possui edições.</p>}
        <NewspaperAudit commissions={props.commissions} editions={history} houseNames={props.houseNames}/>
        {current&&<div className="folha-revisions">
-        <h4 className="newspaper-commission-heading">Histórico de revisões · Nº {current.edition_no}</h4>
+        <h4 className="newspaper-commission-heading">Histórico de revisões · {issueLabel(current)}</h4>
         <p>Cada salvamento guarda a versão anterior. Restaure uma delas na tela e depois salve ou descarte.</p>
         {props.revisions.length===0?<p className="folha-empty-copy">Ainda não há versões anteriores desta edição.</p>:
          <ul className="folha-revision-list">{props.revisions.map(r=><li key={r.id}>
@@ -664,7 +666,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        <div>{materialReady?<CheckCircle2 size={18} className="folha-ok"/>:
          <Circle size={18} className="folha-pending"/>}
         <span>{materialReady?'Pronta para publicar':'Falta conteúdo para publicar'}</span></div>
-       {current&&<p>{newspaperStatus(current.state)} · Nº {current.edition_no}</p>}
+       {current&&<p>{newspaperStatus(current.state)} · {issueLabel(current)}</p>}
        {current&&<p>{headlines.length} manchete(s) · {pdfReady?'PDF anexado':'Sem PDF'}</p>}
        {current&&<p className="folha-word-total">{wordsLabel(totalWords)}{minutes>0?` · cerca de ${minutes} min de leitura`:''}</p>}
        {current&&<div className="folha-schedule">
