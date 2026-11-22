@@ -195,6 +195,30 @@ const rich=(changes={})=>({action:'saveEdition',requestKey:'editorial-key-001',i
     blocks:[{id:'a',type:'headline',text:'Abertura da campanha',span:12,height:110},
       {id:'b',type:'article',text:'Notícia\nConteúdo da reportagem',bodyFont:'garamond',span:6,height:190}]},...changes});
 
+test('partial third-edition manuscript is saved without issuing a new number',async()=>{
+ const f=fixture(),srv=f.service();
+ const unfinished={title:'',subtitle:'',blocks:[{
+  id:'headline',type:'headline',text:'O início da manchete...',span:12,height:110,
+ }]};
+ const first=await srv.saveEdition(token,rich({
+  requestKey:'partial-editorial-first-001',content:unfinished,
+ }));
+ assert.equal(first.state,'draft');assert.equal(first.version,1);
+ assert.equal(first.blocks[0].text,'O início da manchete...');
+ assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,13);
+ const after=await srv.saveEdition(token,rich({
+  requestKey:'partial-editorial-second-001',id:first.id,expectedVersion:1,
+  content:{...unfinished,blocks:[{...unfinished.blocks[0],text:'Texto aumentado antes de cair a internet'}]},
+ }));
+ assert.equal(after.version,2);
+ assert.equal(after.blocks[0].text,'Texto aumentado antes de cair a internet');
+ assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,13);
+ await denied(()=>srv.saveEdition(token,rich({
+  requestKey:'partial-editorial-publish-001',id:first.id,expectedVersion:2,
+  state:'published',content:unfinished,
+ })),'invalid_editorial_content',400);
+ assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,13);
+});
 test('editorial lifecycle persists drafts, edits, cancellation and archive with audit and CAS',async()=>{
   const f=fixture(),srv=f.service();
   const initial=await srv.saveEdition(token,rich());
