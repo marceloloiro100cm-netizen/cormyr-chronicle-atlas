@@ -14,23 +14,25 @@ if(snaps.length!==1||roots.size>6)throw Error('snapshot_unverified');
 const snapshot=snaps[0].id;
 const stage=db.collection('migrationNewspaperRuntimeStage').doc(snapshot);
 const runtime=db.collection('campaignCloudRuntime').doc(snapshot);
-const [stageRoot,runtimeRoot,imported,live,audits]=await Promise.all([
+const [stageRoot,runtimeRoot,imported,live,legacyDrafts,audits]=await Promise.all([
  stage.get(),runtime.get(),stage.collection('editions').limit(501).get(),
  runtime.collection('publishedNewspapers').limit(501).get(),
+ runtime.collection('newspaperHistoricalDrafts').limit(501).get(),
  runtime.collection('newspaperAudits').limit(501).get(),
 ]);
 if(!stageRoot.exists||stageRoot.data()?.private!==true||
  stageRoot.data()?.status!=='complete'||!runtimeRoot.exists||
  runtimeRoot.data()?.private!==true||runtimeRoot.data()?.status!=='active'||
  runtimeRoot.data()?.sourceSnapshotId!==snapshot||
- imported.size>500||live.size>500||audits.size>500)
+ imported.size>500||live.size>500||legacyDrafts.size>500||audits.size>500)
  throw Error('source_or_history_unverified');
 const issued=v=>v?.state==='published'||v?.state==='archived'||typeof v?.publishedAt==='string';
-const archived=imported.docs.map(d=>d.data()),cloud=live.docs.map(d=>d.data());
+const archived=imported.docs.map(d=>d.data()),cloud=live.docs.map(d=>d.data()),
+ overlays=legacyDrafts.docs.map(d=>d.data());
 const published=[...archived,...cloud].filter(issued);
 const drafts=cloud.filter(v=>v?.state==='draft'&&v?.publishedAt==null);
 const prior=audits.docs.map(d=>d.data()).filter(v=>
- v?.action==='save_edition'&&v?.before&&v?.after);
+ ['save_edition','save_historical_draft'].includes(v?.action)&&v?.before&&v?.after);
 const hasText=v=>Array.isArray(v?.blocks)&&v.blocks.some(b=>
  typeof b?.text==='string'&&b.text.trim().length>0);
 const afterSecondDrafts=drafts.filter(v=>
@@ -43,6 +45,9 @@ console.log(JSON.stringify({
  draftsWithPersistedText:afterSecondDrafts.filter(hasText).length,
  previousSaveRevisions:prior.filter(v=>afterSecondDrafts.some(x=>x.id===v.editionId)).length,
  importedDraftCount:archived.filter(v=>v?.state==='draft').length,
+ historicalDraftOverlays:overlays.length,
+ historicalDraftOverlaysWithPersistedText:overlays.filter(hasText).length,
+ historicalDraftSaveRevisions:prior.filter(v=>v?.action==='save_historical_draft').length,
  recoveryRoute:'Editor-Chefe > Arquivo > selecionar rascunho > Histórico de revisões',
  textNotLogged:true,
 }));
