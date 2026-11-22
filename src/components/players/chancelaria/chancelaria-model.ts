@@ -78,6 +78,17 @@ export function buildConversations(letters:MailRow[],replies:ReplyRow[]):Convers
     ].sort((a,b)=>a.at.localeCompare(b.at));
     const all=[root,...children];
     const kind=conversationKind(root);
+    // The original narrator broadcast can have no House address at the
+    // root. A delivered historical reply is still addressed to the narrator.
+    // Verify the reply's recipient, not only the original letter category.
+    const historicalAddressed=(r:ReplyRow,uid:string,admin:boolean,editHouses:Set<string>)=>
+      deliveredReply(r)&&r.author_user_id!==uid&&
+      (r.recipient_user_id===uid||
+       (admin&&!root.origin_house_id&&
+        r.recipient_user_id===root.sender_user_id&&
+        r.author_user_id!==root.sender_user_id))&&
+      (admin?kind==='ao-narrador'||kind==='narrador'||kind==='geral':
+       kind!=='geral'||editHouses.size===1);
     result.push({root,letters:all,items,historical,kind,kindLabel:KIND_LABEL[kind],
       lastAt:[at(root),...items.map(i=>i.at)].sort().at(-1)??'',
       unreadLetterIds:(ctx)=>{
@@ -91,19 +102,13 @@ export function buildConversations(letters:MailRow[],replies:ReplyRow[]):Convers
       replyTarget:(uid,admin,editHouses)=>{
         const cloud=all.filter(m=>canReplyTo(m,uid,admin,editHouses))
           .map(m=>({id:m.id,at:at(m)}));
-        const old=historical.filter(r=>deliveredReply(r)&&
-          r.author_user_id!==uid&&r.recipient_user_id===uid&&
-          (admin?kind==='ao-narrador'||kind==='narrador':
-            kind!=='geral'||editHouses.size===1))
+        const old=historical.filter(r=>historicalAddressed(r,uid,admin,editHouses))
           .map(r=>({id:root.id,at:at(r)}));
         return [...cloud,...old].sort((a,b)=>a.at.localeCompare(b.at))
           .at(-1)?.id??null;
       },
       replyToHistoricalId:(uid,admin,editHouses)=>{
-        const candidate=historical.filter(r=>deliveredReply(r)&&
-          r.author_user_id!==uid&&r.recipient_user_id===uid&&
-          (admin?kind==='ao-narrador'||kind==='narrador':
-            kind!=='geral'||editHouses.size===1))
+        const candidate=historical.filter(r=>historicalAddressed(r,uid,admin,editHouses))
           .sort((a,b)=>at(a).localeCompare(at(b))).at(-1);
         const newestCloud=all.filter(m=>canReplyTo(m,uid,admin,editHouses))
           .sort((a,b)=>at(a).localeCompare(at(b))).at(-1);

@@ -78,6 +78,42 @@ describe('Chancelaria: modelo de filas e fios',()=>{
     expect(c?.replyToHistoricalId(N,true,new Set())).toBe(legacyReply.id);
     expect(c?.replyTarget('intruso',false,new Set())).toBeNull();
   });
+  it('resposta do jogador em carta geral da Semana 2 entra em Sua vez do Narrador e continua respondível',()=>{
+    const general:MailRow={...root,id:'cavaleiro-bandido-legada',
+      source:'imported',sender_user_id:N,origin_house_id:null,
+      recipient_house_id:null,letter_kind:'geral',
+      conversation_id:'cavaleiro-bandido-legada',delivery_week:2};
+    const legacy:ReplyRow={id:'resposta-ashkar-27-10',
+      letter_id:general.id,author_user_id:P,recipient_user_id:N,
+      author_name:'Casa Ashkar',content:'Envio dois soldados ao amanhecer',
+      created_at:'2026-11-15T12:00:00Z',delivered_at:'2026-11-15T12:00:00Z',
+      publication_state:'delivered'};
+    const [c]=buildConversations([general],[legacy]);
+    const narrator={uid:N,admin:true,receipts:[],openRound:3,editHouses:new Set<string>()};
+    expect(lastAuthor(c!)).toBe(P);
+    expect(c!.replyTarget(N,true,new Set())).toBe(general.id);
+    expect(c!.replyToHistoricalId(N,true,new Set())).toBe(legacy.id);
+    expect(queueMembers('yourturn',[c!],narrator)).toEqual([c]);
+    expect(c!.replyTarget('outro',false,new Set())).toBeNull();
+  });
+  it('permite Narrador atual responder a resposta endereçada ao Narrador histórico, mas não a terceiros',()=>{
+    const general:MailRow={...root,id:'cavaleiro-bandido-2',
+      source:'imported',sender_user_id:'narrador-historico',
+      origin_house_id:null,recipient_house_id:'ashkar',
+      letter_kind:'geral',conversation_id:'cavaleiro-bandido-2',delivery_week:2};
+    const legacy:ReplyRow={id:'resposta-legada-2',letter_id:general.id,
+      author_user_id:P,recipient_user_id:'narrador-historico',
+      author_name:'Casa Ashkar',created_at:'2026-11-15T12:00:00Z',
+      publication_state:'delivered'};
+    const [c]=buildConversations([general],[legacy]);
+    expect(c!.replyToHistoricalId(N,true,new Set())).toBe(legacy.id);
+    expect(queueMembers('yourturn',[c!],{
+      uid:N,admin:true,receipts:[],openRound:3,editHouses:new Set(),
+    })).toHaveLength(1);
+    const forged={...legacy,recipient_user_id:'terceiro'};
+    const [wrong]=buildConversations([general],[forged]);
+    expect(wrong!.replyToHistoricalId(N,true,new Set())).toBeNull();
+  });
   it('envios em lote do Narrador não se fundem num só fio',()=>{
     const a={...root,batch_key:'lote'},b={...root,id:h('e'),recipient_house_id:'goldfin',batch_key:'lote'};
     expect(buildConversations([a,b],[])).toHaveLength(2);

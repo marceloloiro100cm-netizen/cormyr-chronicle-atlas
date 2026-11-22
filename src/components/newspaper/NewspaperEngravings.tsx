@@ -25,11 +25,24 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRes
  const [name,setName]=useState('');
  const [file,setFile]=useState<File|null>(null);
  const [error,setError]=useState('');
+ const [sending,setSending]=useState(false);
  const submit=async()=>{
+  if(busy||sending)return;
   if(!file){setError('Escolha uma imagem para enviar.');return;}
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)){
+   setError('Selecione uma imagem PNG, JPG ou WebP.');return;
+  }
+  if(file.size===0||file.size>5*1024*1024){
+   setError('A gravura deve ter entre 1 byte e 5 MB.');return;
+  }
   setError('');
-  const ok=await onUpload(file,name);
-  if(ok){setFile(null);setName('');}
+  setSending(true);
+  try{
+   const ok=await onUpload(file,name);
+   if(ok){setFile(null);setName('');}
+  }catch{
+   setError('Falha no envio da gravura. O arquivo selecionado foi preservado.');
+  }finally{setSending(false);}
  };
  return <section className="folha-engravings-manager" aria-label="Gravuras do Reino">
   <h4>Gravuras do Reino</h4>
@@ -41,9 +54,15 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRes
    <label>Nome da gravura<input value={name} maxLength={80} placeholder="Ex.: Torre de Suzail"
     onChange={e=>setName(e.target.value)}/></label>
    <label className="folha-file-button"><ImagePlus size={16}/> {file?file.name:'Escolher imagem'}
-    <input type="file" accept="image/png,image/jpeg,image/webp"
-     onChange={e=>{setFile(e.target.files?.[0]??null);e.target.value='';}}/></label>
-   <button type="submit" className="folha-text-action" disabled={busy}>Enviar gravura</button>
+    <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Selecionar gravura"
+     onChange={e=>{
+      // Clear stale "Escolha uma imagem" immediately after a successful
+      // selection; clearing the native input also permits choosing the same
+      // file again after a failed upload without losing the File in state.
+      setFile(e.target.files?.[0]??null);setError('');e.target.value='';
+     }}/></label>
+   <button type="submit" className="folha-text-action" disabled={busy||sending}>
+    {sending?'Enviando gravura…':'Enviar gravura'}</button>
   </form>
   {error&&<p className="newspaper-alert" role="alert">{error}</p>}
   {items.length===0?<p className="folha-empty-copy">Nenhuma gravura enviada ainda.</p>:

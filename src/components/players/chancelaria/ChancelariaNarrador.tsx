@@ -387,6 +387,10 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
   const replyRef=useRef<HTMLTextAreaElement>(null);
   useEffect(()=>{const t=replyRef.current;if(!t)return;t.style.height='auto';t.style.height=Math.min(t.scrollHeight+2,Math.round(window.innerHeight*.4))+'px';},[reply]);
   const target=c.replyTarget(uid,admin,editHouses);
+  // Historical replies have their own immutable ID. Supplying that ID lets
+  // Firebase derive the responding House from the authenticated source, even
+  // after the original delivery week has ended.
+  const historicReplyId=c.replyToHistoricalId(uid,admin,editHouses);
   const own=(m:MailRow)=>m.sender_user_id===uid&&m['source']==='firebase-cloud';
   const pending=(m:MailRow)=>m.publication_state==='draft'||m.publication_state==='scheduled';
   const editable=(m:MailRow)=>own(m)&&!m.deleted_at&&(pending(m)||(openRound!==null&&(m.delivery_week??0)>=openRound));
@@ -399,8 +403,8 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
     if(!target||!reply.trim())return;
     if(!today){onError('Data oficial da campanha indisponível.');return;}
     const ok=await act(()=>draft
-      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:null,p_content:reply,p_signed_by:admin?signed.trim()||null:null},today)
-      :datedMail('reply_weekly_message',{p_letter:target,p_reply:null,p_content:reply,p_key:key,p_draft:false,p_signed_by:admin?signed.trim()||null:null},today));
+      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:historicReplyId,p_content:reply,p_signed_by:admin?signed.trim()||null:null},today)
+      :datedMail('reply_weekly_message',{p_letter:target,p_reply:historicReplyId,p_content:reply,p_key:key,p_draft:false,p_signed_by:admin?signed.trim()||null:null},today));
     if(!ok)return;
     setReply('');setKey(crypto.randomUUID());
   };
