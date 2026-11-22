@@ -189,10 +189,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   if(current&&!current.archive_preview){props.onEdit();if(current.blocks[0])props.onSelectBlock(current.blocks[0].id);}
  };
  const writeArticle=()=>{setSection('capa');setFullPreview(false);
-  if(!current||current.archive_preview)props.onNew('article');else props.onAddBlock('article');};
+  if(!current||current.archive_preview||current.state!=='draft')props.onNew('article');else props.onAddBlock('article');};
  const insert=(type:NewspaperBlockType,span?:number)=>{
   setSection('capa');setFullPreview(false);
-  if(!current||current.archive_preview)props.onNew(type);else props.onAddBlock(type,span);
+  if(!current||current.archive_preview||current.state!=='draft')props.onNew(type);else props.onAddBlock(type,span);
  };
  const chooseSection=(value:Section)=>{
   setSection(value);setFullPreview(false);
