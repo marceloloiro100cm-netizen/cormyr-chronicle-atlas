@@ -51,7 +51,7 @@ export interface NewspaperEditorialProps{
  userId:string;
  current:NewspaperEdition|null;
  history:NewspaperEdition[];
- archiveNotice?:string;archiveError?:string;onRetryArchive?:()=>void;
+ archiveNotice?:string|undefined;archiveError?:string|undefined;onRetryArchive?:(()=>void)|undefined;
  reads:NewspaperRead[];
  /** Leituras do site aberto (visitantes sem conta), por edição. */
  publicReads?:ReadonlyMap<string,number>|undefined;
