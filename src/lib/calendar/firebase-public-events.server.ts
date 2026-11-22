@@ -6,7 +6,7 @@
  */
 import type {Firestore} from 'firebase-admin/firestore';
 import {parseEventDate} from '../../../scripts/firebase/cloud-schedule-events-core.mjs';
-import {festivalOccurrence,fromAbsoluteDay,dateKeyOf}
+import {festivalOccurrence,fromAbsoluteDay,dateKeyOf,type HubFestival}
   from '../../../scripts/firebase/hub-temporal-core.mjs';
 
 const HASH=/^[a-f0-9]{64}$/;
@@ -46,38 +46,38 @@ export async function readApprovedPublicCalendarEvents(args:Reader):Promise<{yea
   const items:PublicDatedEvent[]=[];
   for(const doc of schedule.docs){
     const value=doc.data();
-    const published=value?.published;
+    const published=value?.['published'];
     if(!safe(published)||published['public']!==true||published['deleted']===true)continue;
     const date=parseEventDate(published['date']);
     if(!date||date.year!==args.year)continue;
     if(typeof published['title']!=='string'||!published['title'].trim()||
-       published['title'].length>200||typeof value?.id!=='string'||
-       !/^[A-Za-z0-9_-]{8,128}$/.test(value.id))continue;
+       published['title'].length>200||typeof value?.['id']!=='string'||
+       !/^[A-Za-z0-9_-]{8,128}$/.test(value['id']))continue;
     const scope=published['scope']==='region'?'region':'kingdom';
     const region=scope==='region'?published['region']:null;
     if(scope==='region'&&region!=='1'&&region!=='2')continue;
     const description=published['description'];
     if(description!==undefined&&(typeof description!=='string'||description.length>5000))continue;
-    items.push({id:'evento-'+value.id,date:published['date'] as string,
+    items.push({id:'evento-'+value['id'],date:published['date'] as string,
       title:(published['title'] as string).trim(),...(description?{description:description as string}:{}),
       scope,region:scope==='region'?region as string:null});
   }
   for(const doc of festivals.docs){
     const f=doc.data();
-    if(!f||f.public!==true||f.deleted===true||typeof f.name!=='string'||
-       f.name.length>120||!f.name.trim()||
-       !['kingdom','region'].includes(f.scope)||f.scope==='region'&&!['1','2'].includes(f.region)||
-       !['yearly','once'].includes(f.repeat)||!valid(f.durationDays,1,30)||
-       typeof f.id!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(f.id))continue;
-    const occurrence=festivalOccurrence(f,args.year);
+    if(!f||f['public']!==true||f['deleted']===true||typeof f['name']!=='string'||
+       f['name'].length>120||!f['name'].trim()||
+       !['kingdom','region'].includes(f['scope'])||f['scope']==='region'&&!['1','2'].includes(f['region'])||
+       !['yearly','once'].includes(f['repeat'])||!valid(f['durationDays'],1,30)||
+       typeof f['id']!=='string'||!/^[A-Za-z0-9_-]{8,128}$/.test(f['id']))continue;
+    const occurrence=festivalOccurrence(f as unknown as HubFestival,args.year);
     if(!occurrence)continue;
     for(let abs=occurrence.start;abs<occurrence.end;abs++){
       const date=fromAbsoluteDay(abs);
       if(date.year!==args.year)continue;
-      const description=typeof f.description==='string'&&f.description.length<=5000?f.description:'';
-      items.push({id:'festival-'+f.id+'-'+abs,date:dateKeyOf(date),
-        title:'Festival · '+f.name,...(description?{description}:{}),
-        scope:f.scope,region:f.scope==='region'?f.region:null});
+      const description=typeof f['description']==='string'&&f['description'].length<=5000?f['description']:'';
+      items.push({id:'festival-'+f['id']+'-'+abs,date:dateKeyOf(date),
+        title:'Festival · '+f['name'],...(description?{description}:{}),
+        scope:f['scope'],region:f['scope']==='region'?f['region']:null});
     }
   }
   if(items.length>3000)return rejected();
