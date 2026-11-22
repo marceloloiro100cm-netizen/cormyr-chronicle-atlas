@@ -11,14 +11,21 @@ const labels=['media_parse_backend_unavailable','media_sdk_initialization_failed
 const summary={
  scope:'CORMYR_NEWSROOM_IMAGE_FAILURE_READONLY',
  cloudWrites:0,storageWrites:0,firestoreWrites:0,iamChanges:0,
- mediaEndpoint:{status:null,body:'UNKNOWN',handlerMarker:false},
- staffPhotoEndpoint:{status:null,body:'UNKNOWN',handlerMarker:false},
+ mediaEndpoint:{status:null,body:'UNKNOWN',handlerMarker:false,code:null},
+ staffPhotoEndpoint:{status:null,body:'UNKNOWN',handlerMarker:false,code:null},
+ cloudNewspaperEndpoint:{status:null,body:'UNKNOWN',handlerMarker:false,code:null},
  logging:{available:false,status:null,windowHours:12,mediaRequests:0,media503:0,
   httpCodes:{'2xx':0,'4xx':0,'5xx':0},sizeBands:{small:0,medium:0,large:0,unknown:0},
   latencyBands:{fast:0,slow:0,verySlow:0,unknown:0},phaseWarnings:
    {parse:0,sdk:0,service:0,operation:0},truncated:false},
 };
 const knownStatus=n=>[200,201,202,400,401,403,404,405,409,413,415,429,500,502,503,504].includes(n)?n:null;
+const publicCodes=new Set([
+ 'authentication_required','access_denied','newspaper_media_disabled',
+ 'firebase_cloud_newspaper_disabled','media_service_initialization_failed',
+ 'media_sdk_initialization_failed','media_parse_backend_unavailable',
+ 'media_operation_unavailable','media_type_required',
+]);
 const requestSize=entry=>Number(entry?.httpRequest?.requestSize??NaN);
 function accumulateRequest(entry){
  const status=Number(entry?.httpRequest?.status);
@@ -50,22 +57,27 @@ async function probe(path,key){
    signal:AbortSignal.timeout(12000),
   });
   const result={status:knownStatus(response.status),
-   handlerMarker:response.headers.get('x-cormyr-media-handler')==='v2',body:'UNKNOWN'};
+   handlerMarker:response.headers.get('x-cormyr-media-handler')==='v2',
+   body:'UNKNOWN',code:null};
   const content=await response.text();
   try{
    const parsed=JSON.parse(content);
    if(parsed&&typeof parsed==='object'&&typeof parsed.error==='string'&&
-      /^[a-z_]{3,60}$/.test(parsed.error))result.body='STRUCTURED_ERROR';
+      /^[a-z_]{3,60}$/.test(parsed.error)){
+    result.body='STRUCTURED_ERROR';
+    if(publicCodes.has(parsed.error))result.code=parsed.error;
+   }
    else result.body='OTHER_JSON';
   }catch{
    result.body=content.length===0?'EMPTY':'NON_JSON';
   }
   summary[key]=result;
- }catch{summary[key]={status:null,body:'UNREACHABLE',handlerMarker:false};}
+ }catch{summary[key]={status:null,body:'UNREACHABLE',handlerMarker:false,code:null};}
 }
 await Promise.all([
  probe('/api/firebase-newspaper-media','mediaEndpoint'),
  probe('/api/firebase-newspaper-staff-photo','staffPhotoEndpoint'),
+ probe('/api/firebase-cloud-newspaper','cloudNewspaperEndpoint'),
 ]);
 try{
  const token=(await applicationDefault().getAccessToken())?.access_token;
