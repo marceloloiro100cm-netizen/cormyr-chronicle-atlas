@@ -877,7 +877,7 @@ const useStoryModel=async(model:StoryModel)=>{
   archiveError={editions.isError?
    'A consulta privada falhou: '+safeError(editions.error)+' As publicações permanecem disponíveis no arquivo público.':
    issuedArchive.isError?'Não foi possível consultar o arquivo público: '+safeError(issuedArchive.error):undefined}
-  onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}
+  onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}
   pendingCommissions={pending} houseNames={houseNames}
