@@ -208,13 +208,14 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
   setModal({t:'festival',form:{id:f?.id??'',version:f?.version!==undefined?String(f.version):'',name:f?.name??'',
    scope:f?.scope??'kingdom',region:f?.region??HUB_REGIONS[0]?.id??'1',repeat:f?.repeat??'once',
    year:String(d.year),md:mdOf(d),day:String(d.festival?1:d.day),duration:String(f?.durationDays??1),
-   notify:f?.notify===false?'0':'1',description:f?.description??''}});
+   notify:f?.notify===false?'0':'1',public:(f as (HubFestival&{public?:boolean})|undefined)?.public===true?'1':'0',
+   description:f?.description??''}});
  };
  const festivalPayload=(form:Form,date:HarptosDate)=>({...(form['id']?{id:form['id'],version:Number(form['version'])}:{}),
   name:(form['name']??'').trim(),scope:form['scope']==='region'?'region':'kingdom',
   region:form['scope']==='region'?form['region']??null:null,date,repeat:form['repeat']==='yearly'?'yearly':'once',
   durationDays:Math.min(30,Math.max(1,Number.parseInt(form['duration']??'1',10)||1)),
-  notify:form['notify']!=='0',description:(form['description']??'').trim()});
+  notify:form['notify']!=='0',public:form['public']==='1',description:(form['description']??'').trim()});
  const saveFestival=(form:Form)=>run(async()=>{
   const date=dateFromForm(form);
   if(typeof date==='string')throw Error(date);
@@ -228,7 +229,8 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
    await request('saveSettings',{settings:{fixedFestivalNotify:{[id]:!f.notify}}});
   }else{
    await request('saveFestival',{festival:{id:f.id,version:f.version,name:f.name,scope:f.scope,region:f.region,
-    date:f.date,repeat:f.repeat,durationDays:f.durationDays,notify:!f.notify,description:f.description}});
+    date:f.date,repeat:f.repeat,durationDays:f.durationDays,notify:!f.notify,
+    public:(f as HubFestival&{public?:boolean}).public===true,description:f.description}});
   }
   return f.notify?`Aviso desligado: ${f.name}.`:`Aviso ligado: ${f.name}.`;
  });
@@ -604,6 +606,9 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
      value={f['duration']??'1'} onChange={e=>set(f,'duration',e.target.value)}/></div>
      <div className="ht-fg"><span className="ht-lab">Aviso</span><button type="button" className="ht-tg" role="switch" aria-checked={f['notify']!=='0'}
       onClick={()=>set(f,'notify',f['notify']==='0'?'1':'0')}><i/>Avisar jogadores</button></div></div>
+    <div className="ht-fg"><label className="ht-check"><input type="checkbox"
+     checked={f['public']==='1'} onChange={e=>set(f,'public',e.target.checked?'1':'0')}/>
+     <span><b>Exibir festival no calendário público</b><span>Requer autorização explícita; desmarcado permanece somente nas visões autenticadas autorizadas.</span></span></label></div>
     <div className="ht-fg"><label htmlFor="ht-f-fdesc">Descrição</label><textarea id="ht-f-fdesc" maxLength={600}
      value={f['description']??''} onChange={e=>set(f,'description',e.target.value)}/></div>
     {actions(<button type="button" className="ht-gold" disabled={busy} onClick={()=>void saveFestival(f)}>Salvar festival</button>,
