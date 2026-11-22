@@ -38,7 +38,7 @@ export function planFestivalImport(existingFestivals,existingEvents){
     'inventory_invalid');
   const names=new Set(),ids=new Set(),planned=[];
   const counts={source:CORMYR_DOCUMENT_FESTIVALS.length,create:0,
-    existingFestival:0,existingPublishedEvent:0,conflicts:0};
+    existingFestival:0,existingDeletedFestival:0,existingPublishedEvent:0,conflicts:0};
   for(const item of CORMYR_DOCUMENT_FESTIVALS){
     fail(item.name&&item.description.length>0&&item.description.length<=600&&
       item.repeat==='yearly'&&item.scope==='kingdom'&&item.region===null&&
@@ -51,13 +51,18 @@ export function planFestivalImport(existingFestivals,existingEvents){
     const n=normalize(item.name);
     fail(!names.has(n),'catalog_duplicate_name');
     names.add(n);
-    const related=existingFestivals.filter(v=>v&&v.deleted!==true&&
+    const related=existingFestivals.filter(v=>v&&
       (v.id===item.id||matchesName(item,v.name)));
     fail(related.every(v=>sameDay(v.date,item.date)&&
       Number(v.durationDays??1)===item.durationDays),
       'existing_festival_conflicts_'+item.key);
     if(related.length){
-      counts.existingFestival++;planned.push({item,status:'existing_festival'});continue;
+      if(related.some(v=>v.deleted!==true)){
+        counts.existingFestival++;planned.push({item,status:'existing_festival'});
+      }else{
+        counts.existingDeletedFestival++;planned.push({item,status:'existing_deleted_festival'});
+      }
+      continue;
     }
     const events=existingEvents.filter(v=>{
       const pair=[v?.published,v?.draft].filter(Boolean);
@@ -138,7 +143,7 @@ export async function importDocumentFestivals(db,{apply=false,now=()=>new Date()
     tx.create(audit,{
       action:'import_document_festivals',at,actorUid:'owner-approved-document-import',
       sourceDocument:SOURCE_DOCUMENT,createdCount:plan.counts.create,
-      previouslyRegistered:plan.counts.existingFestival+plan.counts.existingPublishedEvent,
+      previouslyRegistered:plan.counts.existingFestival+plan.counts.existingDeletedFestival+plan.counts.existingPublishedEvent,
       sourceCount:plan.counts.source,importedIds:plan.planned
         .filter(p=>p.status==='create').map(p=>p.item.id),
       note:'Importação sem alterar eventos fixos, calendário operacional, missivas ou jornal.',
