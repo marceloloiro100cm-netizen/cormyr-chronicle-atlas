@@ -55,7 +55,7 @@ test('workspace logo returns to front and public event API is fail-closed',()=>{
   assert.match(editor,/<PublicChronicleCalendar\/>/);
   const reader=source('src/lib/calendar/firebase-public-events.server.ts');
   assert.match(reader,/published\['public'\]!==true/);
-  assert.match(reader,/f\.public!==true/);
+  assert.match(reader,/f\['public'\]!==true/);
   assert.doesNotMatch(reader,/collection\('mail'\)|collection\('letters'\)|collection\('house'/);
   const middleware=source('src/lib/archive-only.ts');
   assert.match(middleware,/pathname === '\/api\/public\/calendar-events'/);
