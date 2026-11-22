@@ -60,7 +60,8 @@ function readyRuntime(v,snapshot,calendar){
      v.newspaperSequenceReconciled!==true||
      !number(v.newspaperImportedMaxEditionNo,0,99999999)||
      !number(v.nextNewspaperEditionNo,1,99999999)||
-     v.nextNewspaperEditionNo<=v.newspaperImportedMaxEditionNo||
+     // Imported drafts may use historical numbers now issued by new Cloud
+     // publications; only the issued sequence is authoritative.
      v.calendarVersion!==calendar.version)
     deny('newspaper_runtime_not_approved',503);
 }
