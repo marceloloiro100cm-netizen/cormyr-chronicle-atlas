@@ -163,7 +163,7 @@ const originals={
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'6b8af9e8cafda3a6ae3118d663cc83260ef2f986',
-  'src/components/newspaper/NewspaperHub.tsx':'9437836ed9db86994b682a296c50018b6917088f',
+  'src/components/newspaper/NewspaperHub.tsx':'629148c34445028106c6c70954d859f7a5fe471e',
   'src/components/newspaper/newspaper-editorial.css':'4c80d483ffbb0f437b5a4856557f0fd04f855e60',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
