@@ -68,8 +68,8 @@ describe('Firebase-only narrator GM material',()=>{
     // immutable import must not be blocked solely because they are absent.
     const f=fixture();
     const runtimeDoc={...(f.docs[runtime] as Record<string,unknown>)};
-    delete runtimeDoc.gmContentVersion;
-    delete runtimeDoc.publishedGmContentVersion;
+    delete runtimeDoc['gmContentVersion'];
+    delete runtimeDoc['publishedGmContentVersion'];
     f.docs[runtime]=runtimeDoc;
     const result=await f.run();
     expect(result.events).toHaveLength(1);
