@@ -20,7 +20,7 @@ describe('Gravuras do Reino: selecionar e enviar',()=>{
   expect(upload).toHaveBeenCalledTimes(1);
  });
  it('preserva seleção quando o armazenamento falha, permitindo repetir sem perder o arquivo',async()=>{
-  const upload=vi.fn(async()=>false);
+  const upload=vi.fn(async(_file:File,_name:string,_key?:string)=>false);
   render(<NewspaperEngravings items={[]} busy={false}
    onUpload={upload} onToggle={vi.fn()} onDelete={vi.fn()} onRestore={vi.fn()}/>);
   const file=new File(['imagem'],'Grandragon.png',{type:'image/png'});
