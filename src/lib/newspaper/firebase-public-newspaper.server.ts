@@ -66,10 +66,11 @@ export function publicBlocks(blocks:unknown,editionId?:string):Row[]{
  });
 }
 
-export async function listPublicNewspapers(db:any,snapshotId:string){
+export async function listPublicNewspapers(db:any,snapshotId:string,options:{releaseDue?:boolean}={}){
  await stageReady(db,snapshotId);
- // A data é lida do Hub no servidor, nunca do visitante.
- try{await releaseDueNewspapers(db,snapshotId);}catch{/* archive remains readable */}
+ // The editorial read-only archive never triggers a publication transaction.
+ if(options.releaseDue!==false)
+  try{await releaseDueNewspapers(db,snapshotId);}catch{/* archive remains readable */}
  const snap=await db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).collection('editions').get();
  if(snap.size>100)fail('newspaper_response_too_large',503);
  const root=await cloudRoot(db,snapshotId);
