@@ -58,7 +58,7 @@ async function handleGet(request:Request):Promise<Response>{
     const id=url.searchParams.get('edicao');
     if(id!==null)return Response.json(await getPublicNewspaper(db,snapshotId,id),{status:200,headers:HEADERS});
     if(url.searchParams.get('arquivo')==='edicoes')
-      return Response.json(await listPublicNewspapers(db,snapshotId),{status:200,headers:HEADERS});
+      return Response.json(await listPublicNewspapers(db,snapshotId,{releaseDue:false}),{status:200,headers:HEADERS});
     const [list,overlay]=await Promise.all([
       listPublicNewspapers(db,snapshotId),
       readNewspaperStaffOverlay(db,snapshotId).catch(()=>null),
