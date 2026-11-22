@@ -593,14 +593,14 @@ const useStoryModel=async(model:StoryModel)=>{
  };
  const removeEdition=async(edition:NewspaperEdition)=>{
   if(!editor||busy)return;
-  const live=edition.state==='published'||edition.state==='archived';
-  if(!window.confirm('Excluir a edição nº '+edition.edition_no+'?'+(live?' Ela já foi publicada: os jogadores deixarão de vê-la.':'')+' Isso não pode ser desfeito e o número '+edition.edition_no+' ficará livre para a próxima edição.'))return;
+  if(edition.state!=='draft'){setError('Uma edição publicada ou cancelada não pode ser apagada do acervo.');return;}
+  if(!window.confirm('Descartar este rascunho? As edições publicadas e seus números permanecem preservados.'))return;
   setBusy(true);setError('');
   try{
    await deleteNewspaperEdition(edition.id);
    await refresh();
    if(selectedId===edition.id){setSelectedId(null);setDraft(null);setBlockId(null);setEditing(false);}
-   notice('Edição nº '+edition.edition_no+' excluída. O número está livre.');
+   notice('Rascunho descartado. A numeração oficial só avança ao publicar.');
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
  };
