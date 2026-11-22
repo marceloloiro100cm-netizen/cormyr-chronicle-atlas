@@ -14,7 +14,7 @@ vi.mock('../auth/firebase-pilot-session',()=>({
  }),
 }));
 
-import {loadFirebaseNewspaperEditions,originalNewspaperEdition}
+import {loadFirebaseNewspaperEditions,loadPublishedNewspaperArchive,originalNewspaperEdition}
  from './firebase-editorial-bridge';
 
 const cloudId='cloud-'+'a'.repeat(64);
@@ -33,6 +33,38 @@ beforeEach(()=>{
  vi.stubGlobal('fetch',vi.fn());
 });
 afterEach(()=>vi.unstubAllGlobals());
+
+describe('Editor independent public archive (read-only)',()=>{
+ it('shows exactly the two real issued editions without waiting for private Firebase queries',async()=>{
+  const id1='11111111-1111-4111-8111-111111111111';
+  const id2='cloud-'+'a'.repeat(64);
+  const detail=(id:string,no:number)=>({
+   id,editionNo:no,campaignDate:'1522-10-20',title:'A Folha Sem Selo',
+   subtitle:'A verdade bem servida',publishedAt:'2026-11-21T00:00:00Z',
+   template:'gazeta',font_style:'gotica',version:2,
+   blocks:[{id:'article-1',type:'article',text:'Texto da edição',span:12,height:190}],
+  });
+  vi.mocked(fetch)
+   .mockResolvedValueOnce({ok:true,json:async()=>({items:[
+    {id:id2,editionNo:2},{id:id1,editionNo:1},
+   ]})} as Response)
+   .mockResolvedValueOnce({ok:true,json:async()=>detail(id2,2)} as Response)
+   .mockResolvedValueOnce({ok:true,json:async()=>detail(id1,1)} as Response);
+  const issues=await loadPublishedNewspaperArchive();
+  expect(issues.map(i=>i.edition_no)).toEqual([2,1]);
+  expect(issues.every(i=>i.archive_preview&&i.state==='published')).toBe(true);
+  expect(issues[0]?.blocks[0]?.text).toBe('Texto da edição');
+  expect(fetch).toHaveBeenCalledWith('/api/public/newspaper?arquivo=edicoes',
+   expect.objectContaining({credentials:'omit',redirect:'error'}));
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(3);
+ });
+ it('never invents a missing issue or accepts a forged public edition identifier',async()=>{
+  vi.mocked(fetch).mockResolvedValueOnce({ok:true,json:async()=>({items:[
+   {id:'not-an-approved-id',editionNo:1},
+  ]})} as Response);
+  await expect(loadPublishedNewspaperArchive()).rejects.toThrow('Identificador público');
+ });
+});
 
 describe('Historical Jornal is gated by the approved Cloud reader stage',()=>{
  it('never bypasses unapproved migration stages when Cloud returns 503',async()=>{
