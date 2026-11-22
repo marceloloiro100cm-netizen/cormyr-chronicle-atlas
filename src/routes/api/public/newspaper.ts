@@ -46,11 +46,19 @@ async function handleGet(request:Request):Promise<Response>{
   if(!snapshotId)return fail(503,'newspaper_unavailable');
   const url=new URL(request.url);
   const params=[...url.searchParams.keys()];
-  if(params.some(k=>k!=='edicao'))return fail(400,'invalid_request');
+  // Fast, immutable issued-editions list for the Editor-Chefe archive.
+  // It is the SAME public allowlist; avoid waiting for the independent
+  // newsroom staff projection before displaying published issues.
+  if(params.some(k=>!['edicao','arquivo'].includes(k))||
+     (url.searchParams.has('arquivo')&&
+      (url.searchParams.get('arquivo')!=='edicoes'||url.searchParams.has('edicao')))||
+     params.length>1)return fail(400,'invalid_request');
   try{
     const db=await firestore();
     const id=url.searchParams.get('edicao');
     if(id!==null)return Response.json(await getPublicNewspaper(db,snapshotId,id),{status:200,headers:HEADERS});
+    if(url.searchParams.get('arquivo')==='edicoes')
+      return Response.json(await listPublicNewspapers(db,snapshotId,{releaseDue:false}),{status:200,headers:HEADERS});
     const [list,overlay]=await Promise.all([
       listPublicNewspapers(db,snapshotId),
       readNewspaperStaffOverlay(db,snapshotId).catch(()=>null),

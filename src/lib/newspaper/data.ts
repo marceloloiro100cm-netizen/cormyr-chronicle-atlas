@@ -22,11 +22,23 @@ export async function getNewspaperEditions():Promise<NewspaperEdition[]>{
   // Legacy route is unavailable in Firebase but remains unchanged for preview.
   try{await db.rpc('publish_due_campaign_newspapers');}catch{/* read continues */}
  }
- const {data,error}=await db.from('campaign_newspapers').select('*')
-  .order('edition_no',{ascending:false}).limit(300);
- if(error)throw error;
- const archived=(data??[]) as NewspaperEdition[];
- return isFirebaseNewspaperWorkspace()?loadFirebaseNewspaperEditions(archived):archived;
+ const firebase=isFirebaseNewspaperWorkspace();
+ let archived:NewspaperEdition[]=[];
+ try{
+  const {data,error}=await db.from('campaign_newspapers').select('*')
+   .order('edition_no',{ascending:false}).limit(300);
+  if(error)throw error;
+  archived=(data??[]) as NewspaperEdition[];
+ }catch(error){
+  // The stage projection may be temporarily unavailable even while the
+  // independently approved public Cloud archive remains healthy. Never
+  // bypass authentication or 401/403 failures. Editorial drafts simply
+  // stay unavailable until the original import can be read again.
+  const code=(error as {code?:string}|null)?.code;
+  if(!firebase||!['FIREBASE_503','FIREBASE_TIMEOUT'].includes(code??''))
+   throw error;
+ }
+ return firebase?loadFirebaseNewspaperEditions(archived):archived;
 }
 export async function getNewspaperReceipts():Promise<NewspaperRead[]>{
  const {data,error}=await db.from('campaign_newspaper_reads')

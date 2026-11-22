@@ -67,6 +67,8 @@ export type NewspaperBlock={
   height:number;
 };
 export type NewspaperEdition={
+  /** Only a public, immutable preview: never submit it as an editable edition. */
+  archive_preview?:boolean;
   id:string;edition_no:number;campaign_date:string;title:string;subtitle:string;
   template:NewspaperTemplate;font_style:NewspaperFont;
   state:NewspaperState;blocks:NewspaperBlock[];pdf_path:string|null;

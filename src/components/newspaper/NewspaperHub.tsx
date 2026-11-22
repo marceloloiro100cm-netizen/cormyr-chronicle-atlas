@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Plus,FileText,ImagePlus,Newspaper,ArrowUp,ArrowDown,Trash2,Save,Send,Archive,Undo2,Check,Eye,LayoutTemplate,ChevronLeft,ChevronRight,EyeOff} from 'lucide-react';
 import {Button} from '@/components/ui/button';
-import {isFirebaseNewspaperWorkspace} from '@/lib/newspaper/firebase-editorial-bridge';
+import {isFirebaseNewspaperWorkspace,loadPublishedNewspaperArchive} from '@/lib/newspaper/firebase-editorial-bridge';
 import {isFirebaseNewspaperMediaPath} from '@/lib/newspaper/firebase-newspaper-media';
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
@@ -83,6 +83,14 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const publicReadsQuery=useQuery({queryKey:['campaign-newspaper-public-reads'],queryFn:getPublicNewspaperReadCounts,
   enabled:editor&&editorial,staleTime:30_000,refetchInterval:60_000,retry:false});
  const {count,editions,receipts}=useUnreadNewspaperCount(userId);
+ // Independent public list: two published editions must never wait for the
+ // slower private drafts/revisions projection. Only enabled in Editor-Chefe.
+ const issuedArchive=useQuery({
+  queryKey:['published-newspaper-archive',userId],
+  queryFn:loadPublishedNewspaperArchive,
+  enabled:editor&&editorial&&isFirebaseNewspaperWorkspace(),
+  staleTime:30_000,refetchInterval:60_000,retry:1,
+ });
  const commissionsQuery=useQuery({queryKey:['campaign-newspaper-commissions',userId],
   queryFn:getNewspaperCommissions,refetchInterval:30_000});
  const houseNamesQuery=useQuery({queryKey:['campaign-newspaper-house-names'],
@@ -114,7 +122,13 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  useEffect(()=>()=>{window.clearTimeout(retryTimer.current);window.clearTimeout(discardTimer.current);},[]);
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
- const history=editions.data??[];
+ const history=useMemo(()=>{
+  const rows=new Map<string,NewspaperEdition>();
+  for(const e of issuedArchive.data??[])rows.set(e.id,e);
+  // The authenticated source replaces read-only previews when available.
+  for(const e of editions.data??[])rows.set(e.id,e);
+  return [...rows.values()].sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
+ },[editions.data,issuedArchive.data]);
  useEffect(()=>{
   if(!editorial||!editor||selectedId||!editions.data?.length)return;
   const edition=editions.data.find(e=>e.state==='draft')??editions.data[0];
@@ -124,7 +138,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBlockId(edition.state==='draft'?edition.blocks[0]?.id??null:null);
  },[editorial,editor,selectedId,editions.data]);
  const selected=history.find(e=>e.id===selectedId);
- const current=draft?.id===selectedId?draft:selected??null;
+ const current=draft?.id===selectedId&&
+    !(draft.archive_preview&&selected&&!selected.archive_preview)
+    ?draft:selected??null;
  const chosenBlock=current?.blocks.find(x=>x.id===blockId);
  const reads=receipts.data??[];
  const myReads=new Map(reads.filter(r=>r.user_id===userId).map(r=>[r.newspaper_id,r]));
@@ -144,7 +160,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    !window.confirm('Há alterações não salvas. Deseja abrir outra edição e descartá-las?'))return;
   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));setBlockId(null);
   setEditing(false);setMessage('');setError('');
-  if(['published','archived'].includes(edition.state)&&newspaperIsUnread(edition,myReads.get(edition.id))){
+  if(!editor&&['published','archived'].includes(edition.state)&&newspaperIsUnread(edition,myReads.get(edition.id))){
    try{await markNewspaperRead(edition.id);await qc.invalidateQueries({queryKey:['campaign-newspaper-reads',userId]});}
    catch(cause){setError('O jornal abriu, mas a confirmação de leitura não foi salva: '+safeError(cause));}
   }
@@ -246,6 +262,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  };
  const save=async(nextState?:NewspaperState)=>{
   if(!editor||!current||busy||autosaving.current)return;
+  if(current.archive_preview){
+   setError('Esta é a visualização pública preservada. Para editar, a versão original deve terminar de carregar.');return;
+  }
   const state=nextState??current.state;
   const problem=validateNewspaperEdition(current);
   // Permite cancelar mesmo uma edição ainda incompleta.
@@ -593,14 +612,14 @@ const useStoryModel=async(model:StoryModel)=>{
  };
  const removeEdition=async(edition:NewspaperEdition)=>{
   if(!editor||busy)return;
-  const live=edition.state==='published'||edition.state==='archived';
-  if(!window.confirm('Excluir a edição nº '+edition.edition_no+'?'+(live?' Ela já foi publicada: os jogadores deixarão de vê-la.':'')+' Isso não pode ser desfeito e o número '+edition.edition_no+' ficará livre para a próxima edição.'))return;
+  if(edition.state!=='draft'){setError('Uma edição publicada ou cancelada não pode ser apagada do acervo.');return;}
+  if(!window.confirm('Descartar este rascunho? As edições publicadas e seus números permanecem preservados.'))return;
   setBusy(true);setError('');
   try{
    await deleteNewspaperEdition(edition.id);
    await refresh();
    if(selectedId===edition.id){setSelectedId(null);setDraft(null);setBlockId(null);setEditing(false);}
-   notice('Edição nº '+edition.edition_no+' excluída. O número está livre.');
+   notice('Rascunho descartado. A numeração oficial só avança ao publicar.');
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
  };
@@ -852,7 +871,13 @@ const useStoryModel=async(model:StoryModel)=>{
  if(editorial&&editor)return <NewspaperEditorialDesk
   userId={userId} current={current} history={history} reads={reads}
   publicReads={publicReadsQuery.data} {...(missivas!==undefined?{missivas}:{})}
-  loading={editions.isPending} editing={editing} busy={busy}
+  loading={editions.isPending&&issuedArchive.isPending} editing={editing} busy={busy}
+  archiveNotice={issuedArchive.data?.length&&editions.isPending?
+   'Edições publicadas recuperadas; carregando os rascunhos do arquivo privado.':undefined}
+  archiveError={editions.isError?
+   'A consulta privada falhou: '+safeError(editions.error)+' As publicações permanecem disponíveis no arquivo público.':
+   issuedArchive.isError?'Não foi possível consultar o arquivo público: '+safeError(issuedArchive.error):undefined}
+  onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}
   pendingCommissions={pending} houseNames={houseNames}
@@ -882,9 +907,9 @@ const useStoryModel=async(model:StoryModel)=>{
   onNew={type=>{void newEdition(type);}}
   onOpen={edition=>{void open(edition);}}
   onSave={state=>{void save(state);}}
-  onEdit={()=>setEditing(true)}
+  onEdit={()=>{if(!current?.archive_preview)setEditing(true);}}
   onPreview={()=>setEditing(false)}
-  onPatch={patch=>{modify(patch);setEditing(true);}}
+  onPatch={patch=>{if(current?.archive_preview)return;modify(patch);setEditing(true);}}
   onSelectBlock={setBlockId} onPatchBlock={editBlock}
   onAddBlock={addEditorialBlock} onRemoveBlock={removeEditorialBlock}
   onMoveBlock={(id,direction)=>{moveBlock(id,direction);setEditing(true);}}

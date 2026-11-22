@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CloudNewspaperError,createFirebaseCloudNewspaper} from './cloud-newspaper-service.mjs';
+import {markNewspaperDeleted} from './newspaper-deleted.mjs';
 
 const snapshot='b'.repeat(64),token='firebase-synthetic-newspaper-token';
 const path=(...parts)=>parts.join('/');
@@ -16,6 +17,9 @@ function fixture(profile='editor'){
   for(const root of ['migrationDomainStage','migrationAuthStage',
     'migrationTimeEngineStage','migrationNewspaperRuntimeStage'])
     records.set(path(root,snapshot),{status:'complete',private:true});
+  // Imported publication is immutable; the official sequence resumes at 13.
+  records.set(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-12'),
+    {id:'imported-12',editionNo:12,state:'published',publishedAt:'2026-11-10T00:00:00Z'});
   const calendar=path('migrationTimeEngineStage',snapshot,'calendar','current');
   records.set(calendar,{year:1522,month:0,day:10,festival:null,version:5});
   const runtime=path('campaignCloudRuntime',snapshot);
@@ -158,7 +162,7 @@ test('stage, reconciliation, edition sequence and calendar gates must be satisfi
   for(const change of [
     {newspaperWriteApproved:false},{sourceSnapshotReconciled:false},
     {newspaperSequenceReconciled:false},{applicationEnabled:false},
-    {nextNewspaperEditionNo:12},{calendarVersion:4},
+    {nextNewspaperEditionNo:0},{calendarVersion:4},
     {status:'incomplete'},
   ]){
     f.records.set(f.runtime,{...original,...change});
@@ -203,12 +207,69 @@ test('editorial lifecycle persists drafts, edits, cancellation and archive with 
   const pub=await srv.saveEdition(token,publish);
   assert.equal(pub.state,'published');assert.equal(pub.version,2);assert.ok(pub.publishedAt);
   await denied(()=>srv.saveEdition(token,{...publish,requestKey:'editorial-key-stale'}),'edition_version_conflict',409);
-  const cancel=await srv.saveEdition(token,{...publish,expectedVersion:2,state:'cancelled',requestKey:'editorial-key-003'});
-  assert.equal(cancel.state,'cancelled');
-  const archived=await srv.saveEdition(token,{...publish,expectedVersion:3,state:'archived',requestKey:'editorial-key-004'});
+  await denied(()=>srv.saveEdition(token,{...publish,expectedVersion:2,
+    state:'cancelled',requestKey:'editorial-key-003'}),
+    'published_edition_immutable',409);
+  const archived=await srv.saveEdition(token,{...publish,expectedVersion:2,state:'archived',requestKey:'editorial-key-004'});
   assert.equal(archived.state,'archived');
   assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,14);
-  assert.equal([...f.records.keys()].filter(k=>k.includes('/newspaperAudits/')).length,4);
+  assert.equal([...f.records.keys()].filter(k=>k.includes('/newspaperAudits/')).length,3);
+});
+
+test('drafts do not consume official numbers and a stale sequence is recovered at publication',async()=>{
+  const f=fixture(),srv=f.service();
+  f.records.delete(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-12'));
+  f.records.set(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-1'),
+    {id:'imported-1',editionNo:1,state:'published',publishedAt:'2026-11-10T00:00:00Z'});
+  for(const no of [2,3])f.records.set(
+    path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-'+no),
+    {id:'imported-'+no,editionNo:no,state:'draft',publishedAt:null});
+  const no2='cloud-'+'b'.repeat(64);
+  f.records.set(path('campaignCloudRuntime',snapshot,'publishedNewspapers',no2),
+    {id:no2,source:'firebase-cloud',sourceSnapshotId:snapshot,
+      editionNo:2,state:'published',publishedAt:'2026-11-21T20:30:00Z',cancelledAt:null});
+  f.records.set(f.runtime,{...f.records.get(f.runtime),
+    newspaperImportedMaxEditionNo:3,nextNewspaperEditionNo:9});
+  const one=await srv.saveEdition(token,rich());
+  const two=await srv.saveEdition(token,rich({requestKey:'second-draft-001'}));
+  assert.equal(one.editionNo,3);
+  assert.equal(two.editionNo,3);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,9,
+    'draft creation does not reserve or change the official counter');
+  const pub=await srv.saveEdition(token,rich({id:one.id,expectedVersion:1,
+    state:'published',requestKey:'publication-one-001'}));
+  assert.equal(pub.editionNo,3);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,4);
+  const next=await srv.saveEdition(token,rich({id:two.id,expectedVersion:1,
+    state:'published',requestKey:'publication-two-001'}));
+  assert.equal(next.editionNo,4);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,5);
+  const old=await srv.getEditorial(token,{action:'getEditorial',id:one.id});
+  assert.equal(old.editionNo,3);
+});
+
+test('deleted draft cannot be published or consume an issue number',async()=>{
+  const f=fixture(),srv=f.service();
+  const draft=await srv.saveEdition(token,rich());
+  await markNewspaperDeleted(f.db,snapshot,{id:draft.id,actorUid:'editor-1',state:'draft'});
+  await denied(()=>srv.saveEdition(token,rich({
+    id:draft.id,expectedVersion:1,state:'published',requestKey:'draft-removed-publication-001',
+  })),'editorial_draft_deleted',409);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,13);
+  await assert.rejects(()=>markNewspaperDeleted(f.db,snapshot,{
+    id:'imported-12',actorUid:'editor-1',state:'draft',
+  }),error=>error?.status===409&&error.message==='published_edition_immutable');
+});
+
+test('issued editions cannot be tombstoned even through the general delete RPC',async()=>{
+  await assert.rejects(
+    ()=>markNewspaperDeleted({},snapshot,{
+      id:'published-issue',actorUid:'editor-1',state:'published'}),
+    error=>error?.status===409&&error.message==='published_edition_immutable');
+  await assert.rejects(
+    ()=>markNewspaperDeleted({},snapshot,{
+      id:'archived-issue',actorUid:'editor-1',state:'archived',draftOnly:false}),
+    error=>error?.status===409&&error.message==='published_edition_immutable');
 });
 
 test('editorial writes and private drafts reject players, forged fields and reused keys',async()=>{

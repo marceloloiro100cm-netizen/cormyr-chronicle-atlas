@@ -1,10 +1,8 @@
 import {createHash} from 'node:crypto';
 
 /**
- * Edições excluídas do Arquivo pelo Editor-Chefe no Firebase (20/11/2026).
- * O acervo importado e as edições da nuvem continuam guardados; a exclusão é
- * uma marca auditada que tira a edição de todas as listas (Redação, leitores
- * autenticados e site aberto).
+ * Marcas operacionais de exclusão de RASCUNHOS. Publicações são patrimônio
+ * permanente do Jornal; marcas legadas sobre publicações não as ocultam.
  */
 export const deletedEditionsCollection=(db,snapshotId)=>
   db.collection('campaignCloudRuntime').doc(snapshotId).collection('newspaperDeletedEditions');
@@ -16,14 +14,29 @@ export async function deletedNewspaperIds(db,snapshotId){
   try{snap=await deletedEditionsCollection(db,snapshotId).limit(501).get();}
   catch{return new Set();}
   const docs=Array.isArray(snap?.docs)?snap.docs:[];
-  return new Set(docs.map(d=>d.data()).filter(v=>v&&typeof v.id==='string'&&v.deleted===true&&typeof v.deletedBy==='string').map(v=>v.id));
+  return new Set(docs.map(d=>d.data()).filter(v=>v&&typeof v.id==='string'&&v.deleted===true&&v.previousState==='draft'&&typeof v.deletedBy==='string').map(v=>v.id));
 }
 
 export async function markNewspaperDeleted(db,snapshotId,{id,actorUid,draftOnly=false,state=null}){
   if(typeof id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(id))throw Object.assign(Error('invalid_edition'),{status:400});
-  if(draftOnly&&state!=='draft')throw Object.assign(Error('not_a_draft'),{status:409});
+  // O antigo RPC geral também nunca pode retirar uma edição publicada.
+  if(state!=='draft')throw Object.assign(Error('published_edition_immutable'),{status:409});
   const now=new Date().toISOString();
   const ref=deletedEditionsCollection(db,snapshotId).doc(deletedEditionDocId(id));
-  await ref.set({id,deleted:true,deletedBy:actorUid,deletedAt:now,previousState:state,sourceSnapshotId:snapshotId});
+  const imported=db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).collection('editions').doc(id);
+  const operational=db.collection('campaignCloudRuntime').doc(snapshotId).collection('publishedNewspapers').doc(id);
+  // A list/state read made before this call is not a lock. Recheck the real
+  // edition inside the same transaction as its deletion marker, preventing
+  // a simultaneous publication from being marked deleted as a stale draft.
+  await db.runTransaction(async tx=>{
+    const paper=await tx.get(id.startsWith('cloud-')?operational:imported);
+    const issue=paper.data();
+    if(!paper.exists||issue?.id!==id||issue.state!=='draft'||issue.publishedAt!=null)
+      throw Object.assign(Error('published_edition_immutable'),{status:409});
+    const previous=await tx.get(ref);
+    if(previous.exists&&previous.data()?.deleted===true)return;
+    tx.create(ref,{id,deleted:true,deletedBy:actorUid,deletedAt:now,
+      previousState:'draft',sourceSnapshotId:snapshotId});
+  });
   return {id,deleted:true};
 }

@@ -14,7 +14,7 @@ vi.mock('../auth/firebase-pilot-session',()=>({
  }),
 }));
 
-import {loadFirebaseNewspaperEditions,originalNewspaperEdition}
+import {loadFirebaseNewspaperEditions,loadPublishedNewspaperArchive,originalNewspaperEdition}
  from './firebase-editorial-bridge';
 
 const cloudId='cloud-'+'a'.repeat(64);
@@ -33,6 +33,38 @@ beforeEach(()=>{
  vi.stubGlobal('fetch',vi.fn());
 });
 afterEach(()=>vi.unstubAllGlobals());
+
+describe('Editor independent public archive (read-only)',()=>{
+ it('shows exactly the two real issued editions without waiting for private Firebase queries',async()=>{
+  const id1='11111111-1111-4111-8111-111111111111';
+  const id2='cloud-'+'a'.repeat(64);
+  const detail=(id:string,no:number)=>({
+   id,editionNo:no,campaignDate:'1522-10-20',title:'A Folha Sem Selo',
+   subtitle:'A verdade bem servida',publishedAt:'2026-11-21T00:00:00Z',
+   template:'gazeta',font_style:'gotica',version:2,
+   blocks:[{id:'article-1',type:'article',text:'Texto da edição',span:12,height:190}],
+  });
+  vi.mocked(fetch)
+   .mockResolvedValueOnce({ok:true,json:async()=>({items:[
+    {id:id2,editionNo:2},{id:id1,editionNo:1},
+   ]})} as Response)
+   .mockResolvedValueOnce({ok:true,json:async()=>detail(id2,2)} as Response)
+   .mockResolvedValueOnce({ok:true,json:async()=>detail(id1,1)} as Response);
+  const issues=await loadPublishedNewspaperArchive();
+  expect(issues.map(i=>i.edition_no)).toEqual([2,1]);
+  expect(issues.every(i=>i.archive_preview&&i.state==='published')).toBe(true);
+  expect(issues[0]?.blocks[0]?.text).toBe('Texto da edição');
+  expect(fetch).toHaveBeenCalledWith('/api/public/newspaper?arquivo=edicoes',
+   expect.objectContaining({credentials:'omit',redirect:'error'}));
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(3);
+ });
+ it('never invents a missing issue or accepts a forged public edition identifier',async()=>{
+  vi.mocked(fetch).mockResolvedValueOnce({ok:true,json:async()=>({items:[
+   {id:'not-an-approved-id',editionNo:1},
+  ]})} as Response);
+  await expect(loadPublishedNewspaperArchive()).rejects.toThrow('Identificador público');
+ });
+});
 
 describe('Historical Jornal is gated by the approved Cloud reader stage',()=>{
  it('never bypasses unapproved migration stages when Cloud returns 503',async()=>{
@@ -63,6 +95,44 @@ describe('Historical Jornal is gated by the approved Cloud reader stage',()=>{
  it('excludes unreviewed imported editions from player-facing Jornal',async()=>{
   vi.mocked(fetch).mockResolvedValue(success({items:[]}));
   expect(await loadFirebaseNewspaperEditions([history])).toEqual([]);
+ });
+
+ it('recovers the two public issues in the Editor-Chefe archive when imported projection is empty',async()=>{
+  session.profile='editor';
+  const id1='11111111-1111-4111-8111-111111111111';
+  const id2='22222222-2222-4222-8222-222222222222';
+  const detail=(id:string,editionNo:number)=>({
+   id,editionNo,campaignDate:'1522-11-20',title:'A Folha Sem Selo',
+   subtitle:'A verdade bem servida',state:'published',publishedAt:'2026-11-20T00:00:00Z',
+   blocks:[{id:'headline',type:'headline',text:'A edição original',span:12,height:110}],
+   template:'gazeta',font_style:'gotica',version:2,
+  });
+  vi.mocked(fetch)
+   .mockResolvedValueOnce(success({canPublish:false}))
+   .mockResolvedValueOnce(success({items:[{id:id1,editionNo:1},{id:id2,editionNo:2}]}))
+   .mockResolvedValueOnce({ok:true,json:async()=>detail(id1,1)} as Response)
+   .mockResolvedValueOnce({ok:true,json:async()=>detail(id2,2)} as Response);
+  const result=await loadFirebaseNewspaperEditions([]);
+  expect(result.map(x=>x.edition_no)).toEqual([2,1]);
+  expect(result.every(x=>x.state==='published')).toBe(true);
+  expect(result[0]).toMatchObject({id:id2,template:'gazeta',font_style:'gotica'});
+  expect(fetch).toHaveBeenCalledWith('/api/public/newspaper?edicao='+id1,
+   expect.objectContaining({credentials:'omit',redirect:'error'}));
+ });
+ it('shows the next unpublished draft as Nº 3 even when Firestore persisted an old Nº 9',async()=>{
+  session.profile='editor';
+  const draft={...cloud,editionNo:9,version:1,state:'draft' as const,publishedAt:null};
+  vi.mocked(fetch)
+   .mockResolvedValueOnce(success({canPublish:true}))
+   .mockResolvedValueOnce(success({nextOfficialEditionNo:3,items:[
+    {id:cloudId,editionNo:9,title:'Rascunho',state:'draft',version:1},
+   ]}))
+   .mockResolvedValueOnce(success(draft))
+   .mockResolvedValueOnce(success({items:[]}))
+   .mockResolvedValueOnce(success({items:[]}));
+  const result=await loadFirebaseNewspaperEditions([]);
+  expect(result).toHaveLength(1);
+  expect(result[0]).toMatchObject({id:cloudId,edition_no:3,state:'draft'});
  });
  it('merges only reviewed history and genuine published Cloud editions for players',async()=>{
   vi.mocked(fetch)
