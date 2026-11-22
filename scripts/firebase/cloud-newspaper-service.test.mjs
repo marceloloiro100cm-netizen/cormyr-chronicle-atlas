@@ -162,7 +162,7 @@ test('stage, reconciliation, edition sequence and calendar gates must be satisfi
   for(const change of [
     {newspaperWriteApproved:false},{sourceSnapshotReconciled:false},
     {newspaperSequenceReconciled:false},{applicationEnabled:false},
-    {nextNewspaperEditionNo:12},{calendarVersion:4},
+    {nextNewspaperEditionNo:0},{calendarVersion:4},
     {status:'incomplete'},
   ]){
     f.records.set(f.runtime,{...original,...change});
@@ -219,11 +219,17 @@ test('editorial lifecycle persists drafts, edits, cancellation and archive with 
 test('drafts do not consume official numbers and a stale sequence is recovered at publication',async()=>{
   const f=fixture(),srv=f.service();
   f.records.delete(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-12'));
-  for(const no of [1,2])f.records.set(
+  f.records.set(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-1'),
+    {id:'imported-1',editionNo:1,state:'published',publishedAt:'2026-11-10T00:00:00Z'});
+  for(const no of [2,3])f.records.set(
     path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-'+no),
-    {id:'imported-'+no,editionNo:no,state:'published',publishedAt:'2026-11-10T00:00:00Z'});
+    {id:'imported-'+no,editionNo:no,state:'draft',publishedAt:null});
+  const no2='cloud-'+'b'.repeat(64);
+  f.records.set(path('campaignCloudRuntime',snapshot,'publishedNewspapers',no2),
+    {id:no2,source:'firebase-cloud',sourceSnapshotId:snapshot,
+      editionNo:2,state:'published',publishedAt:'2026-11-21T20:30:00Z',cancelledAt:null});
   f.records.set(f.runtime,{...f.records.get(f.runtime),
-    newspaperImportedMaxEditionNo:2,nextNewspaperEditionNo:9});
+    newspaperImportedMaxEditionNo:3,nextNewspaperEditionNo:9});
   const one=await srv.saveEdition(token,rich());
   const two=await srv.saveEdition(token,rich({requestKey:'second-draft-001'}));
   assert.equal(one.editionNo,3);
