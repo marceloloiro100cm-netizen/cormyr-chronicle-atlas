@@ -122,6 +122,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const minuteHandled=useRef(0);
  const [offlineRecovery,setOfflineRecovery]=useState<OfflineEditionBackup|null>(null);
  const [offlineStorageDenied,setOfflineStorageDenied]=useState(false);
+ const [offlineSavedAt,setOfflineSavedAt]=useState<number|null>(null);
  const [recoverNeedsReview,setRecoverNeedsReview]=useState(false);
  const recoveryChecked=useRef(new Set<string>());
  const retryTimer=useRef<number|undefined>(undefined);
@@ -509,6 +510,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
      draft.archive_preview||offlineRecovery?.editionId===draft.id)return;
   if(!writeOfflineEdition(browserOfflineStore(),userId,draft))
    setOfflineStorageDenied(true);
+  else{setOfflineStorageDenied(false);setOfflineSavedAt(Date.now());}
  },[editorial,editor,draft,dirty,userId,offlineRecovery]);
  // Offer recovery exactly once per opened edition per visit. Never replace a
  // newer server version silently, and never restore a published edition.
@@ -982,6 +984,7 @@ const useStoryModel=async(model:StoryModel)=>{
   saveState={{status:saveStatus,...(savedAt?{at:savedAt}:{}),dirty}}
   offlineRecovery={offlineRecovery}
   offlineStorageDenied={offlineStorageDenied}
+  offlineSavedAt={offlineSavedAt}
   offlineNeedsReview={recoverNeedsReview}
   onRecoverOffline={recoverLocal} onDiscardOffline={discardLocal}
   canRestoreDiscard={discardBackup!==null} onRestoreDiscard={restoreDiscard}
