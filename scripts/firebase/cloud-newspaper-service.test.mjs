@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CloudNewspaperError,createFirebaseCloudNewspaper} from './cloud-newspaper-service.mjs';
+import {markNewspaperDeleted} from './newspaper-deleted.mjs';
 
 const snapshot='b'.repeat(64),token='firebase-synthetic-newspaper-token';
 const path=(...parts)=>parts.join('/');
@@ -16,6 +17,9 @@ function fixture(profile='editor'){
   for(const root of ['migrationDomainStage','migrationAuthStage',
     'migrationTimeEngineStage','migrationNewspaperRuntimeStage'])
     records.set(path(root,snapshot),{status:'complete',private:true});
+  // Imported publication is immutable; the official sequence resumes at 13.
+  records.set(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-12'),
+    {id:'imported-12',editionNo:12,state:'published',publishedAt:'2026-11-10T00:00:00Z'});
   const calendar=path('migrationTimeEngineStage',snapshot,'calendar','current');
   records.set(calendar,{year:1522,month:0,day:10,festival:null,version:5});
   const runtime=path('campaignCloudRuntime',snapshot);
@@ -209,6 +213,43 @@ test('editorial lifecycle persists drafts, edits, cancellation and archive with 
   assert.equal(archived.state,'archived');
   assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,14);
   assert.equal([...f.records.keys()].filter(k=>k.includes('/newspaperAudits/')).length,4);
+});
+
+test('drafts do not consume official numbers and a stale sequence is recovered at publication',async()=>{
+  const f=fixture(),srv=f.service();
+  f.records.delete(path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-12'));
+  for(const no of [1,2])f.records.set(
+    path('migrationNewspaperRuntimeStage',snapshot,'editions','imported-'+no),
+    {id:'imported-'+no,editionNo:no,state:'published',publishedAt:'2026-11-10T00:00:00Z'});
+  f.records.set(f.runtime,{...f.records.get(f.runtime),
+    newspaperImportedMaxEditionNo:2,nextNewspaperEditionNo:9});
+  const one=await srv.saveEdition(token,rich());
+  const two=await srv.saveEdition(token,rich({requestKey:'second-draft-001'}));
+  assert.equal(one.editionNo,3);
+  assert.equal(two.editionNo,3);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,9,
+    'draft creation does not reserve or change the official counter');
+  const pub=await srv.saveEdition(token,rich({id:one.id,expectedVersion:1,
+    state:'published',requestKey:'publication-one-001'}));
+  assert.equal(pub.editionNo,3);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,4);
+  const next=await srv.saveEdition(token,rich({id:two.id,expectedVersion:1,
+    state:'published',requestKey:'publication-two-001'}));
+  assert.equal(next.editionNo,4);
+  assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,5);
+  const old=await srv.getEditorial(token,{action:'getEditorial',id:one.id});
+  assert.equal(old.editionNo,3);
+});
+
+test('issued editions cannot be tombstoned even through the general delete RPC',async()=>{
+  await assert.rejects(
+    ()=>markNewspaperDeleted({},snapshot,{
+      id:'published-issue',actorUid:'editor-1',state:'published'}),
+    error=>error?.status===409&&error.message==='published_edition_immutable');
+  await assert.rejects(
+    ()=>markNewspaperDeleted({},snapshot,{
+      id:'archived-issue',actorUid:'editor-1',state:'archived',draftOnly:false}),
+    error=>error?.status===409&&error.message==='published_edition_immutable');
 });
 
 test('editorial writes and private drafts reject players, forged fields and reused keys',async()=>{
