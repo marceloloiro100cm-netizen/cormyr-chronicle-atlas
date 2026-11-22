@@ -89,6 +89,17 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Atualizar arquivo'}));
   expect(p.onRetryArchive).toHaveBeenCalledOnce();
  });
+ it('oferece recuperação local com confirmação explícita e aviso de conflito',()=>{
+  const p=fixture();p.offlineRecovery={updatedAt:Date.UTC(2026,10,22,12),baseVersion:1};
+  p.offlineNeedsReview=true;p.onRecoverOffline=vi.fn();p.onDiscardOffline=vi.fn();
+  render(<NewspaperEditorialDesk {...p}/>);
+  expect(screen.getByText('Texto recuperável neste dispositivo.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Recuperar texto local'}));
+  expect(p.onRecoverOffline).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('button',{name:'Descartar cópia local'}));
+  expect(p.onDiscardOffline).toHaveBeenCalledOnce();
+  expect(screen.getByText(/O autosave fica/)).toBeInTheDocument();
+ });
  it('Missivas do Editor-Chefe viram item do menu acima de Configurações',()=>{
   render(<NewspaperEditorialDesk {...fixture()} missivas={<p>Leitor de missivas</p>}
    publicReads={new Map([['e1',3]])}/>);
