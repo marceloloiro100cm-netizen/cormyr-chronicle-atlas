@@ -13,7 +13,7 @@ type CloudEdition={id:string;editionNo:number;title:string;subtitle:string;
  blocks:NewspaperBlock[];pdfPath?:string|null;publishOn?:string|null;version:number;state:NewspaperState;
  campaignDate:string;publishedAt:string|null;template?:NewspaperTemplate;
  font_style?:NewspaperFont};
-type EditorialList={items:{id:string;editionNo:number;title:string;
+type EditorialList={nextOfficialEditionNo?:number;items:{id:string;editionNo:number;title:string;
  state:NewspaperState;version:number}[]};
 type PublishedSummary={id:string;editionNo:number};
 type HistoricalDraft={id:string;editionNo:number;sourceVersion:number;
@@ -96,6 +96,7 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
  const editorial=identity?.profile==='editor'||identity?.profile==='narrador';
  let cloud:CloudEdition[]=[];
  let historicDrafts:HistoricalDraft[]=[];
+ let nextOfficialNumber:number|null=null;
  if(editorial){
   // Cloud editorial writes can remain safely unapproved while the immutable
   // published archive is available. Preserve historic reading in that phase.
@@ -108,6 +109,8 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
    const list=await request<EditorialList>({action:'listEditorial'});
    if(!Array.isArray(list.items)||list.items.length>100)
     throw Error('Histórico editorial maior que o limite de segurança.');
+   if(Number.isSafeInteger(list.nextOfficialEditionNo)&&list.nextOfficialEditionNo!>=1)
+    nextOfficialNumber=list.nextOfficialEditionNo!;
    cloud=await Promise.all(list.items.map(item=>{
     if(!CLOUD.test(item.id))throw Error('Identificador editorial inválido.');
     return request<CloudEdition>({action:'getEditorial',id:item.id});
@@ -136,6 +139,39 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
   item&&typeof item.id==='string'&&!CLOUD.test(item.id)).map(item=>item.id));
  const history=editorial?imported:imported.filter(item=>
   reviewedHistoricIds.has(item.id)&&['published','archived'].includes(item.state));
+ // Imported editorial rows can be absent from a partial workspace projection
+ // even while the two independently reviewed issues remain public. Recover
+ // their read-only canvas from the public allowlist, never duplicate IDs.
+ const missing=editorial?published.items.filter(item=>
+  item&&typeof item.id==='string'&&!CLOUD.test(item.id)&&
+  !history.some(edition=>edition.id===item.id)):[];
+ const recovered=await Promise.all(missing.map(async item=>{
+  if(!HISTORICAL_ID.test(item.id)||!Number.isSafeInteger(item.editionNo))
+   throw Error('Identificador histórico de publicação inválido.');
+  const response=await fetch('/api/public/newspaper?edicao='+encodeURIComponent(item.id),{
+   credentials:'omit',cache:'no-store',redirect:'error',
+  });
+  if(!response.ok)throw Error('A edição publicada não pôde ser restaurada para o arquivo editorial.');
+  const value:unknown=await response.json();
+  if(!value||typeof value!=='object')throw Error('Publicação histórica inválida.');
+  const v=value as Record<string,unknown>;
+  if(v.id!==item.id||v.editionNo!==item.editionNo||
+     !Array.isArray(v.blocks)||typeof v.title!=='string'||
+     typeof v.campaignDate!=='string')
+   throw Error('A edição pública diverge do registro histórico.');
+  const edition:NewspaperEdition={
+   id:item.id,edition_no:item.editionNo,campaign_date:v.campaignDate,
+   title:v.title,subtitle:typeof v.subtitle==='string'?v.subtitle:'',
+   template:'classico',font_style:'classico',
+   state:'published',blocks:safeNewspaperBlocks(v.blocks as NewspaperBlock[]),
+   pdf_path:null,publish_on:null,
+   version:typeof v.version==='number'&&Number.isSafeInteger(v.version)&&v.version>0?v.version:1,
+   publication_revision:typeof v.version==='number'&&Number.isSafeInteger(v.version)&&v.version>0?v.version:1,
+   created_by:'',updated_at:'',published_at:typeof v.publishedAt==='string'?v.publishedAt:null,
+   archived_at:null,cancelled_at:null,
+  };
+  return edition;
+ }));
  const originals=new Map(history.map(e=>[e.id,e]));
  const seenHistoric=new Set<string>();
  const editableHistory=history.map(e=>{
@@ -154,7 +190,9 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
  });
  if(historicDrafts.some(o=>!originals.has(o.id)||!seenHistoric.has(o.id)))
   throw Error('Cópia histórica sem edição original. Acervo preservado.');
- const combined=[...editableHistory,...[...cloud,...complete].map(originalNewspaperEdition)];
+ const combined=[...editableHistory,...recovered,...[...cloud,...complete].map(originalNewspaperEdition)]
+  .map(edition=>nextOfficialNumber!==null&&CLOUD.test(edition.id)&&edition.state==='draft'&&
+   edition.published_at===null?{...edition,edition_no:nextOfficialNumber}:edition);
  if(new Set(combined.map(x=>x.id)).size!==combined.length)
   throw Error('Identificador de edição duplicado no acervo.');
  return combined.sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
