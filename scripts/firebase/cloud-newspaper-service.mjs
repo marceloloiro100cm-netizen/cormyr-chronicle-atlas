@@ -563,6 +563,8 @@ export function createFirebaseCloudNewspaper({
            (oldDoc.exists?old.version:0)!==input.expectedVersion||
            (input.id!==null&&!oldDoc.exists))
           deny('edition_version_conflict',409);
+        if(old?.publishedAt&&!['published','archived'].includes(input.state))
+          deny('published_edition_immutable',409);
         if(['archived','cancelled'].includes(input.state)&&!old?.publishedAt)
           deny('edition_not_published',409);
         const now=clock();
