@@ -44,6 +44,14 @@ const runtimeAudit=(await db.collection('campaignNarratorDrafts').doc(snapshotId
  .collection('calendarAudit').count().get()).data().count;
 const scheduleStage=await db.collection('migrationScheduleStage').doc(snapshotId).get();
 const scheduleSourceCount=source.campaign_schedule_events.expected;
+const lastId=typeof operational.lastAdvanceAuditId==='string'?operational.lastAdvanceAuditId:null;
+const lastAdvance=lastId?await db.collection('campaignNarratorDrafts').doc(snapshotId)
+ .collection('calendarAudit').doc(lastId).get():null;
+const last=lastAdvance?.exists?lastAdvance.data():null;
+const cloudWeek4Letters=(await cloud.ref.collection('letters')
+ .where('creationRound','==',4).count().get()).data().count;
+const cloudWeek4Newspapers=(await cloud.ref.collection('publishedNewspapers')
+ .where('publishedRound','==',4).count().get()).data().count;
 const result={
  scope:'CORMYR_TEMPORAL_INTEGRITY_READ_ONLY',
  sourceArchiveComplete:archiveOkay,
@@ -58,6 +66,16 @@ const result={
   ?operational.calendarVersion:null,
  operationalWeek:Number.isSafeInteger(operational.openRound)?operational.openRound:null,
  operationalCalendarDay:Number.isSafeInteger(operational.calendar?.day)?operational.calendar.day:null,
+ operationalCalendarYear:Number.isSafeInteger(operational.calendar?.year)?operational.calendar.year:null,
+ operationalCalendarFestival:typeof operational.calendar?.festival==='string'?operational.calendar.festival:null,
+ operationalLastAdvanceAction:['advance_week','undo_advance','start_season'].includes(last?.action)?last.action:null,
+ operationalLastAdvanceFromWeek:Number.isSafeInteger(last?.fromRound)?last.fromRound:null,
+ operationalLastAdvanceToWeek:Number.isSafeInteger(last?.toRound)?last.toRound:null,
+ operationalLastAdvanceToDay:Number.isSafeInteger(last?.to?.day)?last.to.day:null,
+ operationalLastAdvanceToMonth:Number.isSafeInteger(last?.to?.month)?last.to.month:null,
+ operationalLastAdvanceUndone:typeof last?.undoneAt==='string',
+ operationalWeekFourNewLetterCount:cloudWeek4Letters,
+ operationalWeekFourNewspaperCount:cloudWeek4Newspapers,
  operationalCalendarMonth:Number.isSafeInteger(operational.calendar?.month)?operational.calendar.month:null,
  mailRuntimeAligned:mail.exists&&mail.data()?.openRound===operational.openRound&&
   mail.data()?.calendarVersion===operational.calendarVersion,
