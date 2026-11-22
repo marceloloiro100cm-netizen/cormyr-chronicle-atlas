@@ -2,7 +2,7 @@
  * One-off, audited Firestore counter reconciliation for A Folha Sem Selo.
  * DEFAULT IS READ ONLY. Never changes editions, revisions, images, receipts,
  * tombstones, or publication state. Fails closed unless the ONLY issued
- * historical numbers are 1 and 2 and no Cloud issue was published.
+ * issued numbers are exactly 1 (imported) and 2 (Cloud).
  *
  * Run:
  *   CORMYR_FIREBASE_SNAPSHOT_ID=<verified snapshot hash> node scripts/firebase/reconcile-newspaper-published-sequence.mjs
@@ -50,10 +50,14 @@ const outcome=await db.runTransaction(async tx=>{
  if(importedRows.some(v=>!valid(v))||cloudRows.some(v=>!valid(v)||
     v.source!=='firebase-cloud'||v.sourceSnapshotId!==snapshot))
    throw Error('unexpected_edition_integrity');
- const published=importedRows.filter(issued).map(v=>v.editionNo).sort((a,b)=>a-b);
+ const published=importedRows.filter(issued);
  const cloudPublished=cloudRows.filter(issued);
- if(published.length!==2||published[0]!==1||published[1]!==2||
-    cloudPublished.length!==0||config.newspaperImportedMaxEditionNo!==2||
+ const maxImported=Math.max(0,...importedRows.map(v=>v.editionNo));
+ if(published.length!==1||published[0].editionNo!==1||
+    cloudPublished.length!==1||cloudPublished[0].editionNo!==2||
+    cloudPublished[0].source!=='firebase-cloud'||
+    !Number.isSafeInteger(config.newspaperImportedMaxEditionNo)||
+    config.newspaperImportedMaxEditionNo!==maxImported||
     !Number.isSafeInteger(config.nextNewspaperEditionNo)||
     config.nextNewspaperEditionNo<3)
    throw Error('published_sequence_differs_from_approved_1_2');
@@ -68,11 +72,11 @@ const outcome=await db.runTransaction(async tx=>{
   const now=new Date().toISOString();
   tx.create(audit,{action:'reconcile_newspaper_sequence',sourceSnapshotId:snapshot,
    previousCounter:before,newCounter:3,issuedNumbers:[1,2],
-   importedCount:importedRows.length,cloudDraftCount:cloudRows.length,
+   importedCount:importedRows.length,cloudDraftCount:cloudRows.filter(v=>!issued(v)).length,
    occurredAt:now,reason:'deleted drafts do not reserve official edition numbers'});
   tx.update(runtime,{nextNewspaperEditionNo:3});
  }
  return {status:apply?'applied_or_unchanged':'dry_run',previousCounter:before,
-  newCounter:3,issuedCount:2,cloudDraftCount:cloudRows.length};
+  newCounter:3,issuedCount:2,cloudDraftCount:cloudRows.filter(v=>!issued(v)).length};
 });
 console.log(JSON.stringify(outcome));
