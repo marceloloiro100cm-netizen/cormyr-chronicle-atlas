@@ -66,6 +66,19 @@ describe('contrato mail_page (porta literal do SQL original)', () => {
     expect(() => mailTrashPage(ds, {uid: EDITOR})).toThrow('Acesso não autorizado');
     expect(() => mailPage(ds, {uid: A}, {}, 0, 51)).toThrow('Página inválida');
   });
+  it('filtra furos marcados do Editor antes da paginação sem ampliar acesso', () => {
+    const ds = dataset();
+    const marks = {marked_ids: ['l1', 'l3', 'l4', 'l5']};
+    const first = mailPage(ds, {uid: EDITOR}, marks, 0, 1);
+    const second = mailPage(ds, {uid: EDITOR}, marks, 1, 1);
+    expect(first.total).toBe(2);
+    expect(second.total).toBe(2);
+    expect([...ids(first), ...ids(second)].sort()).toEqual(['l1', 'l3']);
+    expect(ids(mailPage(ds, {uid: EDITOR}, {marked_ids: []}))).toEqual([]);
+    expect(ids(mailPage(ds, {uid: EDITOR}, {marked_ids: ['l1','l2','l3'], origin: 'fewmerry'}))).toEqual(['l3']);
+    // Uma preferência local do Editor não altera os filtros dos jogadores.
+    expect(ids(mailPage(ds, {uid: A}, {marked_ids: ['l2']}))).toEqual(['l1','l2','l3']);
+  });
   it('filtra Caixa: recebidas, enviadas, rascunhos, programadas, histórico, cópias e excluídas', () => {
     const ds = dataset();
     expect(ids(mailPage(ds, {uid: NARRATOR}, {box: 'recebidas'}))).toEqual(['l2']);
