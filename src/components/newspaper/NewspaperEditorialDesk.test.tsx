@@ -89,6 +89,19 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Atualizar arquivo'}));
   expect(p.onRetryArchive).toHaveBeenCalledOnce();
  });
+ it('iniciar matéria com edição publicada cria rascunho novo sem alterar a publicação',()=>{
+  const p=fixture();
+  p.current={id:'cloud-'+'a'.repeat(64),edition_no:2,
+   campaign_date:'1522-11-20',title:'A Folha Sem Selo',subtitle:'',
+   template:'classico',font_style:'classico',state:'published',
+   blocks:[makeNewspaperBlock('headline')],pdf_path:null,
+   version:3,publication_revision:3,created_by:'',updated_at:'',
+   published_at:'2026-11-20T00:00:00Z',archived_at:null,cancelled_at:null};
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Escrever Matéria'}));
+  expect(p.onNew).toHaveBeenCalledWith('article');
+  expect(p.onAddBlock).not.toHaveBeenCalled();
+ });
  it('oferece recuperação local com confirmação explícita e aviso de conflito',()=>{
   const p=fixture();p.offlineRecovery={updatedAt:Date.UTC(2026,10,22,12),baseVersion:1};
   p.offlineNeedsReview=true;p.onRecoverOffline=vi.fn();p.onDiscardOffline=vi.fn();
