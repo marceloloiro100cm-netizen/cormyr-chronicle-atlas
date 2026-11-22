@@ -29,14 +29,15 @@ describe('Jornal native media transport',()=>{
   expect((init.headers as Record<string,string>)['Authorization']).toMatch(/^Bearer /);
  });
  it('only confirms a registered engraving when the single transaction returns the exact ID',async()=>{
-  const request=vi.fn(async()=>Response.json({result:{path,engravingId:id}},
+  const request=vi.fn(async(_url:string,init:RequestInit)=>Response.json({result:{path,engravingId:id}},
    {headers:{'X-Cormyr-Media-Handler':'v2'}}));
   vi.stubGlobal('fetch',request);
   expect(await uploadFirebaseEngraving(file(),'Grandragon',id))
    .toEqual({path,engravingId:id});
-  const headers=request.mock.calls[0]![1] as never;
-  // The request carries a stable retry ID and atomic-catalogue opt-in.
-  expect(headers).toBeDefined();
+  const headers=request.mock.calls[0]![1].headers as Record<string,string>;
+  expect(headers['X-Cormyr-Media-Atomic-Engraving']).toBe('true');
+  expect(headers['X-Cormyr-Media-Request-Key']).toBe(id);
+  expect(decodeURIComponent(headers['X-Cormyr-Media-Name']!)).toBe('Grandragon');
  });
  it('distinguishes a gateway-generated 503 without an API marker from a Firebase denial',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>new Response('<html>unavailable</html>',{
