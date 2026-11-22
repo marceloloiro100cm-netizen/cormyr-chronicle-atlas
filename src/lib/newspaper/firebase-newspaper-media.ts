@@ -1,6 +1,38 @@
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 
 type Kind='editionImage'|'editionPdf'|'commission'|'engraving';
+
+/** Only fixed, non-sensitive error codes returned by the server may be
+ * translated into a more specific troubleshooting message. Never print
+ * provider errors, IAM identities, paths, or raw response content. */
+export function newspaperMediaErrorMessage(status:number,code:unknown):string{
+ if(status===503){
+  switch(code){
+   case 'newspaper_media_disabled':
+    return 'A rota de mídias do Jornal não está habilitada nesta revisão do Firebase App Hosting.';
+   case 'media_not_approved':
+    return 'O Jornal não está autorizado a gravar no Firebase. O Narrador deve verificar em Contas as aprovações operacionais do Jornal.';
+   case 'media_storage_permission_denied':
+    return 'O Firebase App Hosting não tem permissão para gravar no bucket do Jornal. É necessário revisar o IAM da conta de serviço do backend, sem tornar o bucket público.';
+   case 'media_storage_unavailable':
+    return 'Falha no acesso ao Firebase Storage. Nenhum registro da gravura foi confirmado; tente novamente após verificar o serviço.';
+   case 'media_registry_unavailable':
+    return 'O arquivo pode ter chegado ao Storage, mas o registro da gravura falhou no Firestore. Preserve o original e solicite auditoria antes de repetir muitos envios.';
+   default:
+    return 'Serviço de mídia do Jornal indisponível (HTTP 503). A causa precisa ser verificada no Firebase; isso não comprova falta de autorização.';
+  }
+ }
+ const messages:Record<number,string>={
+  400:'O formato do arquivo ou o vínculo com a edição é inválido.',
+  401:'Sessão Firebase expirada. Entre novamente.',
+  403:'Sua conta não tem acesso a este arquivo.',
+  404:'Arquivo ainda não disponível no Firebase Storage.',
+  409:'A edição mudou ou já foi publicada. Reabra um rascunho.',
+  413:'Arquivo acima do limite permitido.',
+  415:'Envie um arquivo PNG, JPG, WebP ou PDF válido.',
+ };
+ return messages[status]??'Falha na operação com o armazenamento do Jornal.';
+}
 function encodeFile(file:File):Promise<string>{
  return new Promise((resolve,reject)=>{
   const reader=new FileReader();
@@ -26,17 +58,13 @@ async function call(body:Record<string,unknown>,binary=false):Promise<any>{
  });
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante o envio.');
  if(!response.ok){
-  const messages:Record<number,string>={
-   400:'O formato do arquivo ou o vínculo com a edição é inválido.',
-   401:'Sessão Firebase expirada. Entre novamente.',
-   403:'Sua conta não tem acesso a este arquivo.',
-   404:'Arquivo ainda não disponível no Firebase Storage.',
-   409:'A edição mudou ou já foi publicada. Reabra um rascunho.',
-   413:'Arquivo acima do limite permitido.',
-   415:'Envie um arquivo PNG, JPG, WebP ou PDF válido.',
-   503:'O armazenamento editorial do Firebase ainda não está autorizado nesta implantação.',
-  };
-  throw Error(messages[response.status]??'Falha na operação com o armazenamento do Jornal.');
+  let code:unknown=null;
+  try{
+   const body:unknown=await response.clone().json();
+   if(body&&typeof body==='object'&&!Array.isArray(body))
+    code=(body as Record<string,unknown>)['error'];
+  }catch{/* A response without JSON is still an error. */}
+  throw Error(newspaperMediaErrorMessage(response.status,code));
  }
  if(binary){
   const blob=await response.blob();
