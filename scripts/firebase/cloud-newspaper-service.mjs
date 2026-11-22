@@ -119,6 +119,35 @@ export function createFirebaseCloudNewspaper({
   }
   const publishedRoundOf=config=>roundOf(config)===null?{}:{publishedRound:roundOf(config)};
   const lastPublishedRoundOf=config=>roundOf(config)===null?{}:{newspaperLastPublishedRound:roundOf(config)};
+  /**
+   * The official sequence counts issued publications, never drafts or deleted
+   * drafts. Rebuild from both immutable imported issues and operational issues
+   * in the SAME Firestore transaction as publication. This also reconciles a
+   * stale nextNewspaperEditionNo inflated by earlier draft creation.
+   */
+  async function nextOfficialEditionNo(tx,config){
+    const [imported,operational]=await Promise.all([
+      tx.get(historicalSource.limit(501)),tx.get(editions.limit(501)),
+    ]);
+    if(imported.docs.length>500||operational.docs.length>500)
+      deny('edition_sequence_requires_pagination',503);
+    if(imported.docs.length===0&&config.newspaperImportedMaxEditionNo>0)
+      deny('edition_archive_unavailable',503);
+    let last=0;
+    for(const [docs,source] of [[imported.docs,true],[operational.docs,false]]){
+      for(const entry of docs){
+        const v=entry.data();
+        if(!v||!number(v.editionNo,1,99999998)||
+           (source?typeof v.id!=='string':
+             (v.source!=='firebase-cloud'||v.sourceSnapshotId!==snapshotId)))
+          deny('edition_sequence_unverified',503);
+        if(typeof v.publishedAt==='string'||
+           ['published','archived'].includes(v.state))
+          last=Math.max(last,v.editionNo);
+      }
+    }
+    return last+1;
+  }
   async function readApproval(uid,tx){
     const docs=await Promise.all([
       ...roots.map(ref=>tx.get(ref)),tx.get(calendar),
@@ -323,11 +352,13 @@ export function createFirebaseCloudNewspaper({
     async listEditorial(token){
       const uid=await actorId(token);
       return db.runTransaction(async tx=>{
-        await readApproval(uid,tx);
-        const docs=await tx.get(editions.limit(101));
+        const {config}=await readApproval(uid,tx);
+        const [docs,nextOfficial]=await Promise.all([
+          tx.get(editions.limit(101)),nextOfficialEditionNo(tx,config),
+        ]);
         if(docs.docs.length>100)deny('editorial_response_too_large',503);
         const removed=await deletedNewspaperIds(db,snapshotId);
-        return {items:docs.docs.map(d=>d.data()).filter(v=>
+        return {nextOfficialEditionNo:nextOfficial,items:docs.docs.map(d=>d.data()).filter(v=>
           v?.source==='firebase-cloud'&&v.sourceSnapshotId===snapshotId&&!removed.has(v.id))
           .sort((a,b)=>b.editionNo-a.editionNo)
           .map(v=>({id:v.id,editionNo:v.editionNo,title:v.title,state:v.state,version:v.version}))};
@@ -406,13 +437,14 @@ export function createFirebaseCloudNewspaper({
        if(approved.blocks.some(b=>b.type==='image'&&!b.imagePath&&!b.imageSrc))
         deny('historical_image_missing',409);
        weeklyEditionGate(config);
+       const officialNo=await nextOfficialEditionNo(tx,config);
        const now=clock();
        if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
         deny('invalid_server_clock',503);
        const next={
         ...approved,
         ...(source.pdfPath?{pdfPath:source.pdfPath}:{}),
-        id,editionNo:config.nextNewspaperEditionNo,
+        id,editionNo:officialNo,
         source:'firebase-cloud',sourceHistoricId:input.id,
         sourceSnapshotId:snapshotId,sourceHistoricVersion:source.version,
         state:'published',version:1,campaignDate:calendarDate,
@@ -423,7 +455,7 @@ export function createFirebaseCloudNewspaper({
        tx.create(audit,{action:'publish_historical_draft',editionId:id,
         historicalEditionId:input.id,actorUid:uid,occurredAt:now,
         before:null,after:next});
-       tx.update(runtime,{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1,
+       tx.update(runtime,{nextNewspaperEditionNo:officialNo+1,
         ...lastPublishedRoundOf(config)});
        return {...editorialView(next),duplicate:false};
       });
@@ -492,10 +524,11 @@ export function createFirebaseCloudNewspaper({
         const paths=[...imagePaths,...(content.pdfPath?[content.pdfPath]:[])];
         const mediaRefs=paths.map(path=>runtime.collection('newspaperMedia')
          .doc(digest('newspaper-media:'+path)));
-        const [oldDoc,auditDoc,commissionDocs,mediaDocs]=await Promise.all([
+        const [oldDoc,auditDoc,commissionDocs,mediaDocs,officialNo]=await Promise.all([
          tx.get(ref),tx.get(audit),
          Promise.all(commissionRefs.map(doc=>tx.get(doc))),
          Promise.all(mediaRefs.map(doc=>tx.get(doc))),
+         nextOfficialEditionNo(tx,config),
         ]);
         for(let i=0;i<paths.length;i++){
          const entry=mediaDocs[i].data(),path=paths[i];
@@ -542,7 +575,7 @@ export function createFirebaseCloudNewspaper({
           publishOn:input.state==='draft'?content.publishOn:null,
           id,source:'firebase-cloud',
           ...(firstPublication?publishedRoundOf(config):{}),
-          sourceSnapshotId:snapshotId,editionNo:old?.editionNo??config.nextNewspaperEditionNo,
+          sourceSnapshotId:snapshotId,editionNo:old?.publishedAt?old.editionNo:officialNo,
           state:input.state,version:input.expectedVersion+1,
           campaignDate:published&&!old?.publishedAt?calendarDate:old?.campaignDate??calendarDate,
           publishedAt:published?old?.publishedAt??now:old?.publishedAt??null,
@@ -566,7 +599,7 @@ export function createFirebaseCloudNewspaper({
         tx.create(audit,{action:'save_edition',actorUid:uid,occurredAt:now,
           editionId:id,requestFingerprint:fingerprint,before:old??null,after:next});
         const runtimeChanges={
-          ...(!oldDoc.exists?{nextNewspaperEditionNo:config.nextNewspaperEditionNo+1}:{}),
+          ...(firstPublication?{nextNewspaperEditionNo:officialNo+1}:{}),
           ...(firstPublication?lastPublishedRoundOf(config):{})};
         if(Object.keys(runtimeChanges).length)tx.update(runtime,runtimeChanges);
         return {...editorialView(next),duplicate:false};
@@ -614,7 +647,7 @@ export function createFirebaseCloudNewspaper({
         const now=clock();
         if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
           deny('invalid_server_clock',503);
-        const no=config.nextNewspaperEditionNo;
+        const no=await nextOfficialEditionNo(tx,config);
         weeklyEditionGate(config);
         const doc={
           id,source:'firebase-cloud',sourceSnapshotId:snapshotId,
