@@ -112,6 +112,7 @@ export interface NewspaperEditorialProps{
  /** Dispositivo guardou texto mais recente/alternativo à versão do Firebase. */
  offlineRecovery?:{updatedAt:number;baseVersion:number}|null;
  offlineStorageDenied?:boolean;
+ offlineNeedsReview?:boolean;
  onRecoverOffline?:()=>void;
  onDiscardOffline?:()=>void;
  /** Depois de descartar, o Editor-Chefe tem alguns segundos para recuperar as alterações. */
@@ -351,6 +352,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <button type="button" className="folha-text-action" disabled={busy}
        onClick={props.onDiscardOffline}>Descartar cópia local</button>
      </div>
+    </div>}
+    {props.offlineNeedsReview&&<div className="folha-alert" role="alert">
+     A cópia recuperada foi criada sobre uma versão anterior do Firebase.
+     Confira a manchete e clique em <strong>Salvar</strong> para confirmar. O autosave fica
+     suspenso até sua decisão, evitando sobrescrever alterações mais recentes.
     </div>}
     {props.offlineStorageDenied&&<div className="folha-alert" role="alert">
      Este navegador bloqueou a cópia local. A edição continuará tentando salvar no Firebase,
