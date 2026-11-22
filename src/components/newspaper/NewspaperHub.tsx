@@ -30,9 +30,11 @@ import {
  type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,orderStaff,moveStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
+import {browserOfflineStore,readOfflineEdition,writeOfflineEdition,clearOfflineEdition,recoverOfflineEdition,
+ type OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
 import {
  canRedo,canUndo,convertBlock,emptyHistory,handleNewspaperTextareaTab,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
- redoHistory,serializeBlocks,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
+ redoHistory,serializeBlocks,sameSnapshot,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
 } from '@/lib/newspaper/editing';
 import './newspaper.css';
 
@@ -116,6 +118,13 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const [saveStatus,setSaveStatus]=useState<'idle'|'saving'|'saved'|'failed'>('idle');
  const [savedAt,setSavedAt]=useState('');
  const [retryTick,setRetryTick]=useState(0);
+ const [minuteTick,setMinuteTick]=useState(0);
+ const minuteHandled=useRef(0);
+ const [offlineRecovery,setOfflineRecovery]=useState<OfflineEditionBackup|null>(null);
+ const [offlineStorageDenied,setOfflineStorageDenied]=useState(false);
+ const [offlineSavedAt,setOfflineSavedAt]=useState<number|null>(null);
+ const [recoverNeedsReview,setRecoverNeedsReview]=useState(false);
+ const recoveryChecked=useRef(new Set<string>());
  const retryTimer=useRef<number|undefined>(undefined);
  const [discardBackup,setDiscardBackup]=useState<NewspaperEdition|null>(null);
  const discardTimer=useRef<number|undefined>(undefined);
@@ -158,6 +167,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   ]);
   if(edition.id!==selectedId&&current&&selected&&compare(current)!==compare(selected)&&
    !window.confirm('Há alterações não salvas. Deseja abrir outra edição e descartá-las?'))return;
+  setRecoverNeedsReview(false);setOfflineRecovery(null);
   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));setBlockId(null);
   setEditing(false);setMessage('');setError('');
   if(!editor&&['published','archived'].includes(edition.state)&&newspaperIsUnread(edition,myReads.get(edition.id))){
@@ -186,9 +196,10 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    const extra=initialBlock?{...makeNewspaperBlock(initialBlock),...(extraPatch??{})}:null;
    if(extra)blocks.push(extra);
    const edition=await createNewspaperEdition({...seed,blocks});
+   setRecoverNeedsReview(false);setOfflineRecovery(null);
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(extra?.id??edition.blocks[0]?.id??null);setEditing(true);
-   notice('Nova edição criada como rascunho. Personalize os blocos e salve.');
+   notice('Rascunho criado no Firebase. O texto será protegido neste dispositivo e salvo automaticamente.');
    await refresh();
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
@@ -268,10 +279,12 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   const state=nextState??current.state;
   const problem=validateNewspaperEdition(current);
   // Permite cancelar mesmo uma edição ainda incompleta.
-  if(problem&&state!=='cancelled'){setError(problem);return;}
+  // Incomplete drafts must be saveable; publishing still requires review.
+  if(problem&&state==='published'){setError(problem);return;}
   if(state==='cancelled'&&!window.confirm('Cancelar o envio desta edição? Ela ficará invisível aos jogadores, mas preservada no histórico editorial.'))return;
   setBusy(true);setError('');
   try{
+   const snapshotAtSave=current;
    const result=await updateNewspaperEdition(current,{
     campaign_date:current.campaign_date,title:current.title.trim(),subtitle:current.subtitle,
     template:current.template,font_style:current.font_style,blocks:current.blocks,
@@ -279,13 +292,22 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
     // Só rascunhos ficam agendados; ao publicar, cancelar ou arquivar o agendamento é limpo.
     ...(current.publish_on!==undefined?{publish_on:state==='draft'?current.publish_on:null}:{}),
    });
-   setDraft(cloneEditableEdition(result));
+   setDraft(old=>{
+    if(old?.id!==result.id)return old;
+    return sameSnapshot(snapshotOf(old),snapshotOf(snapshotAtSave))
+     ?cloneEditableEdition(result):{...old,version:result.version};
+   });
+   setRecoverNeedsReview(false);
    // The imported archive remains immutable. Keep the operational copy in the
    // editor's query cache until the fresh Firebase overlay list is reloaded.
    qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
     rows?.map(e=>e.id===result.id?result:e)??[result]);
    setSaveStatus('saved');setSavedAt(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-   if(state!=='draft'){setEditing(false);setBlockId(null);}
+   if(state!=='draft'){
+    clearOfflineEdition(browserOfflineStore(),userId,result.id);
+    setOfflineRecovery(null);
+    setEditing(false);setBlockId(null);
+   }
    await refresh();
    notice(state==='published'?'Jornal publicado. A edição já aparece aos jogadores como não lida.':
     state==='cancelled'?'Envio cancelado; a edição não aparece mais aos jogadores.':
@@ -351,7 +373,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   modifyBlock(id,patch);setEditing(true);
  };
  const addEditorialBlock=(type:NewspaperBlockType,span?:number)=>{
-  if(!current){void newEdition(type);return;}
+  if(!current||current.archive_preview||current.state!=='draft'){
+   void newEdition(type);return;
+  }
   if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
   const block=makeNewspaperBlock(type);
   if(span)block.span=span;
@@ -364,7 +388,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBlockId(fromId);setEditing(true);
  };
  const insertEditorialBefore=(type:NewspaperBlockType,beforeId:string|null)=>{
-  if(!current){void newEdition(type);return;}
+  if(!current||current.archive_preview||current.state!=='draft'){
+   void newEdition(type);return;
+  }
   if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
   const block=makeNewspaperBlock(type);
   const next=[...current.blocks],index=next.findIndex(x=>x.id===beforeId);
@@ -479,16 +505,72 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
  };
- const dirty=newspaperIsDirty(draft,selected);
+ const dirty=Boolean(draft?.state==='draft'&&!selected)||
+  newspaperIsDirty(draft,selected);
+ // The fallback is recorded after every React edit, not just on the minute.
+ // If the browser storage is disabled, the editor sees a visible warning.
+ useEffect(()=>{
+  if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||
+     draft.archive_preview||offlineRecovery?.editionId===draft.id)return;
+  if(!writeOfflineEdition(browserOfflineStore(),userId,draft))
+   setOfflineStorageDenied(true);
+  else{setOfflineStorageDenied(false);setOfflineSavedAt(Date.now());}
+ },[editorial,editor,draft,dirty,userId,offlineRecovery]);
+ // Offer recovery exactly once per opened edition per visit. Never replace a
+ // newer server version silently, and never restore a published edition.
+ useEffect(()=>{
+  if(!editorial||!editor||!selected||selected.state!=='draft'||!selectedId||
+     selectedId!==selected.id||recoveryChecked.current.has(selected.id))return;
+  recoveryChecked.current.add(selected.id);
+  const backup=readOfflineEdition(browserOfflineStore(),userId,selected);
+  if(backup&&!(draft?.id===selected.id&&sameSnapshot(snapshotOf(draft),backup.snapshot)))
+   setOfflineRecovery(backup);
+ },[editorial,editor,selectedId,selected,userId]);
+ const recoverLocal=()=>{
+  if(!offlineRecovery||!selected||offlineRecovery.editionId!==selected.id)return;
+  const restored=recoverOfflineEdition(selected,offlineRecovery);
+  setDraft(restored);setSelectedId(restored.id);
+  const needsReview=offlineRecovery.baseVersion!==selected.version;
+  setRecoverNeedsReview(needsReview);
+  setBlockId(restored.blocks[0]?.id??null);setEditing(true);
+  setOfflineRecovery(null);
+  notice(needsReview?
+   'Texto local recuperado. O Firebase tem uma versão diferente: revise e clique Salvar para confirmar.':
+   'Texto recuperado deste dispositivo. O salvamento no Firebase será retomado automaticamente.');
+ };
+ const discardLocal=()=>{
+  if(!offlineRecovery)return;
+  if(!window.confirm('Descartar definitivamente esta cópia local? O rascunho do Firebase não será alterado.'))return;
+  clearOfflineEdition(browserOfflineStore(),userId,offlineRecovery.editionId);
+  setOfflineRecovery(null);
+  notice('Cópia local descartada; o rascunho do Firebase foi mantido.');
+ };
  const revisionsQuery=useQuery({queryKey:['campaign-newspaper-revisions',current?.id],
   queryFn:()=>getNewspaperRevisions(current!.id),enabled:Boolean(editorial&&editor&&current?.id),
   staleTime:20_000,retry:false});
- // Salvamento automático: só rascunhos, depois de 8 s sem digitar, e em silêncio se a edição
- // ainda estiver incompleta (o botão Salvar continua mostrando o motivo).
+ // Keep the existing 8-second save after a pause, plus a hard one-minute
+ // fallback for editors who type continuously. An incomplete draft is valid
+ // for persistence: publication validation is NOT an autosave gate.
  useEffect(()=>{
-  if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft')return;
+  if(!editorial||!editor)return;
+  const everyMinute=window.setInterval(()=>setMinuteTick(t=>t+1),60_000);
+  const onReconnect=()=>setRetryTick(t=>t+1);
+  window.addEventListener('online',onReconnect);
+  return()=>{window.clearInterval(everyMinute);
+   window.removeEventListener('online',onReconnect);};
+ },[editorial,editor]);
+ useEffect(()=>{
+  if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft'||
+     recoverNeedsReview||offlineRecovery?.editionId===draft.id)return;
+  const periodicDue=minuteTick>minuteHandled.current;
   const timer=window.setTimeout(()=>{
-   if(autosaving.current||validateNewspaperEdition(draft))return;
+   if(periodicDue)minuteHandled.current=minuteTick;
+   if(autosaving.current)return;
+   if(typeof navigator!=='undefined'&&navigator.onLine===false){
+    setSaveStatus('failed');
+    setMessage('Sem conexão. Sua edição permanece guardada neste dispositivo e será enviada ao reconectar.');
+    return;
+   }
    autosaving.current=true;setSaveStatus('saving');
    void updateNewspaperEdition(draft,{
     campaign_date:draft.campaign_date,title:draft.title.trim(),subtitle:draft.subtitle,
@@ -518,9 +600,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
      retryTimer.current=window.setTimeout(()=>setRetryTick(tick=>tick+1),20_000);
     }
    }).finally(()=>{autosaving.current=false;});
-  },8000);
+  },periodicDue?0:8000);
   return()=>window.clearTimeout(timer);
- },[editorial,editor,dirty,busy,draft,retryTick]);
+ },[editorial,editor,dirty,busy,draft,retryTick,minuteTick,offlineRecovery,recoverNeedsReview]);
  useEffect(()=>{setSaveStatus('idle');setSavedAt('');},[selectedId]);
  useEffect(()=>{
   if(!dirty||!editor)return;
@@ -534,6 +616,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setDiscardBackup(draft);
   window.clearTimeout(discardTimer.current);
   discardTimer.current=window.setTimeout(()=>setDiscardBackup(null),10_000);
+  clearOfflineEdition(browserOfflineStore(),userId,selected.id);
   setDraft(cloneEditableEdition(selected));setBlockId(null);setEditing(selected.state==='draft');
   notice('Alterações descartadas. A edição voltou à última versão salva.');
  };
@@ -559,6 +642,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBusy(true);setError('');
   try{
    await deleteNewspaperDraft(removedId);
+   clearOfflineEdition(browserOfflineStore(),userId,removedId);
+   setOfflineRecovery(null);
    await refresh();
    setSelectedId(null);setDraft(null);setBlockId(null);setEditing(false);
    notice('Rascunho excluído. Você pode começar uma nova edição.');
@@ -901,6 +986,11 @@ const useStoryModel=async(model:StoryModel)=>{
   onUndo={undo} onRedo={redo} onCopyBlock={copyBlock} onCutBlock={cutBlock}
   onPasteBlock={(text,files)=>{void pasteBlocks(text,files);}}
   saveState={{status:saveStatus,...(savedAt?{at:savedAt}:{}),dirty}}
+  offlineRecovery={offlineRecovery}
+  offlineStorageDenied={offlineStorageDenied}
+  offlineSavedAt={offlineSavedAt}
+  offlineNeedsReview={recoverNeedsReview}
+  onRecoverOffline={recoverLocal} onDiscardOffline={discardLocal}
   canRestoreDiscard={discardBackup!==null} onRestoreDiscard={restoreDiscard}
   onConvertBlock={convertEditorialBlock}
   dirty={dirty} onDiscard={discardChanges} onDeleteDraft={()=>{void deleteDraft();}}

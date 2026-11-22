@@ -147,6 +147,9 @@
  * todas as seções originais permanecem. Mudanças expressas pelo dono.
  * Public archive fast-path is read-only and sourced from the same published
  * allowlist; the layout only gains a loading-status hint and retry action.
+ * 2026-11-22 (Editor autosave offline): no menu, route or navigation change.
+ * The newsroom now offers local recovery of unpublished text and protects
+ * drafts during network interruptions; publication permissions are unchanged.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -162,8 +165,8 @@ const originals={
   'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'556c62344891e9059278a7c2c9de20d71ddceb3d',
-  'src/components/newspaper/NewspaperHub.tsx':'629148c34445028106c6c70954d859f7a5fe471e',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'e5a56d953c75e91d523da1fffd56e85e82e7cdf7',
+  'src/components/newspaper/NewspaperHub.tsx':'32bbc0fd362db4d232867578efffdf332fc5f8a1',
   'src/components/newspaper/newspaper-editorial.css':'4c80d483ffbb0f437b5a4856557f0fd04f855e60',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',

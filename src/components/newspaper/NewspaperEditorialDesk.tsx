@@ -109,6 +109,13 @@ export interface NewspaperEditorialProps{
  dirty:boolean;
  /** Situação do salvamento automático, mostrada junto das ferramentas de edição. */
  saveState:SaveState;
+ /** Dispositivo guardou texto mais recente/alternativo à versão do Firebase. */
+ offlineRecovery?:{updatedAt:number;baseVersion:number}|null;
+ offlineStorageDenied?:boolean;
+ offlineSavedAt?:number|null;
+ offlineNeedsReview?:boolean;
+ onRecoverOffline?:()=>void;
+ onDiscardOffline?:()=>void;
  /** Depois de descartar, o Editor-Chefe tem alguns segundos para recuperar as alterações. */
  canRestoreDiscard:boolean;
  onRestoreDiscard:()=>void;
@@ -182,10 +189,10 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   if(current&&!current.archive_preview){props.onEdit();if(current.blocks[0])props.onSelectBlock(current.blocks[0].id);}
  };
  const writeArticle=()=>{setSection('capa');setFullPreview(false);
-  if(!current||current.archive_preview)props.onNew('article');else props.onAddBlock('article');};
+  if(!current||current.archive_preview||current.state!=='draft')props.onNew('article');else props.onAddBlock('article');};
  const insert=(type:NewspaperBlockType,span?:number)=>{
   setSection('capa');setFullPreview(false);
-  if(!current||current.archive_preview)props.onNew(type);else props.onAddBlock(type,span);
+  if(!current||current.archive_preview||current.state!=='draft')props.onNew(type);else props.onAddBlock(type,span);
  };
  const chooseSection=(value:Section)=>{
   setSection(value);setFullPreview(false);
@@ -334,6 +341,28 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)props.onUpload(file);}}/>
     </div>
 
+    {props.offlineRecovery&&<div className="folha-alert" role="alert">
+     <strong>Texto recuperável neste dispositivo.</strong>
+     {' '}Há uma cópia local da edição feita em {new Date(props.offlineRecovery.updatedAt).toLocaleString('pt-BR')}.
+     {' '}Ela não será enviada nem substituirá a versão do Firebase sem sua escolha.
+     {current&&props.offlineRecovery.baseVersion!==current.version&&
+      <p>A versão do Firebase mudou desde essa cópia; confira o texto antes de salvar.</p>}
+     <div className="folha-check-actions">
+      <button type="button" className="folha-text-action" disabled={busy}
+       onClick={props.onRecoverOffline}>Recuperar texto local</button>
+      <button type="button" className="folha-text-action" disabled={busy}
+       onClick={props.onDiscardOffline}>Descartar cópia local</button>
+     </div>
+    </div>}
+    {props.offlineNeedsReview&&<div className="folha-alert" role="alert">
+     A cópia recuperada foi criada sobre uma versão anterior do Firebase.
+     Confira a manchete e clique em <strong>Salvar</strong> para confirmar. O autosave fica
+     suspenso até sua decisão, evitando sobrescrever alterações mais recentes.
+    </div>}
+    {props.offlineStorageDenied&&<div className="folha-alert" role="alert">
+     Este navegador bloqueou a cópia local. A edição continuará tentando salvar no Firebase,
+     mas a proteção contra fechamento sem conexão não está disponível neste dispositivo.
+    </div>}
     {props.error&&<div className="folha-alert" role="alert">{props.error}</div>}
     {props.message&&<div className="folha-notice" role="status">{props.message}
      {props.canRestoreDiscard&&<button type="button" className="folha-notice-action" onClick={props.onRestoreDiscard}>Desfazer descarte</button>}</div>}
@@ -369,7 +398,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <button type="button" disabled={!props.canPasteBlock} onClick={()=>props.onPasteBlock('',[])}
          title="Colar depois do bloco selecionado (Ctrl+V)"><ClipboardPaste size={16}/> Colar</button>
         <button type="button" onClick={()=>setHelpOpen(true)} title="Lista de atalhos (?)"><Keyboard size={16}/> Atalhos</button>
-        <span className={`folha-save-status folha-save-${props.saveState.status}${props.saveState.dirty?' folha-save-dirty':''}`} role="status">{saveStatusText(props.saveState)}</span>
+        <span className={`folha-save-status folha-save-${props.saveState.status}${props.saveState.dirty?' folha-save-dirty':''}`} role="status">
+         {saveStatusText(props.saveState)}
+         {props.saveState.dirty&&props.offlineSavedAt&&!props.offlineStorageDenied?
+          ` · Cópia neste dispositivo às ${new Date(props.offlineSavedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`:''}
+        </span>
         <small>Clique na borda de um bloco (ou na alça ⠿) e use Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D ou Delete. Tecle / para inserir bloco e ? para ver todos os atalhos.</small>
        </div>}
        {current?<NewspaperCanvas edition={current} compactMasthead editing={editing}
