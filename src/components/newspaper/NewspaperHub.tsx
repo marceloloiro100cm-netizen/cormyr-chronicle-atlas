@@ -30,6 +30,8 @@ import {
  type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,orderStaff,moveStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
+import {readOfflineEdition,writeOfflineEdition,clearOfflineEdition,recoverOfflineEdition,
+ type OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
 import {
  canRedo,canUndo,convertBlock,emptyHistory,handleNewspaperTextareaTab,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
  redoHistory,serializeBlocks,snapshotOf,textToArticleBlock,undoHistory,type EditHistory,
@@ -116,6 +118,14 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const [saveStatus,setSaveStatus]=useState<'idle'|'saving'|'saved'|'failed'>('idle');
  const [savedAt,setSavedAt]=useState('');
  const [retryTick,setRetryTick]=useState(0);
+ const [minuteTick,setMinuteTick]=useState(0);
+ const minuteHandled=useRef(0);
+ const [offlineRecovery,setOfflineRecovery]=useState<OfflineEditionBackup|null>(null);
+ const [offlineStorageDenied,setOfflineStorageDenied]=useState(false);
+ const recoveryChecked=useRef(new Set<string>());
+ const lastDraft=useRef<NewspaperEdition|null>(null);
+ const lastSelected=useRef<NewspaperEdition|null>(null);
+ const lastBusy=useRef(false);
  const retryTimer=useRef<number|undefined>(undefined);
  const [discardBackup,setDiscardBackup]=useState<NewspaperEdition|null>(null);
  const discardTimer=useRef<number|undefined>(undefined);
@@ -138,6 +148,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBlockId(edition.state==='draft'?edition.blocks[0]?.id??null:null);
  },[editorial,editor,selectedId,editions.data]);
  const selected=history.find(e=>e.id===selectedId);
+ lastDraft.current=draft;lastSelected.current=selected??null;lastBusy.current=busy;
  const current=draft?.id===selectedId&&
     !(draft.archive_preview&&selected&&!selected.archive_preview)
     ?draft:selected??null;
@@ -188,7 +199,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    const edition=await createNewspaperEdition({...seed,blocks});
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(extra?.id??edition.blocks[0]?.id??null);setEditing(true);
-   notice('Nova edição criada como rascunho. Personalize os blocos e salve.');
+   notice('Rascunho criado no Firebase. O texto será protegido neste dispositivo e salvo automaticamente.');
    await refresh();
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
@@ -285,7 +296,11 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
     rows?.map(e=>e.id===result.id?result:e)??[result]);
    setSaveStatus('saved');setSavedAt(new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-   if(state!=='draft'){setEditing(false);setBlockId(null);}
+   if(state!=='draft'){
+    clearOfflineEdition(window.localStorage,userId,result.id);
+    setOfflineRecovery(null);
+    setEditing(false);setBlockId(null);
+   }
    await refresh();
    notice(state==='published'?'Jornal publicado. A edição já aparece aos jogadores como não lida.':
     state==='cancelled'?'Envio cancelado; a edição não aparece mais aos jogadores.':
@@ -479,7 +494,40 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   }catch(cause){setError(safeError(cause));}
   finally{setBusy(false);}
  };
- const dirty=newspaperIsDirty(draft,selected);
+ const dirty=Boolean(draft?.state==='draft'&&!selected)||
+  newspaperIsDirty(draft,selected);
+ // The fallback is recorded after every React edit, not just on the minute.
+ // If the browser storage is disabled, the editor sees a visible warning.
+ useEffect(()=>{
+  if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||
+     draft.archive_preview)return;
+  if(!writeOfflineEdition(window.localStorage,userId,draft))
+   setOfflineStorageDenied(true);
+ },[editorial,editor,draft,dirty,userId]);
+ // Offer recovery exactly once per opened edition per visit. Never replace a
+ // newer server version silently, and never restore a published edition.
+ useEffect(()=>{
+  if(!editorial||!editor||!selected||selected.state!=='draft'||!selectedId||
+     selectedId!==selected.id||recoveryChecked.current.has(selected.id))return;
+  recoveryChecked.current.add(selected.id);
+  const backup=readOfflineEdition(window.localStorage,userId,selected);
+  if(backup)setOfflineRecovery(backup);
+ },[editorial,editor,selectedId,selected,userId]);
+ const recoverLocal=()=>{
+  if(!offlineRecovery||!selected||offlineRecovery.editionId!==selected.id)return;
+  const restored=recoverOfflineEdition(selected,offlineRecovery);
+  setDraft(restored);setSelectedId(restored.id);
+  setBlockId(restored.blocks[0]?.id??null);setEditing(true);
+  setOfflineRecovery(null);
+  notice('Texto recuperado deste dispositivo. O salvamento no Firebase será retomado automaticamente.');
+ };
+ const discardLocal=()=>{
+  if(!offlineRecovery)return;
+  if(!window.confirm('Descartar definitivamente esta cópia local? O rascunho do Firebase não será alterado.'))return;
+  clearOfflineEdition(window.localStorage,userId,offlineRecovery.editionId);
+  setOfflineRecovery(null);
+  notice('Cópia local descartada; o rascunho do Firebase foi mantido.');
+ };
  const revisionsQuery=useQuery({queryKey:['campaign-newspaper-revisions',current?.id],
   queryFn:()=>getNewspaperRevisions(current!.id),enabled:Boolean(editorial&&editor&&current?.id),
   staleTime:20_000,retry:false});
@@ -559,6 +607,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBusy(true);setError('');
   try{
    await deleteNewspaperDraft(removedId);
+   clearOfflineEdition(window.localStorage,userId,removedId);
+   setOfflineRecovery(null);
    await refresh();
    setSelectedId(null);setDraft(null);setBlockId(null);setEditing(false);
    notice('Rascunho excluído. Você pode começar uma nova edição.');
