@@ -3,7 +3,8 @@
  * immutable object has a Firestore registry row used by editorial publication.
  */
 import {createHash,randomUUID} from 'node:crypto';
-import {createFirebaseCloudReadonly} from '../../../scripts/firebase/cloud-readonly-service.mjs';
+import {createFirebaseCloudReadonly,CloudAccessError}
+ from '../../../scripts/firebase/cloud-readonly-service.mjs';
 
 const SNAP=/^[a-f0-9]{64}$/;
 const EDITION=/^cloud-[a-f0-9]{64}$/;
@@ -75,7 +76,9 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
  const root=db.collection('migrationNewspaperRuntimeStage').doc(snapshotId);
  const cloud=createFirebaseCloudReadonly({db,auth,snapshotId,projectId:'cormyr',enabled:true});
  const ready=async()=>{
-  const [stage,live]=await Promise.all([root.get(),runtime.get()]);
+  let stage,live;
+  try{[stage,live]=await Promise.all([root.get(),runtime.get()]);}
+  catch{fail('media_runtime_lookup_failed',503);}
   const v=live.data();
   if(!stage.exists||stage.data()?.status!=='complete'||stage.data()?.private!==true||
      !live.exists||v?.status!=='active'||v.private!==true||
@@ -84,7 +87,14 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
    fail('media_not_approved',503);
  };
  const scope=async(token:string):Promise<Scope>=>{
-  const s=await cloud.workspaceScope(token) as Scope;
+  let s:Scope;
+  try{s=await cloud.workspaceScope(token) as Scope;}
+  catch(error){
+   // Preserve explicit authentication, permission and migration-stage
+   // denials. An unexpected SDK failure is not evidence of invalid access.
+   if(error instanceof CloudAccessError)throw error;
+   fail('media_scope_backend_unavailable',503);
+  }
   if(!s||!s.uid||!['editor','narrador','jogador'].includes(s.profile))fail('media_denied',403);
   return s;
  };
