@@ -19,11 +19,13 @@ export function parseEventDate(key){
 /** Returns the next stored document or throws via deny(code,status). */
 export function planEventSave(previous,payload,{deny,newId,uid,at}){
   if(!payload||typeof payload!=='object'||Array.isArray(payload)||
-     Object.keys(payload).some(k=>!['id','version','date','title','description','deleted','scope','region'].includes(k)))
+     Object.keys(payload).some(k=>!['id','version','date','title','description','deleted','scope','region','public'].includes(k)))
     deny('invalid_event',400);
   const {id,version,date,title,description,deleted}=payload;
   // Camada do evento (Hub V2.1): oficial do Reino ou regional (grupo de narração).
   const scope=payload.scope??'kingdom',region=payload.region??null;
+  // Public web visibility must be an explicit, separate opt-in from publishing to players.
+  if(payload.public!==undefined&&typeof payload.public!=='boolean')deny('invalid_event',400);
   if(typeof deleted!=='boolean'||typeof title!=='string'||typeof description!=='string'||
      !parseEventDate(date)||(!deleted&&!title.trim())||title.length>200||description.length>5000||
      !['kingdom','region'].includes(scope)||
@@ -32,13 +34,15 @@ export function planEventSave(previous,payload,{deny,newId,uid,at}){
   const layer=scope==='region'?{scope,region}:{scope:'kingdom',region:null};
   if(id===null||id===undefined){
     if(previous||deleted||(version!==null&&version!==undefined))deny('invalid_event',400);
-    return {id:newId(),version:1,draft:{date,title:title.trim(),description,deleted:false,...layer},
+    return {id:newId(),version:1,draft:{date,title:title.trim(),description,deleted:false,...layer,
+      ...(payload.public===true?{public:true}:{})},
       published:null,updatedAt:at,updatedBy:uid};
   }
   if(typeof id!=='string'||!ID.test(id)||!previous||previous.id!==id)deny('event_not_found',404);
   if(version!==previous.version)deny('event_version_conflict',409);
   return {...previous,version:previous.version+1,
-    draft:{date,title:title.trim(),description,deleted,...layer},updatedAt:at,updatedBy:uid};
+    draft:{date,title:title.trim(),description,deleted,...layer,
+      ...(payload.public===true?{public:true}:{})},updatedAt:at,updatedBy:uid};
 }
 /** Grupos oficiais de narração usados como regiões (src/lib/mail-groups.ts). */
 export const EVENT_REGIONS=Object.freeze(['1','2']);
@@ -48,6 +52,7 @@ export function publishEvent(doc,at){
   const d=doc.draft;
   return {...doc,draft:null,version:doc.version+1,publishedAt:at,
     published:d.deleted?null:{date:d.date,title:d.title,description:d.description,
+      ...(d.public===true?{public:true}:{}),
       ...(d.scope==='region'?{scope:'region',region:d.region}:{})}};
 }
 export const isEventId=v=>typeof v==='string'&&ID.test(v);
