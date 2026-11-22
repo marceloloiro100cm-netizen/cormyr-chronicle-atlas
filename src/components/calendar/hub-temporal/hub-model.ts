@@ -22,7 +22,7 @@ export type HubData={openRound:number;seasons:HubSeason[];
   festivals:HubFestival[];letters:HubLetter[];newspaper:{total:number;thisWeek:number[]};
   undo:{available:boolean;reason?:string}};
 export type HubEvent={id:string;version:number;date:string;title:string;description:string;
-  deleted:boolean;published:boolean;pending:boolean;scope:'kingdom'|'region';region:string|null};
+  deleted:boolean;published:boolean;pending:boolean;public?:boolean;scope:'kingdom'|'region';region:string|null};
 export type HistoryItem={id:string;action:string;at:string;from:HarptosDate|null;to:HarptosDate|null;
   fromRound:number|null;toRound:number|null;monthsCrossed:number;reason:string|null;
   flashback?:boolean;undone?:boolean;season?:{number:number;name:string}|null};
