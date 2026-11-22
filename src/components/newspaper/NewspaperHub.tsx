@@ -166,7 +166,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   ]);
   if(edition.id!==selectedId&&current&&selected&&compare(current)!==compare(selected)&&
    !window.confirm('Há alterações não salvas. Deseja abrir outra edição e descartá-las?'))return;
-  setRecoverNeedsReview(false);
+  setRecoverNeedsReview(false);setOfflineRecovery(null);
   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));setBlockId(null);
   setEditing(false);setMessage('');setError('');
   if(!editor&&['published','archived'].includes(edition.state)&&newspaperIsUnread(edition,myReads.get(edition.id))){
@@ -195,6 +195,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    const extra=initialBlock?{...makeNewspaperBlock(initialBlock),...(extraPatch??{})}:null;
    if(extra)blocks.push(extra);
    const edition=await createNewspaperEdition({...seed,blocks});
+   setRecoverNeedsReview(false);setOfflineRecovery(null);
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
    setBlockId(extra?.id??edition.blocks[0]?.id??null);setEditing(true);
    notice('Rascunho criado no Firebase. O texto será protegido neste dispositivo e salvo automaticamente.');
@@ -505,10 +506,10 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  // If the browser storage is disabled, the editor sees a visible warning.
  useEffect(()=>{
   if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||
-     draft.archive_preview)return;
+     draft.archive_preview||offlineRecovery?.editionId===draft.id)return;
   if(!writeOfflineEdition(window.localStorage,userId,draft))
    setOfflineStorageDenied(true);
- },[editorial,editor,draft,dirty,userId]);
+ },[editorial,editor,draft,dirty,userId,offlineRecovery]);
  // Offer recovery exactly once per opened edition per visit. Never replace a
  // newer server version silently, and never restore a published edition.
  useEffect(()=>{
@@ -516,7 +517,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
      selectedId!==selected.id||recoveryChecked.current.has(selected.id))return;
   recoveryChecked.current.add(selected.id);
   const backup=readOfflineEdition(window.localStorage,userId,selected);
-  if(backup)setOfflineRecovery(backup);
+  if(backup&&!(draft?.id===selected.id&&sameSnapshot(snapshotOf(draft),backup.snapshot)))
+   setOfflineRecovery(backup);
  },[editorial,editor,selectedId,selected,userId]);
  const recoverLocal=()=>{
   if(!offlineRecovery||!selected||offlineRecovery.editionId!==selected.id)return;
