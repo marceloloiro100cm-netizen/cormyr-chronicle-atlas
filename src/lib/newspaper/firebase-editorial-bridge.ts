@@ -90,6 +90,66 @@ async function publishedRequest<T>(action:'listNewspaper'|'getNewspaper',id?:str
   throw Error('Acervo publicado inválido.');
  return (body as {result:T}).result;
 }
+/** Publicly approved issues are fetched independently of private editorial
+ * drafts and historical overlays. Never invents an edition, silently widens
+ * permissions, or writes to Firestore. Editor uses these as read-only previews
+ * until the full authenticated operational projection is ready. */
+async function publicJson(path:string):Promise<unknown>{
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),12_000);
+ try{
+  const response=await fetch(path,{credentials:'omit',cache:'no-store',
+   redirect:'error',signal:controller.signal});
+  if(!response.ok)throw Error('O acervo público do Jornal não respondeu.');
+  return await response.json() as unknown;
+ }finally{clearTimeout(timer);}
+}
+async function publicArchiveEdition(item:PublishedSummary):Promise<NewspaperEdition>{
+ if(!item||typeof item.id!=='string'||
+    !(HISTORICAL_ID.test(item.id)||CLOUD.test(item.id))||
+    !Number.isSafeInteger(item.editionNo)||item.editionNo<1)
+  throw Error('Identificador público de edição inválido.');
+ const value=await publicJson('/api/public/newspaper?edicao='+encodeURIComponent(item.id));
+ if(!value||typeof value!=='object')throw Error('Publicação inválida.');
+ const v=value as Record<string,unknown>;
+ if(v['id']!==item.id||v['editionNo']!==item.editionNo||
+    !Array.isArray(v['blocks'])||typeof v['title']!=='string'||
+    typeof v['campaignDate']!=='string')
+  throw Error('A edição pública diverge do registro publicado.');
+ const version=typeof v['version']==='number'&&
+   Number.isSafeInteger(v['version'])&&v['version']>0?v['version']:1;
+ return {
+  id:item.id,edition_no:item.editionNo,campaign_date:v['campaignDate'],
+  title:v['title'],subtitle:typeof v['subtitle']==='string'?v['subtitle']:'',
+  template:NEWSPAPER_TEMPLATES.some(t=>t.value===v['template'])?v['template'] as NewspaperTemplate:'classico',
+  font_style:NEWSPAPER_FONTS.some(t=>t.value===v['font_style'])?v['font_style'] as NewspaperFont:'classico',
+  state:'published',blocks:safeNewspaperBlocks(v['blocks']),pdf_path:null,
+  publish_on:null,version,publication_revision:version,
+  created_by:'',updated_at:'',published_at:typeof v['publishedAt']==='string'?v['publishedAt']:null,
+  archived_at:null,cancelled_at:null,
+  archive_preview:true,
+ };
+}
+export async function loadPublishedNewspaperArchive():Promise<NewspaperEdition[]>{
+ const result=await publicJson('/api/public/newspaper?arquivo=edicoes');
+ if(!result||typeof result!=='object'||!('items' in result)||
+    !Array.isArray(result.items)||result.items.length>100)
+  throw Error('Lista pública das edições inválida.');
+ const items=result.items as unknown[];
+ const summary:PublishedSummary[]=items.map(entry=>{
+  if(!entry||typeof entry!=='object')throw Error('Registro público inválido.');
+  const v=entry as Record<string,unknown>;
+  if(typeof v['id']!=='string'||!Number.isSafeInteger(v['editionNo'])||
+     (v['editionNo'] as number)<1)
+   throw Error('Resumo de edição inválido.');
+  return {id:v['id'],editionNo:v['editionNo'] as number};
+ });
+ if(new Set(summary.map(x=>x.id)).size!==summary.length)
+  throw Error('Acervo público contém identificadores repetidos.');
+ return (await Promise.all(summary.map(publicArchiveEdition)))
+  .sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
+}
+
 export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[]):Promise<NewspaperEdition[]>{
  if(!isFirebaseNewspaperWorkspace())return imported;
  // The trusted server supplies the role: no client-supplied "editor" flag.
@@ -147,34 +207,7 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
  const missing=editorial?published.items.filter(item=>
   item&&typeof item.id==='string'&&!CLOUD.test(item.id)&&
   !history.some(edition=>edition.id===item.id)):[];
- const recovered=await Promise.all(missing.map(async item=>{
-  if(!HISTORICAL_ID.test(item.id)||!Number.isSafeInteger(item.editionNo))
-   throw Error('Identificador histórico de publicação inválido.');
-  const response=await fetch('/api/public/newspaper?edicao='+encodeURIComponent(item.id),{
-   credentials:'omit',cache:'no-store',redirect:'error',
-  });
-  if(!response.ok)throw Error('A edição publicada não pôde ser restaurada para o arquivo editorial.');
-  const value:unknown=await response.json();
-  if(!value||typeof value!=='object')throw Error('Publicação histórica inválida.');
-  const v=value as Record<string,unknown>;
-  if(v.id!==item.id||v.editionNo!==item.editionNo||
-     !Array.isArray(v.blocks)||typeof v.title!=='string'||
-     typeof v.campaignDate!=='string')
-   throw Error('A edição pública diverge do registro histórico.');
-  const edition:NewspaperEdition={
-   id:item.id,edition_no:item.editionNo,campaign_date:v.campaignDate,
-   title:v.title,subtitle:typeof v.subtitle==='string'?v.subtitle:'',
-   template:NEWSPAPER_TEMPLATES.some(t=>t.value===v.template)?v.template as NewspaperTemplate:'classico',
-   font_style:NEWSPAPER_FONTS.some(t=>t.value===v.font_style)?v.font_style as NewspaperFont:'classico',
-   state:'published',blocks:safeNewspaperBlocks(v.blocks as NewspaperBlock[]),
-   pdf_path:null,publish_on:null,
-   version:typeof v.version==='number'&&Number.isSafeInteger(v.version)&&v.version>0?v.version:1,
-   publication_revision:typeof v.version==='number'&&Number.isSafeInteger(v.version)&&v.version>0?v.version:1,
-   created_by:'',updated_at:'',published_at:typeof v.publishedAt==='string'?v.publishedAt:null,
-   archived_at:null,cancelled_at:null,
-  };
-  return edition;
- }));
+ const recovered=await Promise.all(missing.map(publicArchiveEdition));
  const originals=new Map(history.map(e=>[e.id,e]));
  const seenHistoric=new Set<string>();
  const editableHistory=history.map(e=>{
