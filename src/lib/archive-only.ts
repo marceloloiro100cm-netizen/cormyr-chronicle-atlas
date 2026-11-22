@@ -57,6 +57,10 @@ export function shouldBlockLegacyRequest(pathname: string, handlerType?: string)
        pathname === '/api/firebase-cloud-newspaper' ||
        // Staff photo write has its own Firebase-only editor authentication.
        pathname === '/api/firebase-newspaper-staff-photo' ||
+       // Editorial media upload/read: same-origin Firebase Auth, per-profile
+       // access, validated bytes and private Storage are enforced by its route.
+       // This exact carve-out does not permit legacy or nested media APIs.
+       pathname === '/api/firebase-newspaper-media' ||
        // These four are READ ONLY, with separate runtime flags, Firebase
        // token validation, strict per-House access and deny-by-default rules.
        pathname === '/api/firebase-cloud-house-quote' ||
