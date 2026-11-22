@@ -82,7 +82,7 @@ export interface NewspaperEditorialProps{
  onDeleteEdition:(edition:NewspaperEdition)=>void;
  /** Gravuras do Reino enviadas pelo Editor-Chefe. */
  engravings:NewspaperEngraving[];
- onUploadEngraving:(file:File,name:string)=>Promise<boolean>;
+ onUploadEngraving:(file:File,name:string,requestKey?:string)=>Promise<boolean>;
  onToggleEngraving:(item:NewspaperEngraving,inCollection:boolean)=>void;
  onDeleteEngraving:(item:NewspaperEngraving)=>void;
  onUseStoredEngraving:(item:NewspaperEngraving)=>void;
