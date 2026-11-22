@@ -95,7 +95,8 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
    if(error instanceof CloudAccessError)throw error;
    fail('media_scope_backend_unavailable',503);
   }
-  if(!s||!s.uid||!['editor','narrador','jogador'].includes(s.profile))fail('media_denied',403);
+  if(!s||!s.uid||!['editor','narrador','jogador'].includes(s.profile))
+   throw new NewspaperMediaError('media_denied',403);
   return s;
  };
  const canEdit=(s:Scope)=>s.profile==='editor'||s.profile==='narrador';
