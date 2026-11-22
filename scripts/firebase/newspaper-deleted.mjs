@@ -35,7 +35,7 @@ export async function markNewspaperDeleted(db,snapshotId,{id,actorUid,draftOnly=
       throw Object.assign(Error('published_edition_immutable'),{status:409});
     const previous=await tx.get(ref);
     if(previous.exists&&previous.data()?.deleted===true)return;
-    tx.set(ref,{id,deleted:true,deletedBy:actorUid,deletedAt:now,
+    tx.create(ref,{id,deleted:true,deletedBy:actorUid,deletedAt:now,
       previousState:'draft',sourceSnapshotId:snapshotId});
   });
   return {id,deleted:true};
