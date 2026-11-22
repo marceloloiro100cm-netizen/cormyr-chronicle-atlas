@@ -93,6 +93,7 @@ describe('Firebase archive-only cutover', () => {
     '/api/firebase-house-rules',
     '/api/firebase-private-media',
     '/api/firebase-newspaper-staff-photo',
+    '/api/firebase-newspaper-media',
   ])('routes migrated endpoint %s to its own authorization boundary', pathname => {
     for(const kind of ['router','api'])
       expect(shouldBlockLegacyRequest(pathname,kind)).toBe(false);
