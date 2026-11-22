@@ -268,12 +268,12 @@ describe('Redação A Folha Sem Selo',()=>{
   await Promise.resolve();
   expect(p.onSaveStoryModel).toHaveBeenCalledWith(expect.objectContaining({name:'Entrevista da Corte'}));
  });
- it('o Arquivo tem lixeira por edição e o selo do aviso é uma fileira de botões',()=>{
+ it('o Arquivo permite descartar apenas rascunhos e mantém os selos do aviso',()=>{
   const p=fixture();
   const e={
    id:'00000000-0000-4000-8000-000000000002',edition_no:2,campaign_date:'1522-01-01',
    title:'A Folha Sem Selo',subtitle:'',template:'classico' as const,font_style:'classico' as const,
-   state:'cancelled' as const,pdf_path:null,version:1,publication_revision:0,created_by:'l',
+   state:'draft' as const,pdf_path:null,version:1,publication_revision:0,created_by:'l',
    updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
    blocks:[{id:'n1',type:'notice' as const,text:'Notas\n\nTexto',icon:'⚜',span:6,height:150}],
   };
@@ -282,8 +282,18 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Selo ⚠'}));
   expect(p.onPatchBlock).toHaveBeenCalledWith('n1',{icon:'⚠'});
   fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
-  fireEvent.click(screen.getByRole('button',{name:'Excluir edição nº 2'}));
+  fireEvent.click(screen.getByRole('button',{name:'Excluir rascunho nº 2'}));
   expect(p.onDeleteEdition).toHaveBeenCalledWith(e);
+ });
+ it('não oferece excluir ou cancelar edição publicada, mesmo no Arquivo',()=>{
+  const p=fixture();
+  const published={...p.current!,state:'published' as const,published_at:'2026-11-21T20:30:00Z'};
+  p.current=published;p.history=[published];p.editing=false;
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
+  expect(screen.queryByRole('button',{name:/Excluir (rascunho|edição)/})).toBeNull();
+  expect(screen.queryByRole('button',{name:'Cancelar envio'})).toBeNull();
+  expect(screen.getByText(/Edição publicada: preservada permanentemente/)).toBeTruthy();
  });
  it('o topo diz só Jornal e Gravuras do Reino controla o acervo pela bolinha',()=>{
   const p=fixture();
