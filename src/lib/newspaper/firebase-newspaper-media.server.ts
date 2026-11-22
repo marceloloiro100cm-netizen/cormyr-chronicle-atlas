@@ -87,7 +87,7 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
    fail('media_not_approved',503);
  };
  const scope=async(token:string):Promise<Scope>=>{
-  let s:Scope;
+  let s:Scope|undefined;
   try{s=await cloud.workspaceScope(token) as Scope;}
   catch(error){
    // Preserve explicit authentication, permission and migration-stage
