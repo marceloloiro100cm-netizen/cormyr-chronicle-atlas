@@ -309,14 +309,42 @@ export function createFirebaseCloudMail({
          old.letterId!==hash('letter:'+input.letterId)||
          old.publicationState!=='delivered'||old.deletedAt!==null||
          !validId(old.authorUid)||old.authorUid===actor.uid||
-         old.recipientUid!==actor.uid||typeof old.content!=='string')
+         !validId(old.recipientUid)||typeof old.content!=='string')
+        deny('reply_not_authorized',403);
+      // Historic narrator UIDs can differ from the newly authenticated GM
+      // after account reconciliation. Only accept that legacy address when
+      // it is the original, verified narrator who authored this root.
+      const sender=old.recipientUid===root.senderUid&&
+        root.originHouseId===null&&actor.role==='narrador'
+        ?await tx.get(stage.collection('access').doc(root.senderUid)):null;
+      const addressedToNarrator=actor.role==='narrador'&&
+        old.recipientUid===root.senderUid&&
+        sender?.exists&&sender.data()?.profile==='narrador'&&
+        sender.data()?.admin===true;
+      if(old.recipientUid!==actor.uid&&!addressedToNarrator)
         deny('reply_not_authorized',403);
       const fromOriginal=old.authorUid===root.senderUid;
-      const receivingHouse=root.recipientKind==='player'
+      let receivingHouse=root.recipientKind==='player'
         ?recipientPersonHouseId:root.recipientHouseId;
+      // A historical general broadcast was not addressed to one House.
+      // For a player's reply to that broadcast, derive exactly one House
+      // from the imported account scope, NEVER from the browser request.
+      if(!fromOriginal&&root.originHouseId===null&&
+         root.recipientKind==='narrator'&&root.letterKind==='geral'){
+        const author=await tx.get(stage.collection('access').doc(old.authorUid));
+        const scope=author.data(),houseIds=scope?.editHouseIds;
+        if(!author.exists||scope.userId!==old.authorUid||
+           scope.profile!=='jogador'||!Array.isArray(houseIds)||
+           houseIds.length!==1||!validId(houseIds[0])||
+           !Array.isArray(scope.memberHouseIds)||
+           !scope.memberHouseIds.includes(houseIds[0]))
+          deny('reply_house_unverified',409);
+        receivingHouse=houseIds[0];
+      }
       if(!fromOriginal&&
          (root.recipientKind!=='narrator'&&!validId(receivingHouse)||
-          root.originHouseId!==null&&!validId(root.originHouseId)))
+          root.originHouseId!==null&&!validId(root.originHouseId)||
+          root.originHouseId===null&&!validId(receivingHouse)))
         deny('reply_not_authorized',403);
       parent={
         ...parent,senderUid:old.authorUid,
