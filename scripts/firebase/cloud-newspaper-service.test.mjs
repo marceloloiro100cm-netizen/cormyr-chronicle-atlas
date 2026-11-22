@@ -207,12 +207,13 @@ test('editorial lifecycle persists drafts, edits, cancellation and archive with 
   const pub=await srv.saveEdition(token,publish);
   assert.equal(pub.state,'published');assert.equal(pub.version,2);assert.ok(pub.publishedAt);
   await denied(()=>srv.saveEdition(token,{...publish,requestKey:'editorial-key-stale'}),'edition_version_conflict',409);
-  const cancel=await srv.saveEdition(token,{...publish,expectedVersion:2,state:'cancelled',requestKey:'editorial-key-003'});
-  assert.equal(cancel.state,'cancelled');
-  const archived=await srv.saveEdition(token,{...publish,expectedVersion:3,state:'archived',requestKey:'editorial-key-004'});
+  await denied(()=>srv.saveEdition(token,{...publish,expectedVersion:2,
+    state:'cancelled',requestKey:'editorial-key-003'}),
+    'published_edition_immutable',409);
+  const archived=await srv.saveEdition(token,{...publish,expectedVersion:2,state:'archived',requestKey:'editorial-key-004'});
   assert.equal(archived.state,'archived');
   assert.equal(f.records.get(f.runtime).nextNewspaperEditionNo,14);
-  assert.equal([...f.records.keys()].filter(k=>k.includes('/newspaperAudits/')).length,4);
+  assert.equal([...f.records.keys()].filter(k=>k.includes('/newspaperAudits/')).length,3);
 });
 
 test('drafts do not consume official numbers and a stale sequence is recovered at publication',async()=>{
