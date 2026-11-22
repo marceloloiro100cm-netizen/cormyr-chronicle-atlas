@@ -1,0 +1,214 @@
+name: Cormyr Missivas - encrypted private export 2026-11-22
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cormyr-mail-encrypted-export-20261122.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cormyr-mail-readonly-export-20261122
+  cancel-in-progress: false
+
+jobs:
+  export:
+    if: github.repository == 'marceloloiro100cm-netizen/cormyr-chronicle-atlas' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GOOGLE_CLOUD_PROJECT: cormyr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.3'
+      - name: Check public repository privacy gates
+        run: node scripts/verify-public-repo.mjs
+      - name: Use the existing read-only OIDC identity - no IAM changes
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/477785088395/locations/global/workloadIdentityPools/cormyr-gh-migration/providers/github-main
+          service_account: cormyr-gh-reader@cormyr.iam.gserviceaccount.com
+          project_id: cormyr
+      - name: Install pinned Firebase Admin packages
+        run: bun install --frozen-lockfile
+      - name: Produce encrypted export only - no plaintext artifacts or logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/cormyr-export-mail.mjs <<'EO_CORMYR_EXPORT'
+          /** One-shot encrypted read-only export of active, delivered Cormyr mail. */
+          import {initializeApp,applicationDefault} from 'firebase-admin/app';
+          import {getFirestore} from 'firebase-admin/firestore';
+          import {createCipheriv,publicEncrypt,randomBytes,constants} from 'node:crypto';
+          import {writeFileSync} from 'node:fs';
+          
+          const PROJECT='cormyr';
+          const HASH=/^[a-f0-9]{64}$/;
+          const PUBKEY=`-----BEGIN PUBLIC KEY-----
+          MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAwcEUMa9od5PG0DPtE/7f
+          0oehYchsIYdsANNFPePrvGweWhN2iwLu9BTt+YmDtOTMDRVG7N9jZuBdJTHbc+Im
+          U/eBjSjJeAR9yYWDL0oye+g6uqSjOyuHTkhwNlRUBaxGfrSqrHKaugL09JF0EOpL
+          WzKdt6KJ/kpGkDNH9KIrpXvZQajNay3nxg1HJlLQlgwoMgrmTzhb7WcaRr1GQpzU
+          1lNHFG2djkwSIzl+4VU16f3eRscjagVgOtXx3Xr1nbpPiejBZQZ0/cacZBSruZcc
+          WTN06VCZf7q6Jq7S0FljXJ8qB5gqPuhChPYYyoZfnyk45RJSnvazQOs+8UN8+ng/
+          VC5diRUhu3nlV+GftVsiUTUNftUiyZjeQFEAfyr+5B1EJchITS4gcljRl4U8JsBP
+          a5ItVsgbmCzb4Ti8a2wunf45XTTLIzZ7UynY5H6zCgdefJPcW2xt1U2TqV8Ay/S8
+          33KjoiXukyjpKFnwj11UUbbC9d/YqX57pLtI0VAPJ8PlAgMBAAE=
+          -----END PUBLIC KEY-----`;
+          const must=(condition,label)=>{if(!condition)throw Error(label);};
+          const str=v=>typeof v==='string'?v:'';
+          const stamp=v=>typeof v==='string'?v:(typeof v?.toDate==='function'?v.toDate().toISOString():'');
+          const md=s=>String(s??'').replace(/[\\`*_{}\[\]<>#|]/g,c=>'\\'+c).replace(/[\r\n]+/g,' ');
+          const isCurrent=m=>m?.publicationState==='delivered' && (m?.deletedAt===null||m?.deletedAt===undefined);
+          async function scan(ref,limit=8000){
+            let last=null,all=[];
+            while(true){
+              let query=ref.orderBy('__name__').limit(300);
+              if(last)query=query.startAfter(last);
+              const snap=await query.get();
+              all.push(...snap.docs.map(d=>({docId:d.id,...d.data()})));
+              must(all.length<=limit,'too_many_mail_documents');
+              if(snap.size<300)return all;
+              last=snap.docs.at(-1);
+            }
+          }
+          function buildMarkdown({old,cloud,replies,houses,players},count){
+            const houseNames=new Map(houses.flatMap(x=>[x.sourceId,x.id].filter(v=>typeof v==='string').map(id=>[id,str(x.name)||id])));
+            const playerNames=new Map(players.flatMap(x=>[x.sourceId,x.id].filter(v=>typeof v==='string').map(id=>[id,str(x.name)||id])));
+            const legacyDocToId=new Map(old.map(x=>[x.docId,x.sourceId]));
+            const entries=[];
+            function add({kind,id,root,replyTo,subject,content,createdAt,campaignDate,from,to,source,round,state,original,order}){
+              must(typeof id==='string'&&id.length>0,'mail_id_missing');
+              must(typeof content==='string','mail_content_missing');
+              entries.push({kind,id,root:root||id,replyTo,subject:str(subject),content,
+                createdAt:stamp(createdAt),campaignDate:campaignDate??null,
+                from:str(from)||'Não identificado',to:str(to)||'Não identificado',source,round:round??null,state,original,order});
+            }
+            const house=id=>houseNames.get(id)||id||null;
+            const player=id=>playerNames.get(id)||id||null;
+            const audience=m=>m.recipientKind==='narrator'?'Narrador':m.recipientKind==='house'?
+              house(m.recipientHouseId):m.recipientKind==='player'?player(m.recipientPlayerId):str(m.historicalRecipientName)||null;
+            for(const m of old.filter(isCurrent)){
+              const from=str(m.senderName)||house(m.originHouseId)||player(m.senderPlayerId)||'Remetente histórico';
+              add({kind:'carta',id:m.sourceId,root:m.sourceId,subject:m.subject,content:m.content,createdAt:m.createdAt,
+                campaignDate:m.campaignDate,from,to:audience(m),source:'Acervo migrado',
+                round:m.deliveryRound??m.creationRound,state:m.publicationState,original:m,order:0});
+            }
+            for(const m of cloud.filter(isCurrent)){
+              const root=str(m.threadRootId)||str(m.replyToId)||str(m.id)||m.docId;
+              const from=str(m.signedBy)|| (m.originHouseId?house(m.originHouseId):null)||str(m.senderName)||'Remetente';
+              add({kind:m.replyToId?'resposta':'carta',id:str(m.id)||m.docId,root,
+                replyTo:str(m.replyToId)||null,subject:m.subject,content:m.content,
+                createdAt:m.createdAt,campaignDate:m.campaignDate,from,to:audience(m),
+                source:'Firebase Cloud',round:m.deliveryRound??m.creationRound,
+                state:m.publicationState,original:m,order:m.replyToId?2:0});
+            }
+            for(const m of replies.filter(isCurrent)){
+              const root=legacyDocToId.get(m.letterId)||str(m.letterId)||'resposta-sem-origem';
+              add({kind:'resposta',id:str(m.sourceId)||m.docId,root,replyTo:root,
+                subject:'',content:m.content,createdAt:m.createdAt,campaignDate:null,
+                from:m.authorName,to:'Destinatário da conversa',source:'Resposta histórica migrada',
+                round:null,state:m.publicationState,original:m,order:1});
+            }
+            must(entries.length===count.totalActive,'mail_export_count_mismatch');
+            const keys=new Set();
+            for(const m of entries){
+              const key=m.source+'::'+m.id;
+              must(!keys.has(key),'duplicate_mail_source_identity');keys.add(key);
+            }
+            const groups=new Map();
+            for(const m of entries){if(!groups.has(m.root))groups.set(m.root,[]);groups.get(m.root).push(m);}
+            let all=['# Missivas - Site','',
+              '**Origem:** Atlas de Cormyr — Firestore de produção (cópia somente leitura)',
+              '**Extraído em:** '+new Date().toISOString(),
+              '**Escopo:** cartas e respostas entregues, não excluídas; acervo migrado e Firebase Cloud',
+              '**Observação:** rascunhos, agendamentos não entregues, missivas removidas, registros de auditoria e notas privadas do Narrador não fazem parte das correspondências ativas e não foram exportados.',
+              '',`**Contagem:** ${count.activeOld} cartas históricas · ${count.activeCloud} registros Firebase Cloud (cartas e respostas) · ${count.activeReplies} respostas históricas · ${groups.size} conversas.`,
+              '','---',''];
+            const ordered=[...groups.values()].sort((a,b)=>(str(a[0].createdAt).localeCompare(str(b[0].createdAt)))||str(a[0].root).localeCompare(str(b[0].root)));
+            let ix=0;
+            for(const thread of ordered){
+              ix++;
+              thread.sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.order-b.order||a.id.localeCompare(b.id));
+              const original=thread.find(x=>x.kind==='carta')||thread[0];
+              all.push(`## Conversa ${ix} — ${md(original.subject||'Sem assunto')}`,'',
+                `**Identificação da conversa:** \`${original.root}\``,'');
+              let n=0;
+              for(const m of thread){n++;
+                all.push(`### ${n}. ${m.kind==='resposta'?'Resposta':'Missiva'}${m.subject?' — '+md(m.subject):''}`,'',
+                  `- **Identificador:** \`${md(m.id)}\``,
+                  `- **Origem:** ${md(m.source)}`,
+                  `- **Remetente:** ${md(m.from)}`,
+                  `- **Destinatário:** ${md(m.to)}`,
+                  `- **Data de registro:** ${md(m.createdAt||'Não informada')}`,
+                  `- **Data de Cormyr:** ${md(typeof m.campaignDate==='string'?m.campaignDate:JSON.stringify(m.campaignDate)||'Não informada')}`,
+                  `- **Semana:** ${md(m.round??'Não informada')}`,
+                  ...(m.replyTo?[`- **Em resposta a:** \`${md(m.replyTo)}\``]:[]),
+                  '','**Conteúdo integral:**','',(()=>{const fence='`'.repeat(Math.max(4,...[...m.content.matchAll(/`+/g)].map(x=>x[0].length+1)));return fence+'text';})(),m.content.replace(/\r\n?/g,'\n'),(()=>{const fence='`'.repeat(Math.max(4,...[...m.content.matchAll(/`+/g)].map(x=>x[0].length+1)));return fence;})(),'','');
+              }
+              all.push('---','');
+            }
+            return {markdown:all.join('\n'),groups:groups.size};
+          }
+          async function main(){
+            must(process.env.GOOGLE_CLOUD_PROJECT===PROJECT&&!process.env.FIRESTORE_EMULATOR_HOST,'wrong_environment');
+            const db=getFirestore(initializeApp({projectId:PROJECT,credential:applicationDefault()}));
+            const roots=await db.collection('campaignWorkspaceImports').limit(7).get();
+            const valid=roots.docs.filter(x=>HASH.test(x.id)&&x.data()?.status==='complete'&&x.data()?.private===true);
+            must(valid.length===1,'snapshot_not_unique');
+            const snapshot=valid[0].id;
+            const domain=db.collection('migrationDomainStage').doc(snapshot);
+            const history=db.collection('migrationMailHistoryStage').doc(snapshot);
+            const runtime=db.collection('campaignCloudRuntime').doc(snapshot);
+            const [a,b,c]=await Promise.all([domain.get(),history.get(),runtime.get()]);
+            must(a.exists&&a.data()?.status==='complete'&&a.data()?.private===true,'domain_not_ready');
+            must(b.exists&&b.data()?.status==='complete'&&b.data()?.private===true,'mail_history_not_ready');
+            must(c.exists&&c.data()?.status==='active'&&c.data()?.private===true,'live_runtime_not_ready');
+            must(c.data()?.sourceSnapshotId===snapshot,'source_snapshot_not_reconciled');
+            const [old,cloud,replies,houses,players]=await Promise.all([
+              scan(domain.collection('letters')),scan(runtime.collection('letters')),
+              scan(history.collection('replies')),scan(domain.collection('houses')),
+              scan(domain.collection('players')),
+            ]);
+            const count={activeOld:old.filter(isCurrent).length,activeCloud:cloud.filter(isCurrent).length,
+              activeReplies:replies.filter(isCurrent).length};
+            count.totalActive=count.activeOld+count.activeCloud+count.activeReplies;
+            must(count.totalActive>0,'zero_active_mail');
+            const {markdown,groups}=buildMarkdown({old,cloud,replies,houses,players},count);
+            const key=randomBytes(32),iv=randomBytes(12);
+            const cipher=createCipheriv('aes-256-gcm',key,iv);
+            const encrypted=Buffer.concat([cipher.update(Buffer.from(markdown,'utf8')),cipher.final()]);
+            const secret=publicEncrypt({key:PUBKEY,padding:constants.RSA_PKCS1_OAEP_PADDING,
+              oaepHash:'sha256'},key);
+            const artifact={version:1,cipher:'AES-256-GCM',keyWrap:'RSA-OAEP-SHA256',
+              key:secret.toString('base64'),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),
+              data:encrypted.toString('base64'),
+              counts:{...count,conversations:groups,rawOld:old.length,rawCloud:cloud.length,rawReplies:replies.length}};
+            writeFileSync('missivas-site.enc.json',JSON.stringify(artifact),{mode:0o600});
+            console.log('CORMYR_MAIL_EXPORT_ENCRYPTED '+JSON.stringify(artifact.counts));
+          }
+          main().catch(err=>{const safe=/^[a-z_]+$/i.test(err?.message??'')?err.message:'export_failed';
+            console.error('CORMYR_MAIL_EXPORT_FAILED '+safe);process.exitCode=1;});
+          EO_CORMYR_EXPORT
+          node --check /tmp/cormyr-export-mail.mjs
+          cp /tmp/cormyr-export-mail.mjs ./cormyr-mail-export-tmp.mjs
+          node ./cormyr-mail-export-tmp.mjs
+          rm -f ./cormyr-mail-export-tmp.mjs
+      - name: Upload only RSA+AES ciphertext (never the Markdown)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cormyr-missivas-20261122-encrypted
+          path: missivas-site.enc.json
+          if-no-files-found: error
+          retention-days: 1
