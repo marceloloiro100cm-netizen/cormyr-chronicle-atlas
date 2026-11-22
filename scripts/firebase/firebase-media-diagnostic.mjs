@@ -18,6 +18,20 @@ if(snapshots.length!==1||root.size>6){console.log('MEDIA_DIAG snapshot_unavailab
 const snapshot=snapshots[0].id;
 const runtime=await db.collection('campaignCloudRuntime').doc(snapshot).get();
 const flags=runtime.data()??{};
+const newspaperStage=await db.collection('migrationNewspaperRuntimeStage').doc(snapshot).get();
+const stageFlags=newspaperStage.data()??{};
+const newspaperMediaReady=newspaperStage.exists&&
+ stageFlags.status==='complete'&&stageFlags.private===true&&
+ runtime.exists&&flags.status==='active'&&flags.private===true&&
+ flags.sourceSnapshotId===snapshot&&flags.sourceSnapshotReconciled===true&&
+ flags.applicationEnabled===true&&flags.newspaperWriteApproved===true;
+console.log('MEDIA_DIAG newspaper_media_runtime_ready '+(newspaperMediaReady?'YES':'NO'));
+console.log('MEDIA_DIAG newspaper_stage_complete '+
+ (newspaperStage.exists&&stageFlags.status==='complete'&&stageFlags.private===true?'YES':'NO'));
+console.log('MEDIA_DIAG newspaper_runtime_active '+
+ (runtime.exists&&flags.status==='active'&&flags.private===true&&
+ flags.sourceSnapshotId===snapshot&&flags.sourceSnapshotReconciled===true&&
+ flags.applicationEnabled===true?'YES':'NO'));
 for(const key of ['privateMediaReadApproved','publicGalleryApproved','publicGalleryBucket',
                   'newspaperWriteApproved']){
  const enabled=typeof flags[key]==='boolean'?flags[key]===true?'YES':'NO':
