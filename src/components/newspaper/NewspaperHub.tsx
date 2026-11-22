@@ -373,7 +373,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   modifyBlock(id,patch);setEditing(true);
  };
  const addEditorialBlock=(type:NewspaperBlockType,span?:number)=>{
-  if(!current){void newEdition(type);return;}
+  if(!current||current.archive_preview||current.state!=='draft'){
+   void newEdition(type);return;
+  }
   if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
   const block=makeNewspaperBlock(type);
   if(span)block.span=span;
@@ -386,7 +388,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setBlockId(fromId);setEditing(true);
  };
  const insertEditorialBefore=(type:NewspaperBlockType,beforeId:string|null)=>{
-  if(!current){void newEdition(type);return;}
+  if(!current||current.archive_preview||current.state!=='draft'){
+   void newEdition(type);return;
+  }
   if(current.blocks.length>=80){setError('A edição permite até 80 elementos.');return;}
   const block=makeNewspaperBlock(type);
   const next=[...current.blocks],index=next.findIndex(x=>x.id===beforeId);
