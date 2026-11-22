@@ -6,7 +6,7 @@ import {cloudMailRuntimeApproved} from '../../../scripts/firebase/cloud-mail-run
 import {mailReceiptId} from '../../../scripts/firebase/cloud-mail-receipt-core.mjs';
 import {projectCloudLetters} from '../mail/firebase-operational-mail';
 import {originalMailSend,originalMailBatch,originalMailReply,originalReplyDraft,composerOptions,OriginalMailBridgeError} from '../mail/firebase-original-send';
-import {dateKey,parseDate} from '../calendar/harptos';
+import {dateKey,parseDate,annualEvents} from '../calendar/harptos';
 import {canReadLetterAs,canReadReply,mailPage,mailTrashPage,mailInsights,mailInsightsGrouped,mailOverviewGrouped,type MailDataset} from '../mail/mail-page-contract';
 import {readWorkspaceSpy,loadImportedSpyData} from '../../../scripts/firebase/workspace-spy.mjs';
 import {commitSpyAction,SpyWriteError} from './operational-spy-write';
@@ -1095,7 +1095,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       ...(e['published'].description?{description:e['published'].description}:{})}));
     // Festivais cadastrados no Hub (os dias festivos fixos já vêm do calendário de Harptos).
     let festivals:{id:string;date:string;title:string;kind:'kingdom';description?:string}[]=[];
-    if(name==='get_campaign_schedule_events'){
+    if(name==='get_campaign_schedule_events'||name==='get_newspaper_calendar_events'){
      const first=absoluteDay({year:year as number,month:month as number,day:1,festival:null});
      const next=(month as number)===11?{year:(year as number)+1,month:0,day:1,festival:null}
       :{year:year as number,month:(month as number)+1,day:1,festival:null};
@@ -1107,7 +1107,23 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
         title:'Festival · '+o.festival.name,kind:'kingdom' as const,
         ...(o.festival.description?{description:o.festival.description}:{})});return out;});
     }
-    if(name!=='get_campaign_chronology')return [...kingdom,...festivals];
+    if(name!=='get_campaign_chronology'){
+     // Both Editor and player already render annualEvents() locally.
+     // Keep the Firebase projections unique across the annual calendar,
+     // published events, and Hub festival documents.
+     const calendarKey=(item:{date:string;title:string})=>{
+      const title=item.title.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+       .replace(/^(?:Festival|Waukeen|Evento|Cormyr)\s*[·:\-]\s*/i,'')
+       .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+      return item.date+'|'+title;
+     };
+     const seen=new Set(annualEvents(year as number).map(calendarKey));
+     return [...kingdom,...festivals].filter(item=>{
+      const key=calendarKey(item);
+      if(seen.has(key))return false;
+      seen.add(key);return true;
+     });
+    }
     // Chronology: published Kingdom events and delivered letters the viewer may read.
     const ds=await mail();
     const letters=ds.letters.filter(l=>l.publication_state==='delivered'&&l.deleted_at===null&&
