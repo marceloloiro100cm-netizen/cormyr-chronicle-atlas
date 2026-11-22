@@ -7,6 +7,22 @@ import {crossOriginRejected} from '@/lib/server/request-origin';
 const headers={'Cache-Control':'private, no-store, max-age=0','Vary':'Authorization',
  'X-Content-Type-Options':'nosniff'};
 const fail=(status:number,code:string)=>Response.json({error:code},{status,headers});
+// A Nitro runtime may materialize the same error class in different chunks.
+// Only known fixed 503 codes can survive such a boundary; no arbitrary
+// code/message from Firebase Admin, GCS or request payload is reflected.
+const KNOWN_503=new Set([
+ 'cloud_read_disabled','migration_stage_not_ready','invalid_server_configuration',
+ 'media_not_ready','media_not_approved','media_integrity',
+ 'media_storage_permission_denied','media_storage_unavailable',
+ 'media_registry_unavailable','media_runtime_lookup_failed',
+ 'media_scope_backend_unavailable',
+]);
+export function safeMedia503Code(error:unknown):string|null{
+ if(!error||typeof error!=='object')return null;
+ const data=error as {status?:unknown;code?:unknown};
+ return data.status===503&&typeof data.code==='string'&&KNOWN_503.has(data.code)
+  ?data.code:null;
+}
 export async function handleFirebaseNewspaperMedia(request:Request):Promise<Response>{
  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
  if(process.env['CORMYR_FIREBASE_CLOUD_READ_ENABLED']!=='true'||
@@ -71,15 +87,18 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
  }catch(e){
   if(e instanceof NewspaperMediaError||e instanceof CloudAccessError)
    return fail(e.status,e.code);
+  const stable=safeMedia503Code(e);
+  if(stable)return fail(503,stable);
   // Firebase Admin errors and worker failures are intentionally opaque.
-  // Return a fixed phase identifier, never a message, token, object path,
-  // UID or provider stack. This makes repeat failures actionable.
+  // Only a fixed phase label reaches the log, never a message, request
+  // body, token, path, UID, provider stack or arbitrary Error property.
   const known={
    parse:'media_parse_backend_unavailable',
    sdk:'media_sdk_initialization_failed',
    service:'media_service_initialization_failed',
    operation:'media_operation_unavailable',
   } as const;
+  console.warn('NEWSPAPER_MEDIA_UNCLASSIFIED_503',known[phase]);
   return fail(503,known[phase]);
  }
 }
