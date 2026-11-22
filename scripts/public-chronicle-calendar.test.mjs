@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {planEventSave,publishEvent} from './firebase/cloud-schedule-events-core.mjs';
+import {planFestivalSave} from './firebase/hub-temporal-core.mjs';
 
 const source=path=>readFileSync(path,'utf8');
 const chronology=JSON.parse(source('public/cormyr/chronicle-timeline.json'));
@@ -58,4 +59,17 @@ test('workspace logo returns to front and public event API is fail-closed',()=>{
   assert.doesNotMatch(reader,/collection\('mail'\)|collection\('letters'\)|collection\('house'/);
   const middleware=source('src/lib/archive-only.ts');
   assert.match(middleware,/pathname === '\/api\/public\/calendar-events'/);
+});
+
+test('Festival publication to anonymous calendar must be separately approved',()=>{
+  const deny=code=>{throw Error(code);};
+  const ctx={deny,newId:()=>'festival-0001',uid:'narrator',at:'2026-11-22T00:00:00Z'};
+  const input={name:'Festa da Coroa',scope:'kingdom',region:null,
+    date:{year:1522,month:9,day:15,festival:null},repeat:'once',
+    durationDays:1,notify:true,description:'Festival oficial'};
+  const source=planFestivalSave(null,input,ctx);
+  assert.equal(source.public,undefined,'new festivals are not public by default');
+  const optIn=planFestivalSave(null,{...input,public:true},ctx);
+  assert.equal(optIn.public,true);
+  assert.throws(()=>planFestivalSave(null,{...input,public:'yes'},ctx),/invalid_festival/);
 });
