@@ -7,6 +7,22 @@ import {crossOriginRejected} from '@/lib/server/request-origin';
 const headers={'Cache-Control':'private, no-store, max-age=0','Vary':'Authorization',
  'X-Content-Type-Options':'nosniff'};
 const fail=(status:number,code:string)=>Response.json({error:code},{status,headers});
+// A Nitro runtime may materialize the same error class in different chunks.
+// Only known fixed 503 codes can survive such a boundary; no arbitrary
+// code/message from Firebase Admin, GCS or request payload is reflected.
+const KNOWN_503=new Set([
+ 'cloud_read_disabled','migration_stage_not_ready','invalid_server_configuration',
+ 'media_not_ready','media_not_approved','media_integrity',
+ 'media_storage_permission_denied','media_storage_unavailable',
+ 'media_registry_unavailable','media_runtime_lookup_failed',
+ 'media_scope_backend_unavailable',
+]);
+export function safeMedia503Code(error:unknown):string|null{
+ if(!error||typeof error!=='object')return null;
+ const data=error as {status?:unknown;code?:unknown};
+ return data.status===503&&typeof data.code==='string'&&KNOWN_503.has(data.code)
+  ?data.code:null;
+}
 export async function handleFirebaseNewspaperMedia(request:Request):Promise<Response>{
  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
  if(process.env['CORMYR_FIREBASE_CLOUD_READ_ENABLED']!=='true'||
@@ -24,6 +40,7 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   return fail(401,'authentication_required');
  if(request.headers.get('content-type')?.split(';')[0]?.trim()!=='application/json'||
     request.headers.has('content-encoding'))return fail(415,'json_required');
+ let phase:'parse'|'sdk'|'service'|'operation'='parse';
  try{
   const reader=request.body?.getReader();
   if(!reader)return fail(400,'invalid_request');
@@ -41,6 +58,7 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
    return fail(400,'invalid_request');
   const action=(payload as {action?:unknown}).action;
   if(!['upload','clone','read'].includes(String(action)))return fail(400,'invalid_action');
+  phase='sdk';
   const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore},{getStorage}]=
     await Promise.all([
      import('firebase-admin/app'),import('firebase-admin/auth'),
@@ -50,11 +68,13 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   const app=getApps().find(a=>a.name===name)??initializeApp({
    projectId:'cormyr',credential:applicationDefault(),
   },name);
+  phase='service';
   const media=createNewspaperMediaService({
    db:getFirestore(app),auth:getAuth(app),snapshotId,
    bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
   });
   const token=bearer.slice(7);
+  phase='operation';
   if(action==='read'){
    const result=await media.read(token,(payload as {path?:unknown}).path);
    return new Response(new Uint8Array(result.bytes),{status:200,
@@ -67,7 +87,19 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
  }catch(e){
   if(e instanceof NewspaperMediaError||e instanceof CloudAccessError)
    return fail(e.status,e.code);
-  return fail(503,'newspaper_media_unavailable');
+  const stable=safeMedia503Code(e);
+  if(stable)return fail(503,stable);
+  // Firebase Admin errors and worker failures are intentionally opaque.
+  // Only a fixed phase label reaches the log, never a message, request
+  // body, token, path, UID, provider stack or arbitrary Error property.
+  const known={
+   parse:'media_parse_backend_unavailable',
+   sdk:'media_sdk_initialization_failed',
+   service:'media_service_initialization_failed',
+   operation:'media_operation_unavailable',
+  } as const;
+  console.warn('NEWSPAPER_MEDIA_UNCLASSIFIED_503',known[phase]);
+  return fail(503,known[phase]);
  }
 }
 export const Route=createFileRoute('/api/firebase-newspaper-media')({
