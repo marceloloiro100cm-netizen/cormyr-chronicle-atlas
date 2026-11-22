@@ -183,7 +183,8 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
   setErr('');
   setModal({t:'event',form:{id:ev?.id??'',version:ev?String(ev.version):'',title:ev?.title??'',
    description:ev?.description??'',scope:ev?.scope??'kingdom',region:ev?.region??HUB_REGIONS[0]?.id??'1',
-   year:String(d.year),md:mdOf(d),day:String(d.festival?1:d.day),publish:ev&&!ev.pending?'1':'0'}});
+   year:String(d.year),md:mdOf(d),day:String(d.festival?1:d.day),publish:ev&&!ev.pending?'1':'0',
+   public:ev?.public?'1':'0'}});
  };
  const saveEvent=(form:Form,remove=false)=>run(async()=>{
   const date=dateFromForm(form);
@@ -193,7 +194,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
   const id=form['id']||null;
   const saved=await workspaceRequest({kind:'rpc',name:'save_campaign_schedule_event',args:{p_payload:{
    id,version:id?Number(form['version']):null,date:dateKeyOf(date),title:title||'Evento removido',
-   description:form['description']??'',deleted:remove,
+   description:form['description']??'',deleted:remove,public:form['public']==='1',
    scope:form['scope']==='region'?'region':'kingdom',region:form['scope']==='region'?form['region']??null:null}}}) as {id?:string};
   if((remove||form['publish']==='1')&&typeof saved?.id==='string')
    await request('publishEvents',{ids:[saved.id]});
@@ -585,6 +586,9 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
     <p className="ht-hint">O evento só aparece no ano informado; a mesma data em outro ano continua vazia.</p>
     <div className="ht-fg"><label htmlFor="ht-f-desc">Descrição</label><textarea id="ht-f-desc" maxLength={5000}
      value={f['description']??''} onChange={e=>set(f,'description',e.target.value)}/></div>
+    <div className="ht-fg"><label className="ht-check"><input type="checkbox"
+     checked={f['public']==='1'} onChange={e=>set(f,'public',e.target.checked?'1':'0')}/>
+     <span><b>Exibir no calendário público do Reino</b><span>Permite que visitantes, jogadores, Editor-Chefe e Narrador leiam este evento após sua publicação. Desmarcado: permanece apenas nos calendários autenticados autorizados.</span></span></label></div>
     <div className="ht-fg"><span className="ht-lab">Situação</span>{seg(f,'publish',[['0','Rascunho'],['1','Publicar agora']])}</div>
     {actions(<button type="button" className="ht-gold" disabled={busy} onClick={()=>void saveEvent(f)}>Salvar evento</button>,
      f['id']?<button type="button" className="ht-btn ht-btn--danger" disabled={busy} onClick={()=>void saveEvent(f,true)}><Ic n="trash"/>Excluir</button>:null)}</>;}
