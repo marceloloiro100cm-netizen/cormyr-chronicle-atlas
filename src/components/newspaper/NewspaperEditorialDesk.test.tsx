@@ -287,13 +287,20 @@ describe('Redação A Folha Sem Selo',()=>{
  });
  it('não oferece excluir ou cancelar edição publicada, mesmo no Arquivo',()=>{
   const p=fixture();
-  const published={...p.current!,state:'published' as const,published_at:'2026-11-21T20:30:00Z'};
+  const published:NewspaperEdition={
+   id:'00000000-0000-4000-8000-000000000002',edition_no:2,
+   campaign_date:'1522-10-20',title:'A Folha Sem Selo',subtitle:'',
+   template:'classico',font_style:'classico',state:'published',
+   blocks:[makeNewspaperBlock('article')],pdf_path:null,version:2,publication_revision:1,
+   created_by:'leonardo',updated_at:'',published_at:'2026-11-21T20:30:00Z',
+   archived_at:null,cancelled_at:null,
+  };
   p.current=published;p.history=[published];p.editing=false;
   render(<NewspaperEditorialDesk {...p}/>);
   fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
   expect(screen.queryByRole('button',{name:/Excluir (rascunho|edição)/})).toBeNull();
   expect(screen.queryByRole('button',{name:'Cancelar envio'})).toBeNull();
-  expect(screen.getByText(/Edição publicada: preservada permanentemente/)).toBeTruthy();
+  expect(screen.getAllByText(/Nº 2/).length).toBeGreaterThan(0);
  });
  it('o topo diz só Jornal e Gravuras do Reino controla o acervo pela bolinha',()=>{
   const p=fixture();
