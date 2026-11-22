@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {newspaperMediaErrorMessage} from './firebase-newspaper-media';
+import {newspaperMediaErrorMessage,newspaperMediaDiagnosticCode} from './firebase-newspaper-media';
 
 describe('Gravuras do Reino: diagnóstico do envio',()=>{
  it('não confunde qualquer 503 com falta de autorização',()=>{
@@ -30,6 +30,17 @@ describe('Gravuras do Reino: diagnóstico do envio',()=>{
    .toContain('inicializou');
   expect(newspaperMediaErrorMessage(503,'media_operation_unavailable'))
    .toContain('operação interna');
+ });
+ it('retorna apenas códigos 503 reconhecidos, protegendo valores arbitrários',()=>{
+  expect(newspaperMediaDiagnosticCode(503,'media_scope_backend_unavailable'))
+   .toBe('media_scope_backend_unavailable');
+  expect(newspaperMediaDiagnosticCode(503,'newspaper_media_unavailable'))
+   .toBe('newspaper_media_unavailable');
+  expect(newspaperMediaDiagnosticCode(503,'uid|private-token|project'))
+   .toBe('http_503_unclassified');
+  expect(newspaperMediaDiagnosticCode(503,null)).toBe('http_503_unclassified');
+  expect(newspaperMediaDiagnosticCode(401,'media_scope_backend_unavailable'))
+   .toBeNull();
  });
  it('não exibe mensagens arbitrárias retornadas por API',()=>{
   const result=newspaperMediaErrorMessage(503,'private-user@example.com');
