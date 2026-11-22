@@ -776,11 +776,11 @@ const useStoryModel=async(model:StoryModel)=>{
   setBlockId(block.id);setEditing(true);
   notice('Gravura inserida na folha.');
  };
- const uploadEngravingFile=async(file:File,name:string):Promise<boolean>=>{
+ const uploadEngravingFile=async(file:File,name:string,requestKey?:string):Promise<boolean>=>{
   if(!editor||busy)return false;
   setBusy(true);setError('');
   try{
-   await uploadEngraving(file,name);
+   await uploadEngraving(file,name,requestKey);
    await qc.invalidateQueries({queryKey:['campaign-newspaper-engravings']});
    notice('Gravura guardada em Gravuras do Reino e disponível no acervo.');return true;
   }catch(cause){setError(safeError(cause));return false;}
