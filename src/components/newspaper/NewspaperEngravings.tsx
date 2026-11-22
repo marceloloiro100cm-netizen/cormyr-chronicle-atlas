@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {ImagePlus,Trash2} from 'lucide-react';
 import {signedEngravingImage} from '@/lib/newspaper/data';
@@ -18,7 +18,7 @@ export function StoredEngravingImage({item,alt=''}:{item:Pick<NewspaperEngraving
 export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRestore}:{
  items:NewspaperEngraving[];busy:boolean;
  onRestore:()=>void;
- onUpload:(file:File,name:string)=>Promise<boolean>;
+ onUpload:(file:File,name:string,requestKey?:string)=>Promise<boolean>;
  onToggle:(item:NewspaperEngraving,inCollection:boolean)=>void;
  onDelete:(item:NewspaperEngraving)=>void;
 }){
@@ -26,6 +26,7 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRes
  const [file,setFile]=useState<File|null>(null);
  const [error,setError]=useState('');
  const [sending,setSending]=useState(false);
+ const requestKey=useRef<string|null>(null);
  const submit=async()=>{
   if(busy||sending)return;
   if(!file){setError('Escolha uma imagem para enviar.');return;}
@@ -38,8 +39,9 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRes
   setError('');
   setSending(true);
   try{
-   const ok=await onUpload(file,name);
-   if(ok){setFile(null);setName('');}
+   const key=requestKey.current??crypto.randomUUID();requestKey.current=key;
+   const ok=await onUpload(file,name,key);
+   if(ok){requestKey.current=null;setFile(null);setName('');}
   }catch{
    setError('Falha no envio da gravura. O arquivo selecionado foi preservado.');
   }finally{setSending(false);}
@@ -59,6 +61,7 @@ export function NewspaperEngravings({items,busy,onUpload,onToggle,onDelete,onRes
       // Clear stale "Escolha uma imagem" immediately after a successful
       // selection; clearing the native input also permits choosing the same
       // file again after a failed upload without losing the File in state.
+      requestKey.current=null;
       setFile(e.target.files?.[0]??null);setError('');e.target.value='';
      }}/></label>
    <button type="submit" className="folha-text-action" disabled={busy||sending}>
