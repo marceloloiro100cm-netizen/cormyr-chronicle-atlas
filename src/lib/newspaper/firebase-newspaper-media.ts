@@ -34,6 +34,12 @@ export function newspaperMediaErrorMessage(status:number,code:unknown):string{
     return 'A API do Jornal falhou ao receber o arquivo. Verifique o limite da requisição e o servidor.';
    case 'media_operation_unavailable':
     return 'O envio falhou em uma operação interna do Firebase, antes de ser confirmado. Verifique os logs do App Hosting para a etapa exata.';
+   case 'media_integrity':
+    return 'O objeto no Storage não corresponde ao registro original. Preserve o arquivo e solicite reconciliação.';
+   case 'media_503_no_handler':
+    return 'O gateway do App Hosting retornou HTTP 503 sem resposta da API do Jornal. Verifique a instância, a revisão e os logs de infraestrutura; isso não comprova falha de permissão.';
+   case 'media_503_unexpected_reply':
+    return 'A API do Jornal respondeu HTTP 503 em formato inesperado. O arquivo não foi confirmado; verifique os logs do servidor.';
    default:
     return 'Serviço de mídia do Jornal indisponível (HTTP 503). A causa precisa ser verificada no Firebase; isso não comprova falta de autorização.';
   }
@@ -46,6 +52,9 @@ export function newspaperMediaErrorMessage(status:number,code:unknown):string{
   409:'A edição mudou ou já foi publicada. Reabra um rascunho.',
   413:'Arquivo acima do limite permitido.',
   415:'Envie um arquivo PNG, JPG, WebP ou PDF válido.',
+  500:'Erro interno ao processar a gravura. Preserve o arquivo e verifique o App Hosting.',
+  502:'O gateway do App Hosting não recebeu uma resposta válida do serviço de imagens.',
+  504:'O serviço de imagens não respondeu dentro do prazo do gateway.',
  };
  return messages[status]??'Falha na operação com o armazenamento do Jornal.';
 }
@@ -55,11 +64,14 @@ const SAFE_503=new Set([
  'migration_stage_not_ready','invalid_server_configuration','cloud_read_disabled',
  'media_not_ready','media_sdk_initialization_failed','media_service_initialization_failed',
  'media_runtime_lookup_failed','media_scope_backend_unavailable',
- 'media_parse_backend_unavailable','media_operation_unavailable',
+ 'media_parse_backend_unavailable','media_operation_unavailable','media_integrity',
 ]);
-export function newspaperMediaDiagnosticCode(status:number,raw:unknown):string|null{
+export function newspaperMediaDiagnosticCode(status:number,raw:unknown,handlerReached?:boolean):string|null{
  if(status!==503)return null;
- return typeof raw==='string'&&SAFE_503.has(raw)?raw:'http_503_unclassified';
+ if(typeof raw==='string'&&SAFE_503.has(raw))return raw;
+ if(handlerReached===false)return 'media_503_no_handler';
+ if(handlerReached===true)return 'media_503_unexpected_reply';
+ return 'http_503_unclassified';
 }
 function encodeFile(file:File):Promise<string>{
  return new Promise((resolve,reject)=>{
@@ -92,8 +104,9 @@ async function call(body:Record<string,unknown>,binary=false):Promise<any>{
    if(body&&typeof body==='object'&&!Array.isArray(body))
     code=(body as Record<string,unknown>)['error'];
   }catch{/* A response without JSON is still an error. */}
-  const detail=newspaperMediaDiagnosticCode(response.status,code);
-  const message=newspaperMediaErrorMessage(response.status,code);
+  const handlerReached=response.headers.get('x-cormyr-media-handler')==='v2';
+  const detail=newspaperMediaDiagnosticCode(response.status,code,handlerReached);
+  const message=newspaperMediaErrorMessage(response.status,detail??code);
   throw Error(detail?message+' (Diagnóstico: '+detail+')':message);
  }
  if(binary){
