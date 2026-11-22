@@ -221,13 +221,15 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
    // The stable request key lets a retry complete an interrupted Firestore
    // transaction without creating a second object or catalogue entry.
    if(v.registerEngraving){
-    if(!ids||!v.name)fail('invalid_media');
+    const engravingIds=ids,engravingName=v.name;
+    if(!engravingIds||!engravingName)
+     throw new NewspaperMediaError('invalid_media',400);
     const rowRef=runtime.collection('workspaceTableRows')
-     .doc(engravingOverlayRowId(ids.engravingId));
+     .doc(engravingOverlayRowId(engravingIds.engravingId));
     const mediaRef=registry.doc(newspaperMediaDocId(path));
     const auditRef=runtime.collection('workspaceTableAudits').doc(createHash('sha256')
-     .update('engraving-upload:'+ids.engravingId).digest('hex'));
-    const row={id:ids.engravingId,name:v.name.slice(0,80),image_path:path,
+     .update('engraving-upload:'+engravingIds.engravingId).digest('hex'));
+    const row={id:engravingIds.engravingId,name:engravingName.slice(0,80),image_path:path,
      public_src:null,in_collection:true,created_at:now};
     try{
      await db.runTransaction(async(tx:any)=>{
@@ -244,12 +246,12 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
        fail('media_upload_key_conflict',409);
       if(!stored.exists)tx.create(mediaRef,doc);
       if(!overlay.exists)tx.create(rowRef,{
-       table:'campaign_newspaper_engravings',key:ids.engravingId,row,
+       table:'campaign_newspaper_engravings',key:engravingIds.engravingId,row,
        deleted:false,version:1,updatedBy:s.uid,updatedAt:now,
        sourceSnapshotId:snapshotId,
       });
       if(!audit.exists)tx.create(auditRef,{
-       table:'campaign_newspaper_engravings',key:ids.engravingId,
+       table:'campaign_newspaper_engravings',key:engravingIds.engravingId,
        action:'write',version:1,actorUid:s.uid,occurredAt:now,
       });
      });
@@ -257,7 +259,7 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
      if(error instanceof NewspaperMediaError)throw error;
      fail('media_registry_unavailable',503);
     }
-    return {path,engravingId:ids.engravingId};
+    return {path,engravingId:engravingIds.engravingId};
    }
    // All other media keep their existing private registry contract.
    try{await registry.doc(newspaperMediaDocId(path)).create(doc);}
