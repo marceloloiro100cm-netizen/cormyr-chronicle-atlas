@@ -23,6 +23,20 @@ export async function markNewspaperDeleted(db,snapshotId,{id,actorUid,draftOnly=
   if(state!=='draft')throw Object.assign(Error('published_edition_immutable'),{status:409});
   const now=new Date().toISOString();
   const ref=deletedEditionsCollection(db,snapshotId).doc(deletedEditionDocId(id));
-  await ref.set({id,deleted:true,deletedBy:actorUid,deletedAt:now,previousState:state,sourceSnapshotId:snapshotId});
+  const imported=db.collection('migrationNewspaperRuntimeStage').doc(snapshotId).collection('editions').doc(id);
+  const operational=db.collection('campaignCloudRuntime').doc(snapshotId).collection('publishedNewspapers').doc(id);
+  // A list/state read made before this call is not a lock. Recheck the real
+  // edition inside the same transaction as its deletion marker, preventing
+  // a simultaneous publication from being marked deleted as a stale draft.
+  await db.runTransaction(async tx=>{
+    const paper=await tx.get(id.startsWith('cloud-')?operational:imported);
+    const issue=paper.data();
+    if(!paper.exists||issue?.id!==id||issue.state!=='draft'||issue.publishedAt!=null)
+      throw Object.assign(Error('published_edition_immutable'),{status:409});
+    const previous=await tx.get(ref);
+    if(previous.exists&&previous.data()?.deleted===true)return;
+    tx.set(ref,{id,deleted:true,deletedBy:actorUid,deletedAt:now,
+      previousState:'draft',sourceSnapshotId:snapshotId});
+  });
   return {id,deleted:true};
 }
