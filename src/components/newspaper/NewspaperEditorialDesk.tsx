@@ -112,6 +112,7 @@ export interface NewspaperEditorialProps{
  /** Dispositivo guardou texto mais recente/alternativo à versão do Firebase. */
  offlineRecovery?:{updatedAt:number;baseVersion:number}|null;
  offlineStorageDenied?:boolean;
+ offlineSavedAt?:number|null;
  offlineNeedsReview?:boolean;
  onRecoverOffline?:()=>void;
  onDiscardOffline?:()=>void;
@@ -397,7 +398,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         <button type="button" disabled={!props.canPasteBlock} onClick={()=>props.onPasteBlock('',[])}
          title="Colar depois do bloco selecionado (Ctrl+V)"><ClipboardPaste size={16}/> Colar</button>
         <button type="button" onClick={()=>setHelpOpen(true)} title="Lista de atalhos (?)"><Keyboard size={16}/> Atalhos</button>
-        <span className={`folha-save-status folha-save-${props.saveState.status}${props.saveState.dirty?' folha-save-dirty':''}`} role="status">{saveStatusText(props.saveState)}</span>
+        <span className={`folha-save-status folha-save-${props.saveState.status}${props.saveState.dirty?' folha-save-dirty':''}`} role="status">
+         {saveStatusText(props.saveState)}
+         {props.saveState.dirty&&props.offlineSavedAt&&!props.offlineStorageDenied?
+          ` · Cópia neste dispositivo às ${new Date(props.offlineSavedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`:''}
+        </span>
         <small>Clique na borda de um bloco (ou na alça ⠿) e use Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D ou Delete. Tecle / para inserir bloco e ? para ver todos os atalhos.</small>
        </div>}
        {current?<NewspaperCanvas edition={current} compactMasthead editing={editing}
