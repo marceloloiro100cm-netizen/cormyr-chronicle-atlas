@@ -5,6 +5,7 @@ import {CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service
 import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const headers={'Cache-Control':'private, no-store, max-age=0','Vary':'Authorization',
+ 'X-Cormyr-Media-Handler':'v2',
  'X-Content-Type-Options':'nosniff'};
 const fail=(status:number,code:string)=>Response.json({error:code},{status,headers});
 // A Nitro runtime may materialize the same error class in different chunks.
