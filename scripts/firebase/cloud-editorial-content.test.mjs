@@ -8,6 +8,16 @@ test('editorial content retains plain text, typography, layout and approved imag
     imageSrc:'/newspaper/gravuras/castelo_cormyr.jpg',span:6,height:190});
   assert.deepEqual(validateEditorialContent(v),v);
 });
+test('autosave may persist an incomplete or empty editorial draft but cannot publish it',()=>{
+ const incomplete={title:'',subtitle:'',blocks:[{id:'headline',type:'headline',
+  text:'A manchete que ainda estou escrevendo',span:12,height:110}]};
+ assert.deepEqual(validateEditorialContent(incomplete,{
+  allowEmptyImages:true,allowIncompleteDraft:true}),incomplete);
+ assert.throws(()=>validateEditorialContent(incomplete),/invalid_editorial_content/);
+ const empty={title:'',subtitle:'',blocks:[]};
+ assert.deepEqual(validateEditorialContent(empty,{allowIncompleteDraft:true}),empty);
+ assert.throws(()=>validateEditorialContent(empty),/invalid_editorial_content/);
+});
 test('reject forged fields, remote media, duplicate ids and oversized content',()=>{
   for(const change of [
     v=>({...v,createdBy:'forged'}),
