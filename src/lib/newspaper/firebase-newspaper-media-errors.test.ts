@@ -19,6 +19,18 @@ describe('Gravuras do Reino: diagnóstico do envio',()=>{
   expect(newspaperMediaErrorMessage(503,'media_registry_unavailable'))
    .toContain('Firestore');
  });
+ it('distingue autenticação de migração e consulta do runtime de erro genérico',()=>{
+  expect(newspaperMediaErrorMessage(503,'migration_stage_not_ready'))
+   .toContain('Auth/Domain');
+  expect(newspaperMediaErrorMessage(503,'media_runtime_lookup_failed'))
+   .toContain('Firestore');
+  expect(newspaperMediaErrorMessage(503,'media_scope_backend_unavailable'))
+   .toContain('sessão');
+  expect(newspaperMediaErrorMessage(503,'media_service_initialization_failed'))
+   .toContain('inicializou');
+  expect(newspaperMediaErrorMessage(503,'media_operation_unavailable'))
+   .toContain('operação interna');
+ });
  it('não exibe mensagens arbitrárias retornadas por API',()=>{
   const result=newspaperMediaErrorMessage(503,'private-user@example.com');
   expect(result).not.toContain('private-user@example.com');
