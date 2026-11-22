@@ -18,6 +18,22 @@ export function newspaperMediaErrorMessage(status:number,code:unknown):string{
     return 'Falha no acesso ao Firebase Storage. Nenhum registro da gravura foi confirmado; tente novamente após verificar o serviço.';
    case 'media_registry_unavailable':
     return 'O arquivo pode ter chegado ao Storage, mas o registro da gravura falhou no Firestore. Preserve o original e solicite auditoria antes de repetir muitos envios.';
+   case 'migration_stage_not_ready':
+    return 'O serviço de autenticação da migração ainda não está pronto para enviar imagens. Verifique os estágios Auth/Domain do Firebase.';
+   case 'invalid_server_configuration':
+   case 'cloud_read_disabled':
+   case 'media_not_ready':
+   case 'media_sdk_initialization_failed':
+   case 'media_service_initialization_failed':
+    return 'O serviço Firebase do Jornal não inicializou corretamente na revisão publicada. É necessário revisar a configuração do servidor.';
+   case 'media_runtime_lookup_failed':
+    return 'O Jornal não conseguiu consultar suas aprovações no Firestore. Verifique a conexão e as permissões de leitura do App Hosting.';
+   case 'media_scope_backend_unavailable':
+    return 'O Jornal não conseguiu verificar sua sessão no serviço Firebase. Verifique a autenticação do backend; nenhuma imagem foi confirmada.';
+   case 'media_parse_backend_unavailable':
+    return 'A API do Jornal falhou ao receber o arquivo. Verifique o limite da requisição e o servidor.';
+   case 'media_operation_unavailable':
+    return 'O envio falhou em uma operação interna do Firebase, antes de ser confirmado. Verifique os logs do App Hosting para a etapa exata.';
    default:
     return 'Serviço de mídia do Jornal indisponível (HTTP 503). A causa precisa ser verificada no Firebase; isso não comprova falta de autorização.';
   }
