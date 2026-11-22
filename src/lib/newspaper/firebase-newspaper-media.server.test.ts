@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import {isNewspaperMediaPath,validateNewspaperMediaUpload,newspaperMediaDocId}
+import {isNewspaperMediaPath,validateNewspaperMediaUpload,newspaperMediaDocId,
+ classifyNewspaperStorageError}
  from './firebase-newspaper-media.server';
 
 const snap='f'.repeat(64);
@@ -7,6 +8,16 @@ const uuid='00000000-0000-4000-8000-000000000001';
 const base='newspaper-media/'+snap+'/editionImage/'+uuid+'.png';
 const png=Buffer.from('89504e470d0a1a0a0000000000000000','hex');
 describe('Firebase newsroom media boundary',()=>{
+ it('distinguishes denied Storage IAM from temporary outage without leaking provider messages',()=>{
+  expect(classifyNewspaperStorageError({code:403,message:'sensitive service account'}))
+   .toBe('media_storage_permission_denied');
+  expect(classifyNewspaperStorageError({statusCode:7}))
+   .toBe('media_storage_permission_denied');
+  expect(classifyNewspaperStorageError({code:500}))
+   .toBe('media_storage_unavailable');
+  expect(classifyNewspaperStorageError(Error('private bucket path')))
+   .toBe('media_storage_unavailable');
+ });
  it('accepts the exact server-owned path namespace and rejects traversal',()=>{
   expect(isNewspaperMediaPath(base,snap,'editionImage')).toBe(true);
   expect(isNewspaperMediaPath(base,snap,'commission')).toBe(false);
