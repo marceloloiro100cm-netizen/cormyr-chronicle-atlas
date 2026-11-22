@@ -109,6 +109,11 @@ export interface NewspaperEditorialProps{
  dirty:boolean;
  /** Situação do salvamento automático, mostrada junto das ferramentas de edição. */
  saveState:SaveState;
+ /** Dispositivo guardou texto mais recente/alternativo à versão do Firebase. */
+ offlineRecovery?:{updatedAt:number;baseVersion:number}|null;
+ offlineStorageDenied?:boolean;
+ onRecoverOffline?:()=>void;
+ onDiscardOffline?:()=>void;
  /** Depois de descartar, o Editor-Chefe tem alguns segundos para recuperar as alterações. */
  canRestoreDiscard:boolean;
  onRestoreDiscard:()=>void;
@@ -334,6 +339,23 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)props.onUpload(file);}}/>
     </div>
 
+    {props.offlineRecovery&&<div className="folha-alert" role="alert">
+     <strong>Texto recuperável neste dispositivo.</strong>
+     {' '}Há uma cópia local da edição feita em {new Date(props.offlineRecovery.updatedAt).toLocaleString('pt-BR')}.
+     {' '}Ela não será enviada nem substituirá a versão do Firebase sem sua escolha.
+     {current&&props.offlineRecovery.baseVersion!==current.version&&
+      <p>A versão do Firebase mudou desde essa cópia; confira o texto antes de salvar.</p>}
+     <div className="folha-check-actions">
+      <button type="button" className="folha-text-action" disabled={busy}
+       onClick={props.onRecoverOffline}>Recuperar texto local</button>
+      <button type="button" className="folha-text-action" disabled={busy}
+       onClick={props.onDiscardOffline}>Descartar cópia local</button>
+     </div>
+    </div>}
+    {props.offlineStorageDenied&&<div className="folha-alert" role="alert">
+     Este navegador bloqueou a cópia local. A edição continuará tentando salvar no Firebase,
+     mas a proteção contra fechamento sem conexão não está disponível neste dispositivo.
+    </div>}
     {props.error&&<div className="folha-alert" role="alert">{props.error}</div>}
     {props.message&&<div className="folha-notice" role="status">{props.message}
      {props.canRestoreDiscard&&<button type="button" className="folha-notice-action" onClick={props.onRestoreDiscard}>Desfazer descarte</button>}</div>}
