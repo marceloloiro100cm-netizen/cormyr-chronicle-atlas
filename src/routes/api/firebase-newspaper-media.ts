@@ -1,7 +1,4 @@
 import {createFileRoute} from '@tanstack/react-router';
-import {createNewspaperMediaService,NewspaperMediaError}
- from '@/lib/newspaper/firebase-newspaper-media.server';
-import {CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const headers={'Cache-Control':'private, no-store, max-age=0','Vary':'Authorization',
@@ -45,6 +42,10 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
     (binaryUpload?!['image/png','image/jpeg','image/webp','application/pdf'].includes(mime??''):
       mime!=='application/json'))return fail(415,'media_type_required');
  let phase:'parse'|'sdk'|'service'|'operation'='parse';
+ // Loading this heavy server-only module at route registration can prevent
+ // Nitro from ever entering this handler. Keep invalid-auth rejection cheap.
+ let mediaErrorClass:typeof import('@/lib/newspaper/firebase-newspaper-media.server').NewspaperMediaError|undefined;
+ let accessErrorClass:typeof import('../../../scripts/firebase/cloud-readonly-service.mjs').CloudAccessError|undefined;
  try{
   const reader=request.body?.getReader();
   if(!reader)return fail(400,'invalid_request');
@@ -95,7 +96,13 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
    projectId:'cormyr',credential:applicationDefault(),
   },name);
   phase='service';
-  const media=createNewspaperMediaService({
+  const [mediaModule,accessModule]=await Promise.all([
+   import('@/lib/newspaper/firebase-newspaper-media.server'),
+   import('../../../scripts/firebase/cloud-readonly-service.mjs'),
+  ]);
+  mediaErrorClass=mediaModule.NewspaperMediaError;
+  accessErrorClass=accessModule.CloudAccessError;
+  const media=mediaModule.createNewspaperMediaService({
    db:getFirestore(app),auth:getAuth(app),snapshotId,
    bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
   });
@@ -111,7 +118,9 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
    :await media.clone(token,payload);
   return Response.json({result},{status:200,headers});
  }catch(e){
-  if(e instanceof NewspaperMediaError||e instanceof CloudAccessError)
+  if(mediaErrorClass&&e instanceof mediaErrorClass)
+   return fail(e.status,e.code);
+  if(accessErrorClass&&e instanceof accessErrorClass)
    return fail(e.status,e.code);
   const stable=safeMedia503Code(e);
   if(stable)return fail(503,stable);
