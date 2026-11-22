@@ -24,7 +24,6 @@ import {NewspaperShortcutHelp,NewspaperSlashMenu} from './NewspaperKeyboardUi';
 import {NewspaperCanvas} from './NewspaperCanvas';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
-import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar';
 import {NewspaperAudit} from './NewspaperAudit';
 import {NewspaperStaff} from './NewspaperStaff';
 import {NewspaperStoryModels} from './NewspaperStoryModels';
@@ -446,7 +445,6 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
          const draft=dateStoryDraft(date,title);
          setSection('capa');setFullPreview(false);props.onWriteAboutDate(draft.title,draft.body);
         }}/>
-       <div className="folha-calendar-public"><PublicChronicleCalendar/></div>
       </section>}
 
       {section==='redacao'&&<section className="folha-section-content">
