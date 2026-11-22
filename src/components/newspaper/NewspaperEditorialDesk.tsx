@@ -51,6 +51,7 @@ export interface NewspaperEditorialProps{
  userId:string;
  current:NewspaperEdition|null;
  history:NewspaperEdition[];
+ archiveNotice?:string;archiveError?:string;onRetryArchive?:()=>void;
  reads:NewspaperRead[];
  /** Leituras do site aberto (visitantes sem conta), por edição. */
  publicReads?:ReadonlyMap<string,number>|undefined;
@@ -178,17 +179,17 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const dateLabel=(value:string)=>{const d=parseDate(value);return d?formatCampaignPeriod(d):'Data indisponível';};
  const openCover=()=>{
   setSection('capa');setFullPreview(false);
-  if(current){props.onEdit();if(current.blocks[0])props.onSelectBlock(current.blocks[0].id);}
+  if(current&&!current.archive_preview){props.onEdit();if(current.blocks[0])props.onSelectBlock(current.blocks[0].id);}
  };
  const writeArticle=()=>{setSection('capa');setFullPreview(false);
-  if(!current)props.onNew('article');else props.onAddBlock('article');};
+  if(!current||current.archive_preview)props.onNew('article');else props.onAddBlock('article');};
  const insert=(type:NewspaperBlockType,span?:number)=>{
   setSection('capa');setFullPreview(false);
-  if(!current)props.onNew(type);else props.onAddBlock(type,span);
+  if(!current||current.archive_preview)props.onNew(type);else props.onAddBlock(type,span);
  };
  const chooseSection=(value:Section)=>{
   setSection(value);setFullPreview(false);
-  if(value==='capa'&&current)props.onEdit();
+  if(value==='capa'&&current&&!current.archive_preview)props.onEdit();
  };
  const browseEdition=(edition:NewspaperEdition)=>{props.onOpen(edition);setSection('capa');setFullPreview(false);};
  const hasUnsavedChanges=current&&editing;
@@ -200,7 +201,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  const currentDate=current?.campaign_date??props.hubDate;
  const totalWords=current?editionWords(current.blocks):0;
  const minutes=readingMinutes(totalWords);
- const editingSheet=section==='capa'&&editing&&Boolean(current)&&!fullPreview;
+ const editingSheet=section==='capa'&&editing&&Boolean(current)&&!current?.archive_preview&&!fullPreview;
  const publishIssues=useMemo<PublicationIssue[]>(()=>current?publicationIssues(current.blocks):[],[current]);
  /** Conferência antes de publicar: se houver pendências, mostra a lista e deixa publicar mesmo assim. */
  const requestPublish=()=>{
@@ -325,9 +326,9 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <FileUp size={22}/> Anexar Arquivo</button>
      <button type="button" onClick={()=>{setSection('painel');setFullPreview(x=>!x);props.onPreview();}}>
       <Eye size={22}/> {fullPreview?'Voltar ao painel':'Pré-visualizar'}</button>
-     <button type="button" disabled={!current||busy||!materialReady} onClick={requestPublish}>
+     <button type="button" disabled={!current||current.archive_preview||busy||!materialReady} onClick={requestPublish}>
       <Newspaper size={21}/> Publicar Edição</button>
-     <button type="button" disabled={!current||busy||current.state!=='published'} onClick={()=>props.onSave('archived')}>
+     <button type="button" disabled={!current||current.archive_preview||busy||current.state!=='published'} onClick={()=>props.onSave('archived')}>
       <Archive size={21}/> Arquivar</button>
      <input ref={fileInput} type="file" hidden accept="application/pdf,.pdf,image/png,image/jpeg,image/webp"
       onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)props.onUpload(file);}}/>
@@ -443,6 +444,12 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
 
       {section==='arquivo'&&<section className="folha-section-content">
        <h3>Arquivo de edições</h3><p>Consulte e retome edições antigas, inclusive rascunhos e envios cancelados.</p>
+       {props.archiveNotice&&<p role="status" className="folha-field-hint">{props.archiveNotice}</p>}
+       {props.archiveError&&<div role="alert" className="newspaper-alert">
+        {props.archiveError}
+        {props.onRetryArchive&&<button type="button" className="folha-text-link"
+         onClick={props.onRetryArchive}>Atualizar arquivo</button>}
+       </div>}
        {props.loading?<p role="status">Carregando arquivo…</p>:
         <div className="folha-archive-list">{history.map(e=><div className="folha-archive-row" key={e.id}>
          <button type="button" onClick={()=>browseEdition(e)}><span>{issueLabel(e)} · {formatDate(e.campaign_date)}</span>
@@ -686,7 +693,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        </div>}
       </div>
       <button type="button" className="folha-publish-button"
-       disabled={!current||busy||!materialReady} onClick={requestPublish}>
+       disabled={!current||current.archive_preview||busy||!materialReady} onClick={requestPublish}>
        <Printer size={24}/> Publicar Edição</button>
       {current&&<div className="folha-minor-actions">
        <button type="button" onClick={()=>window.print()}><Printer size={15}/> Imprimir / Salvar PDF</button>
@@ -694,7 +701,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        {props.dirty&&<button type="button" disabled={busy} onClick={props.onDiscard}>Descartar alterações</button>}
        {current.state==='draft'&&<button type="button" disabled={busy}
         onClick={props.onDeleteDraft}><Trash2 size={15}/> Excluir rascunho</button>}
-       {current.state==='published'&&<small className="folha-field-hint">Edição publicada: preservada permanentemente. Use Arquivar para mantê-la no acervo.</small>}
+       {current.archive_preview&&<small className="folha-field-hint">Prévia somente leitura da edição já publicada. O original permanece preservado.</small>}
+       {current.state==='published'&&!current.archive_preview&&<small className="folha-field-hint">Edição publicada: preservada permanentemente. Use Arquivar para mantê-la no acervo.</small>}
        {current.state==='cancelled'&&<button type="button" disabled={busy}
         onClick={()=>{props.onPatch({state:'draft'});props.onEdit();}}>Reabrir rascunho</button>}
        {current.state==='archived'&&<button type="button" disabled={busy}
