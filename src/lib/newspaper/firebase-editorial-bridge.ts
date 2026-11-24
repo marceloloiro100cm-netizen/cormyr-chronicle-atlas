@@ -13,13 +13,13 @@ const CLOUD=/^cloud-[a-f0-9]{64}$/;
 type CloudEdition={id:string;editionNo:number;title:string;subtitle:string;
  blocks:NewspaperBlock[];pdfPath?:string|null;publishOn?:string|null;version:number;state:NewspaperState;
  campaignDate:string;publishedAt:string|null;template?:NewspaperTemplate;
- font_style?:NewspaperFont};
+ font_style?:NewspaperFont;updatedAt?:string|null};
 type EditorialList={nextOfficialEditionNo?:number;items:{id:string;editionNo:number;title:string;
  state:NewspaperState;version:number}[]};
 type PublishedSummary={id:string;editionNo:number};
 type HistoricalDraft={id:string;editionNo:number;sourceVersion:number;
   title:string;subtitle:string;template:NewspaperTemplate;font_style:NewspaperFont;
-  blocks:NewspaperBlock[];version:number;state:'draft';campaignDate:string};
+  blocks:NewspaperBlock[];version:number;state:'draft';campaignDate:string;updatedAt?:string|null};
 const HISTORICAL_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const prohibited='Esta funcionalidade do jornal ainda requer a integração do Firebase Storage ou das configurações editoriais.';
 // If a save commits but its HTTP response is lost, retry the exact same
@@ -51,7 +51,7 @@ export function originalNewspaperEdition(value:CloudEdition):NewspaperEdition{
   state:value.state,blocks:safeNewspaperBlocks(value.blocks),pdf_path:value.pdfPath??null,
   publish_on:value.publishOn??null,
   version:value.version,publication_revision:value.publishedAt?value.version:0,
-  created_by:'',updated_at:value.publishedAt??'',published_at:value.publishedAt,
+  created_by:'',updated_at:value.updatedAt??value.publishedAt??'',published_at:value.publishedAt,
   archived_at:null,cancelled_at:null,
  };
 }
@@ -170,12 +170,29 @@ export async function loadPublishedNewspaperArchive():Promise<NewspaperEdition[]
   .sort((a,b)=>b.edition_no-a.edition_no||b.id.localeCompare(a.id));
 }
 
+/** Drafts that could not be read in the last archive load (0 = complete). */
+let unreadableEditorial=0;
+export function unreadableFirebaseEditorialCount():number{return unreadableEditorial;}
+/**
+ * Reads ONE Cloud edition straight from Firebase, without the full archive
+ * listing. Recovery uses it to find the draft a device copy belongs to even
+ * when the archive could not be listed. null = it does not exist (anymore).
+ */
+export async function getFirebaseNewspaperEdition(id:string):Promise<NewspaperEdition|null>{
+ if(!isFirebaseNewspaperWorkspace()||!CLOUD.test(id))return null;
+ try{return originalNewspaperEdition(await request<CloudEdition>({action:'getEditorial',id}));}
+ catch(error){
+  if((error as {status?:number})?.status===404)return null;
+  throw error;
+ }
+}
 export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[]):Promise<NewspaperEdition[]>{
  if(!isFirebaseNewspaperWorkspace())return imported;
  // The trusted server supplies the role: no client-supplied "editor" flag.
  const identity=await workspaceRequest({kind:'auth'});
  const editorial=identity?.profile==='editor'||identity?.profile==='narrador';
  let cloud:CloudEdition[]=[];
+ unreadableEditorial=0;
  let historicDrafts:HistoricalDraft[]=[];
  let nextOfficialNumber:number|null=null;
  if(editorial){
@@ -193,10 +210,19 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
    if(typeof list.nextOfficialEditionNo==='number'&&
       Number.isSafeInteger(list.nextOfficialEditionNo)&&list.nextOfficialEditionNo>=1)
     nextOfficialNumber=list.nextOfficialEditionNo;
-   cloud=await Promise.all(list.items.map(item=>{
+   // One unreadable draft must never hide every other draft (and the
+   // Editor-Chefe's work) from the archive. Skip it and report the gap.
+   const reads=await Promise.allSettled(list.items.map(item=>{
     if(!CLOUD.test(item.id))throw Error('Identificador editorial inválido.');
     return request<CloudEdition>({action:'getEditorial',id:item.id});
    }));
+   cloud=[];unreadableEditorial=0;
+   for(const read of reads){
+    if(read.status==='fulfilled'){
+     try{originalNewspaperEdition(read.value);cloud.push(read.value);}
+     catch{unreadableEditorial++;}
+    }else unreadableEditorial++;
+   }
    const legacy=await request<{items:HistoricalDraft[]}>({action:'listHistoricalDrafts'});
    if(!Array.isArray(legacy.items)||legacy.items.length>100)
     throw Error('Cópias operacionais do Jornal acima do limite de segurança.');
@@ -237,15 +263,20 @@ export async function loadFirebaseNewspaperEditions(imported:NewspaperEdition[])
      e.state!=='draft'||overlay.state!=='draft'||
      overlay.sourceVersion!==e.version||overlay.editionNo!==e.edition_no||
      !Number.isSafeInteger(overlay.version)||overlay.version<=e.version||
-     !Array.isArray(overlay.blocks))throw Error('Versão operacional histórica inconsistente.');
+     !Array.isArray(overlay.blocks)){
+   // Keep the rest of the archive visible; this working copy is reported as
+   // unreadable instead of hiding every draft. Saving stays CAS-guarded.
+   unreadableEditorial++;seenHistoric.add(overlay.id);
+   return {...e,archive_preview:true};
+  }
   seenHistoric.add(overlay.id);
   return {...e,title:overlay.title,subtitle:overlay.subtitle,
    template:overlay.template,font_style:overlay.font_style,
    campaign_date:overlay.campaignDate,blocks:safeNewspaperBlocks(overlay.blocks),
-   version:overlay.version};
+   version:overlay.version,
+   ...(typeof overlay.updatedAt==='string'?{updated_at:overlay.updatedAt}:{})};
  });
- if(historicDrafts.some(o=>!originals.has(o.id)||!seenHistoric.has(o.id)))
-  throw Error('Cópia histórica sem edição original. Acervo preservado.');
+ unreadableEditorial+=historicDrafts.filter(o=>!originals.has(o.id)||!seenHistoric.has(o.id)).length;
  const combined=[...editableHistory,...recovered,...[...cloud,...complete].map(originalNewspaperEdition)]
   .map(edition=>nextOfficialNumber!==null&&CLOUD.test(edition.id)&&edition.state==='draft'&&
    edition.published_at===null?{...edition,edition_no:nextOfficialNumber}:edition);

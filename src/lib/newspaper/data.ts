@@ -2,7 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {supabase} from '@/integrations/supabase/client';
 import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 import {
- isFirebaseNewspaperWorkspace,loadFirebaseNewspaperEditions,
+ isFirebaseNewspaperWorkspace,loadFirebaseNewspaperEditions,getFirebaseNewspaperEdition,unreadableFirebaseEditorialCount,
  createFirebaseNewspaperEdition,updateFirebaseNewspaperEdition,
  loadFirebaseNewspaperReceipts,markFirebaseNewspaperRead,loadFirebaseNewspaperRevisions,
 } from './firebase-editorial-bridge';
@@ -68,6 +68,22 @@ export async function createNewspaperEdition(input:{
  }).select('*').single();
  if(error)throw error;
  return data as NewspaperEdition;
+}
+/** Drafts skipped by the last archive load because Firebase could not read them. */
+export function unreadableNewspaperDrafts():number{
+ return isFirebaseNewspaperWorkspace()?unreadableFirebaseEditorialCount():0;
+}
+/** One edition read directly, independent of the archive listing. */
+export async function getNewspaperEditionById(id:string):Promise<NewspaperEdition|null>{
+ if(isFirebaseNewspaperWorkspace())return getFirebaseNewspaperEdition(id);
+ const {data,error}=await db.from('campaign_newspapers').select('*').eq('id',id).maybeSingle();
+ if(error)throw error;
+ return (data as NewspaperEdition|null)??null;
+}
+/** Copies an image of one edition (e.g. a recovered duplicate) into another. */
+export async function copyEditionImageToEdition(editionId:string,path:string):Promise<string>{
+ if(isFirebaseNewspaperWorkspace())return cloneFirebaseNewspaperMedia(path,editionId);
+ return copyBucketImageToEdition(PAPER_BUCKET,editionId,path);
 }
 export async function updateNewspaperEdition(current:NewspaperEdition,input:{
  campaign_date:string;title:string;subtitle:string;template:NewspaperTemplate;

@@ -23,6 +23,8 @@ import type {OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
 import {useNewspaperShortcuts} from './useNewspaperShortcuts';
 import {NewspaperShortcutHelp,NewspaperSlashMenu} from './NewspaperKeyboardUi';
 import {NewspaperCanvas} from './NewspaperCanvas';
+import {NewspaperRecovery} from './NewspaperRecovery';
+import type {RecoveryCandidate} from '@/lib/newspaper/working-draft';
 import {CommissionInbox} from './NewspaperCommissions';
 import {NewspaperCalendar} from './NewspaperCalendar';
 import {NewspaperAudit} from './NewspaperAudit';
@@ -56,6 +58,10 @@ export interface NewspaperEditorialProps{
  localBackups?:OfflineEditionBackup[];
  onExportLocalBackup?:(backup:OfflineEditionBackup,format?:'txt'|'json')=>void;
  onRecoverLocalBackup?:(backup:OfflineEditionBackup)=>void;
+ /** Uma única edição em andamento: todas as versões recuperáveis e a ação de consolidar. */
+ recovery?:{candidates:RecoveryCandidate[];workingId:string|null;nextNumber:number|null;
+  draftCount:number;unreadable:number;onUse:(candidate:RecoveryCandidate)=>void;
+  onKeepOnlyWorking:()=>void}|undefined;
  /** Emergency export does not depend on localStorage, IndexedDB or Firebase. */
  onExportCurrent?:()=>void;
  reads:NewspaperRead[];
@@ -499,19 +505,20 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         {props.onRetryArchive&&<button type="button" className="folha-text-link"
          onClick={props.onRetryArchive}>Atualizar arquivo</button>}
        </div>}
+       {props.recovery&&<NewspaperRecovery {...props.recovery} busy={busy}/>}
        {props.localBackups&&props.localBackups.length>0&&<section aria-label="Cópias locais neste dispositivo" className="folha-archive-local">
         <h4>Cópias locais neste dispositivo</h4>
         <p>Histórico de versões deste navegador, incluindo alterações ainda não sincronizadas.
-         Exporte o texto (.txt) ou a cópia integral (.json) antes de restaurar.
-         Nenhuma destas ações altera o Firebase automaticamente.</p>
+         Exporte o texto (.txt) ou a cópia integral (.json) quando quiser guardar um arquivo.
+         Recuperar grava a versão na edição em andamento, depois de confirmar; o Firebase guarda a anterior.</p>
         {props.localBackups.slice(0,100).map((backup,index)=><div key={backup.editionId+':'+backup.updatedAt+':'+index} className="folha-archive-row">
          <div><strong>{backup.snapshot.title}</strong>
           <small>{backup.snapshot.subtitle} · {new Date(backup.updatedAt).toLocaleString('pt-BR')}</small></div>
          <div className="folha-check-actions">
           <button type="button" onClick={()=>props.onExportLocalBackup?.(backup,'txt')}>Baixar texto (.txt)</button>
           <button type="button" onClick={()=>props.onExportLocalBackup?.(backup,'json')}>Cópia integral (.json)</button>
-          {history.some(e=>e.id===backup.editionId&&e.state==='draft')&&
-           <button type="button" disabled={busy} onClick={()=>{props.onRecoverLocalBackup?.(backup);setSection('capa');}}>
+          {props.onRecoverLocalBackup&&
+           <button type="button" disabled={busy} onClick={()=>props.onRecoverLocalBackup?.(backup)}>
             Recuperar esta versão</button>}
          </div>
         </div>)}
