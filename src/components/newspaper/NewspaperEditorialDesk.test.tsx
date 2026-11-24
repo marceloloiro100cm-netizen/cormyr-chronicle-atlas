@@ -112,6 +112,35 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Cópia integral (.json)'}));
   expect(p.onExportLocalBackup).toHaveBeenCalledWith(p.localBackups[0],'json');
  });
+ it('restaura uma revisão local selecionada e permite exportação de emergência do canvas',()=>{
+  const p=fixture();
+  const edition:NewspaperEdition={
+   id:'cloud-'+'a'.repeat(64),edition_no:3,campaign_date:'1522-11-24',
+   title:'A Folha Sem Selo',subtitle:'A verdade bem servida',
+   template:'classico',font_style:'classico',state:'draft',
+   blocks:[{...makeNewspaperBlock('headline'),text:'Texto atual'}],
+   pdf_path:null,version:3,publication_revision:0,created_by:'leonardo',
+   updated_at:'',published_at:null,archived_at:null,cancelled_at:null,
+  };
+  p.current=edition;p.history=[edition];p.onExportCurrent=vi.fn();
+  p.onRecoverLocalBackup=vi.fn();
+  p.localBackups=[{
+   schema:1,owner:'leonardo',editionId:edition.id,baseVersion:1,
+   updatedAt:Date.UTC(2026,10,24,15,25),
+   snapshot:{
+    campaign_date:edition.campaign_date,title:edition.title,subtitle:edition.subtitle,
+    template:edition.template,font_style:edition.font_style,pdf_path:null,
+    blocks:[{...makeNewspaperBlock('headline'),text:'Texto recuperado de checkpoint'}],
+   },
+  }];
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Baixar cópia de segurança'}));
+  expect(p.onExportCurrent).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
+  fireEvent.click(screen.getByRole('button',{name:'Recuperar esta versão'}));
+  expect(p.onRecoverLocalBackup).toHaveBeenCalledWith(p.localBackups[0]);
+  expect(p.onSave).not.toHaveBeenCalled();
+ });
  it('iniciar matéria com edição publicada cria rascunho novo sem alterar a publicação',()=>{
   const p=fixture();
   p.current={id:'cloud-'+'a'.repeat(64),edition_no:2,
