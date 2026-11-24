@@ -56,6 +56,17 @@ const subtitleDrafts=drafts.filter(expectedSubtitle);
 const subtitleHistorical=overlays.filter(expectedSubtitle);
 const todayAuditsWithTextChange=todaySaves.filter(v=>
  v?.before&&v?.after&&textFrom(v.before)!==textFrom(v.after));
+const boilerplate=new Set([
+ 'Escreva a manchete principal','A GAZETA DE CORMYR','ÚLTIMA HORA',
+ 'Linha fina que complementa a manchete',
+ 'Uma declaração importante ganha destaque aqui.',
+ 'Notas da Corte\n\nEscreva aqui o comunicado ou anúncio.',
+ 'Título da notícia\n\nEscreva aqui o conteúdo da reportagem. As colunas se ajustam conforme o espaço disponível.',
+]);
+const authoredBlockCount=v=>Array.isArray(v?.blocks)?v.blocks.filter(b=>
+ typeof b?.text==='string'&&b.text.trim().length>0&&
+ !boilerplate.has(b.text.trim())).length:0;
+const todaySubtitleDrafts=subtitleDrafts.filter(v=>localDay(v?.updatedAt)===auditDay);
 const recentDays=['2026-11-22','2026-11-23','2026-11-24'].map(day=>({
  day,cloudDraftsUpdated:drafts.filter(v=>localDay(v?.updatedAt)===day).length,
  saveOperations:allAudits.filter(v=>localDay(v?.occurredAt)===day&&
@@ -81,6 +92,11 @@ console.log(JSON.stringify({
  todayEditorialSaveOperations:todaySaves.length,
  todayEditorialTextChanges:todayAuditsWithTextChange.length,
  todaySubtitledSaves:todaySaves.filter(v=>expectedSubtitle(v.after)).length,
+ todayNewDraftSaveOperations:todaySaves.filter(v=>v?.before==null&&v?.after).length,
+ todayExistingDraftSaveOperations:todaySaves.filter(v=>v?.before&&v?.after).length,
+ todayCandidateDraftsCreated:todaySubtitleDrafts.filter(v=>localDay(v?.createdAt)===auditDay).length,
+ todayCandidateDraftsWithCustomText:todaySubtitleDrafts.filter(v=>authoredBlockCount(v)>0).length,
+ todayCandidateDraftVersions:todaySubtitleDrafts.map(v=>v.version).filter(Number.isSafeInteger).sort((a,b)=>a-b),
  recentDays,
  recoveryRoute:'Editor-Chefe > Arquivo > selecionar rascunho > Histórico de revisões',
  textNotLogged:true,
