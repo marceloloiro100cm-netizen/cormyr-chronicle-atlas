@@ -22,6 +22,18 @@ type HistoricalDraft={id:string;editionNo:number;sourceVersion:number;
   blocks:NewspaperBlock[];version:number;state:'draft';campaignDate:string};
 const HISTORICAL_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const prohibited='Esta funcionalidade do jornal ainda requer a integração do Firebase Storage ou das configurações editoriais.';
+// If a save commits but its HTTP response is lost, retry the exact same
+// requestKey so the server's idempotent audit returns the committed version.
+const pendingEditionKeys=new Map<string,string>();
+function stableSaveKey(uid:string,id:string,version:number,payload:unknown):{entry:string;requestKey:string}{
+ const entry=uid+':'+id+':'+version+':'+JSON.stringify(payload);
+ const existing=pendingEditionKeys.get(entry);
+ if(existing)return {entry,requestKey:existing};
+ if(pendingEditionKeys.size>=80)pendingEditionKeys.delete(pendingEditionKeys.keys().next().value!);
+ const requestKey=crypto.randomUUID();
+ pendingEditionKeys.set(entry,requestKey);
+ return {entry,requestKey};
+}
 export function isFirebaseNewspaperWorkspace(){return firebaseWorkspaceClient()!==null;}
 
 /** Original presentation shape; no forged imported source or extra editions. */
@@ -48,11 +60,19 @@ async function request<T>(body:Record<string,unknown>):Promise<T>{
  const token=await auth?.getToken();
  if(!uid||!token||auth?.current()?.uid!==uid)
   throw Error('Sessão Firebase inválida. Entre novamente.');
- const response=await fetch('/api/firebase-cloud-newspaper',{
-  method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
-  headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-  body:JSON.stringify(body),
- });
+ // Never leave the editor indefinitely in "saving" on a stalled request.
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),20_000);
+ let response:Response;
+ try{
+  response=await fetch('/api/firebase-cloud-newspaper',{
+   method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
+   headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+   signal:controller.signal,body:JSON.stringify(body),
+  });
+ }catch{
+  throw Object.assign(Error('Sem confirmação do Firebase. A cópia permanece neste dispositivo.'),{status:503});
+ }finally{clearTimeout(timeout);}
  if(auth?.current()?.uid!==uid)throw Error('Sessão alterada durante a redação.');
  // Limite semanal definido pelo Narrador no Hub Temporal (Ajustes).
  const code=response.ok?'':await (async()=>{
@@ -310,9 +330,12 @@ export async function updateFirebaseNewspaperEdition(
    campaign_date:saved.campaignDate,blocks:safeNewspaperBlocks(saved.blocks),
    version:saved.version,state:'draft'};
  }
- const saved=await request<CloudEdition>({action:'saveEdition',requestKey:crypto.randomUUID(),
-  id:current.id,expectedVersion:current.version,state:input.state,
-  content:content(input)});
+ const body=content(input);
+ const key=stableSaveKey(firebasePilotAuth()?.current()?.uid??'unknown',current.id,current.version,
+  {state:input.state,content:body});
+ const saved=await request<CloudEdition>({action:'saveEdition',requestKey:key.requestKey,
+  id:current.id,expectedVersion:current.version,state:input.state,content:body});
+ pendingEditionKeys.delete(key.entry);
  return originalNewspaperEdition(saved);
 }
 
