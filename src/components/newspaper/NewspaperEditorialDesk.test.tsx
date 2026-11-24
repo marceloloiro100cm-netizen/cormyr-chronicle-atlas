@@ -107,8 +107,10 @@ describe('Redação A Folha Sem Selo',()=>{
   expect(screen.getByRole('region',{name:'Cópias locais neste dispositivo'})).toBeInTheDocument();
   expect(screen.getByText('A verdade bem servida', {exact:false})).toBeInTheDocument();
   expect(screen.getByText('Carregando arquivo…')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button',{name:'Baixar texto da cópia local (.txt)'}));
-  expect(p.onExportLocalBackup).toHaveBeenCalledWith(p.localBackups[0]);
+  fireEvent.click(screen.getByRole('button',{name:'Baixar texto (.txt)'}));
+  expect(p.onExportLocalBackup).toHaveBeenCalledWith(p.localBackups[0],'txt');
+  fireEvent.click(screen.getByRole('button',{name:'Cópia integral (.json)'}));
+  expect(p.onExportLocalBackup).toHaveBeenCalledWith(p.localBackups[0],'json');
  });
  it('iniciar matéria com edição publicada cria rascunho novo sem alterar a publicação',()=>{
   const p=fixture();
@@ -617,7 +619,7 @@ describe('Jornal: escrita guiada',()=>{
   p.editing=true;p.saveState={status:'failed',dirty:true};
   render(<NewspaperEditorialDesk {...p}/>);
   fireEvent.click(screen.getByRole('link',{name:'Escrever o Jornal'}));
-  expect(screen.getByText(/Falha ao salvar/)).toBeInTheDocument();
+  expect(screen.getByText(/Falha de sincronização/)).toBeInTheDocument();
   expect(screen.getByText('Manchete: Rei declara paz')).toBeInTheDocument();
  });
  it('oferece desfazer o descarte de alterações',()=>{
