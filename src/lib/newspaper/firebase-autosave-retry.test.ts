@@ -46,9 +46,9 @@ describe('Jornal Firebase: idempotent autosave under network faults',()=>{
    const recovered=await updateFirebaseNewspaperEdition(current,patch(current));
    expect(recovered.version).toBe(2);
    expect(sent).toHaveLength(2);
-   expect(sent[0]?.requestKey).toBe(sent[1]?.requestKey);
-   expect(sent[0]?.expectedVersion).toBe(1);
-   expect(sent[1]?.state).toBe('draft');
+   expect(sent[0]?['requestKey']).toBe(sent[1]?['requestKey']);
+   expect(sent[0]?['expectedVersion']).toBe(1);
+   expect(sent[1]?['state']).toBe('draft');
   }finally{vi.unstubAllGlobals();}
  });
  it('surfaces a concurrent edit conflict instead of reporting a successful save',async()=>{
