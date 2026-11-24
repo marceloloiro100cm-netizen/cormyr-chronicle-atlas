@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {makeNewspaperBlock,type NewspaperEdition} from './model';
 import {clearOfflineEdition,readOfflineEdition,recoverOfflineEdition,
- writeOfflineEdition,offlineEditionKey} from './offline-draft';
+ writeOfflineEdition,offlineEditionKey,listOfflineEditionBackups} from './offline-draft';
 
 const store=()=>{
  const m=new Map<string,string>();
@@ -51,4 +51,21 @@ describe('local-only unpublished newspaper backups',()=>{
   writeOfflineEdition(storage,uid,edition);
   expect(readOfflineEdition(storage,uid,edition)).toBeNull();
  });
+ it('lists recoverable local text even when there is no loaded Firebase edition',()=>{
+  const saved=store(),storage={...saved,
+   get length(){return saved.entries.size;},
+   key:(index:number)=>[...saved.entries.keys()][index]??null,
+  };
+  const mine={...original(),blocks:[{...original().blocks[0]!,text:'Texto da terceira edição recuperado'}]};
+  const other={...mine,id:'cloud-'+'b'.repeat(64)};
+  expect(writeOfflineEdition(storage,uid,mine,1000)).toBe(true);
+  expect(writeOfflineEdition(storage,'outra-conta',other,2000)).toBe(true);
+  const mineOnly=listOfflineEditionBackups(storage,uid);
+  expect(mineOnly).toHaveLength(1);
+  expect(mineOnly[0]?.snapshot.blocks[0]?.text).toBe('Texto da terceira edição recuperado');
+  expect(listOfflineEditionBackups(storage,'outra-conta')).toHaveLength(1);
+  saved.setItem(offlineEditionKey(uid,id)!,'invalid-json');
+  expect(listOfflineEditionBackups(storage,uid)).toHaveLength(0);
+ });
+
 });
