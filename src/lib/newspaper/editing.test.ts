@@ -224,11 +224,11 @@ describe('transformar bloco',()=>{
 });
 describe('situação do salvamento',()=>{
  it('descreve cada estado em português',()=>{
-  expect(saveStatusText({status:'saving',dirty:true})).toBe('Salvando…');
-  expect(saveStatusText({status:'failed',dirty:true})).toMatch(/Falha ao salvar/);
-  expect(saveStatusText({status:'idle',dirty:true})).toBe('Alterações ainda não salvas');
-  expect(saveStatusText({status:'saved',at:'14:02',dirty:false})).toBe('Salvo às 14:02');
-  expect(saveStatusText({status:'idle',dirty:false})).toBe('Tudo salvo');
+  expect(saveStatusText({status:'saving',dirty:true})).toBe('Sincronizando com Firebase…');
+  expect(saveStatusText({status:'failed',dirty:true})).toMatch(/Falha de sincronização/);
+  expect(saveStatusText({status:'idle',dirty:true})).toBe('Alterações pendentes de sincronização');
+  expect(saveStatusText({status:'saved',at:'14:02',dirty:false})).toBe('Salvo no Firebase às 14:02');
+  expect(saveStatusText({status:'idle',dirty:false})).toBe('Aguardando confirmação de salvamento');
  });
  it('resume o bloco para o esboço',()=>{
   expect(blockSummary({...makeNewspaperBlock('headline'),text:'Uma manchete'})).toBe('Manchete: Uma manchete');
