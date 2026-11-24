@@ -18,8 +18,11 @@ import {
  markNewspaperRead,markNewspaperUnread,updateNewspaperEdition,uploadNewspaperAsset,
  getNewspaperSettings,saveNewspaperSettings,getPublicHubDate,getPublicNewspaperReadCounts,
  getEngravings,uploadEngraving,setEngravingInCollection,deleteEngraving,copyBucketImageToEdition,restoreOriginalEngravings,
- preflightNewspaperSourceImage,
+ preflightNewspaperSourceImage,getNewspaperEditionById,copyEditionImageToEdition,unreadableNewspaperDrafts,
 } from '@/lib/newspaper/data';
+import {pickWorkingDraft,autoApplicableBackup,isOwnEarlierSave,recoveryCandidates,editableDrafts,
+ type RecoveryCandidate} from '@/lib/newspaper/working-draft';
+import {setUrlParams} from '@/lib/navigation/url-state';
 import {
  commissionToBlocks,newspaperIsDirty,pendingCommissions,type NewspaperCommission,
  createNewspaperLayout,makeNewspaperBlock,newspaperIsUnread,newspaperStatus,
@@ -31,7 +34,7 @@ import {
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
 import {browserOfflineStore,listOfflineEditionBackups,readOfflineEdition,writeOfflineEdition,clearOfflineEdition,recoverOfflineEdition,
- type OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
+ readWorkingEditionId,rememberWorkingEditionId,type OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
 import {appendOfflineHistory,listOfflineHistory} from '@/lib/newspaper/offline-history';
 import {
  canRedo,canUndo,convertBlock,emptyHistory,handleNewspaperTextareaTab,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
@@ -155,6 +158,11 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   },offlineSavedAt===null?0:600);
   return()=>{active=false;window.clearTimeout(timer);};
  },[editorial,editor,userId,offlineSavedAt]);
+ const workingDraftOf=(rows:readonly NewspaperEdition[])=>{
+  const drafts=editableDrafts(rows);
+  const pinned=readWorkingEditionId(browserOfflineStore(),userId);
+  return drafts.find(d=>d.id===pinned)??pickWorkingDraft(drafts,localBackups);
+ };
  const history=useMemo(()=>{
   const rows=new Map<string,NewspaperEdition>();
   for(const e of issuedArchive.data??[])rows.set(e.id,e);
@@ -164,13 +172,18 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  },[editions.data,issuedArchive.data]);
  useEffect(()=>{
   if(!editorial||!editor||selectedId||!editions.data?.length)return;
-  const edition=editions.data.find(e=>e.state==='draft')??editions.data[0];
+  // Reopen THE edition in progress (last one worked on), never an arbitrary
+  // draft: an old or empty copy on screen after a reload looked like lost work.
+  const edition=workingDraftOf(editions.data)??editions.data[0];
   if(!edition)return;
   setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
   setEditing(edition.state==='draft');
   setBlockId(edition.state==='draft'?edition.blocks[0]?.id??null:null);
  },[editorial,editor,selectedId,editions.data]);
  const selected=history.find(e=>e.id===selectedId);
+ // Read inside async callbacks without re-subscribing the autosave timer.
+ const latest=useRef({selected,localBackups});
+ latest.current={selected,localBackups};
  const current=draft?.id===selectedId&&
     !(draft.archive_preview&&selected&&!selected.archive_preview)
     ?draft:selected??null;
@@ -209,18 +222,95 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   exportLocalBackup({schema:1,owner:userId,editionId:current.id,
    baseVersion:current.version,updatedAt:Date.now(),snapshot:snapshotOf(current)},'json');
  };
+ /**
+  * Consolidate a recovered version into THE edition in progress and save it
+  * in Firebase right away. Target: the draft that version belongs to, else
+  * the working draft, else a new draft (only when none exists). Nothing is
+  * deleted: Firebase keeps the replaced version as a revision and the device
+  * keeps every copy.
+  */
+ const applyRecoveryVersion=async(candidate:RecoveryCandidate)=>{
+  if(!editor||busy)return;
+  const at=candidate.updatedAt?new Date(candidate.updatedAt).toLocaleString('pt-BR'):'data não informada';
+  if(!window.confirm('Usar a versão de '+at+' ('+candidate.words+' palavras) como a edição em andamento?\n\n'+
+    'Ela será salva no Firebase agora. A versão substituída continua no histórico de revisões e as cópias deste dispositivo são mantidas.'))return;
+  setBusy(true);setError('');
+  try{
+   const drafts=editableDrafts(history);
+   let target=drafts.find(d=>d.id===candidate.editionId)??null;
+   if(!target){
+    const direct=await getNewspaperEditionById(candidate.editionId).catch(()=>null);
+    if(direct&&direct.state==='draft'&&!direct.published_at)target=direct;
+   }
+   if(!target)target=workingDraftOf(history);
+   const snap=candidate.snapshot;
+   let created=false;
+   if(!target){
+    // No draft at all: create one (images are attached right after).
+    const plain=snap.blocks.map(b=>{const {imagePath:_drop,...rest}=b;return rest;});
+    target=await createNewspaperEdition({campaign_date:snap.campaign_date,title:snap.title,
+     subtitle:snap.subtitle,template:snap.template,font_style:snap.font_style,blocks:plain});
+    created=true;
+   }
+   // Always write on the freshest Firebase version (CAS), never a stale list.
+   const fresh=await getNewspaperEditionById(target.id).catch(()=>null);
+   const base=fresh&&fresh.state==='draft'?fresh:target;
+   const sameEdition=candidate.editionId===base.id;
+   let lostImages=0;
+   const blocks:NewspaperBlock[]=[];
+   for(const block of snap.blocks){
+    if(!block.imagePath||sameEdition){blocks.push(block);continue;}
+    try{blocks.push({...block,imagePath:await copyEditionImageToEdition(base.id,block.imagePath)});}
+    catch{const {imagePath:_drop,...rest}=block;blocks.push(rest);lostImages++;}
+   }
+   const result=await updateNewspaperEdition(base,{
+    campaign_date:snap.campaign_date,title:snap.title.trim()||base.title,subtitle:snap.subtitle,
+    template:snap.template,font_style:snap.font_style,blocks,
+    pdf_path:sameEdition?snap.pdf_path:base.pdf_path,state:'draft',publish_on:null,
+   });
+   rememberWorkingEditionId(browserOfflineStore(),userId,result.id);
+   writeOfflineEdition(browserOfflineStore(),userId,result);
+   void appendOfflineHistory(userId,result);
+   qc.setQueryData<NewspaperEdition[]>(['campaign-newspapers',userId],rows=>
+    [result,...(rows??[]).filter(e=>e.id!==result.id)]);
+   recoveryChecked.current.add(result.id);
+   setRecoverNeedsReview(false);setOfflineRecovery(null);
+   setSelectedId(result.id);setDraft(cloneEditableEdition(result));
+   setBlockId(null);setEditing(true);
+   setUrlParams({redacao:'capa'});
+   notice((created?'Edição em andamento recriada':'Versão aplicada à edição em andamento')+
+    ' e salva no Firebase.'+(lostImages?' '+lostImages+' imagem(ns) precisam ser anexadas de novo (a legenda foi mantida).':''));
+   await Promise.all([refresh(),qc.invalidateQueries({queryKey:['campaign-newspaper-revisions',result.id]})]);
+  }catch(cause){setError('Nada foi apagado; a versão continua disponível. '+safeError(cause));}
+  finally{setBusy(false);}
+ };
  const recoverBackup=(backup:OfflineEditionBackup)=>{
-  if(!editor||busy||backup.owner!==userId)return;
-  const server=history.find(e=>e.id===backup.editionId&&e.state==='draft');
-  if(!server){setError('Rascunho remoto indisponível. Exporte esta versão antes de tentar restaurar.');return;}
-  if(!window.confirm('Recuperar a cópia de '+new Date(backup.updatedAt).toLocaleString('pt-BR')+
-    '? O conteúdo atual na tela será substituído, mas o Firebase e as outras cópias permanecerão intactos.'))return;
-  setSelectedId(server.id);
-  setDraft(recoverOfflineEdition(server,backup));
-  setBlockId(null);setEditing(true);setOfflineRecovery(null);
-  setRecoverNeedsReview(true);
-  recoveryChecked.current.add(server.id);
-  notice('Cópia local recuperada na tela. Confira o texto antes de salvar.');
+  if(backup.owner!==userId)return;
+  const candidate=recoveryCandidates([],[backup],null)[0];
+  if(candidate)void applyRecoveryVersion({...candidate,
+   draftExists:editableDrafts(history).some(d=>d.id===backup.editionId)});
+ };
+ /** Soft-discards the other drafts (recoverable tombstones); copies on this device stay. */
+ const keepOnlyWorking=async()=>{
+  if(!editor||busy)return;
+  const working=current?.state==='draft'&&!current.archive_preview?current:workingDraftOf(history);
+  if(!working)return;
+  const others=editableDrafts(history).filter(d=>d.id!==working.id);
+  if(!others.length){notice('Já existe apenas a edição em andamento.');return;}
+  if(!window.confirm('Manter só a edição em andamento ("'+working.title+'", '+
+    working.blocks.length+' elementos) e descartar '+others.length+' outro(s) rascunho(s)?\n\n'+
+    'Confira antes, em "Ver", se nenhum deles tem texto que falta na edição em andamento. '+
+    'As cópias deste dispositivo continuam guardadas.'))return;
+  setBusy(true);setError('');
+  let failed=0;
+  for(const other of others){
+   try{await deleteNewspaperDraft(other.id);}catch{failed++;}
+  }
+  rememberWorkingEditionId(browserOfflineStore(),userId,working.id);
+  await refresh();
+  setBusy(false);
+  if(failed)setError(failed+' rascunho(s) não puderam ser descartados agora. Tente de novo.');
+  else notice('Pronto: o Jornal tem uma única edição em andamento.');
  };
  const open=async(edition:NewspaperEdition)=>{
   if(busy)return;
@@ -249,8 +339,28 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   return {campaign_date:date,title:settings.title,subtitle:settings.subtitle,
    template:settings.template,font_style:settings.font_style};
  };
+ /**
+  * ONE edition in progress. While a draft exists, every "new edition" path
+  * opens it instead of creating another copy (copies split the work and,
+  * after a reload, an older copy on screen looked like lost text).
+  */
+ const openWorkingDraft=(extra?:NewspaperBlock[]):boolean=>{
+  if(current?.state==='draft'&&!current.archive_preview)return false;
+  const working=workingDraftOf(history);
+  if(!working)return false;
+  const base=cloneEditableEdition(working);
+  const blocks=extra&&base.blocks.length+extra.length<=80?[...base.blocks,...extra]:base.blocks;
+  setRecoverNeedsReview(false);setOfflineRecovery(null);
+  setSelectedId(working.id);setDraft({...base,blocks});setEditing(true);
+  setBlockId(extra?.[0]?.id??base.blocks[0]?.id??null);
+  setUrlParams({redacao:'capa'});
+  notice('A edição em andamento foi aberta (o Jornal mantém um único rascunho). '+
+   'Para começar outra edição, publique ou descarte esta.');
+  return true;
+ };
  const newEdition=async(initialBlock?:NewspaperBlockType,extraPatch?:Partial<NewspaperBlock>)=>{
   if(!editor||busy)return;
+  if(openWorkingDraft(initialBlock?[{...makeNewspaperBlock(initialBlock),...(extraPatch??{})}]:undefined))return;
   setBusy(true);setError('');
   try{
    const seed=await editionSeed();
@@ -259,6 +369,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    if(extra)blocks.push(extra);
    const edition=await createNewspaperEdition({...seed,blocks});
    writeOfflineEdition(browserOfflineStore(),userId,edition);
+   rememberWorkingEditionId(browserOfflineStore(),userId,edition.id);
    void appendOfflineHistory(userId,edition);
    setRecoverNeedsReview(false);setOfflineRecovery(null);
    setSelectedId(edition.id);setDraft(cloneEditableEdition(edition));
@@ -412,6 +523,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   if(!editor||busy)return;
   const kind=file.type==='application/pdf'?'pdf':'image';
   if(current){await upload(file,kind);setEditing(true);return;}
+  if(openWorkingDraft())return;
   setBusy(true);setError('');
   let createdDraft=false;
   try{
@@ -537,6 +649,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    }
    if(commission.image_path&&isFirebaseNewspaperWorkspace())
     await preflightNewspaperSourceImage(commission.image_path,'commission');
+   if(!inDraft&&openWorkingDraft()){
+    notice('A edição em andamento foi aberta. Clique de novo em Inserir para colocar a notícia nela.');return;
+   }
    if(!inDraft){
     const blocks=commissionToBlocks(commission,undefined,houseNames.get(commission.house_id));
     const created=await createNewspaperEdition({...(await editionSeed()),blocks});
@@ -585,27 +700,30 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  const dirty=Boolean(draft?.state==='draft'&&!selected)||
   newspaperIsDirty(draft,selected);
  // Persist synchronously before paint after every edit, not after a timer.
+ // Every keystroke is protected: nothing (not even a pending recovery notice)
+ // may pause this copy while the Editor-Chefe types.
  useLayoutEffect(()=>{
-  if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||
-     draft.archive_preview||offlineRecovery?.editionId===draft.id)return;
+  if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||draft.archive_preview)return;
   if(!writeOfflineEdition(browserOfflineStore(),userId,draft))
    setOfflineStorageDenied(true);
-  else{setOfflineStorageDenied(false);setOfflineSavedAt(Date.now());}
- },[editorial,editor,draft,dirty,userId,offlineRecovery]);
+  else{
+   setOfflineStorageDenied(false);setOfflineSavedAt(Date.now());
+   rememberWorkingEditionId(browserOfflineStore(),userId,draft.id);
+  }
+ },[editorial,editor,draft,dirty,userId]);
  // Independent IndexedDB checkpoints; localStorage continues to protect the
  // final keystroke even if the user reloads during this 1-second debounce.
  useEffect(()=>{
-  if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||
-     draft.archive_preview||offlineRecovery?.editionId===draft.id)return;
+  if(!editorial||!editor||!draft||draft.state!=='draft'||!dirty||draft.archive_preview)return;
   const timer=window.setTimeout(()=>{
    void appendOfflineHistory(userId,draft).then(ok=>{
     if(ok)void listOfflineHistory(userId).then(setHistoryBackups).catch(()=>{});
    });
   },1000);
   return()=>window.clearTimeout(timer);
- },[editorial,editor,draft,dirty,userId,offlineRecovery]);
- // Offer recovery on first open, including copies that cannot be seen in the
- // private Firebase archive. Do not overwrite the server automatically.
+ },[editorial,editor,draft,dirty,userId]);
+ // On first open, reopen the newest text kept on this device, including copies
+ // the private Firebase archive cannot show. The server CAS still guards it.
  useEffect(()=>{
   if(!editorial||!editor||!selected||selected.state!=='draft'||!selectedId||
      selectedId!==selected.id||!historyLoaded||recoveryChecked.current.has(selected.id))return;
@@ -614,8 +732,24 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   const versions=[...(legacy?[legacy]:[]),...localBackups.filter(b=>b.editionId===selected.id)]
    .sort((x,y)=>y.updatedAt-x.updatedAt);
   const backup=versions.find(b=>!sameSnapshot(b.snapshot,snapshotOf(selected)));
-  if(backup&&!(draft?.id===selected.id&&sameSnapshot(snapshotOf(draft),backup.snapshot)))
-   setOfflineRecovery(backup);
+  if(!backup||(draft?.id===selected.id&&sameSnapshot(snapshotOf(draft),backup.snapshot)))return;
+  // Text typed on screen right now is already the newest version.
+  if(draft?.id===selected.id&&newspaperIsDirty(draft,selected))return;
+  const serverAt=Date.parse(selected.updated_at||'');
+  // The device copy continues the current Firebase version, or is newer than
+  // the last Firebase save: reopen it and let autosave sync it. Firebase keeps
+  // the replaced version in the revision history, so nothing is discarded.
+  const newest=autoApplicableBackup(selected,versions)??
+   (versions[0]&&!sameSnapshot(versions[0].snapshot,snapshotOf(selected))&&
+    (Number.isFinite(serverAt)?versions[0].updatedAt>serverAt:versions[0].baseVersion>=selected.version)?versions[0]:null);
+  if(newest){
+   setSelectedId(selected.id);setDraft(recoverOfflineEdition(selected,newest));
+   setEditing(true);setBlockId(null);
+   notice('Texto deste dispositivo ('+new Date(newest.updatedAt).toLocaleString('pt-BR')+
+    ') reaberto e sendo salvo no Firebase.');
+   return;
+  }
+  // Older device copies stay listed in Arquivo; they never block writing.
  },[editorial,editor,selectedId,selected,userId,historyLoaded,localBackups]);
  const recoverLocal=()=>{
   if(!offlineRecovery||!selected||offlineRecovery.editionId!==selected.id)return;
@@ -653,7 +787,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  },[editorial,editor]);
  useEffect(()=>{
   if(!editorial||!editor||!dirty||busy||!draft||draft.state!=='draft'||
-     recoverNeedsReview||offlineRecovery?.editionId===draft.id)return;
+     recoverNeedsReview)return;
   const periodicDue=minuteTick>minuteHandled.current;
   const timer=window.setTimeout(()=>{
    if(periodicDue)minuteHandled.current=minuteTick;
@@ -686,8 +820,26 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
      cause instanceof Error&&/somente leitura|rascunho histórico|edição histórica|Anexos e publicação/i.test(cause.message);
     // Do not endlessly retry a permission, data-shape or revision conflict.
     // Keep every unsaved block visible until the editor resolves the issue.
-    if(permanent){
-     if(status===409){setRecoverNeedsReview(true);void refresh();}
+    if(permanent&&status===409){
+     // Usually our own earlier save whose answer was lost (weak connection).
+     // If Firebase holds a version written by this device, continue from it.
+     const sent=draft;
+     void getNewspaperEditionById(sent.id).then(remote=>{
+      const {selected:known,localBackups:copies}=latest.current;
+      if(remote&&remote.state==='draft'&&isOwnEarlierSave(remote,known,copies)){
+       setDraft(old=>old&&old.id===remote.id?{...old,version:remote.version}:old);
+       setMessage('Conexão retomada: continuando o salvamento automático.');
+       setRetryTick(tick=>tick+1);
+      }else{
+       setRecoverNeedsReview(true);
+       setError('Outra versão foi salva no Firebase. Seu texto continua neste dispositivo; clique em Salvar para registrá-lo (a outra versão fica no histórico).');
+      }
+      return refresh();
+     }).catch(()=>{
+      setRecoverNeedsReview(true);
+      setError('Rascunho preservado no dispositivo. Clique em Salvar quando a conexão voltar.');
+     });
+    }else if(permanent){
      setError('Rascunho preservado no dispositivo. Revise antes de salvar: '+safeError(cause));
     }else{
      retryTimer.current=window.setTimeout(()=>setRetryTick(tick=>tick+1),10_000);
@@ -695,7 +847,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    }).finally(()=>{autosaving.current=false;});
   },periodicDue?0:5000);
   return()=>window.clearTimeout(timer);
- },[editorial,editor,dirty,busy,draft,retryTick,minuteTick,offlineRecovery,recoverNeedsReview]);
+ },[editorial,editor,dirty,busy,draft,retryTick,minuteTick,recoverNeedsReview]);
  useEffect(()=>{setSaveStatus('idle');setSavedAt('');},[selectedId]);
  useEffect(()=>{
   if(!dirty||!editor)return;
@@ -757,6 +909,7 @@ const useStoryModel=async(model:StoryModel)=>{
    notice('Modelo "'+model.name+'" inserido. Clique nos textos e escreva direto na folha.');
    return;
   }
+  if(openWorkingDraft(blocks))return;
   setBusy(true);setError('');
   try{
    const edition=await createNewspaperEdition({...(await editionSeed()),blocks});
@@ -916,6 +1069,9 @@ const useStoryModel=async(model:StoryModel)=>{
    if(isFirebaseNewspaperWorkspace())
     await preflightNewspaperSourceImage(item.image_path,'engraving');
    let base=current;
+   if(!base&&openWorkingDraft()){
+    notice('A edição em andamento foi aberta. Escolha a gravura de novo para colocá-la nela.');return;
+   }
    if(!base){
     const seed=await editionSeed();
     base=cloneEditableEdition(await createNewspaperEdition({...seed,blocks:createNewspaperLayout(seed.template)}));
@@ -1046,6 +1202,14 @@ const useStoryModel=async(model:StoryModel)=>{
   setBlockId(null);setEditing(true);
   notice('Versão '+revision.previous_version+' restaurada na tela. Salve para confirmar ou descarte para voltar.');
  };
+ const workingNow=current?.state==='draft'&&!current.archive_preview?current:workingDraftOf(history);
+ const recovery=editions.isPending?undefined:{
+  candidates:recoveryCandidates(history,localBackups,workingNow?.id??null),
+  workingId:workingNow?.id??null,nextNumber:workingNow?.edition_no??null,
+  draftCount:editableDrafts(history).length,unreadable:unreadableNewspaperDrafts(),
+  onUse:(candidate:RecoveryCandidate)=>{void applyRecoveryVersion(candidate);},
+  onKeepOnlyWorking:()=>{void keepOnlyWorking();},
+ };
  if(editorial&&editor)return <NewspaperEditorialDesk
   userId={userId} current={current} history={history} reads={reads}
   publicReads={publicReadsQuery.data} {...(missivas!==undefined?{missivas}:{})}
@@ -1057,6 +1221,7 @@ const useStoryModel=async(model:StoryModel)=>{
    issuedArchive.isError?'Não foi possível consultar o arquivo público: '+safeError(issuedArchive.error):undefined}
   onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}}
   localBackups={localBackups} onExportLocalBackup={exportLocalBackup} onRecoverLocalBackup={recoverBackup}
+  recovery={recovery}
   onExportCurrent={exportCurrent}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}

@@ -728,3 +728,6 @@
   .folha-calendar .folha-cal-row{gap:2px}
   .folha-calendar .folha-cal-day{min-height:40px;padding:3px}
 }
+/* Recuperação: uma única edição em andamento */
+.folha-recovery{margin-bottom:18px}
+.folha-recovery-preview{margin-top:10px;max-height:70vh;overflow:auto;border:1px solid rgba(80,50,30,.25);border-radius:6px}

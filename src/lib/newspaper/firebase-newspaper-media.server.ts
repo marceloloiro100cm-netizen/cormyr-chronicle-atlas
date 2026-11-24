@@ -276,7 +276,9 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
       typeof v['editionId']!=='string')fail('invalid_media');
    await edition(v['editionId'] as string);
    const src=await registered(v['sourcePath']);
-   if(!['commission','engraving'].includes(src.kind))fail('invalid_media_source',403);
+   // editionImage: the Editor-Chefe consolidates a recovered draft into the
+   // working edition. Editors already read every edition image (see read()).
+   if(!['commission','engraving','editionImage'].includes(src.kind))fail('invalid_media_source',403);
    if(src.kind==='commission'){
     if(typeof v['commissionId']!=='string')fail('commission_required');
     const entry=await runtime.collection('newspaperCommissions').doc(v['commissionId']).get();

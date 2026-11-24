@@ -216,6 +216,8 @@ export function createFirebaseCloudNewspaper({
     ...(v.template?{template:v.template}:{}),
     ...(v.font_style?{font_style:v.font_style}:{}),
     campaignDate:v.campaignDate,publishedAt:v.publishedAt,
+    // Lets the editor reopen the draft actually worked on last after a reload.
+    updatedAt:typeof v.updatedAt==='string'?v.updatedAt:null,
   });
   return {
     async listReaderReceipts(token){
@@ -296,7 +298,8 @@ export function createFirebaseCloudNewspaper({
           title:v.title,subtitle:v.subtitle,template:v.template,
           font_style:v.font_style,blocks:v.blocks,version:v.version,
           sourceVersion:v.sourceVersion,state:'draft',
-          campaignDate:v.campaignDate}))};
+          campaignDate:v.campaignDate,
+          updatedAt:typeof v.updatedAt==='string'?v.updatedAt:null}))};
       });
     },
     async saveHistoricalDraft(token,input){

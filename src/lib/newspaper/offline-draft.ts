@@ -99,3 +99,13 @@ export function recoverOfflineEdition(saved:NewspaperEdition,backup:OfflineEditi
  if(saved.state!=='draft'||saved.id!==backup.editionId)throw Error('invalid_offline_restore');
  return {...saved,...backup.snapshot,version:saved.version,state:'draft'};
 }
+const WORKING='cormyr-folha-working-edition-v1:';
+/** The draft last edited on this device: it reopens first after a reload. */
+export function rememberWorkingEditionId(store:LocalStore|null,uid:string,id:string):void{
+ if(!store||!OWNER.test(uid)||!ID.test(id))return;
+ try{if(store.getItem(WORKING+uid)!==id)store.setItem(WORKING+uid,id);}catch{/* storage may be blocked */}
+}
+export function readWorkingEditionId(store:LocalStore|null,uid:string):string|null{
+ if(!store||!OWNER.test(uid))return null;
+ try{const id=store.getItem(WORKING+uid);return id&&ID.test(id)?id:null;}catch{return null;}
+}
