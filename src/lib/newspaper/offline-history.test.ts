@@ -9,7 +9,7 @@ function draft(value:string,editionId=id):NewspaperEdition{
   id:editionId,edition_no:3,campaign_date:'1522-11-24',
   title:'A Folha Sem Selo',subtitle:'A verdade bem servida',
   template:'classico',font_style:'classico',
-  blocks:[{...makeNewspaperBlock('headline'),text:value}],pdf_path:null,version:1,
+  blocks:[{...makeNewspaperBlock('headline'),id:'headline-stable',text:value}],pdf_path:null,version:1,
   publication_revision:0,created_by:uid,updated_at:'',
   published_at:null,archived_at:null,cancelled_at:null,state:'draft',
  };
