@@ -137,7 +137,8 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  // Keep existing synchronous localStorage backups. IndexedDB adds revisions.
  const localBackups=useMemo(()=>{
   if(!editorial||!editor)return [];
-  const all=[...listOfflineEditionBackups(browserOfflineStore(),userId),...historyBackups];
+  const all=[...listOfflineEditionBackups(browserOfflineStore(),userId),
+   ...historyBackups.filter(b=>b.owner===userId)];
   const unique=new Map<string,OfflineEditionBackup>();
   for(const backup of all){
    unique.set(backup.editionId+':'+backup.updatedAt+':'+JSON.stringify(backup.snapshot),backup);
@@ -202,6 +203,11 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    window.setTimeout(()=>URL.revokeObjectURL(url),5000);
    notice('Texto do dispositivo exportado. Confira o arquivo antes de retomar a edição.');
   }catch{setError('O navegador bloqueou o download da cópia local. Não limpou nem alterou o texto.');}
+ };
+ const exportCurrent=()=>{
+  if(!current||current.state!=='draft')return;
+  exportLocalBackup({schema:1,owner:userId,editionId:current.id,
+   baseVersion:current.version,updatedAt:Date.now(),snapshot:snapshotOf(current)},'json');
  };
  const recoverBackup=(backup:OfflineEditionBackup)=>{
   if(!editor||busy||backup.owner!==userId)return;
@@ -342,8 +348,21 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   if(state==='cancelled'&&!window.confirm('Cancelar o envio desta edição? Ela ficará invisível aos jogadores, mas preservada no histórico editorial.'))return;
   setBusy(true);setError('');
   try{
+   let submission=current;
+   if(recoverNeedsReview){
+    // After a 409 or old-device restore, load the newest CAS version without
+    // silently replacing either editor's text. The explicit user confirmation
+    // is the only action permitted to rebase a local draft.
+    const remote=(await getNewspaperEditions()).find(e=>e.id===current.id);
+    if(!remote||remote.state!=='draft')
+     throw Error('O rascunho do Firebase não está disponível para reconciliação.');
+    if(!window.confirm(
+      'O Firebase tem uma versão que precisa de revisão. Salvar agora criará uma nova versão com o texto desta tela, preservando a anterior no histórico. Confirmar?'
+    ))return;
+    submission={...current,version:remote.version};
+   }
    const snapshotAtSave=current;
-   const result=await updateNewspaperEdition(current,{
+   const result=await updateNewspaperEdition(submission,{
     campaign_date:current.campaign_date,title:current.title.trim(),subtitle:current.subtitle,
     template:current.template,font_style:current.font_style,blocks:current.blocks,
     pdf_path:current.pdf_path,state,
@@ -1039,6 +1058,7 @@ const useStoryModel=async(model:StoryModel)=>{
    issuedArchive.isError?'Não foi possível consultar o arquivo público: '+safeError(issuedArchive.error):undefined}
   onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}}
   localBackups={localBackups} onExportLocalBackup={exportLocalBackup} onRecoverLocalBackup={recoverBackup}
+  onExportCurrent={exportCurrent}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}
   pendingCommissions={pending} houseNames={houseNames}
