@@ -56,6 +56,8 @@ export interface NewspaperEditorialProps{
  localBackups?:OfflineEditionBackup[];
  onExportLocalBackup?:(backup:OfflineEditionBackup,format?:'txt'|'json')=>void;
  onRecoverLocalBackup?:(backup:OfflineEditionBackup)=>void;
+ /** Emergency export does not depend on localStorage, IndexedDB or Firebase. */
+ onExportCurrent?:()=>void;
  reads:NewspaperRead[];
  /** Leituras do site aberto (visitantes sem conta), por edição. */
  publicReads?:ReadonlyMap<string,number>|undefined;
@@ -337,6 +339,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <FileUp size={22}/> Anexar Arquivo</button>
      <button type="button" onClick={()=>{setSection('painel');setFullPreview(x=>!x);props.onPreview();}}>
       <Eye size={22}/> {fullPreview?'Voltar ao painel':'Pré-visualizar'}</button>
+     <button type="button" disabled={!current||current.state!=='draft'}
+      onClick={props.onExportCurrent}>Baixar cópia de segurança</button>
      <button type="button" disabled={!current||current.archive_preview||busy||!materialReady} onClick={requestPublish}>
       <Newspaper size={21}/> Publicar Edição</button>
      <button type="button" disabled={!current||current.archive_preview||busy||current.state!=='published'} onClick={()=>props.onSave('archived')}>
