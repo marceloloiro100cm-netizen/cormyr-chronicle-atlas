@@ -372,8 +372,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
      </div>
     </div>}
     {props.offlineNeedsReview&&<div className="folha-alert" role="alert">
-     A cópia recuperada foi criada sobre uma versão anterior do Firebase.
-     Confira a manchete e clique em <strong>Salvar</strong> para confirmar. O autosave fica
+     O conteúdo deste dispositivo precisa de confirmação antes de substituir a versão do Firebase.
+     Confira a edição e clique em <strong>Salvar</strong> para confirmar. O autosave fica
      suspenso até sua decisão, evitando sobrescrever alterações mais recentes.
     </div>}
     {props.offlineStorageDenied&&<div className="folha-alert" role="alert">
