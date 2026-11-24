@@ -141,7 +141,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
    ...historyBackups.filter(b=>b.owner===userId)];
   const unique=new Map<string,OfflineEditionBackup>();
   for(const backup of all){
-   unique.set(backup.editionId+':'+backup.updatedAt+':'+JSON.stringify(backup.snapshot),backup);
+   unique.set(backup.editionId+':'+backup.updatedAt+':'+backup.baseVersion,backup);
   }
   return [...unique.values()].sort((x,y)=>y.updatedAt-x.updatedAt).slice(0,100);
  },[editorial,editor,userId,offlineSavedAt,selectedId,historyBackups]);
