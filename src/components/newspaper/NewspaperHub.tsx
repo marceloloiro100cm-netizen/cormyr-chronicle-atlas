@@ -183,10 +183,10 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   qc.invalidateQueries({queryKey:['campaign-newspaper-commissions',userId]}),
  ]);
  const notice=(value:string)=>{setMessage(value);setError('');};
- const exportLocalBackup=(backup:OfflineEditionBackup)=>{
+ const exportLocalBackup=(backup:OfflineEditionBackup,format:'txt'|'json'='txt')=>{
   if(backup.owner!==userId)return;
   // Download the local draft without sending it to any endpoint.
-  const text=[backup.snapshot.title,backup.snapshot.subtitle,
+  const text=format==='json'?JSON.stringify(backup,null,2):[backup.snapshot.title,backup.snapshot.subtitle,
    'Data da edição: '+backup.snapshot.campaign_date,
    ...backup.snapshot.blocks.flatMap(block=>{
     const parts=[block.text,block.subtitle,block.caption].filter(
@@ -197,11 +197,24 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   try{
    const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
    const link=document.createElement('a');
-   link.href=url;link.download='folha-copia-local-'+backup.editionId.slice(-8)+'.txt';
+   link.href=url;link.download='folha-copia-local-'+backup.editionId.slice(-8)+'-'+backup.updatedAt+'.'+format;
    document.body.appendChild(link);link.click();link.remove();
    window.setTimeout(()=>URL.revokeObjectURL(url),5000);
    notice('Texto do dispositivo exportado. Confira o arquivo antes de retomar a edição.');
   }catch{setError('O navegador bloqueou o download da cópia local. Não limpou nem alterou o texto.');}
+ };
+ const recoverBackup=(backup:OfflineEditionBackup)=>{
+  if(!editor||busy||backup.owner!==userId)return;
+  const server=history.find(e=>e.id===backup.editionId&&e.state==='draft');
+  if(!server){setError('Rascunho remoto indisponível. Exporte esta versão antes de tentar restaurar.');return;}
+  if(!window.confirm('Recuperar a cópia de '+new Date(backup.updatedAt).toLocaleString('pt-BR')+
+    '? O conteúdo atual na tela será substituído, mas o Firebase e as outras cópias permanecerão intactos.'))return;
+  setSelectedId(server.id);
+  setDraft(recoverOfflineEdition(server,backup));
+  setBlockId(null);setEditing(true);setOfflineRecovery(null);
+  setRecoverNeedsReview(backup.baseVersion!==server.version);
+  recoveryChecked.current.add(server.id);
+  notice('Cópia local recuperada na tela. Confira o texto antes de salvar.');
  };
  const open=async(edition:NewspaperEdition)=>{
   if(busy)return;
@@ -1025,7 +1038,7 @@ const useStoryModel=async(model:StoryModel)=>{
    'A consulta privada falhou: '+safeError(editions.error)+' As publicações permanecem disponíveis no arquivo público.':
    issuedArchive.isError?'Não foi possível consultar o arquivo público: '+safeError(issuedArchive.error):undefined}
   onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}}
-  localBackups={localBackups} onExportLocalBackup={exportLocalBackup}
+  localBackups={localBackups} onExportLocalBackup={exportLocalBackup} onRecoverLocalBackup={recoverBackup}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}
   pendingCommissions={pending} houseNames={houseNames}
