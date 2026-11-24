@@ -349,9 +349,11 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)props.onUpload(file);}}/>
     </div>
 
-    {!current&&Boolean(props.localBackups?.length)&&<div className="folha-alert" role="alert">
-     <strong>Há textos preservados neste dispositivo.</strong>
-     {' '}A edição não carregou do Firebase. Acesse o Arquivo e exporte as cópias locais;
+    {Boolean(props.localBackups?.some(backup=>
+      !history.some(edition=>edition.id===backup.editionId)))&&
+     <div className="folha-alert" role="alert">
+     <strong>Há textos preservados neste dispositivo que não aparecem no arquivo.</strong>
+     {' '}A consulta privada pode estar incompleta. Acesse o Arquivo e exporte as cópias locais;
      não limpe o navegador.
      <button type="button" className="folha-text-action"
       onClick={()=>setSection('arquivo')}>Ver cópias preservadas</button>
