@@ -218,7 +218,7 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   setSelectedId(server.id);
   setDraft(recoverOfflineEdition(server,backup));
   setBlockId(null);setEditing(true);setOfflineRecovery(null);
-  setRecoverNeedsReview(backup.baseVersion!==server.version);
+  setRecoverNeedsReview(true);
   recoveryChecked.current.add(server.id);
   notice('Cópia local recuperada na tela. Confira o texto antes de salvar.');
  };
@@ -621,13 +621,12 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   if(!offlineRecovery||!selected||offlineRecovery.editionId!==selected.id)return;
   const restored=recoverOfflineEdition(selected,offlineRecovery);
   setDraft(restored);setSelectedId(restored.id);
-  const needsReview=offlineRecovery.baseVersion!==selected.version;
-  setRecoverNeedsReview(needsReview);
+  // Never upload a recovered snapshot automatically. The editor must review
+  // and explicitly confirm a new Firestore revision even without a CAS conflict.
+  setRecoverNeedsReview(true);
   setBlockId(restored.blocks[0]?.id??null);setEditing(true);
   setOfflineRecovery(null);
-  notice(needsReview?
-   'Texto local recuperado. O Firebase tem uma versão diferente: revise e clique Salvar para confirmar.':
-   'Texto recuperado deste dispositivo. O salvamento no Firebase será retomado automaticamente.');
+  notice('Texto local recuperado na tela. Revise e clique Salvar para registrar no Firebase.');
  };
  const discardLocal=()=>{
   if(!offlineRecovery)return;
