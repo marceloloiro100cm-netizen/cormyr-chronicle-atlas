@@ -163,6 +163,7 @@
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
+/**
  * 2026-11-24 (recuperação do Editor-Chefe, PR #718): somente adição
  * de cópias locais recuperáveis à seção Arquivo, sem depender de Firestore.
  * Mantém navegação, botões, filtros, publicação e salvamentos anteriores.
