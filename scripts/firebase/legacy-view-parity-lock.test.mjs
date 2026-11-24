@@ -178,6 +178,14 @@
  * Exportação TXT ocorre no navegador do Editor, sem mutação no banco.
  * Paridade revista com testes de isolamento entre contas e arquivo pendente.
  */
+/**
+ * 2026-11-24 (uma única edição em andamento, PR #720): revisão explícita.
+ * NewspaperHub reabre a edição editada por último em vez de um rascunho
+ * qualquer, não cria cópias quando já há rascunho, nunca pausa a cópia local
+ * e consolida versões recuperadas em um único rascunho (CAS). O Arquivo ganha
+ * a lista de versões (NewspaperRecovery) e o CSS só acrescenta regras isoladas.
+ * As nove seções, controles, filtros, permissões e publicações permanecem.
+ */
 
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -191,9 +199,9 @@ const originals={
   'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'b17542b99f29c42eee56cfae8e2cfacc86117b38',
-  'src/components/newspaper/NewspaperHub.tsx':'d98212e82dcdcf82012adf3048c202556b4ae083',
-  'src/components/newspaper/newspaper-editorial.css':'aa9d09338cd080d142674b5c98cca17820366bc2',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'ab0553588660e4165e21aa9d8b6e7ec1e2b30cc2',
+  'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
+  'src/components/newspaper/newspaper-editorial.css':'b9bbeeacdd54e7885066a94864f1612235f10a2d',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
