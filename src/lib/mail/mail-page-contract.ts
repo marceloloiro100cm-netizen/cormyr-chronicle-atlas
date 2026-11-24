@@ -80,6 +80,8 @@ export type MailDataset = {
 export type MailViewer = {uid: string};
 export type MailFilters = Partial<Record<'box' | 'number' | 'kind' | 'origin' | 'house' | 'court' | 'unit' | 'answered' | 'read' | 'text', string>> & {
   group_house_ids?: readonly string[];
+  /** IDs sinalizados pelo Editor neste aparelho; restringe apenas a própria leitura editorial. */
+  marked_ids?: readonly string[];
   [field: string]: unknown;
 };
 export type MailKpis = {delivered: number; awaiting_house: number; awaiting_narrator: number; scheduled_replies_next: number; drafts: number};
@@ -183,6 +185,10 @@ export function mailPage(ds: MailDataset, viewer: MailViewer, filters: MailFilte
   const search = pick(filters, 'text');
   const hasGroup = Object.prototype.hasOwnProperty.call(filters, 'group_house_ids');
   const group = Array.isArray(filters.group_house_ids) ? filters.group_house_ids.map(String) : [];
+  // Filtragem no servidor, antes do LIMIT/OFFSET: não perde furos de outras páginas.
+  // A autorização de leitura continua aplicada antes de consultar os IDs.
+  const markedIds = isEditor(ds, uid) && Array.isArray(filters.marked_ids)
+    ? new Set(filters.marked_ids.filter((value): value is string => typeof value === 'string')) : null;
 
   // RLS: só missivas e respostas que o leitor pode ver entram nas subconsultas.
   const replies = ds.replies.filter(r => canReadReply(ds, r, uid));
@@ -205,6 +211,7 @@ export function mailPage(ds: MailDataset, viewer: MailViewer, filters: MailFilte
   const narratorAddressed = (l: MailLetter) => l.recipient_house_id === null && l.recipient_player_id === null;
 
   const matches = (l: MailLetter, latest: string | null): boolean => {
+    if (markedIds !== null && !markedIds.has(l.id)) return false;
     if (box === 'excluidas' ? l.deleted_at === null : l.deleted_at !== null) return false;
     if (box === 'recebidas' && l.sender_user_id === uid) return false;
     if (box === 'enviadas' && l.sender_user_id !== uid) return false;

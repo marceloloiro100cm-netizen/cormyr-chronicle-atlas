@@ -153,6 +153,13 @@
  * 2026-11-22 (Gravuras Firebase): preservado o menu e layout do Editor-Chefe;
  * novo envio binário autenticado com chave de repetição e transação única
  * Storage + registro Firestore no acervo, sem alterar edições publicadas.
+ * 2026-11-22 (calendário/editor, PR #717): a pedido expresso do
+ * proprietário, a tela do Editor-Chefe mantém o calendário mensal de pautas,
+ * seus eventos e a ação “Escrever sobre a data”, mas oculta a incorporação
+ * redundante do calendário público anual. O CSS acrescenta regras específicas
+ * para padronizar botões e responsividade. Nenhuma seção do menu, filtro
+ * preexistente, ação de edição ou conteúdo público foi removido; o calendário
+ * público permanece na navegação do Atlas. SHA-1 revisto após diff.
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
@@ -168,9 +175,9 @@ const originals={
   'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'d536b5e450dde5c13916c5a1dcc8c9106e87de59',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'267910930adc1e6cc0e12d179c81101292bb80a9',
   'src/components/newspaper/NewspaperHub.tsx':'6d2b09721c62950e1509c704d35482ae77b2a30d',
-  'src/components/newspaper/newspaper-editorial.css':'4c80d483ffbb0f437b5a4856557f0fd04f855e60',
+  'src/components/newspaper/newspaper-editorial.css':'aa9d09338cd080d142674b5c98cca17820366bc2',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
   'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',

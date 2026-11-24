@@ -66,6 +66,9 @@ describe('Editor-Chefe: lê Missivas entregues, sem escrever; nenhuma Ficha ou C
   expect(reader).toContain('house:filters.house');
   expect(reader).toContain('origin:filters.origin');
   expect(reader).toContain('filters.house,filters.origin,search');
+  expect(reader).toContain('Somente furos marcados');
+  expect(reader).toContain("f['marked_ids']=[...furos]");
+  expect(reader).toContain('setOnlyFuros(false)');
 
   const route=source('src/components/players/players-workspace.tsx');
   const editor=source('src/components/newspaper/NewspaperEditorialDesk.tsx');

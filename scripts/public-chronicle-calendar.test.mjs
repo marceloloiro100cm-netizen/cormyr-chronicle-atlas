@@ -52,7 +52,9 @@ test('workspace logo returns to front and public event API is fail-closed',()=>{
   assert.match(narrator,/className="nw-brand" href="\/cormyr\/index.html"/);
   const editor=source('src/components/newspaper/NewspaperEditorialDesk.tsx');
   assert.match(editor,/className="folha-top-brand folha-site-home" href="\/cormyr\/index.html"/);
-  assert.match(editor,/<PublicChronicleCalendar\/>/);
+  // A página pública continua disponível no site; o Editor usa só o calendário editorial.
+  assert.doesNotMatch(editor,/<PublicChronicleCalendar\/>/);
+  assert.match(editor,/<NewspaperCalendar referenceDate=\{props.hubDate\}/);
   const reader=source('src/lib/calendar/firebase-public-events.server.ts');
   assert.match(reader,/published\['public'\]!==true/);
   assert.match(reader,/f\['public'\]!==true/);

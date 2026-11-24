@@ -49,6 +49,7 @@ export function EditorMailReader({userId}:{userId:string}){
   const [filters,setFilters]=useState({text:'',number:'',kind:'',read:'',group:'',house:'',origin:''});
   const [search,setSearch]=useState('');
   const [page,setPage]=useState(0);
+  const [onlyFuros,setOnlyFuros]=useState(false);
   const [open,setOpen]=useState<Set<string>>(new Set());
   const [pauta,setPauta]=useState<PautaItem[]>(()=>readPauta(userId));
   // As sinalizações são anotações editoriais neste aparelho, não alteram as missivas.
@@ -65,7 +66,8 @@ export function EditorMailReader({userId}:{userId:string}){
   };
   const [message,setMessage]=useState('');
   useEffect(()=>{const t=setTimeout(()=>setSearch(filters.text),250);return()=>clearTimeout(t);},[filters.text]);
-  useEffect(()=>{setPage(0);},[filters.number,filters.kind,filters.read,filters.group,filters.house,filters.origin,search]);
+  useEffect(()=>{setPage(0);},[filters.number,filters.kind,filters.read,filters.group,filters.house,filters.origin,search,onlyFuros]);
+  useEffect(()=>{if(onlyFuros)setPage(0);},[furos,onlyFuros]);
   const houses=useQuery({queryKey:['editor-mail-houses'],enabled:firebase,queryFn:async()=>{
     const r=await supabase.from('campaign_houses').select('id,name');
     if(r.error)throw r.error;return (r.data??[]) as unknown as {id:string;name:string}[];
@@ -74,8 +76,9 @@ export function EditorMailReader({userId}:{userId:string}){
   const requestFilters=useMemo(()=>{
     const f:Record<string,unknown>={text:search,number:filters.number,kind:filters.kind,read:filters.read,house:filters.house,origin:filters.origin};
     if(filters.group)f['group_house_ids']=narrationHouseIds(filters.group,(houses.data??[]).map(h=>h.id));
+    if(onlyFuros)f['marked_ids']=[...furos];
     return f;
-  },[search,filters,houses.data]);
+  },[search,filters,houses.data,onlyFuros,furos]);
   const mailbox=useQuery({queryKey:['editor-mail-page',userId,requestFilters,page],enabled:firebase,
     queryFn:async()=>{
       const r=await loose('mail_page',{p_filters:requestFilters,p_page:page,p_size:20});
@@ -139,7 +142,13 @@ export function EditorMailReader({userId}:{userId:string}){
             {sel('Período','number',[['','Todas as semanas'],...[1,2,3,4,5,6,7,8].map(n=>[String(n),'Semana '+n] as [string,string])])}
             {sel('Circulação','kind',[['','Todos os informes'],['geral','Geral'],['reservada','Reservada']])}
             {sel('Estado da leitura','read',[['','Todos'],['no','Não lidos'],['yes','Lidos']])}
-            <Button variant="outline" onClick={()=>setFilters({text:'',number:'',kind:'',read:'',group:'',house:'',origin:''})}>Limpar investigação</Button>
+            <label>Furos sinalizados
+              <select value={onlyFuros?'only':'all'} onChange={e=>setOnlyFuros(e.target.value==='only')}>
+                <option value="all">Todas as missivas</option>
+                <option value="only">Somente furos marcados ({furos.size})</option>
+              </select>
+            </label>
+            <Button variant="outline" onClick={()=>{setOnlyFuros(false);setFilters({text:'',number:'',kind:'',read:'',group:'',house:'',origin:''});}}>Limpar investigação</Button>
           </div>
         </div>
         <div className="folha-intel-panel folha-intel-notebook" aria-label="Caderno de pautas">
@@ -166,7 +175,9 @@ export function EditorMailReader({userId}:{userId:string}){
         {message&&<p className="folha-intel-message" role="status" aria-live="polite">{message}</p>}
         {mailbox.isPending&&<p role="status" className="folha-intel-empty">Consultando o arquivo de Cormyr…</p>}
         {mailbox.error&&<p role="alert" className="folha-intel-empty">O acervo não pôde ser consultado. <Button onClick={()=>void mailbox.refetch()}>Tentar novamente</Button></p>}
-        {mailbox.data&&letters.length===0&&<p className="folha-intel-empty">Nenhum relato atende aos filtros da investigação.</p>}
+        {mailbox.data&&letters.length===0&&<p className="folha-intel-empty">{onlyFuros
+          ? 'Nenhum furo marcado corresponde aos filtros. As sinalizações ficam guardadas neste aparelho.'
+          : 'Nenhum relato atende aos filtros da investigação.'}</p>}
         <div className="folha-intel-feed">{letters.map(letter=>{
           const thread=replies.filter(r=>r.letter_id===letter.id&&!r.deleted_at);
           const receipt=receipts.data?.find(r=>r.letter_id===letter.id&&r.user_id===userId);
@@ -202,7 +213,7 @@ export function EditorMailReader({userId}:{userId:string}){
                 </article>)}
               </section>}
               <div className="folha-intel-actions">
-                <Button variant="outline" onClick={()=>toggleFuro(letter.id)}>
+                <Button variant="outline" aria-pressed={important} onClick={()=>toggleFuro(letter.id)}>
                   <Flame size={15}/>{important?'Retirar sinalização de furo':'Sinalizar possível furo'}</Button>
                 <Button variant="outline" onClick={()=>addPauta(letter,letter.content,from+', Semana '+(letter.delivery_week??'?'))}>Adicionar à pauta</Button>
                 {read?<Button variant="outline" onClick={()=>void mark(letter.id,false)}>Marcar como não lido</Button>
