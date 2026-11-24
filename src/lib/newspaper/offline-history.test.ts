@@ -30,14 +30,14 @@ function memoryIndexedDb(){
      index:()=>({
       getAll:(owner:string)=>{
        const r:{result:unknown[];onsuccess:(()=>void)|null;onerror:(()=>void)|null}={
-        result:[...rows.values()].filter(row=>row.owner===owner),onsuccess:null,onerror:null,
+        result:[...rows.values()].filter(row=>row['owner']===owner),onsuccess:null,onerror:null,
        };
        setTimeout(()=>r.onsuccess?.(),0);
        return r;
       },
      }),
      put:(item:Record<string,unknown>)=>{
-      rows.set(item.key as string,item);
+      rows.set(item['key'] as string,item);
       setTimeout(()=>tx.oncomplete?.(),0);
      },
      delete:(key:string)=>{rows.delete(key);},
