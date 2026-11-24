@@ -89,6 +89,27 @@ describe('Redação A Folha Sem Selo',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Atualizar arquivo'}));
   expect(p.onRetryArchive).toHaveBeenCalledOnce();
  });
+
+ it('mostra cópia privada do navegador mesmo enquanto o arquivo remoto não responde',()=>{
+  const p=fixture();p.loading=true;
+  p.localBackups=[{
+   schema:1,owner:'leonardo',editionId:'cloud-'+'a'.repeat(64),
+   baseVersion:1,updatedAt:Date.UTC(2026,10,24,17),
+   snapshot:{
+    campaign_date:'1522-11-21',title:'A Folha Sem Selo',subtitle:'A verdade bem servida',
+    template:'classico',font_style:'classico',pdf_path:null,publish_on:null,
+    blocks:[{...makeNewspaperBlock('headline'),text:'Uma matéria recuperada do navegador'}],
+   },
+  }];
+  p.onExportLocalBackup=vi.fn();
+  render(<NewspaperEditorialDesk {...p}/>);
+  fireEvent.click(screen.getByRole('link',{name:'Arquivo'}));
+  expect(screen.getByRole('region',{name:'Cópias locais neste dispositivo'})).toBeInTheDocument();
+  expect(screen.getByText('A verdade bem servida', {exact:false})).toBeInTheDocument();
+  expect(screen.getByText('Carregando arquivo…')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Baixar texto da cópia local (.txt)'}));
+  expect(p.onExportLocalBackup).toHaveBeenCalledWith(p.localBackups[0]);
+ });
  it('iniciar matéria com edição publicada cria rascunho novo sem alterar a publicação',()=>{
   const p=fixture();
   p.current={id:'cloud-'+'a'.repeat(64),edition_no:2,

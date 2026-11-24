@@ -163,6 +163,14 @@
  * A change must be reviewed explicitly against screenshots and parity tests;
  * the frontend originals are reference artifacts, not Firebase backends.
  */
+/**
+ * 2026-11-24 (recuperação do Editor-Chefe, PR #718): somente adição
+ * de cópias locais recuperáveis à seção Arquivo, sem depender de Firestore.
+ * Mantém navegação, botões, filtros, publicação e salvamentos anteriores.
+ * Exportação TXT ocorre no navegador do Editor, sem mutação no banco.
+ * Paridade revista com testes de isolamento entre contas e arquivo pendente.
+ */
+
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
@@ -175,8 +183,8 @@ const originals={
   'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'267910930adc1e6cc0e12d179c81101292bb80a9',
-  'src/components/newspaper/NewspaperHub.tsx':'6d2b09721c62950e1509c704d35482ae77b2a30d',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'417f83a9ab1740da849c32ddc690adc922cc4a07',
+  'src/components/newspaper/NewspaperHub.tsx':'f33f8cee1253091c20314af80ae3979bee9771a7',
   'src/components/newspaper/newspaper-editorial.css':'aa9d09338cd080d142674b5c98cca17820366bc2',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
   'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
