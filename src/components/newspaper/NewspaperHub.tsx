@@ -30,7 +30,7 @@ import {
  type NewspaperTemplate,type NewspaperRevision,type NewspaperEngraving,ENGRAVINGS_BUCKET,PAPER_BUCKET,type NewspaperStaffMember,orderStaff,moveStaffMember,type StoryModel,instantiateStoryModel,
 } from '@/lib/newspaper/model';
 import {movePreservingPinned,reorderPreservingPinned,resizeWithReflow} from '@/lib/newspaper/layout';
-import {browserOfflineStore,readOfflineEdition,writeOfflineEdition,clearOfflineEdition,recoverOfflineEdition,
+import {browserOfflineStore,listOfflineEditionBackups,readOfflineEdition,writeOfflineEdition,clearOfflineEdition,recoverOfflineEdition,
  type OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
 import {
  canRedo,canUndo,convertBlock,emptyHistory,handleNewspaperTextareaTab,insertBlocksAfter,needsImageCopy,parseClipboardBlocks,recordSnapshot,
@@ -131,6 +131,9 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
  useEffect(()=>()=>{window.clearTimeout(retryTimer.current);window.clearTimeout(discardTimer.current);},[]);
  const [message,setMessage]=useState('');
  const [error,setError]=useState('');
+ const localBackups=useMemo(()=>
+  editorial&&editor?listOfflineEditionBackups(browserOfflineStore(),userId):[],
+  [editorial,editor,userId,offlineSavedAt,selectedId]);
  const history=useMemo(()=>{
   const rows=new Map<string,NewspaperEdition>();
   for(const e of issuedArchive.data??[])rows.set(e.id,e);
@@ -160,6 +163,26 @@ export function NewspaperHub({userId,editor,editorial=false,houseId,onSignout,mi
   qc.invalidateQueries({queryKey:['campaign-newspaper-commissions',userId]}),
  ]);
  const notice=(value:string)=>{setMessage(value);setError('');};
+ const exportLocalBackup=(backup:OfflineEditionBackup)=>{
+  if(backup.owner!==userId)return;
+  // Download the local draft without sending it to any endpoint.
+  const text=[backup.snapshot.title,backup.snapshot.subtitle,
+   'Data da edição: '+backup.snapshot.campaign_date,
+   ...backup.snapshot.blocks.flatMap(block=>{
+    const parts=[block.text,block.subtitle,block.caption].filter(
+     (part):part is string=>typeof part==='string'&&part.trim().length>0);
+    return parts.length?['---',...parts]:[];
+   }),
+  ].filter(Boolean).join('\n\n');
+  try{
+   const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
+   const link=document.createElement('a');
+   link.href=url;link.download='folha-copia-local-'+backup.editionId.slice(-8)+'.txt';
+   document.body.appendChild(link);link.click();link.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),5000);
+   notice('Texto do dispositivo exportado. Confira o arquivo antes de retomar a edição.');
+  }catch{setError('O navegador bloqueou o download da cópia local. Não limpou nem alterou o texto.');}
+ };
  const open=async(edition:NewspaperEdition)=>{
   if(busy)return;
   const compare=(e:NewspaperEdition)=>JSON.stringify([
@@ -963,6 +986,7 @@ const useStoryModel=async(model:StoryModel)=>{
    'A consulta privada falhou: '+safeError(editions.error)+' As publicações permanecem disponíveis no arquivo público.':
    issuedArchive.isError?'Não foi possível consultar o arquivo público: '+safeError(issuedArchive.error):undefined}
   onRetryArchive={()=>{void editions.refetch();void issuedArchive.refetch();}}
+  localBackups={localBackups} onExportLocalBackup={exportLocalBackup}
   selectedBlockId={blockId} error={error} message={message}
   hubDate={hubDate} settings={settings} onSaveSettings={saveSettings}
   pendingCommissions={pending} houseNames={houseNames}
