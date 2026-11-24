@@ -37,6 +37,30 @@ const hasText=v=>Array.isArray(v?.blocks)&&v.blocks.some(b=>
  typeof b?.text==='string'&&b.text.trim().length>0);
 const afterSecondDrafts=drafts.filter(v=>
  v?.editionNo>=3||v?.editionNo===undefined);
+// Aggregate forensic counters only. Never print edition IDs, article text or UIDs.
+const localDay=value=>{
+ if(typeof value!=='string'||!Number.isFinite(Date.parse(value)))return null;
+ return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',
+  year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+};
+const auditDay='2026-11-24';
+const expectedSubtitle=v=>typeof v?.subtitle==='string'&&
+ v.subtitle.trim().toLocaleLowerCase('pt-BR')==='a verdade bem servida';
+const textFrom=v=>Array.isArray(v?.blocks)?v.blocks.map(b=>
+ typeof b?.text==='string'?b.text:'').join('\n'):'';
+const allAudits=audits.docs.map(d=>d.data());
+const todayAudits=allAudits.filter(v=>localDay(v?.occurredAt)===auditDay);
+const todaySaves=todayAudits.filter(v=>
+ ['save_edition','save_historical_draft'].includes(v?.action));
+const subtitleDrafts=drafts.filter(expectedSubtitle);
+const subtitleHistorical=overlays.filter(expectedSubtitle);
+const todayAuditsWithTextChange=todaySaves.filter(v=>
+ v?.before&&v?.after&&textFrom(v.before)!==textFrom(v.after));
+const recentDays=['2026-11-22','2026-11-23','2026-11-24'].map(day=>({
+ day,cloudDraftsUpdated:drafts.filter(v=>localDay(v?.updatedAt)===day).length,
+ saveOperations:allAudits.filter(v=>localDay(v?.occurredAt)===day&&
+ ['save_edition','save_historical_draft'].includes(v?.action)).length,
+}));
 console.log(JSON.stringify({
  scope:'FOLHA_THIRD_EDITION_READ_ONLY',writes:0,
  issuesPublished:published.length,officialIssuedNumbers:[...new Set(published.map(v=>v.editionNo))]
@@ -48,6 +72,16 @@ console.log(JSON.stringify({
  historicalDraftOverlays:overlays.length,
  historicalDraftOverlaysWithPersistedText:overlays.filter(hasText).length,
  historicalDraftSaveRevisions:prior.filter(v=>v?.action==='save_historical_draft').length,
+ auditLocalDay:auditDay,
+ cloudDraftsUpdatedToday:drafts.filter(v=>localDay(v?.updatedAt)===auditDay).length,
+ subtitleCloudDrafts:subtitleDrafts.length,
+ subtitleCloudDraftsUpdatedToday:subtitleDrafts.filter(v=>
+  localDay(v?.updatedAt)===auditDay).length,
+ subtitleHistoricalDrafts:subtitleHistorical.length,
+ todayEditorialSaveOperations:todaySaves.length,
+ todayEditorialTextChanges:todayAuditsWithTextChange.length,
+ todaySubtitledSaves:todaySaves.filter(v=>expectedSubtitle(v.after)).length,
+ recentDays,
  recoveryRoute:'Editor-Chefe > Arquivo > selecionar rascunho > Histórico de revisões',
  textNotLogged:true,
 }));
