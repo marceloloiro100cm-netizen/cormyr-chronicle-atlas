@@ -19,6 +19,7 @@ import {
  CONVERTIBLE_LABELS,blockFocus,blockSummary,blockWords,clampCropZoom,editionWords,publicationIssues,readingMinutes,
  handleNewspaperTextareaTab,saveStatusText,validateSchedule,wordsLabel,type PublicationIssue,type SaveState,
 } from '@/lib/newspaper/editing';
+import type {OfflineEditionBackup} from '@/lib/newspaper/offline-draft';
 import {useNewspaperShortcuts} from './useNewspaperShortcuts';
 import {NewspaperShortcutHelp,NewspaperSlashMenu} from './NewspaperKeyboardUi';
 import {NewspaperCanvas} from './NewspaperCanvas';
@@ -51,6 +52,8 @@ export interface NewspaperEditorialProps{
  current:NewspaperEdition|null;
  history:NewspaperEdition[];
  archiveNotice?:string|undefined;archiveError?:string|undefined;onRetryArchive?:(()=>void)|undefined;
+ /** Independent local backups remain visible even when private Firestore listing fails. */
+ localBackups?:OfflineEditionBackup[];onExportLocalBackup?:(backup:OfflineEditionBackup)=>void;
  reads:NewspaperRead[];
  /** Leituras do site aberto (visitantes sem conta), por edição. */
  publicReads?:ReadonlyMap<string,number>|undefined;
@@ -481,6 +484,16 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
         {props.onRetryArchive&&<button type="button" className="folha-text-link"
          onClick={props.onRetryArchive}>Atualizar arquivo</button>}
        </div>}
+       {props.localBackups&&props.localBackups.length>0&&<section aria-label="Cópias locais neste dispositivo" className="folha-archive-local">
+        <h4>Cópias locais neste dispositivo</h4>
+        <p>Os textos abaixo foram guardados neste navegador. Não dependem da consulta privada nem alteram o Firebase.</p>
+        {props.localBackups.slice(0,30).map(backup=><div key={backup.editionId} className="folha-archive-row">
+         <div><strong>{backup.snapshot.title}</strong>
+          <small>{backup.snapshot.subtitle} · {new Date(backup.updatedAt).toLocaleString('pt-BR')}</small></div>
+         <button type="button" onClick={()=>props.onExportLocalBackup?.(backup)}>
+          Baixar texto da cópia local (.txt)</button>
+        </div>)}
+       </section>}
        {props.loading?<p role="status">Carregando arquivo…</p>:
         <div className="folha-archive-list">{history.map(e=><div className="folha-archive-row" key={e.id}>
          <button type="button" onClick={()=>browseEdition(e)}><span>{issueLabel(e)} · {formatDate(e.campaign_date)}</span>
