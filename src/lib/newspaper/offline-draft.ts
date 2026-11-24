@@ -35,7 +35,7 @@ export function writeOfflineEdition(store:LocalStore|null,uid:string,edition:New
 }
 /** Validate and sanitize a local backup without requiring the remote edition to
  * have loaded. This path is read-only and never sends the backup to the server. */
-function parseOfflineEdition(store:LocalStore|null,uid:string,id:string):OfflineEditionBackup|null{
+export function parseOfflineEdition(store:LocalStore|null,uid:string,id:string):OfflineEditionBackup|null{
  const key=offlineEditionKey(uid,id);
  if(!store||!key)return null;
  try{

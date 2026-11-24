@@ -237,10 +237,10 @@ export const CONVERTIBLE_LABELS:{value:NewspaperBlock['type'];label:string}[]=[
 // ---- Situação do salvamento ----
 export type SaveState={status:'idle'|'saving'|'saved'|'failed';at?:string;dirty:boolean};
 export function saveStatusText(state:SaveState):string{
- if(state.status==='saving')return 'Salvando…';
- if(state.status==='failed')return 'Falha ao salvar. Tentando de novo em instantes.';
- if(state.dirty)return 'Alterações ainda não salvas';
- return state.at?`Salvo às ${state.at}`:'Tudo salvo';
+ if(state.status==='saving')return 'Sincronizando com Firebase…';
+ if(state.status==='failed')return 'Falha de sincronização. Confira a cópia local.';
+ if(state.dirty)return 'Alterações pendentes de sincronização';
+ return state.at?`Salvo no Firebase às ${state.at}`:'Aguardando confirmação de salvamento';
 }
 export function blockSummary(block:NewspaperBlock):string{
  const labels:Record<NewspaperBlock['type'],string>={headline:'Manchete',subtitle:'Subtítulo',article:'Matéria',

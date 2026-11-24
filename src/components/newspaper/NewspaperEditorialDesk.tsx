@@ -53,7 +53,11 @@ export interface NewspaperEditorialProps{
  history:NewspaperEdition[];
  archiveNotice?:string|undefined;archiveError?:string|undefined;onRetryArchive?:(()=>void)|undefined;
  /** Independent local backups remain visible even when private Firestore listing fails. */
- localBackups?:OfflineEditionBackup[];onExportLocalBackup?:(backup:OfflineEditionBackup)=>void;
+ localBackups?:OfflineEditionBackup[];
+ onExportLocalBackup?:(backup:OfflineEditionBackup,format?:'txt'|'json')=>void;
+ onRecoverLocalBackup?:(backup:OfflineEditionBackup)=>void;
+ /** Emergency export does not depend on localStorage, IndexedDB or Firebase. */
+ onExportCurrent?:()=>void;
  reads:NewspaperRead[];
  /** Leituras do site aberto (visitantes sem conta), por edição. */
  publicReads?:ReadonlyMap<string,number>|undefined;
@@ -335,6 +339,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       <FileUp size={22}/> Anexar Arquivo</button>
      <button type="button" onClick={()=>{setSection('painel');setFullPreview(x=>!x);props.onPreview();}}>
       <Eye size={22}/> {fullPreview?'Voltar ao painel':'Pré-visualizar'}</button>
+     <button type="button" disabled={!current||current.state!=='draft'}
+      onClick={props.onExportCurrent}>Baixar cópia de segurança</button>
      <button type="button" disabled={!current||current.archive_preview||busy||!materialReady} onClick={requestPublish}>
       <Newspaper size={21}/> Publicar Edição</button>
      <button type="button" disabled={!current||current.archive_preview||busy||current.state!=='published'} onClick={()=>props.onSave('archived')}>
@@ -343,6 +349,15 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
       onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)props.onUpload(file);}}/>
     </div>
 
+    {Boolean(props.localBackups?.some(backup=>
+      !history.some(edition=>edition.id===backup.editionId)))&&
+     <div className="folha-alert" role="alert">
+     <strong>Há textos preservados neste dispositivo que não aparecem no arquivo.</strong>
+     {' '}A consulta privada pode estar incompleta. Acesse o Arquivo e exporte as cópias locais;
+     não limpe o navegador.
+     <button type="button" className="folha-text-action"
+      onClick={()=>setSection('arquivo')}>Ver cópias preservadas</button>
+    </div>}
     {props.offlineRecovery&&<div className="folha-alert" role="alert">
      <strong>Texto recuperável neste dispositivo.</strong>
      {' '}Há uma cópia local da edição feita em {new Date(props.offlineRecovery.updatedAt).toLocaleString('pt-BR')}.
@@ -357,8 +372,8 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
      </div>
     </div>}
     {props.offlineNeedsReview&&<div className="folha-alert" role="alert">
-     A cópia recuperada foi criada sobre uma versão anterior do Firebase.
-     Confira a manchete e clique em <strong>Salvar</strong> para confirmar. O autosave fica
+     O conteúdo deste dispositivo precisa de confirmação antes de substituir a versão do Firebase.
+     Confira a edição e clique em <strong>Salvar</strong> para confirmar. O autosave fica
      suspenso até sua decisão, evitando sobrescrever alterações mais recentes.
     </div>}
     {props.offlineStorageDenied&&<div className="folha-alert" role="alert">
@@ -486,12 +501,19 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
        </div>}
        {props.localBackups&&props.localBackups.length>0&&<section aria-label="Cópias locais neste dispositivo" className="folha-archive-local">
         <h4>Cópias locais neste dispositivo</h4>
-        <p>Os textos abaixo foram guardados neste navegador. Não dependem da consulta privada nem alteram o Firebase.</p>
-        {props.localBackups.slice(0,30).map(backup=><div key={backup.editionId} className="folha-archive-row">
+        <p>Histórico de versões deste navegador, incluindo alterações ainda não sincronizadas.
+         Exporte o texto (.txt) ou a cópia integral (.json) antes de restaurar.
+         Nenhuma destas ações altera o Firebase automaticamente.</p>
+        {props.localBackups.slice(0,100).map((backup,index)=><div key={backup.editionId+':'+backup.updatedAt+':'+index} className="folha-archive-row">
          <div><strong>{backup.snapshot.title}</strong>
           <small>{backup.snapshot.subtitle} · {new Date(backup.updatedAt).toLocaleString('pt-BR')}</small></div>
-         <button type="button" onClick={()=>props.onExportLocalBackup?.(backup)}>
-          Baixar texto da cópia local (.txt)</button>
+         <div className="folha-check-actions">
+          <button type="button" onClick={()=>props.onExportLocalBackup?.(backup,'txt')}>Baixar texto (.txt)</button>
+          <button type="button" onClick={()=>props.onExportLocalBackup?.(backup,'json')}>Cópia integral (.json)</button>
+          {history.some(e=>e.id===backup.editionId&&e.state==='draft')&&
+           <button type="button" disabled={busy} onClick={()=>{props.onRecoverLocalBackup?.(backup);setSection('capa');}}>
+            Recuperar esta versão</button>}
+         </div>
         </div>)}
        </section>}
        {props.loading?<p role="status">Carregando arquivo…</p>:
