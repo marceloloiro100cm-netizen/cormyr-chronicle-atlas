@@ -33,22 +33,25 @@ export function writeOfflineEdition(store:LocalStore|null,uid:string,edition:New
  if(json.length>MAX_BYTES)return false;
  try{store.setItem(key,json);return true;}catch{return false;}
 }
-export function readOfflineEdition(store:LocalStore|null,uid:string,edition:NewspaperEdition):OfflineEditionBackup|null{
- const key=offlineEditionKey(uid,edition.id);
- if(!store||!key||edition.state!=='draft'||edition.archive_preview)return null;
+/** Validate and sanitize a local backup without requiring the remote edition to
+ * have loaded. This path is read-only and never sends the backup to the server. */
+function parseOfflineEdition(store:LocalStore|null,uid:string,id:string):OfflineEditionBackup|null{
+ const key=offlineEditionKey(uid,id);
+ if(!store||!key)return null;
  try{
   const raw=store.getItem(key);
   if(!raw||raw.length>MAX_BYTES)return null;
   const item=JSON.parse(raw) as Partial<OfflineEditionBackup>;
   const snap=item.snapshot;
-  if(item.schema!==1||item.owner!==uid||item.editionId!==edition.id||
-     !Number.isSafeInteger(item.baseVersion)||item.baseVersion!<1||
-     (typeof item.updatedAt!=='number'||!Number.isFinite(item.updatedAt))||!snap||typeof snap!=='object'||
+  if(item.schema!==1||item.owner!==uid||item.editionId!==id||
+     typeof item.baseVersion!=='number'||!Number.isSafeInteger(item.baseVersion)||item.baseVersion<1||
+     typeof item.updatedAt!=='number'||!Number.isFinite(item.updatedAt)||
+     !snap||typeof snap!=='object'||
      typeof snap.title!=='string'||typeof snap.subtitle!=='string'||
      typeof snap.campaign_date!=='string'||typeof snap.template!=='string'||
      typeof snap.font_style!=='string'||!Array.isArray(snap.blocks)||
      snap.blocks.length>80||
-     typeof snap.pdf_path!=='string'&&snap.pdf_path!==null)
+     (typeof snap.pdf_path!=='string'&&snap.pdf_path!==null))
     return null;
   const blocks=safeNewspaperBlocks(snap.blocks);
   if(blocks.length!==snap.blocks.length)return null;
@@ -56,9 +59,35 @@ export function readOfflineEdition(store:LocalStore|null,uid:string,edition:News
    subtitle:snap.subtitle,template:snap.template,font_style:snap.font_style,
    pdf_path:snap.pdf_path,blocks,
    publish_on:typeof snap.publish_on==='string'||snap.publish_on===null?snap.publish_on:null} as DraftSnapshot;
-  if(sameSnapshot(sanitized,snapshotOf(edition)))return null;
   return {...item,snapshot:sanitized} as OfflineEditionBackup;
  }catch{return null;}
+}
+export function readOfflineEdition(store:LocalStore|null,uid:string,edition:NewspaperEdition):OfflineEditionBackup|null{
+ if(edition.state!=='draft'||edition.archive_preview)return null;
+ const backup=parseOfflineEdition(store,uid,edition.id);
+ return backup&&!sameSnapshot(backup.snapshot,snapshotOf(edition))?backup:null;
+}
+/** Enumerates only this authenticated editor's local draft copies. The remote
+ * archive is NOT needed, so a Firestore outage cannot hide recoverable text. */
+export function listOfflineEditionBackups(store:LocalStore|null,uid:string):OfflineEditionBackup[]{
+ if(!store||!OWNER.test(uid))return [];
+ const indexed=store as LocalStore&{length?:number;key?:(index:number)=>string|null};
+ const count=indexed.length;
+ if(typeof count!=='number'||!Number.isSafeInteger(count)||count<0||
+    typeof indexed.key!=='function')return [];
+ const prefix=PREFIX+uid+':';
+ const found:OfflineEditionBackup[]=[];
+ try{
+  for(let i=0;i<Math.min(count,5000);i++){
+   const key=indexed.key(i);
+   if(!key?.startsWith(prefix))continue;
+   const id=key.slice(prefix.length);
+   const backup=parseOfflineEdition(store,uid,id);
+   if(backup)found.push(backup);
+   if(found.length>=100)break;
+  }
+ }catch{/* Browser storage may be disabled while enumerating. */}
+ return found.sort((a,b)=>b.updatedAt-a.updatedAt);
 }
 export function clearOfflineEdition(store:LocalStore|null,uid:string,id:string):void{
  const key=offlineEditionKey(uid,id);if(!key||!store)return;
