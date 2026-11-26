@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseCloudMail,CloudMailError}
   from '../../../scripts/firebase/cloud-mail-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -62,18 +63,9 @@ async function handle(request:Request){
     const payload=await parseBoundedJson(request);
     if(!['status','send','markRead','reply'].includes(String(payload['action'])))
       return error(400,'invalid_action');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-cloud-mail';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const mail=createFirebaseCloudMail({
-      db:getFirestore(app),auth:getAuth(app),snapshotId,projectId:'cormyr',
+      db:adminDb,auth:adminAuth,snapshotId,projectId:'cormyr',
       enabled:true,
     });
     const token=authHeader.slice(7);

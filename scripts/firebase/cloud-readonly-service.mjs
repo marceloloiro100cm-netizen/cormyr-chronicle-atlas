@@ -29,6 +29,45 @@ import {currentAccountAccess} from './operational-account-access.mjs';
 const SNAPSHOT=/^[a-f0-9]{64}$/;
 const SAFE_ID=/^[^/\u0000-\u001f]{1,128}$/;
 const digest=value=>createHash('sha256').update(value).digest('hex');
+const IMMUTABLE_STAGE_TTL_MS=6*60*60_000;
+const immutableStageCache=new WeakMap();
+const immutableHouseCache=new WeakMap();
+
+function cachedImmutableStage(db,snapshotId,name){
+  let byDb=immutableStageCache.get(db);
+  if(!byDb){byDb=new Map();immutableStageCache.set(db,byDb);}
+  const key=snapshotId+'|'+name,now=Date.now(),hit=byDb.get(key);
+  if(hit&&now-hit.at<IMMUTABLE_STAGE_TTL_MS)return hit.promise;
+  const promise=db.collection(name).doc(snapshotId).get().then(snap=>{
+    if(!snap.exists||snap.data()?.status!=='complete'||snap.data()?.private!==true)
+      deny('migration_stage_not_ready',503);
+    return true;
+  });
+  const entry={at:now,promise};
+  byDb.set(key,entry);
+  promise.catch(()=>{if(byDb.get(key)===entry)byDb.delete(key);});
+  return promise;
+}
+
+function cachedImmutableHouse(db,snapshotId,houseId){
+  let byDb=immutableHouseCache.get(db);
+  if(!byDb){byDb=new Map();immutableHouseCache.set(db,byDb);}
+  const key=snapshotId+'|'+houseId,now=Date.now(),hit=byDb.get(key);
+  if(hit&&now-hit.at<IMMUTABLE_STAGE_TTL_MS)return hit.promise;
+  const promise=db.collection('migrationDomainStage').doc(snapshotId)
+    .collection('houses').doc(digest('house:'+houseId)).get().then(doc=>{
+      // Only cache valid active season-2 houses; missing/inactive docs are re-read.
+      const d=doc.exists?doc.data():null;
+      if(!d||d.active!==true||d.season!==2){
+        if(byDb.get(key)===entry)byDb.delete(key);
+      }
+      return doc;
+    });
+  const entry={at:now,promise};
+  byDb.set(key,entry);
+  promise.catch(()=>{if(byDb.get(key)===entry)byDb.delete(key);});
+  return promise;
+}
 
 export class CloudAccessError extends Error {
   constructor(code,status=403){
@@ -53,7 +92,7 @@ function cleanHouses(value){
  * Service must be supplied a FIXED, server-configured snapshot. There is no
  * caller-controlled snapshot selector, nor account/house claims in the token.
  */
-export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enabled=false,env=process.env}){
+export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enabled=false,env=process.env,cacheImmutableStages=false}){
   if(enabled!==true||projectId!=='cormyr'||!SNAPSHOT.test(snapshotId||'')||
      env.FIRESTORE_EMULATOR_HOST||env.FIREBASE_AUTH_EMULATOR_HOST)
     deny('cloud_read_disabled',503);
@@ -61,6 +100,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
      typeof auth.getUser!=='function')deny('invalid_server_configuration',503);
 
   async function stageReady(name){
+    if(cacheImmutableStages)return cachedImmutableStage(db,snapshotId,name);
     const snap=await db.collection(name).doc(snapshotId).get();
     if(!snap.exists||snap.data()?.status!=='complete'||snap.data()?.private!==true)
       deny('migration_stage_not_ready',503);
@@ -84,18 +124,26 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
   async function scopeFor(idToken){
     if(typeof idToken!=='string'||idToken.length<10||idToken.length>10000)
       deny('authentication_required',401);
-    let token,user;
+    let token;
     try{
       token=await auth.verifyIdToken(idToken,true);
       if(typeof token?.uid!=='string'||!SAFE_ID.test(token.uid))
         deny('authentication_required',401);
-      user=await auth.getUser(token.uid);
     }catch{deny('authentication_required',401);}
-    if(user.disabled===true||user.uid!==token.uid)
+    // Run user status, immutable stage markers and current account access in
+    // parallel instead of 4 sequential round-trips, preserving exact error order.
+    const [userRes,domainRes,authStageRes,accessRes]=await Promise.all([
+      auth.getUser(token.uid).then(u=>({ok:true,u}),()=>({ok:false})),
+      stageReady('migrationDomainStage').then(()=>({ok:true}),e=>({ok:false,e})),
+      stageReady('migrationAuthStage').then(()=>({ok:true}),e=>({ok:false,e})),
+      currentAccountAccess(db,snapshotId,token.uid).then(v=>({ok:true,v}),e=>({ok:false,e})),
+    ]);
+    if(!userRes.ok||userRes.u?.disabled===true||userRes.u?.uid!==token.uid)
       deny('authentication_required',401);
-    await stageReady('migrationDomainStage');
-    await stageReady('migrationAuthStage');
-    const v=await currentAccountAccess(db,snapshotId,token.uid);
+    if(!domainRes.ok)throw domainRes.e;
+    if(!authStageRes.ok)throw authStageRes.e;
+    if(!accessRes.ok)throw accessRes.e;
+    const v=accessRes.v;
     if(!v||v.userId!==token.uid||v.active!==true||
        v.requirePasswordChange!==false)deny('access_denied',403);
     if(!['jogador','editor','narrador'].includes(v.profile))deny('access_denied',403);
@@ -113,7 +161,9 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
       const houses=db.collection('migrationDomainStage').doc(snapshotId)
         .collection('houses');
       const houseDocuments=await Promise.all(memberHouseIds.map(id=>
-        houses.doc(digest('house:'+id)).get()));
+        cacheImmutableStages
+          ?cachedImmutableHouse(db,snapshotId,id)
+          :houses.doc(digest('house:'+id)).get()));
       // The historical membership list is not an authorization source
       // until each entry is proven to be an active season-2 House.
       if(!activeSeason2HouseScopeValid({

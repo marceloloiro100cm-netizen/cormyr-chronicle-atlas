@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {
   isAuthorizedFirebaseDriveJob,inspectApprovedFirebaseDriveStage,
 } from '@/lib/drive/firebase-cloud-drive-job.server';
@@ -61,16 +62,9 @@ export async function handleFirebaseDriveSync(request:Request):Promise<Response>
      process.env['FIREBASE_AUTH_EMULATOR_HOST'])
     return fail(503,'firebase_drive_audit_disabled');
   try{
-    const [{applicationDefault,getApps,initializeApp},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-drive-cloud-audit';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      credential:applicationDefault(),projectId:'cormyr',
-    },name);
+    const {db:adminDb}=await getFirebaseAdminServices();
     const status=await inspectApprovedFirebaseDriveStage({
-      db:getFirestore(app),projectId:'cormyr',snapshotId,enabled:true,
+      db:adminDb,projectId:'cormyr',snapshotId,enabled:true,
     });
     return Response.json(status,{headers:HEADERS});
   }catch{return fail(503,'firebase_drive_audit_unavailable');}

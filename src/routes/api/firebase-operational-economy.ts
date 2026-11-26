@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseOperationalEconomyRead,CloudEconomyReadError}
   from '@/lib/house/firebase-operational-economy-read';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -56,18 +57,9 @@ async function handle(request:Request):Promise<Response>{
     if(req['action']!=='getHouse'||Object.keys(req).some(k=>
       !['action','houseId'].includes(k)))
       return failure(400,'invalid_request');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-cloud-economy-read';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const service=createFirebaseOperationalEconomyRead({
-      db:getFirestore(app),auth:getAuth(app),
+      db:adminDb,auth:adminAuth,
       snapshotId,projectId:'cormyr',enabled:true,
     });
     const result=await service.getHouse(bearer.slice(7),req['houseId']);

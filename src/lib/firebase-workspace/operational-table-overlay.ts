@@ -59,14 +59,50 @@ const collection=(db:any,snapshotId:string,_table:string)=>db.collection('campai
  .collection('workspaceTableRows');
 const docId=(table:string,key:unknown)=>createHash('sha256').update(table+':'+JSON.stringify(key)).digest('hex');
 
+const OVERLAY_CACHE_TTL_MS=15_000;
+const overlayCache=new WeakMap<object,Map<string,{at:number;rows:Promise<{key:unknown;row:Row|null}[]>}>>();
+
+export function clearOverlayCache(db:any,snapshotId?:string,table?:string){
+ const byDb=overlayCache.get(db);
+ if(!byDb)return;
+ if(!snapshotId||!table){byDb.clear();return;}
+ byDb.delete(snapshotId+'|'+table);
+}
+
 /** Linhas operacionais de uma tabela (inclui marcas de exclusão). */
-export async function readOverlayRows(db:any,snapshotId:string,table:string):Promise<{key:unknown;row:Row|null}[]>{
- // Leitura integral em páginas e filtro pelo nome da tabela (teto de segurança
- // folgado: o caderno do Narrador cresce a cada sessão).
- const snap=await readAllPaged<any>(collection(db,snapshotId,table),50_000);
- if(snap.overLimit)fail('overlay_too_large',503);
- return snap.docs.map((d:any)=>d.data()).filter((v:any)=>v&&v.table===table)
-  .map((v:any)=>({key:v.key,row:v.deleted?null:(v.row??null)}));
+export async function readOverlayRows(
+ db:any,snapshotId:string,table:string,{useCache=false}:{useCache?:boolean}={},
+):Promise<{key:unknown;row:Row|null}[]>{
+ const run=async():Promise<{key:unknown;row:Row|null}[]>=>{
+  const col=collection(db,snapshotId,table);
+  // Filter directly in Firestore by `table` whenever the client supports `.where`,
+  // avoiding a full-collection scan across all overlay tables.
+  if(typeof col.where==='function'){
+   const config=OVERLAY_TABLES[table];
+   const maxRows=config?Math.max(config.maxRows*3,2000):50_000;
+   const filtered=col.where('table','==',table);
+   const snap=typeof filtered?.limit==='function'
+    ?await filtered.limit(maxRows+1).get()
+    :await filtered.get();
+   const docs=Array.isArray(snap?.docs)?snap.docs:null;
+   if(!docs||docs.length>maxRows)fail('overlay_too_large',503);
+   return docs.map((d:any)=>d.data()).filter((v:any)=>v&&v.table===table)
+    .map((v:any)=>({key:v.key,row:v.deleted?null:(v.row??null)}));
+  }
+  const snap=await readAllPaged<any>(col,50_000);
+  if(snap.overLimit)fail('overlay_too_large',503);
+  return snap.docs.map((d:any)=>d.data()).filter((v:any)=>v&&v.table===table)
+   .map((v:any)=>({key:v.key,row:v.deleted?null:(v.row??null)}));
+ };
+ if(!useCache)return run();
+ let byDb=overlayCache.get(db);
+ if(!byDb){byDb=new Map();overlayCache.set(db,byDb);}
+ const key=snapshotId+'|'+table,now=Date.now(),hit=byDb.get(key);
+ if(hit&&now-hit.at<OVERLAY_CACHE_TTL_MS)return hit.rows;
+ const entry={at:now,rows:run()};
+ byDb.set(key,entry);
+ entry.rows.catch(()=>{if(byDb.get(key)===entry)byDb.delete(key);});
+ return entry.rows;
 }
 
 /** Acervo + linhas operacionais, pela chave da tabela. */
@@ -157,4 +193,5 @@ export async function commitOverlayPlan(db:any,snapshotId:string,table:string,ac
     {table,key:w.key,action:w.row===null?'delete':'write',version,actorUid,occurredAt:now});
   });
  });
+ clearOverlayCache(db,snapshotId,table);
 }

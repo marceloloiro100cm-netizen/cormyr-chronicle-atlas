@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseHouseRulesService}
  from '../../../scripts/firebase/cloud-house-rules-service.mjs';
 import {catalogSchema} from '@/lib/house/schemas';
@@ -46,15 +47,9 @@ async function handle(request:Request):Promise<Response>{
    ].includes(k)))return fail(400,'invalid_rule_request');
   const parsed=catalogSchema.safeParse(v['definition']);
   if(!parsed.success)return fail(400,'invalid_rule_definition');
-  const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-   await Promise.all([import('firebase-admin/app'),
-    import('firebase-admin/auth'),import('firebase-admin/firestore')]);
-  const name='cormyr-house-rules';
-  const app=getApps().find(x=>x.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
   const service=createFirebaseHouseRulesService({
-   db:getFirestore(app),auth:getAuth(app),snapshotId,
+   db:adminDb,auth:adminAuth,snapshotId,
    projectId:'cormyr',enabled:true,
   });
   const result=await service.save(bearer.slice(7),{

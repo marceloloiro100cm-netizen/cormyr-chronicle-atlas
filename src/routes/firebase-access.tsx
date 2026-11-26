@@ -1,8 +1,4 @@
-import {FirebaseHouseActivation} from '@/components/houses/FirebaseHouseActivation';
-import {FirebaseEditorialDesk} from '@/components/newspaper/FirebaseEditorialDesk';
-import {FirebaseOfficialFrame,FirebaseOfficialHome,type FirebaseOfficialModule}
-  from '@/components/firebase/FirebaseOfficialFrame';
-import '../firebase-official.css';
+import type {FirebaseOfficialModule} from '@/components/firebase/FirebaseOfficialFrame';
 import {createFileRoute,useNavigate} from '@tanstack/react-router';
 import {CouncilOpening} from '@/components/firebase/CouncilOpening';
 import {FirebaseFirstAccessPassword} from '@/components/firebase/FirebaseFirstAccessPassword';
@@ -17,30 +13,35 @@ import {firebasePilotLoginFailure} from '@/lib/auth/firebase-pilot-login-feedbac
 import {canApplyPilotResourceLoad} from '@/lib/auth/firebase-pilot-resource-loader';
 import {canApplyPilotPrivateResult} from '@/lib/auth/firebase-pilot-private-result';
 import {describeFirebasePilotSignals} from '@/lib/auth/firebase-pilot-readiness-ui';
-import {GmEventos,GmAventuras} from '@/components/gm-panels';
-import {FIREBASE_PUBLIC_CONFIG} from '@/integrations/firebase/public-config';
-import {FirebaseNewspaperReader} from '@/components/newspaper/FirebaseNewspaperReader';
-import {FirebaseCalendarSnapshot} from '@/components/calendar/FirebaseCalendarSnapshot';
-import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
-import {FirebaseHouseSheet} from '@/components/houses/FirebaseHouseSheet';
-import {FirebaseArmyRoster} from '@/components/houses/FirebaseArmyRoster';
-import {FirebaseHoldingsRoster} from '@/components/houses/FirebaseHoldingsRoster';
-import {FirebaseConstructionSchedule} from '@/components/houses/FirebaseConstructionSchedule';
-import {FirebaseConstructionQuote,type ConstructionQuoteView}
-  from '@/components/houses/FirebaseConstructionQuote';
-import {FirebaseHouseCourtDomains} from '@/components/houses/FirebaseHouseCourtDomains';
-import {FirebaseHouseResources} from '@/components/houses/FirebaseHouseResources';
-import {FirebaseHouseBalances} from '@/components/houses/FirebaseHouseBalances';
-import {FirebaseOperationalEconomy,type OperationalEconomyView}
-  from '@/components/houses/FirebaseOperationalEconomy';
-import {FirebaseHouseChronicle} from '@/components/houses/FirebaseHouseChronicle';
-import {FirebaseHouseReconciliationAudit} from '@/components/houses/FirebaseHouseReconciliationAudit';
-import {FirebaseHouseReconciliationOverview}
-  from '@/components/houses/FirebaseHouseReconciliationOverview';
-import {FirebasePendingAccessReview,type PendingAccessReview,
-  type PendingDecisionProposal,type PendingDecisionPreview}
+import type {ConstructionQuoteView} from '@/components/houses/FirebaseConstructionQuote';
+import type {OperationalEconomyView} from '@/components/houses/FirebaseOperationalEconomy';
+import type {PendingAccessReview,PendingDecisionProposal,PendingDecisionPreview}
   from '@/components/firebase/FirebasePendingAccessReview';
 import type {HouseReconciliationReport} from '@/lib/house/firebase-house-reconciliation-audit';
+
+// Componentes legados do piloto mantidos sob demanda para não inflar o bundle de login.
+const FirebaseHouseActivation=lazy(()=>import('@/components/houses/FirebaseHouseActivation').then(m=>({default:m.FirebaseHouseActivation})));
+const FirebaseEditorialDesk=lazy(()=>import('@/components/newspaper/FirebaseEditorialDesk').then(m=>({default:m.FirebaseEditorialDesk})));
+const FirebaseOfficialFrame=lazy(()=>import('@/components/firebase/FirebaseOfficialFrame').then(m=>({default:m.FirebaseOfficialFrame})));
+const FirebaseOfficialHome=lazy(()=>import('@/components/firebase/FirebaseOfficialFrame').then(m=>({default:m.FirebaseOfficialHome})));
+const GmEventos=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmEventos})));
+const GmAventuras=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmAventuras})));
+const FirebaseNewspaperReader=lazy(()=>import('@/components/newspaper/FirebaseNewspaperReader').then(m=>({default:m.FirebaseNewspaperReader})));
+const FirebaseCalendarSnapshot=lazy(()=>import('@/components/calendar/FirebaseCalendarSnapshot').then(m=>({default:m.FirebaseCalendarSnapshot})));
+const FirebaseNarratorWeekDraft=lazy(()=>import('@/components/calendar/FirebaseNarratorWeekDraft').then(m=>({default:m.FirebaseNarratorWeekDraft})));
+const FirebaseHouseSheet=lazy(()=>import('@/components/houses/FirebaseHouseSheet').then(m=>({default:m.FirebaseHouseSheet})));
+const FirebaseArmyRoster=lazy(()=>import('@/components/houses/FirebaseArmyRoster').then(m=>({default:m.FirebaseArmyRoster})));
+const FirebaseHoldingsRoster=lazy(()=>import('@/components/houses/FirebaseHoldingsRoster').then(m=>({default:m.FirebaseHoldingsRoster})));
+const FirebaseConstructionSchedule=lazy(()=>import('@/components/houses/FirebaseConstructionSchedule').then(m=>({default:m.FirebaseConstructionSchedule})));
+const FirebaseConstructionQuote=lazy(()=>import('@/components/houses/FirebaseConstructionQuote').then(m=>({default:m.FirebaseConstructionQuote})));
+const FirebaseHouseCourtDomains=lazy(()=>import('@/components/houses/FirebaseHouseCourtDomains').then(m=>({default:m.FirebaseHouseCourtDomains})));
+const FirebaseHouseResources=lazy(()=>import('@/components/houses/FirebaseHouseResources').then(m=>({default:m.FirebaseHouseResources})));
+const FirebaseHouseBalances=lazy(()=>import('@/components/houses/FirebaseHouseBalances').then(m=>({default:m.FirebaseHouseBalances})));
+const FirebaseOperationalEconomy=lazy(()=>import('@/components/houses/FirebaseOperationalEconomy').then(m=>({default:m.FirebaseOperationalEconomy})));
+const FirebaseHouseChronicle=lazy(()=>import('@/components/houses/FirebaseHouseChronicle').then(m=>({default:m.FirebaseHouseChronicle})));
+const FirebaseHouseReconciliationAudit=lazy(()=>import('@/components/houses/FirebaseHouseReconciliationAudit').then(m=>({default:m.FirebaseHouseReconciliationAudit})));
+const FirebaseHouseReconciliationOverview=lazy(()=>import('@/components/houses/FirebaseHouseReconciliationOverview').then(m=>({default:m.FirebaseHouseReconciliationOverview})));
+const FirebasePendingAccessReview=lazy(()=>import('@/components/firebase/FirebasePendingAccessReview').then(m=>({default:m.FirebasePendingAccessReview})));
 
 // Área interna original (Conselho), carregada só após a sessão Firebase validada.
 const FirebaseCampaignWorkspace=lazy(()=>import('@/components/firebase/FirebaseCampaignWorkspace'));
@@ -385,6 +386,8 @@ function FirebaseAccess(){
       void navigate({to:'/auth',search:{next:window.location.pathname+window.location.search},replace:true});
       return;
     }
+    // Baixa o chunk do Conselho em paralelo à verificação da sessão no servidor.
+    void import('@/components/firebase/FirebaseCampaignWorkspace');
     void restore();
     return ()=>{loadGeneration.current++;};
   },[]);

@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {readPublishedNewspaperPdf,NewspaperImageError}
  from '@/lib/newspaper/firebase-published-image.server';
 const headers={'Cache-Control':'no-store, max-age=0','X-Content-Type-Options':'nosniff'};
@@ -16,16 +17,9 @@ export async function getPublishedPdf(request:Request):Promise<Response>{
     process.env['FIREBASE_AUTH_EMULATOR_HOST']||
     process.env['FIREBASE_STORAGE_EMULATOR_HOST'])return fail(503);
  try{
-  const [{initializeApp,getApps,applicationDefault},{getFirestore},{getStorage}]=await Promise.all([
-   import('firebase-admin/app'),import('firebase-admin/firestore'),
-   import('firebase-admin/storage'),
-  ]);
-  const name='cormyr-public-newspaper-pdf';
-  const app=getApps().find(a=>a.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {db:adminDb,storage:adminStorage}=await getFirebaseAdminServices();
   const result=await readPublishedNewspaperPdf({
-   db:getFirestore(app),bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
+   db:adminDb,bucket:adminStorage.bucket('cormyr.firebasestorage.app'),
    snapshotId,editionId:id,
   });
   return new Response(new Uint8Array(result.data),{status:200,headers:{

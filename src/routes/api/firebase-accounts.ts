@@ -1,5 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseAccountService} from '../../../scripts/firebase/cloud-account-service.mjs';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 import {firebaseAccountActionEnabled,type FirebaseAccountAction}
   from '@/lib/firebase-workspace/account-feature-gates';
@@ -59,15 +60,9 @@ async function handle(request:Request):Promise<Response>{
       'memberHouseIds','editHouseIds','attrHouseIds'].includes(k)))
       return fail(400,'invalid_request');
   }
-  const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-   await Promise.all([import('firebase-admin/app'),import('firebase-admin/auth'),
-     import('firebase-admin/firestore')]);
-  const name='cormyr-account-management';
-  const app=getApps().find(a=>a.name===name)??initializeApp({
-    projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {auth,db}=await getFirebaseAdminServices();
   const service=createFirebaseAccountService({
-    db:getFirestore(app),auth:getAuth(app),snapshotId,projectId:'cormyr',enabled:true,
+    db,auth,snapshotId,projectId:'cormyr',enabled:true,
   });
   const token=bearer.slice(7);
   const result=action==='status'?await service.status(token):

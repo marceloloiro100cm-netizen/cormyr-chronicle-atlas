@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseHouseOperation,HouseOperationError}
  from '@/lib/house/firebase-house-operation-transaction';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -39,15 +40,9 @@ async function handle(request:Request):Promise<Response>{
   if(bytes>16000&&(!data||typeof data!=='object'||
       !('action' in data)||data.action!=='import'))
    return error(413,'body_too_large');
-  const [{getApps,initializeApp,applicationDefault},{getAuth},{getFirestore}]=
-   await Promise.all([import('firebase-admin/app'),
-    import('firebase-admin/auth'),import('firebase-admin/firestore')]);
-  const name='cormyr-house-operations';
-  const app=getApps().find(x=>x.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
-  const service=createFirebaseHouseOperation({db:getFirestore(app),
-   auth:getAuth(app),snapshotId,projectId:'cormyr',enabled:true});
+  const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
+  const service=createFirebaseHouseOperation({db:adminDb,
+   auth:adminAuth,snapshotId,projectId:'cormyr',enabled:true});
   const result=await service.execute(bearer.slice(7),data);
   return Response.json({result},{headers});
  }catch(e){

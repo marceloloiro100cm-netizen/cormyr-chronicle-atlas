@@ -70,12 +70,71 @@ export function preventStaleWorkspaceHtml(request: Request, response: Response):
   });
 }
 
+/**
+ * Adds CDN/browser Cache-Control headers for static public assets served by
+ * Nitro when no Cache-Control header was already set. Never modifies APIs,
+ * authenticated HTML shells, errors or responses carrying Set-Cookie.
+ */
+const IMMUTABLE_PUBLIC_PREFIXES = [
+  '/cormyr/assets/',
+  '/assets/',
+  '/spy-portraits/',
+  '/maps/',
+  '/battle/',
+  '/newspaper/',
+  '/house-flags/',
+];
+
+export function applyPublicAssetCacheHeaders(request: Request, response: Response): Response {
+  if ((request.method !== 'GET' && request.method !== 'HEAD') ||
+      response.status !== 200 ||
+      response.headers.has('cache-control') ||
+      response.headers.has('set-cookie')) return response;
+  const url = new URL(request.url);
+  const { pathname, searchParams } = url;
+  if (pathname.startsWith('/api/')) return response;
+
+  let cacheControl: string | null = null;
+  if (IMMUTABLE_PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
+    cacheControl = 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400';
+  } else if (pathname.startsWith('/cormyr/')) {
+    if (pathname.endsWith('.html')) {
+      cacheControl = 'public, max-age=60, s-maxage=300, stale-while-revalidate=600';
+    } else if (searchParams.has('v') || pathname.endsWith('.json') || pathname.endsWith('.woff') || pathname.endsWith('.woff2')) {
+      cacheControl = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600';
+    } else {
+      cacheControl = 'public, max-age=300, s-maxage=3600, stale-while-revalidate=600';
+    }
+  }
+  if (!cacheControl) return response;
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', cacheControl);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      if (url.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD')) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: '/cormyr/index.html' + url.search,
+            'Cache-Control': 'public, max-age=300, s-maxage=3600',
+          },
+        });
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return preventStaleWorkspaceHtml(request, await normalizeCatastrophicSsrResponse(response));
+      return applyPublicAssetCacheHeaders(
+        request,
+        preventStaleWorkspaceHtml(request, await normalizeCatastrophicSsrResponse(response)),
+      );
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

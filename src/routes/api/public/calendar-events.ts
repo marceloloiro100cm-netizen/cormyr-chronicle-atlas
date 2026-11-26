@@ -1,8 +1,11 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
+import {cachedPublicRead} from '@/lib/server/public-cache.server';
 import {readApprovedPublicCalendarEvents} from '@/lib/calendar/firebase-public-events.server';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const HEADERS={'Cache-Control':'no-store, max-age=0','X-Content-Type-Options':'nosniff'};
+const OK_HEADERS={'Cache-Control':'public, max-age=30, s-maxage=60, stale-while-revalidate=120','X-Content-Type-Options':'nosniff'};
 const unavailable=()=>Response.json({error:'Calendário público indisponível'},{status:503,headers:HEADERS});
 async function handle(request:Request):Promise<Response>{
   const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
@@ -17,14 +20,12 @@ async function handle(request:Request):Promise<Response>{
      process.env['FIREBASE_AUTH_EMULATOR_HOST'])
     return unavailable();
   try{
-    const [{applicationDefault,getApps,initializeApp},{getFirestore}]=await Promise.all([
-      import('firebase-admin/app'),import('firebase-admin/firestore')]);
-    const name='cormyr-public-calendar';
-    const app=getApps().find(x=>x.name===name)??initializeApp({
-      credential:applicationDefault(),projectId:'cormyr'},name);
-    const value=await readApprovedPublicCalendarEvents({
-      db:getFirestore(app),snapshotId,year,projectId:'cormyr',enabled:true});
-    return Response.json(value,{status:200,headers:HEADERS});
+    const result=await cachedPublicRead('public-calendar:'+snapshotId+'|'+year,30_000,async()=>{
+      const {db:adminDb}=await getFirebaseAdminServices();
+      return readApprovedPublicCalendarEvents({
+        db:adminDb,snapshotId,year,projectId:'cormyr',enabled:true});
+    });
+    return Response.json(result,{status:200,headers:OK_HEADERS});
   }catch{return unavailable();}
 }
 export const Route=createFileRoute('/api/public/calendar-events')({

@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {
   createFirebaseHouseReconciliationAudit,HouseReconciliationAuditError,
 } from '@/lib/house/firebase-house-reconciliation-audit';
@@ -64,18 +65,9 @@ async function handle(request:Request):Promise<Response>{
     if(typeof input['houseId']!=='string'||
        !/^[^/\u0000-\u001f\u007f]{1,128}$/.test(input['houseId']))
       return failure(400,'invalid_house');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-house-reconciliation-audit';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const service=createFirebaseHouseReconciliationAudit({
-      db:getFirestore(app),auth:getAuth(app),snapshotId,
+      db:adminDb,auth:adminAuth,snapshotId,
       projectId:'cormyr',enabled:true,
     });
     const result=await service.inspect(authorization.slice(7),input['houseId']);

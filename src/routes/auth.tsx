@@ -57,7 +57,8 @@ function Auth() {
 
  const housesQuery = useQuery({
   queryKey:['season-houses'],
-  retry:1,
+  retry:false,
+  staleTime:60_000,
   queryFn:()=>loadFirebasePublicSeasonHouses(),
  });
  const houses = (housesQuery.data?.houses ?? []).filter(h => h.id !== 'espiao');
@@ -75,6 +76,8 @@ function Auth() {
    await auth.signInWithPassword(email.trim(),password);
    signedIn = true;
    setPassword('');
+   // Pré-carrega o chunk do Conselho em paralelo com a navegação para /firebase-access.
+   void import('@/components/firebase/FirebaseCampaignWorkspace');
    // The Firebase-only destination independently verifies UID, profile,
    // House scope and runtime; this page never grants a role or a House.
    await goInside();

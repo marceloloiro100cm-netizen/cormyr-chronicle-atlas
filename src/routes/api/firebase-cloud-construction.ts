@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseCloudConstruction,CloudConstructionError}
   from '@/lib/house/firebase-construction-transaction';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -61,18 +62,9 @@ async function handle(request:Request):Promise<Response>{
       'itemId','domainId','name','parentId','supportId',
       'replaceId','weaponSpecialty',
     ].includes(k)))return failure(400,'invalid_construction_request');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-cloud-construction';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const service=createFirebaseCloudConstruction({
-      db:getFirestore(app),auth:getAuth(app),snapshotId,projectId:'cormyr',
+      db:adminDb,auth:adminAuth,snapshotId,projectId:'cormyr',
       enabled:true,
     });
     const result=await service.purchase(bearer.slice(7),{

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { isH3SwallowedErrorBody, normalizeCatastrophicSsrResponse, preventStaleWorkspaceHtml } from "../server";
+import { applyPublicAssetCacheHeaders, isH3SwallowedErrorBody, normalizeCatastrophicSsrResponse, preventStaleWorkspaceHtml } from "../server";
 import { renderErrorPage } from "../lib/error-page";
 
 describe("normalizeCatastrophicSsrResponse", () => {
@@ -115,5 +115,33 @@ describe("Firebase editor HTML is never cached across App Hosting releases", () 
         'Cache-Control':'public, max-age=3600'}});
       expect(preventStaleWorkspaceHtml(new Request(url,{method}),response)).toBe(response);
     }
+  });
+});
+
+describe("Public static asset CDN caching", () => {
+  it("adds long Cache-Control to static media assets without overriding existing headers", () => {
+    const img = applyPublicAssetCacheHeaders(
+      new Request("https://atlas.cormyr.com.br/cormyr/assets/cormyr.jpg"),
+      new Response("img", { status: 200, headers: { "Content-Type": "image/jpeg" } }),
+    );
+    expect(img.headers.get("cache-control")).toContain("public");
+    expect(img.headers.get("cache-control")).toContain("s-maxage=");
+
+    const versionedJs = applyPublicAssetCacheHeaders(
+      new Request("https://atlas.cormyr.com.br/cormyr/data.js?v=20261120c"),
+      new Response("js", { status: 200, headers: { "Content-Type": "text/javascript" } }),
+    );
+    expect(versionedJs.headers.get("cache-control")).toContain("s-maxage=86400");
+  });
+
+  it("never caches APIs, authenticated pages, errors, or Set-Cookie responses", () => {
+    const api = new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+    expect(applyPublicAssetCacheHeaders(new Request("https://atlas.cormyr.com.br/api/public/time"), api)).toBe(api);
+
+    const withCookie = new Response("ok", { status: 200, headers: { "Set-Cookie": "a=1" } });
+    expect(applyPublicAssetCacheHeaders(new Request("https://atlas.cormyr.com.br/cormyr/index.html"), withCookie)).toBe(withCookie);
+
+    const existing = new Response("ok", { status: 200, headers: { "Cache-Control": "private, no-store" } });
+    expect(applyPublicAssetCacheHeaders(new Request("https://atlas.cormyr.com.br/cormyr/assets/cormyr.jpg"), existing)).toBe(existing);
   });
 });

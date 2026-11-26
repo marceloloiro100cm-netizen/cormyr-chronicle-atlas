@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {readApprovedFirebasePrivateGmContent,PrivateGmCloudError}
   from '@/lib/private-gm/firebase-private-gm-cloud.server';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -28,17 +29,9 @@ export async function getFirebasePrivateGmContent(request:Request):Promise<Respo
   const bearer=request.headers.get('authorization')??'';
   if(!/^Bearer [^\s]{10,10000}$/.test(bearer))return fail(401);
   try{
-    const [{applicationDefault,getApps,initializeApp},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-private-gm-content';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      credential:applicationDefault(),projectId:'cormyr',
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const data=await readApprovedFirebasePrivateGmContent({
-      auth:getAuth(app),db:getFirestore(app),snapshotId:id,projectId:'cormyr',
+      auth:adminAuth,db:adminDb,snapshotId:id,projectId:'cormyr',
       enabled:true,
     },bearer.slice(7));
     return Response.json(data,{status:200,headers:HEADERS});

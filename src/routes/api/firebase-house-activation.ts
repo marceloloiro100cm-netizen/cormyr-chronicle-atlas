@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseHouseActivation,HouseActivationError} from '@/lib/house/firebase-house-activation';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 const headers={'Cache-Control':'private, no-store, max-age=0','X-Content-Type-Options':'nosniff','Vary':'Authorization'};
@@ -28,11 +29,8 @@ async function handle(request:Request){
     let input:unknown;
     try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}
     catch{return fail(400,'invalid_json');}
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([
-      import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore')]);
-    const name='cormyr-house-activation';
-    const app=getApps().find(a=>a.name===name)??initializeApp({projectId:'cormyr',credential:applicationDefault()},name);
-    const service=createFirebaseHouseActivation({db:getFirestore(app),auth:getAuth(app),snapshotId,enabled:true});
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
+    const service=createFirebaseHouseActivation({db:adminDb,auth:adminAuth,snapshotId,enabled:true});
     const action=input&&typeof input==='object'&&!Array.isArray(input)
       ?(input as Record<string,unknown>)['action']:null;
     if((action==='activateAll'||action==='list')&&

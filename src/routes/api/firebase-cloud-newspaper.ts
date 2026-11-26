@@ -1,7 +1,9 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseCloudNewspaper,CloudNewspaperError}
   from '../../../scripts/firebase/cloud-newspaper-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
+import {clearPublicCache} from '@/lib/server/public-cache.server';
 
 /** Strictly gated Cloud-only publication, never writes migration snapshots. */
 const headers={
@@ -57,18 +59,9 @@ async function handle(request:Request):Promise<Response>{
     if(!['status','publish','listEditorial','getEditorial','saveEdition',
       'getReceipts','markRead','markUnread','listHistoricalDrafts','saveHistoricalDraft','publishHistoricalDraft','listRevisions'].includes(String(payload['action'])))
       return fail(400,'invalid_action');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-cloud-newspaper';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const paper=createFirebaseCloudNewspaper({
-      db:getFirestore(app),auth:getAuth(app),snapshotId,projectId:'cormyr',
+      db:adminDb,auth:adminAuth,snapshotId,projectId:'cormyr',
       enabled:true,
     });
     const idToken=token.slice(7);
@@ -90,6 +83,8 @@ async function handle(request:Request):Promise<Response>{
         :null
       :await paper.publish(idToken,payload);
     if(result===null)return fail(400,'invalid_request');
+    if(['publish','publishHistoricalDraft','saveEdition','saveHistoricalDraft'].includes(String(payload['action'])))
+      clearPublicCache('public-newspaper:');
     return Response.json({result},{status:200,headers});
   }catch(e){
     if(e instanceof CloudNewspaperError)return fail(e.status,e.code);
@@ -100,4 +95,3 @@ async function handle(request:Request):Promise<Response>{
 export const Route=createFileRoute('/api/firebase-cloud-newspaper')({
   server:{handlers:{POST:async({request})=>handle(request)}},
 });
-

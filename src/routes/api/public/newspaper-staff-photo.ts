@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {PublicStaffPhotoError,readPublicStaffPhoto}
  from '@/lib/newspaper/firebase-public-staff-photo.server';
 
@@ -17,15 +18,9 @@ export async function getPublicStaffPhoto(request:Request):Promise<Response>{
     process.env['FIREBASE_AUTH_EMULATOR_HOST']||
     process.env['FIREBASE_STORAGE_EMULATOR_HOST'])return unavailable(503);
  try{
-  const [{initializeApp,getApps,applicationDefault},{getFirestore},{getStorage}]=await Promise.all([
-   import('firebase-admin/app'),import('firebase-admin/firestore'),import('firebase-admin/storage'),
-  ]);
-  const name='cormyr-public-newspaper-staff-photo';
-  const app=getApps().find(item=>item.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {db:adminDb,storage:adminStorage}=await getFirebaseAdminServices();
   const image=await readPublicStaffPhoto({
-   db:getFirestore(app),bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
+   db:adminDb,bucket:adminStorage.bucket('cormyr.firebasestorage.app'),
    snapshotId,staffId,
   });
   return new Response(new Uint8Array(image.data),{status:200,headers:{
