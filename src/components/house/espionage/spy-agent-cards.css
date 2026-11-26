@@ -1,7 +1,7 @@
 /* Fichas de agentes: identidade das cartas militares, com atributos e
    equipamentos próprios da espionagem. Sem tabela nem rolagem horizontal. */
-.spy-agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));align-items:start;gap:16px;min-width:0}
-.spy-agent-card{display:flex;flex-direction:column;gap:12px;min-width:0}
+.spy-agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(370px,100%),1fr));align-items:stretch;gap:16px;min-width:0}
+.spy-agent-card{display:flex;flex-direction:column;height:100%;gap:12px;min-width:0}
 .spy-agent-card-heading{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:12px;min-width:0}
 .spy-agent-portrait{display:grid;justify-items:center;align-content:start;gap:4px;width:96px}
 .spy-agent-portrait .spy-agent-portrait-pick{min-height:30px;padding:0 6px;font-size:12px}
@@ -39,7 +39,7 @@
 .spy-agent-equipment>summary{cursor:pointer;font-weight:650;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .spy-agent-equipment>summary small{color:var(--muted-foreground);font-size:11px;font-weight:400}
 .spy-agent-equipment>section{margin-top:12px;min-width:0!important}
-.spy-agent-card-footer{margin-top:auto;display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px;gap:8px}
+.spy-agent-card-footer{margin-top:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;border-top:1px solid var(--border);padding-top:12px;gap:8px}
 @media(max-width:440px){.spy-agent-grid{grid-template-columns:minmax(0,1fr)}.spy-agent-stat-grid strong{font-size:17px}.spy-agent-portrait{width:84px}}
 
 /* P1: informar disponibilidade e fase atual antes do histórico detalhado. */
@@ -58,8 +58,11 @@
  border-color:var(--campaign-gold,#a98b54);font-weight:700}
 .spy-agent-next-step{margin:2px 0;font-size:13px;font-weight:650;line-height:1.45}
 .spy-agent-timeline-details{font-size:12px;color:var(--foreground)}
-.spy-agent-timeline-details summary{cursor:pointer;min-height:40px;
- display:flex;align-items:center;font-weight:600;list-style-position:inside}
+.spy-agent-timeline-details summary{cursor:pointer;min-height:36px;
+ display:flex;align-items:center;gap:6px;font-weight:600;list-style:none}
+.spy-agent-timeline-details summary::-webkit-details-marker{display:none}
+.spy-agent-timeline-details summary::before{content:'▸';display:inline-block;color:var(--campaign-gold,#a98b54);transition:transform .15s ease}
+.spy-agent-timeline-details[open]>summary::before{transform:rotate(90deg)}
 .spy-agent-timeline-details dl{margin-top:5px}
 @media(max-width:640px){
  .spy-agent-grid{gap:12px}
@@ -102,12 +105,12 @@
 .spy-agent-finish-date{margin:0;font-size:12px;
  color:var(--muted-foreground);line-height:1.4}
 .spy-agent-finish-date strong{color:var(--foreground)}
-.spy-agent-timeline-details>summary{min-height:44px}
+.spy-agent-timeline-details>summary{min-height:38px}
 .spy-agent-timeline-details>summary:focus-visible,
 .spy-agent-equipment>summary:focus-visible{
  outline:2px solid var(--primary);outline-offset:2px;border-radius:4px
 }
-.spy-agent-card-footer button,.spy-agent-rename{min-height:48px}
+.spy-agent-card-footer button,.spy-agent-rename{min-height:40px}
 @media(max-width:440px){
  .spy-mission-stages{grid-template-columns:repeat(2,minmax(0,1fr))}
  .spy-mission-stages li{font-size:12px;min-height:44px;

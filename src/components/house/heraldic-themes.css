@@ -192,20 +192,29 @@
   box-shadow: inset 0 1px #ffffff0c;
 }
 .house-hub[data-heraldry] .house-sidebar nav {gap: 5px}
-.house-hub[data-heraldry] .house-sidebar button {
+.house-hub[data-heraldry] .house-sidebar :is(button, a) {
+  justify-content: flex-start;
+  text-align: left;
+  text-decoration: none;
   color: #f5ecdf;
   border: 1px solid transparent;
   border-radius: 9px;
-  font-size: 12px;
-  padding: 11px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 12px;
+  min-height: 40px;
+  height: auto;
+  width: 100%;
+  background: transparent;
 }
-.house-hub[data-heraldry] .house-sidebar button[aria-current="page"] {
+.house-hub[data-heraldry] .house-sidebar :is(button, a)[aria-current="page"] {
   background: linear-gradient(110deg, var(--house-main), #272021);
   border-color: var(--house-metal);
   color: var(--house-lustre);
+  font-weight: 600;
   box-shadow: inset 3px 0 var(--house-lustre);
 }
-.house-hub[data-heraldry] .house-sidebar button:not([aria-current="page"]):hover {background: #ffffff12}
+.house-hub[data-heraldry] .house-sidebar :is(button, a):not([aria-current="page"]):hover {background: #ffffff12; color: #fff6e6}
 .house-hub[data-heraldry] .house-content {
   min-width: 0;
   border: 1px solid color-mix(in srgb, var(--house-metal) 42%, #332a29);
@@ -312,7 +321,7 @@
    Keep the source image readable: use updated, properly cropped assets when available. */
 .house-hub[data-heraldry] .house-resource-bar { max-width:100%; min-width:0; overscroll-behavior-x:contain }
 .house-hub[data-heraldry] .house-resource summary {min-height:24px; line-height:1.4}
-.house-hub[data-heraldry] .house-sidebar button {min-width:0; overflow-wrap:anywhere; line-height:1.4}
+.house-hub[data-heraldry] .house-sidebar :is(button, a) {min-width:0; overflow-wrap:anywhere; line-height:1.4}
 .house-hub[data-heraldry] .house-content {overflow-wrap:anywhere}
 .house-hub[data-heraldry] .house-header-actions {flex-wrap:wrap}
 @media(max-width:420px) {
