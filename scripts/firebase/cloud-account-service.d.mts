@@ -3,6 +3,9 @@ export type AccountService = {
  list(token:string):Promise<Record<string,unknown>>;
  status(token:string):Promise<Record<string,unknown>>;
  completePassword(token:string,input:Record<string,unknown>):Promise<Record<string,unknown>>;
+ googleStatus(token:string):Promise<{linked:boolean;googleEmail:string|null;hasPassword:boolean}>;
+ prepareGoogleLink(token:string):Promise<{customToken:string}>;
+ unlinkGoogle(token:string):Promise<{linked:boolean;googleEmail:string|null;hasPassword:boolean}>;
 };
 export function createFirebaseAccountService(config:{
  db:any;auth:any;snapshotId:string;enabled:boolean;projectId:string;

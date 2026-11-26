@@ -337,5 +337,53 @@ export function createFirebaseAccountService({
   }catch{deny('password_updated_access_pending',503);}
  }
 
- return {submit,list,status,completePassword};
+ async function googleStatus(token){
+  const uid=await actor(token);
+  const v=await currentAccountAccess(db,snapshotId,uid);
+  if(!v||v.userId!==uid||v.active!==true||v.requirePasswordChange!==false)
+    deny('access_denied',403);
+  let user;
+  try{user=await auth.getUser(uid);}catch{deny('account_lookup_unavailable',503);}
+  const providers=Array.isArray(user?.providerData)?user.providerData:[];
+  const google=providers.find(p=>p?.providerId==='google.com')??null;
+  const hasPassword=providers.some(p=>p?.providerId==='password');
+  return {
+    linked:Boolean(google),
+    googleEmail:typeof google?.email==='string'?google.email:null,
+    hasPassword,
+  };
+ }
+ async function prepareGoogleLink(token){
+  const uid=await actor(token);
+  await gate();
+  const v=await currentAccountAccess(db,snapshotId,uid);
+  if(!v||v.userId!==uid||v.active!==true||v.requirePasswordChange!==false)
+    deny('access_denied',403);
+  if(typeof auth.createCustomToken!=='function')
+    deny('google_link_unavailable',503);
+  try{
+    const customToken=await auth.createCustomToken(uid);
+    return {customToken};
+  }catch{deny('google_link_unavailable',503);}
+ }
+ async function unlinkGoogle(token){
+  const uid=await actor(token);
+  await gate();
+  const v=await currentAccountAccess(db,snapshotId,uid);
+  if(!v||v.userId!==uid||v.active!==true||v.requirePasswordChange!==false)
+    deny('access_denied',403);
+  let user;
+  try{user=await auth.getUser(uid);}catch{deny('account_lookup_unavailable',503);}
+  const providers=Array.isArray(user?.providerData)?user.providerData:[];
+  const hasPassword=providers.some(p=>p?.providerId==='password');
+  if(!hasPassword)deny('password_required_to_unlink',409);
+  if(!providers.some(p=>p?.providerId==='google.com'))
+    return {linked:false,googleEmail:null,hasPassword:true};
+  try{
+    await auth.updateUser(uid,{providersToUnlink:['google.com']});
+    return {linked:false,googleEmail:null,hasPassword:true};
+  }catch{deny('google_unlink_failed',503);}
+ }
+
+ return {submit,list,status,completePassword,googleStatus,prepareGoogleLink,unlinkGoogle};
 }

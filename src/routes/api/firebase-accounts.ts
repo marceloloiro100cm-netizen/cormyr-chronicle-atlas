@@ -8,7 +8,7 @@ import {firebaseAccountActionEnabled,type FirebaseAccountAction}
 const headers={'Cache-Control':'private, no-store, max-age=0',
   'Vary':'Authorization','X-Content-Type-Options':'nosniff'};
 const fail=(status:number,code:string)=>Response.json({error:code},{status,headers});
-const ACTIONS=new Set(['status','list','submit','completePassword']);
+const ACTIONS=new Set(['status','list','submit','completePassword','googleStatus','prepareGoogleLink','unlinkGoogle']);
 async function handle(request:Request):Promise<Response>{
  const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
  if((process.env['CORMYR_FIREBASE_ACCOUNTS_ENABLED']!=='true'&&
@@ -49,7 +49,7 @@ async function handle(request:Request):Promise<Response>{
     return fail(400,'invalid_action');
   if(!firebaseAccountActionEnabled(action as FirebaseAccountAction,process.env))
     return fail(503,'account_write_disabled');
-  if(action==='list'||action==='status'){
+  if(action==='list'||action==='status'||action==='googleStatus'||action==='prepareGoogleLink'||action==='unlinkGoogle'){
     if(Object.keys(input).length!==1)return fail(400,'invalid_request');
   }else if(action==='completePassword'){
     if(Object.keys(input).some(k=>!['action','password','requestKey','expectedVersion'].includes(k)))
@@ -68,6 +68,9 @@ async function handle(request:Request):Promise<Response>{
   const result=action==='status'?await service.status(token):
     action==='list'?{...(await service.list(token)),
       readOnly:process.env['CORMYR_FIREBASE_ACCOUNTS_ENABLED']!=='true'}:
+    action==='googleStatus'?await service.googleStatus(token):
+    action==='prepareGoogleLink'?await service.prepareGoogleLink(token):
+    action==='unlinkGoogle'?await service.unlinkGoogle(token):
     action==='completePassword'?await service.completePassword(token,input):
     await service.submit(token,input);
   return Response.json({result},{headers});

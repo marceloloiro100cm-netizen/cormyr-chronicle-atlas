@@ -39,6 +39,12 @@ export function memoryStorage(): TokenStorage {
 export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthTokenProvider & {
   signInWithPassword(email: string, password: string): Promise<FirebaseSession>;
   signInWithGoogleIdToken(googleIdToken: string, requestUri: string): Promise<FirebaseSession>;
+  acceptExternalSession(input: {
+    uid: string;
+    idToken: string;
+    refreshToken: string;
+    expiresIn?: number | string;
+  }): FirebaseSession;
   requestPasswordReset(email: string): Promise<void>;
   confirmPasswordReset(oobCode: string, newPassword: string): Promise<void>;
   signOut(): void;
@@ -135,8 +141,10 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
     async signInWithGoogleIdToken(googleIdToken, requestUri) {
       // Exchange a Google Identity Services credential for a Firebase session.
       // The Google ID token itself never becomes an Atlas bearer token.
-      if (!/^[A-Za-z0-9_-]+([.][A-Za-z0-9_-]+){2}$/.test(googleIdToken) ||
-          !/^https:\/\/[^/?#]+\/auth$/.test(requestUri))
+      const validUri =
+        /^https:\/\/[^/?#]+\/auth$/.test(requestUri) ||
+        /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?\/auth$/.test(requestUri);
+      if (!/^[A-Za-z0-9_-]+([.][A-Za-z0-9_-]+){2}$/.test(googleIdToken) || !validUri)
         throw new FirebaseAuthError('INVALID_GOOGLE_CREDENTIAL');
       const version = ++sessionVersion;
       inflight = null;
@@ -150,6 +158,14 @@ export function createFirebaseRestAuth(opts: FirebaseRestAuthOptions): AuthToken
       if (b.needConfirmation === true)
         throw new FirebaseAuthError('ACCOUNT_LINK_REQUIRED');
       return accept(b.localId, b.idToken, b.refreshToken, b.expiresIn, version);
+    },
+    acceptExternalSession(input) {
+      // Adopt a verified Firebase Auth session returned by Firebase Auth Web SDK
+      // (e.g. signInWithPopup with GoogleAuthProvider) into the shared tab/storage
+      // session. Protected APIs still verify signature, revocation and House scope.
+      const version = ++sessionVersion;
+      inflight = null;
+      return accept(input.uid, input.idToken, input.refreshToken, input.expiresIn ?? 3600, version);
     },
     async requestPasswordReset(email) {
       if (typeof email !== 'string' || email.length > 254 ||

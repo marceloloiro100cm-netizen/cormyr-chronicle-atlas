@@ -202,7 +202,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'-',
+  'src/components/players/players-workspace.tsx':'373159bcc1325b724c7cac1ee3827d2ee6cb0cec',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'ab0553588660e4165e21aa9d8b6e7ec1e2b30cc2',

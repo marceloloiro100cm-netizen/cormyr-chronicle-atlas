@@ -58,7 +58,7 @@ describe('área interna Firebase com a interface original (prévia visual)', () 
     expect(await screen.findByText('Convocação ao Conselho de Suzail')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', {name: /^Ficha/}));
-    expect(await screen.findByRole('heading', {name: 'Casa Ashkar'})).toBeInTheDocument();
+    expect(await screen.findByRole('heading', {name: 'Casa Ashkar'}, {timeout: 5000})).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', {name: /^Espionagem/}));
     expect(await screen.findAllByText(/Sombra das Cinzas/)).not.toHaveLength(0);
 

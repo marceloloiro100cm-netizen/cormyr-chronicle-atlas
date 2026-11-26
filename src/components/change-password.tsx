@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
 import { completePasswordChange } from '@/lib/player-admin.functions';
+import { firebaseWorkspaceClient } from '@/lib/firebase-workspace/state';
+import { GoogleAccountLinkSection } from '@/components/firebase/GoogleAccountLinkSection';
 
 function PasswordForm() {
   const change=useServerFn(completePasswordChange);
@@ -23,5 +25,13 @@ export function ChangePassword() {
   return <details className="campaign-add"><summary>Alterar minha senha</summary><PasswordForm/></details>;
 }
 export function ChangePasswordButton() {
-  return <Dialog><DialogTrigger asChild><Button variant="outline"><KeyRound size={16}/>Alterar senha</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Alterar minha senha</DialogTitle></DialogHeader><PasswordForm/></DialogContent></Dialog>;
+  const isFirebase=firebaseWorkspaceClient()!==null;
+  return <Dialog>
+    <DialogTrigger asChild><Button variant="outline"><KeyRound size={16}/>{isFirebase?'Senha e Google':'Alterar senha'}</Button></DialogTrigger>
+    <DialogContent>
+      <DialogHeader><DialogTitle>{isFirebase?'Minha conta · Senha e Google':'Alterar minha senha'}</DialogTitle></DialogHeader>
+      <PasswordForm/>
+      {isFirebase&&<GoogleAccountLinkSection/>}
+    </DialogContent>
+  </Dialog>;
 }
