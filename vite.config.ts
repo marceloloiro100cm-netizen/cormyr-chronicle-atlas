@@ -22,7 +22,36 @@ export default defineConfig({
     // firebase-admin não funciona empacotado pelo Rolldown (erro
     // "reading 'SDK_VERSION'" em produção): é rastreado e copiado para
     // dist/server/node_modules, carregado em runtime como pacote Node.
-    nitro({ output: { dir: "dist" }, traceDeps: ["firebase-admin"] }),
+    nitro({
+      output: { dir: "dist" },
+      traceDeps: ["firebase-admin"],
+      routeRules: {
+        "/cormyr/assets/**": {
+          headers: {
+            "cache-control":
+              "public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400",
+          },
+        },
+        "/cormyr/casas/**": {
+          headers: {
+            "cache-control":
+              "public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400",
+          },
+        },
+        "/cormyr/index.html": {
+          headers: {
+            "cache-control":
+              "public, max-age=300, s-maxage=600, stale-while-revalidate=300",
+          },
+        },
+        "/cormyr/**": {
+          headers: {
+            "cache-control":
+              "public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600",
+          },
+        },
+      },
+    }),
   ],
   resolve: {
     dedupe: [
