@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebasePrivateMedia}
  from '@/lib/firebase-workspace/private-media-service';
 import {PrivateMediaError} from '@/lib/firebase-workspace/private-media-core';
@@ -47,22 +48,14 @@ export async function handleFirebasePrivateMedia(request:Request):Promise<Respon
   if(!data||typeof data!=='object'||Array.isArray(data)||
      !('action' in data)||!['upload','sign','download'].includes(String(data.action)))
    return error(400,'invalid_request');
-  const [{initializeApp,getApps,applicationDefault},{getAuth},
-   {getFirestore},{getStorage}]=await Promise.all([
-    import('firebase-admin/app'),import('firebase-admin/auth'),
-    import('firebase-admin/firestore'),import('firebase-admin/storage'),
-   ]);
-  const name='cormyr-private-media';
-  const app=getApps().find(a=>a.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {auth:adminAuth,db:adminDb,storage:adminStorage}=await getFirebaseAdminServices();
   const media=createFirebasePrivateMedia({
-   db:getFirestore(app),auth:getAuth(app),
-   bucket:getStorage(app).bucket(
+   db:adminDb,auth:adminAuth,
+   bucket:adminStorage.bucket(
     process.env['CORMYR_FIREBASE_PRIVATE_MEDIA_BUCKET']||
       'cormyr.firebasestorage.app'),
    // Fixed private checksum comparison, never a user-controlled bucket.
-   verifiedBucket:getStorage(app).bucket('cormyr-migration-homolog-477785088395'),
+   verifiedBucket:adminStorage.bucket('cormyr-migration-homolog-477785088395'),
    snapshotId,
   });
   const token=authHeader.slice(7);

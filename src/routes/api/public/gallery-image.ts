@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {publicContentFirestore} from '@/lib/public/firebase-public-content-admin.server';
 import {
   PublicGalleryError,readApprovedPublicGalleryImage,validPublicGalleryPath,
@@ -40,17 +41,10 @@ export async function getFirebasePublicGalleryImage(request:Request):Promise<Res
     return fail(503);
 
   try{
-    const [{applicationDefault,getApps,initializeApp},{getStorage}]=
-      await Promise.all([
-        import('firebase-admin/app'),import('firebase-admin/storage'),
-      ]);
-    const name='cormyr-public-gallery';
-    const app=getApps().find(item=>item.name===name)??initializeApp({
-      credential:applicationDefault(),projectId:'cormyr',
-    },name);
+    const {storage:adminStorage}=await getFirebaseAdminServices();
     const result=await readApprovedPublicGalleryImage({
       db:await publicContentFirestore(),
-      bucket:getStorage(app).bucket(bucketName) as unknown as PublicGalleryBucket,
+      bucket:adminStorage.bucket(bucketName) as unknown as PublicGalleryBucket,
       enabled:true,projectId:'cormyr',snapshotId,bucketName,
     },path);
     const headers:Record<string,string>={

@@ -1,5 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createFirebaseCloudReadonly,CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {loadWorkspaceMailPage,loadWorkspaceMailOptions,
   loadWorkspaceMailContext} from '@/lib/mail/firebase-workspace-mail';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -77,18 +78,10 @@ async function handle(request:Request):Promise<Response>{
     ].includes(String(payload.action)))
       return error(400,'invalid_action');
     // Firebase Admin uses the App Hosting service account, not a JSON key in source.
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([
-      import('firebase-admin/app'),
-      import('firebase-admin/auth'),
-      import('firebase-admin/firestore'),
-    ]);
-    const name='cormyr-cloud-reads';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth,db}=await getFirebaseAdminServices();
     const service=createFirebaseCloudReadonly({
-      auth:getAuth(app),db:getFirestore(app),snapshotId,projectId:'cormyr',
-      enabled:true,
+      auth,db,snapshotId,projectId:'cormyr',
+      enabled:true,cacheImmutableStages:true,
     });
     const token=bearer.slice(7);
     let result:unknown;
@@ -114,16 +107,16 @@ async function handle(request:Request):Promise<Response>{
       case 'listOriginalRecordVersions':
         result=await service.listOriginalRecordVersions(token,payload.recordId);break;
       case 'listOriginalMail':
-        result=await loadWorkspaceMailPage(getFirestore(app),snapshotId,
+        result=await loadWorkspaceMailPage(db,snapshotId,
           await service.workspaceMailReadScope(token),
           {filters:payload.filters,page:payload.page,size:payload.size});
         break;
       case 'listOriginalMailOptions':
-        result=await loadWorkspaceMailOptions(getFirestore(app),snapshotId,
+        result=await loadWorkspaceMailOptions(db,snapshotId,
           await service.workspaceMailReadScope(token));
         break;
       case 'listOriginalMailContext':
-        result=await loadWorkspaceMailContext(getFirestore(app),snapshotId,
+        result=await loadWorkspaceMailContext(db,snapshotId,
           await service.workspaceMailReadScope(token));
         break;
       case 'listNewspaper':result=await service.listNewspaper(token);break;

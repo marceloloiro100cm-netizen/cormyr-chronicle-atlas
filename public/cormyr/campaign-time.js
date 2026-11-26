@@ -15,7 +15,11 @@
   current.textContent=data.period;
   current.dataset.version=String(data.version);
  }
- async function sync(){
+ let lastSyncAt=0;
+ async function sync(force){
+  const now=Date.now();
+  if(!force&&now-lastSyncAt<30000)return;
+  lastSyncAt=now;
   try{
    const response=await fetch('/api/public/time',{method:'GET',credentials:'omit',cache:'no-store',headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Data indisponível');
@@ -28,9 +32,9 @@
    lastVersion=-1;
   }
  }
- void sync();
- const interval=setInterval(()=>{if(!document.hidden)void sync();},30000);
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)void sync();});
- window.addEventListener('focus',()=>{if(!document.hidden)void sync();});
+ void sync(true);
+ const interval=setInterval(()=>{if(!document.hidden)void sync(false);},300000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void sync(false);});
+ window.addEventListener('focus',()=>{if(!document.hidden)void sync(false);});
  window.addEventListener('pagehide',()=>clearInterval(interval),{once:true});
 })();

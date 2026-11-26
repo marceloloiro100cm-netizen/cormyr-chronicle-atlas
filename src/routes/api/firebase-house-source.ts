@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseCloudReadonly,CloudAccessError}
   from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {loadImportedHouseSheets,HouseSourceError}
@@ -46,14 +47,9 @@ async function handle(request:Request):Promise<Response>{
     return err(401,'authentication_required');
   try{
     const input=await inputOf(request);
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([
-      import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore'),
-    ]);
-    const app=getApps().find(a=>a.name==='cormyr-house-archive')??
-      initializeApp({projectId:'cormyr',credential:applicationDefault()},'cormyr-house-archive');
-    const db=getFirestore(app);
+    const {auth:adminAuth,db}=await getFirebaseAdminServices();
     const service=createFirebaseCloudReadonly({
-      auth:getAuth(app),db,snapshotId:id,projectId:'cormyr',enabled:true,
+      auth:adminAuth,db,snapshotId:id,projectId:'cormyr',enabled:true,cacheImmutableStages:true,
     });
     const scope=await service.workspaceMailScope(bearer.slice(7));
     const result=await loadImportedHouseSheets(db,id,scope,input.houseId);

@@ -1,4 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
+import {cachedPublicRead} from '@/lib/server/public-cache.server';
 import {listPublicNewspapers,getPublicNewspaper,recordPublicNewspaperRead,publicStaff,
   PublicNewspaperError} from '@/lib/newspaper/firebase-public-newspaper.server';
 import {readNewspaperStaffOverlay} from '@/lib/newspaper/firebase-newspaper-staff.server';
@@ -15,17 +17,15 @@ const HEADERS={
   'Cache-Control':'no-store, max-age=0',
   'X-Content-Type-Options':'nosniff',
 };
+const PUBLIC_GET_HEADERS={
+  'Cache-Control':'public, max-age=15, s-maxage=30, stale-while-revalidate=60',
+  'X-Content-Type-Options':'nosniff',
+};
 const fail=(status:number,code:string)=>Response.json({error:code},{status,headers:HEADERS});
 
 async function firestore(){
-  const [{initializeApp,getApps,applicationDefault},{getFirestore}]=await Promise.all([
-    import('firebase-admin/app'),import('firebase-admin/firestore'),
-  ]);
-  const name='cormyr-public-newspaper';
-  const app=getApps().find(item=>item.name===name)??initializeApp({
-    credential:applicationDefault(),projectId:'cormyr',
-  },name);
-  return getFirestore(app);
+  const {db:adminDb}=await getFirebaseAdminServices();
+  return adminDb;
 }
 function config(){
   const snapshotId=process.env['CORMYR_FIREBASE_SNAPSHOT_ID']??'';
@@ -54,22 +54,25 @@ async function handleGet(request:Request):Promise<Response>{
       (url.searchParams.get('arquivo')!=='edicoes'||url.searchParams.has('edicao')))||
      params.length>1)return fail(400,'invalid_request');
   try{
-    const db=await firestore();
     const id=url.searchParams.get('edicao');
-    if(id!==null)return Response.json(await getPublicNewspaper(db,snapshotId,id),{status:200,headers:HEADERS});
-    if(url.searchParams.get('arquivo')==='edicoes')
-      return Response.json(await listPublicNewspapers(db,snapshotId,{releaseDue:false}),{status:200,headers:HEADERS});
-    const [list,overlay]=await Promise.all([
-      listPublicNewspapers(db,snapshotId),
-      readNewspaperStaffOverlay(db,snapshotId).catch(()=>null),
-    ]);
-    let staffRows=overlay;
-    if(!staffRows){
-      const {readWorkspaceTable}=await import('../../../../scripts/firebase/workspace-import.mjs');
-      staffRows=await readWorkspaceTable(db,snapshotId,'campaign_newspaper_staff').catch(()=>[]) as Record<string,unknown>[];
-    }
-    return Response.json({...list,staff:publicStaff(staffRows as Record<string,unknown>[])},
-      {status:200,headers:HEADERS});
+    const cacheKey='public-newspaper:'+snapshotId+'|'+(id!==null?'e:'+id:url.searchParams.get('arquivo')==='edicoes'?'a':'list');
+    const body=await cachedPublicRead(cacheKey,15_000,async()=>{
+      const db=await firestore();
+      if(id!==null)return getPublicNewspaper(db,snapshotId,id);
+      if(url.searchParams.get('arquivo')==='edicoes')
+        return listPublicNewspapers(db,snapshotId,{releaseDue:false});
+      const [list,overlay]=await Promise.all([
+        listPublicNewspapers(db,snapshotId),
+        readNewspaperStaffOverlay(db,snapshotId).catch(()=>null),
+      ]);
+      let staffRows=overlay;
+      if(!staffRows){
+        const {cachedWorkspaceTable}=await import('@/lib/firebase-workspace/service');
+        staffRows=await cachedWorkspaceTable(db,snapshotId,'campaign_newspaper_staff').catch(()=>[]) as Record<string,unknown>[];
+      }
+      return {...list,staff:publicStaff(staffRows as Record<string,unknown>[])};
+    });
+    return Response.json(body,{status:200,headers:PUBLIC_GET_HEADERS});
   }catch(error){return failure(error);}
 }
 

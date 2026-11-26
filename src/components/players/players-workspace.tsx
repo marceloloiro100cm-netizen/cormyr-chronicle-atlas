@@ -1,22 +1,18 @@
 import { useNavigate } from '@tanstack/react-router';
-import {CampaignCalendar} from '@/components/calendar/calendar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {useServerFn} from '@/lib/visual-preview/server-fn';
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { PlayerRepresentation } from '@/components/player-representation';
 import { ChangePassword, ChangePasswordButton } from '@/components/change-password';
 import { NpcHub, CollapsibleText } from '@/components/npc-hub';
-import { NarratorCalendar } from '@/components/calendar/narrator-calendar';
-import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
-import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar';
 import {useWeekFestivals,WeekFestivalBanner} from '@/components/calendar/hub-temporal/week-festivals';
 import { CampaignShell } from '@/components/campaign-shell';
+import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
+import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar';
 import { Button } from '@/components/ui/button';
 import { CampaignContent } from '@/components/campaign-content';
 import { narrativeText } from '@/lib/campaign-content';
 import { isFichaCasa, isFichaPersonagem } from '@/lib/ficha';
-import { GmEventos, GmAventuras } from '@/components/gm-panels';
 import { syncPlayerFolder } from '@/lib/player-sync.functions';
 import { unreadReceivedCount, type LetterRow } from '@/lib/letters';
 import {clearRepresentationQueryCache} from '@/lib/auth/session-boundary';
@@ -24,15 +20,10 @@ import {CAMPAIGN_ACCESS_SCOPE_KEY,CAMPAIGN_ACCESS_SCOPE_POLL_MS,loadCampaignAcce
 import {NARRATOR_ACCESS_REVOKED_KEY,canReleaseNarratorLock,watchNarratorPrivateReadRevocations,type NarratorRevocationMarker} from '@/lib/auth/narrator-revocation';
 import { loadPanel,loadFirebasePanelMail } from '@/components/players/panel-data';
 import { RecordList, RecordEditor, RecordForm } from '@/components/players/records';
-import { FichaTab } from '@/components/players/ficha-tab';
-import {GalleryTab} from '@/components/players/gallery-tab';
-import { AdminPanel } from '@/components/players/admin-panel';
 import { MissivasTab } from '@/components/players/missivas-tab';
 import {EditorMailReader} from '@/components/players/editor-mail-reader';
 import {MissivasArea} from '@/components/players/chancelaria/MissivasArea';
 import {CouncilOpening} from '@/components/firebase/CouncilOpening';
-import {FirebaseCouncilAccessReview} from '@/components/firebase/FirebaseCouncilAccessReview';
-import {FirebaseRuntimeApprovals} from '@/components/firebase/FirebaseRuntimeApprovals';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
 import { HouseIdentity } from '@/components/players/house-identity';
@@ -41,11 +32,24 @@ import {heraldicHouseKey,type HeraldicHouse} from '@/lib/house/heraldry';
 import { NarratorMissivasHub, NARRATOR_MENU } from '@/components/players/narrator-missives-hub';
 import {NarratorWorkspace,RepresentationOptions} from '@/components/players/narrator/NarratorWorkspace';
 import {NarratorCouncil} from '@/components/players/narrator/NarratorCouncil';
-import {SpyNarratorDossiers} from '@/components/house/espionage/spy-dossier-panel';
 import {BATTLE_MODULE_ENABLED as BATTLE_MODULE_BUILD_ENABLED,BATTLE_PLAYERS_ENABLED} from '@/lib/battle/feature-flag';
-import {BattleNarratorHub} from '@/components/battle/BattleNarratorHub';
-import {BattleV3PlayerEntry} from '@/components/battle/BattleV3PlayerEntry';
 import {NESTED_URL_PARAMS,hrefWithParams,isPlainLeftClick,readUrlParam,setUrlParams,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
+
+// Módulos pesados carregados sob demanda por aba/seção para acelerar a abertura do Conselho.
+const FichaTab=lazy(()=>import('@/components/players/ficha-tab').then(m=>({default:m.FichaTab})));
+const GalleryTab=lazy(()=>import('@/components/players/gallery-tab').then(m=>({default:m.GalleryTab})));
+const AdminPanel=lazy(()=>import('@/components/players/admin-panel').then(m=>({default:m.AdminPanel})));
+const CampaignCalendar=lazy(()=>import('@/components/calendar/calendar').then(m=>({default:m.CampaignCalendar})));
+const NarratorCalendar=lazy(()=>import('@/components/calendar/narrator-calendar').then(m=>({default:m.NarratorCalendar})));
+const PlayerRepresentation=lazy(()=>import('@/components/player-representation').then(m=>({default:m.PlayerRepresentation})));
+const GmEventos=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmEventos})));
+const GmAventuras=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmAventuras})));
+const FirebaseCouncilAccessReview=lazy(()=>import('@/components/firebase/FirebaseCouncilAccessReview').then(m=>({default:m.FirebaseCouncilAccessReview})));
+const FirebaseRuntimeApprovals=lazy(()=>import('@/components/firebase/FirebaseRuntimeApprovals').then(m=>({default:m.FirebaseRuntimeApprovals})));
+const SpyNarratorDossiers=lazy(()=>import('@/components/house/espionage/spy-dossier-panel').then(m=>({default:m.SpyNarratorDossiers})));
+const BattleNarratorHub=lazy(()=>import('@/components/battle/BattleNarratorHub').then(m=>({default:m.BattleNarratorHub})));
+const BattleV3PlayerEntry=lazy(()=>import('@/components/battle/BattleV3PlayerEntry').then(m=>({default:m.BattleV3PlayerEntry})));
+const tabLoading=<p role="status" className="py-4 text-sm opacity-75">Carregando módulo…</p>;
 
 /**
  * Área interna original da segunda temporada (Conselho dos jogadores, do
@@ -82,6 +86,7 @@ export function PlayersArea({onSignOut,hideBattle=false}:PlayersAreaProps={}){
     queryKey:CAMPAIGN_ACCESS_SCOPE_KEY,
     queryFn:loadCampaignAccessScope,
     refetchInterval:CAMPAIGN_ACCESS_SCOPE_POLL_MS,
+    refetchIntervalInBackground:false,
     refetchOnWindowFocus:'always',
     refetchOnReconnect:'always',
     // Uma oscilação de rede não pode derrubar o Conselho e apagar o que está
@@ -258,6 +263,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       {data.admin&&<select aria-label="Selecionar casa para administração" value={current?.id??''} onChange={e=>{setHouse(e.target.value);sessionStorage.setItem('campaign-selected-house',e.target.value);}}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select>}
     </div>
     <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button asChild key={id} variant={tab===id?'default':'outline'}><a {...tabLink({aba:id??'casa'},()=>setTab(id??'casa'))} aria-current={tab===id?'page':undefined} aria-label={id==='calendario'&&weekFestivals.unseen?'Calendário: festival nesta semana':id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined}>{label}{id==='calendario'&&weekFestivals.unseen&&<span className="campaign-tab-count" aria-hidden="true">✦</span>}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</a></Button>)}</nav>
+    <Suspense fallback={tabLoading}>
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText></>}
     {tab==='galeria'&&current&&<GalleryTab key={current.id} houseId={current.id}
      houseName={current.name} records={data.records.filter(r=>r.house_id===current.id)}/>}
@@ -267,15 +273,16 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     {tab==='jornal'&&!data.admin&&<NewspaperHub userId={data.user.id} editor={false} {...(current?{houseId:current.id}:{})}/>}
     {tab==='missivas'&&!data.admin&&(mailPanel??<MissivasArea data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{sessionStorage.setItem('campaign-selected-house',id);setUrlParams({casa:id,aba:'ficha'},{reset:NESTED_URL_PARAMS});}} classic={<MissivasTab data={data} me={me} onSave={afterSave} onError={setMessage} onManage={id=>{sessionStorage.setItem('campaign-selected-house',id);setUrlParams({casa:id,aba:'ficha'},{reset:NESTED_URL_PARAMS});}}/>}/>)}
     {tab==='batalha'&&!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED&&<BattleV3PlayerEntry houseId={current?.id??''}/>}
+    </Suspense>
     </>;
-  if(data.admin&&representing)return <CampaignShell heraldry={representedTheme}><PlayerRepresentation onHouseTheme={setRepresentedTheme} onReturn={()=>{clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false);void refresh();}}/></CampaignShell>;
+  if(data.admin&&representing)return <CampaignShell heraldry={representedTheme}><Suspense fallback={tabLoading}><PlayerRepresentation onHouseTheme={setRepresentedTheme} onReturn={()=>{clearRepresentationQueryCache(qc);setRepresentedTheme(null);setRepresenting(false);void refresh();}}/></Suspense></CampaignShell>;
   if(data.admin){
     // Visão do Narrador (layout v5): cabeçalho de uma linha, rail de módulos e área do módulo em tela cheia.
     const goSection=(id:string)=>setSection(id);
     const manage=(id:string)=>{sessionStorage.setItem('campaign-selected-house',id);setUrlParams({casa:id,aba:'ficha',secao:null},{reset:NESTED_URL_PARAMS});
       requestAnimationFrame(()=>document.getElementById('nw-house-admin')?.scrollIntoView({behavior:'smooth',block:'start'}));};
     const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
-    const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}>{section==='acessos-firebase'?
+    const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}><Suspense fallback={tabLoading}>{section==='acessos-firebase'?
       // Contas: revisão das contas Firebase pendentes e a administração (antes um botão dentro das fichas).
       <div className="nw-page nw-accounts">
         {firebaseWorkspaceClient()!==null&&<FirebaseRuntimeApprovals/>}
@@ -286,7 +293,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
         onOpenHub={()=>goSection('calendario')} initialHouse={mailHouse||undefined}
         classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>):
       <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<><FirebaseNarratorWeekDraft/><PublicChronicleCalendar/></>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
-        <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>setUrlParams({secao:'missivas',filtroCasa:id},{reset:NESTED_URL_PARAMS})} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</div>:null;
+        <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>setUrlParams({secao:'missivas',filtroCasa:id},{reset:NESTED_URL_PARAMS})} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</Suspense></div>:null;
     return <NarratorWorkspace menu={NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)}
       extra={['acessos-firebase','Contas e administração'] as const}
       section={section} onSection={goSection} sectionHref={id=>hrefWithParams({secao:id==='painel'?null:id},NESTED_URL_PARAMS)} unread={unread} openRound={openRound}

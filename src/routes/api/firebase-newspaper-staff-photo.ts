@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {saveFirebaseStaffPhoto} from '@/lib/newspaper/firebase-newspaper-staff-photo.server';
 import {NewspaperStaffError} from '@/lib/newspaper/firebase-newspaper-staff.server';
 import {CloudAccessError} from '../../../scripts/firebase/cloud-readonly-service.mjs';
@@ -36,18 +37,10 @@ export async function handleFirebaseNewspaperStaffPhoto(request:Request):Promise
   let raw:unknown;
   try{raw=JSON.parse(Buffer.concat(chunks).toString('utf8'));}
   catch{return fail(400,'invalid_json');}
-  const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore},
-   {getStorage}]=await Promise.all([
-    import('firebase-admin/app'),import('firebase-admin/auth'),
-    import('firebase-admin/firestore'),import('firebase-admin/storage'),
-   ]);
-  const name='cormyr-newspaper-staff-photo';
-  const app=getApps().find(a=>a.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {auth:adminAuth,db:adminDb,storage:adminStorage}=await getFirebaseAdminServices();
   const result=await saveFirebaseStaffPhoto({
-   db:getFirestore(app),auth:getAuth(app),
-   bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
+   db:adminDb,auth:adminAuth,
+   bucket:adminStorage.bucket('cormyr.firebasestorage.app'),
    snapshotId,token:bearer.slice(7),raw,
   });
   return Response.json({result},{headers});

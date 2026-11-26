@@ -35,7 +35,7 @@ export async function readApprovedFirebasePublicTime({
      !db||typeof db.collection!=='function')return unavailable();
 
   // Active private runtime provides the explicit public release decision.
-  // A historical imported stage, even status=complete, never self-publishes.
+  // Never touch migrationTimeEngineStage unless runtime approval is active.
   const runtimeRef=db.collection('campaignCloudRuntime').doc(snapshotId);
   const runtime=await runtimeRef.get();
   const controls=runtime.exists?runtime.data():null;

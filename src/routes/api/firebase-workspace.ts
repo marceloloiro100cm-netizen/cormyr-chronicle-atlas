@@ -1,5 +1,6 @@
 import {createFileRoute} from '@tanstack/react-router';
 import {createWorkspaceService,workspaceErrorCategory} from '@/lib/firebase-workspace/service';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 const headers={'Cache-Control':'private, no-store','Vary':'Authorization','X-Content-Type-Options':'nosniff'};
 export async function handleWorkspace(request:Request){
@@ -16,9 +17,8 @@ export async function handleWorkspace(request:Request){
   const chunks:Uint8Array[]=[];let size=0;
   while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>800000){await reader.cancel();return error(413,'body_too_large');}chunks.push(value);}
   let input;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return error(400,'invalid_json');}
-  const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=await Promise.all([import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore')]);
-  const name='cormyr-workspace',app=getApps().find(a=>a.name===name)??initializeApp({projectId:'cormyr',credential:applicationDefault()},name);
-  const result=await createWorkspaceService({db:getFirestore(app),auth:getAuth(app),snapshotId,cacheImportedTables:true}).execute(bearer.slice(7),input);
+  const {db,auth}=await getFirebaseAdminServices();
+  const result=await createWorkspaceService({db,auth,snapshotId,cacheImportedTables:true}).execute(bearer.slice(7),input);
   return Response.json({result},{headers});
  }catch(e){
   const category=workspaceErrorCategory(e);

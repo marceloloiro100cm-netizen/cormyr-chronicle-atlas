@@ -62,4 +62,5 @@ export function createFirebaseCloudReadonly(config:{
   projectId:string;
   enabled?:boolean;
   env?:Record<string,string|undefined>;
+  cacheImmutableStages?:boolean;
 }):FirebaseCloudReadonly;

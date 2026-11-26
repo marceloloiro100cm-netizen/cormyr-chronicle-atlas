@@ -1,7 +1,9 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseNarratorWeekDraft,NarratorWeekDraftError}
   from '../../../scripts/firebase/cloud-narrator-week-draft.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
+import {clearPublicCache} from '@/lib/server/public-cache.server';
 
 /**
  * Protected narrator draft and explicit one-time operational calendar publication.
@@ -87,23 +89,16 @@ async function handle(request:Request):Promise<Response>{
        process.env['CORMYR_FIREBASE_CAMPAIGN_LAUNCH_ENABLED']!=='true'||
        Object.keys(payload).some(key=>!['action','expectedDraftVersion','adoptFirebaseSource'].includes(key))))
       return error(403,'campaign_launch_disabled');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([import('firebase-admin/app'),
-        import('firebase-admin/auth'),import('firebase-admin/firestore')]);
-    const name='cormyr-narrator-week-draft';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db}=await getFirebaseAdminServices();
     const service=createFirebaseNarratorWeekDraft({
-      db:getFirestore(app),auth:getAuth(app),snapshotId,
+      db:db,auth:adminAuth,snapshotId,
       projectId:'cormyr',enabled:true,
     });
     const token=authHeader.slice(7);
-    const db=getFirestore(app);
     // Monthly House effects run right after a month turn (and on retry),
     // with the ORIGINAL engine, once per House, only for the Narrator.
     const monthly=async(calendar:{year:number;month:number;version:number})=>{
-      const uid=(await getAuth(app).verifyIdToken(token,true)).uid;
+      const uid=(await adminAuth.verifyIdToken(token,true)).uid;
       const {processMonthlyHouseEffects}=await import('@/lib/house/firebase-house-monthly');
       return processMonthlyHouseEffects({db,snapshotId,actorUid:uid,calendar});
     };
@@ -115,6 +110,13 @@ async function handle(request:Request):Promise<Response>{
     }
     // Hub Temporal V2.1: dados operacionais, desfazer, temporadas, festivais e ajustes.
     const strip=(o:Record<string,unknown>)=>{const {action:_a,...rest}=o;return rest;};
+    const action=String(payload['action']);
+    const isMutating=!['get','history','hubData'].includes(action);
+    if(isMutating){
+      clearPublicCache('public-time:');
+      clearPublicCache('public-calendar:');
+      clearPublicCache('public-newspaper:');
+    }
     if(payload['action']==='hubData')
       return Response.json({result:await service.hubData(token)},{status:200,headers});
     if(payload['action']==='undo')

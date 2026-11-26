@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseCloudReadonly,CloudAccessError}
   from '../../../scripts/firebase/cloud-readonly-service.mjs';
 import {ConstructionPreviewError,previewHouseConstruction}
@@ -66,19 +67,9 @@ async function handle(request:Request):Promise<Response>{
          'parentId','supportId','replaceId',
        ].includes(k)))
       return failure(400,'invalid_quote_request');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-cloud-house-quote';
-    const app=getApps().find(x=>x.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
-    const db=getFirestore(app);
+    const {auth:adminAuth,db}=await getFirebaseAdminServices();
     const service=createFirebaseCloudReadonly({
-      auth:getAuth(app),db,snapshotId,
+      auth:adminAuth,db,snapshotId,
       projectId:'cormyr',enabled:true,
     });
     const token=bearer.slice(7);

@@ -46,8 +46,10 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
  }).catch(()=>{});
 
  function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'Reino e regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas',jornal:'Jornal',calendario:'Calendário'}[view]||'Cormyr')+' · Atlas Cormyr';
-  // O jornal só carrega quando o leitor abre a seção (a leitura é contada no próprio jornal).
-  if(view==='jornal'){const frame=document.getElementById('newspaper-frame');if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',frame.dataset.src||'/jornal?embed=1');}if(updateHash)writeRoute(true);}
+  // O jornal e o calendário só carregam quando o leitor abre a respectiva seção.
+  if(view==='jornal'){const frame=document.getElementById('newspaper-frame');if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',frame.dataset.src||'/jornal?embed=1');}
+  if(view==='calendario'){const frame=document.getElementById('chronicle-frame');if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',frame.dataset.src||'/cormyr/calendar.html');}
+  if(updateHash)writeRoute(true);}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',event=>{
   // Itens do menu são links: Ctrl/Cmd/Shift/clique do meio abrem nova guia pelo navegador;
   // o clique comum troca a seção aqui mesmo, sem recarregar.

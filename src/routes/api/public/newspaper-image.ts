@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {readPublishedNewspaperImage,NewspaperImageError}
  from '@/lib/newspaper/firebase-published-image.server';
 
@@ -22,16 +23,9 @@ export async function getPublishedImage(request:Request):Promise<Response>{
     process.env['FIREBASE_AUTH_EMULATOR_HOST']||
     process.env['FIREBASE_STORAGE_EMULATOR_HOST'])return fail(503);
  try{
-  const [{initializeApp,getApps,applicationDefault},{getFirestore},{getStorage}]=await Promise.all([
-   import('firebase-admin/app'),import('firebase-admin/firestore'),
-   import('firebase-admin/storage'),
-  ]);
-  const name='cormyr-newspaper-image';
-  const app=getApps().find(a=>a.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {db:adminDb,storage:adminStorage}=await getFirebaseAdminServices();
   const result=await readPublishedNewspaperImage({
-   db:getFirestore(app),bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
+   db:adminDb,bucket:adminStorage.bucket('cormyr.firebasestorage.app'),
    snapshotId,editionId:edition,index:Number(index),
   });
   return new Response(new Uint8Array(result.data),{status:200,headers:{

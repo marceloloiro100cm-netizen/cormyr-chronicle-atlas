@@ -8,6 +8,12 @@ const HEADERS={
   'Cache-Control':'no-store, max-age=0',
   'X-Content-Type-Options':'nosniff',
 };
+const OK_HEADERS={
+  'Cache-Control':'public, max-age=30, s-maxage=60, stale-while-revalidate=120',
+  'X-Content-Type-Options':'nosniff',
+};
+const CATALOG_CACHE_TTL_MS=30_000;
+let cachedCatalog:{snapshotId:string;at:number;value:Promise<unknown>}|null=null;
 
 /** Only a separately approved and reconciled Firebase public projection. */
 async function readPublicCatalog():Promise<Response>{
@@ -19,11 +25,21 @@ async function readPublicCatalog():Promise<Response>{
     return Response.json({error:'Catálogo temporariamente indisponível'},
       {status:503,headers:HEADERS});
   try{
-    const result=await readApprovedFirebasePublicCatalog({
-      db:await publicContentFirestore(),snapshotId,
-      enabled:true,projectId:'cormyr',
-    });
-    return Response.json(result,{status:200,headers:HEADERS});
+    const now=Date.now();
+    if(!cachedCatalog||cachedCatalog.snapshotId!==snapshotId||now-cachedCatalog.at>=CATALOG_CACHE_TTL_MS){
+      const entry={
+        snapshotId,
+        at:now,
+        value:(async()=>readApprovedFirebasePublicCatalog({
+          db:await publicContentFirestore(),snapshotId,
+          enabled:true,projectId:'cormyr',
+        }))(),
+      };
+      cachedCatalog=entry;
+      entry.value.catch(()=>{if(cachedCatalog===entry)cachedCatalog=null;});
+    }
+    const result=await cachedCatalog.value;
+    return Response.json(result,{status:200,headers:OK_HEADERS});
   }catch{
     return Response.json({error:'Catálogo temporariamente indisponível'},
       {status:503,headers:HEADERS});

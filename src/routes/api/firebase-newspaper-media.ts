@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {crossOriginRejected} from '@/lib/server/request-origin';
 
 const headers={'Cache-Control':'private, no-store, max-age=0','Vary':'Authorization',
@@ -86,15 +87,7 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   const action=(payload as {action?:unknown}).action;
   if(!['upload','clone','read'].includes(String(action)))return fail(400,'invalid_action');
   phase='sdk';
-  const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore},{getStorage}]=
-    await Promise.all([
-     import('firebase-admin/app'),import('firebase-admin/auth'),
-     import('firebase-admin/firestore'),import('firebase-admin/storage'),
-    ]);
-  const name='cormyr-newspaper-media';
-  const app=getApps().find(a=>a.name===name)??initializeApp({
-   projectId:'cormyr',credential:applicationDefault(),
-  },name);
+  const {auth:adminAuth,db:adminDb,storage:adminStorage}=await getFirebaseAdminServices();
   phase='service';
   const [mediaModule,accessModule]=await Promise.all([
    import('@/lib/newspaper/firebase-newspaper-media.server'),
@@ -103,8 +96,8 @@ export async function handleFirebaseNewspaperMedia(request:Request):Promise<Resp
   mediaErrorClass=mediaModule.NewspaperMediaError;
   accessErrorClass=accessModule.CloudAccessError;
   const media=mediaModule.createNewspaperMediaService({
-   db:getFirestore(app),auth:getAuth(app),snapshotId,
-   bucket:getStorage(app).bucket('cormyr.firebasestorage.app'),
+   db:adminDb,auth:adminAuth,snapshotId,
+   bucket:adminStorage.bucket('cormyr.firebasestorage.app'),
   });
   const token=bearer.slice(7);
   phase='operation';

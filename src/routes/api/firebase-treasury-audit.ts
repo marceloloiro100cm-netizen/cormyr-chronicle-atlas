@@ -1,4 +1,5 @@
 import {createFileRoute} from '@tanstack/react-router';
+import {getFirebaseAdminServices} from '@/lib/firebase/admin.server';
 import {createFirebaseTreasuryAudit,CloudTreasuryAuditError}
   from '../../../scripts/firebase/cloud-treasury-audit-service.mjs';
 import {crossOriginRejected} from '@/lib/server/request-origin';
@@ -53,18 +54,9 @@ async function handle(request:Request):Promise<Response>{
     if(body['action']!=='history'||Object.keys(body).length!==2||
        !Object.hasOwn(body,'houseId'))
       return fail(400,'invalid_request');
-    const [{initializeApp,getApps,applicationDefault},{getAuth},{getFirestore}]=
-      await Promise.all([
-        import('firebase-admin/app'),
-        import('firebase-admin/auth'),
-        import('firebase-admin/firestore'),
-      ]);
-    const name='cormyr-treasury-audit';
-    const app=getApps().find(a=>a.name===name)??initializeApp({
-      projectId:'cormyr',credential:applicationDefault(),
-    },name);
+    const {auth:adminAuth,db:adminDb}=await getFirebaseAdminServices();
     const service=createFirebaseTreasuryAudit({
-      db:getFirestore(app),auth:getAuth(app),snapshotId,
+      db:adminDb,auth:adminAuth,snapshotId,
       projectId:'cormyr',enabled:true,
     });
     const result=await service.list(header.slice(7),body['houseId']);

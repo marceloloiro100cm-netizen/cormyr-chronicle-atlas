@@ -45,7 +45,7 @@ import {createFirebaseCommissions,readFirebaseCommissions,FirebaseCommissionErro
 import {readNewspaperStaffOverlay,parseStaffOperation,commitNewspaperStaff,NewspaperStaffError}
  from '../newspaper/firebase-newspaper-staff.server';
 import {readPublicNewspaperReadCounts,PublicNewspaperError} from '../newspaper/firebase-public-newspaper.server';
-import {OVERLAY_TABLES,isOverlayTable,mergeOverlay,readOverlayRows,planOverlayMutation,commitOverlayPlan,
+import {OVERLAY_TABLES,isOverlayTable,mergeOverlay,readOverlayRows,clearOverlayCache,planOverlayMutation,commitOverlayPlan,
  TableOverlayError} from './operational-table-overlay';
 import {deletedNewspaperIds,markNewspaperDeleted} from '../../../scripts/firebase/newspaper-deleted.mjs';
 import {readRuntimeApprovals,setRuntimeApprovals,RuntimeApprovalError} from './runtime-approvals';
@@ -120,7 +120,7 @@ function shared<T>(db:any,key:string,read:()=>Promise<T>):Promise<T>{
  * responde, marca como lida ou exclui sempre lê e devolve a caixa fresca.
  */
 const RUNTIME_MAIL_TTL_MS=10_000;
-const RUNTIME_MAIL_KEYS=['|letters','|receipts','|legacy-moderation'];
+const RUNTIME_MAIL_KEYS=['|letters','|receipts','|legacy-moderation','|access-docs','|operational-records'];
 const recentRuntime=new WeakMap<object,Map<string,{at:number;value:Promise<any>}>>();
 function recentRuntimeRead<T>(db:any,key:string,read:()=>Promise<T>,now=Date.now()):Promise<T>{
  let byDb=recentRuntime.get(db);
@@ -132,7 +132,10 @@ function recentRuntimeRead<T>(db:any,key:string,read:()=>Promise<T>,now=Date.now
  entry.value.catch(()=>{if(byDb.get(key)===entry)byDb.delete(key);});
  return entry.value;
 }
-export function clearRecentRuntimeReads(db:any){recentRuntime.get(db)?.clear();}
+export function clearRecentRuntimeReads(db:any){
+ recentRuntime.get(db)?.clear();
+ clearOverlayCache(db);
+}
 /** Pedidos que só leem: os únicos que podem usar o cache curto da caixa. */
 const READ_ONLY_RPCS=new Set(['mail_page','mail_trash_page','mail_insights','mail_insights_grouped',
  'mail_compose_options','calendar_mail_events','house_gallery_mail_images']);
@@ -147,9 +150,13 @@ export function isReadOnlyWorkspaceRequest(input:any):boolean{
 }
 /** cacheImportedTables: ligado só pela rota de produção (acervo imutável). */
 export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=false}: {db:any;auth:any;snapshotId:string;cacheImportedTables?:boolean}){
- const cloud=createFirebaseCloudReadonly({db,auth,snapshotId,projectId:'cormyr',enabled:true});
+ const cloud=createFirebaseCloudReadonly({db,auth,snapshotId,projectId:'cormyr',enabled:true,cacheImmutableStages:cacheImportedTables});
  async function execute(token:string,input:any){
   const scope=await cloud.workspaceScope(token),admin=scope.profile==='narrador',editor=admin||scope.profile==='editor';
+  const readOnly=isReadOnlyWorkspaceRequest(input);
+  const once=<T,>(key:string,read:()=>Promise<T>)=>!cacheImportedTables?read():
+   readOnly&&RUNTIME_MAIL_KEYS.some(k=>key.endsWith(k))?recentRuntimeRead(db,key,()=>shared(db,key,read)):
+   shared(db,key,read);
   const cache=new Map<string,Promise<Row[]>>();
   const rows=(name:string)=>{
    if(!cache.has(name))cache.set(name,(async()=>{
@@ -166,20 +173,16 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     const original=await importedTable();
     // Linhas gravadas pelas telas no Firebase (cópia operacional auditada).
     if(isOverlayTable(name))
-     return mergeOverlay(original,await readOverlayRows(db,snapshotId,name),OVERLAY_TABLES[name]!.key);
+     return mergeOverlay(original,await readOverlayRows(db,snapshotId,name,{useCache:cacheImportedTables&&readOnly}),OVERLAY_TABLES[name]!.key);
     return original;
    })());
    return cache.get(name)!;
   };
-  const readOnly=isReadOnlyWorkspaceRequest(input);
-  const once=<T,>(key:string,read:()=>Promise<T>)=>!cacheImportedTables?read():
-   readOnly&&RUNTIME_MAIL_KEYS.some(k=>key.endsWith(k))?recentRuntimeRead(db,key,()=>shared(db,key,read)):
-   shared(db,key,read);
   const houseAllowed=(id:string)=>admin||scope.profile==='jogador'&&scope.memberHouseIds.includes(id);
   const checkHouse=(id:string)=>{if(typeof id!=='string'||!houseAllowed(id))denied();};
   // Permissões atuais com overlay privado: jamais alterar ou autorizar pelo acervo.
   let accessPromise:Promise<any[]>|undefined;
-  const accessDocs=()=>accessPromise??=listCurrentAccountAccess(db,snapshotId);
+  const accessDocs=()=>accessPromise??=once(snapshotId+'|access-docs',()=>listCurrentAccountAccess(db,snapshotId));
   const players=async():Promise<Row[]>=>{
    const [original,access]=await Promise.all([rows('campaign_players'),accessDocs()]);
    const mapped=original.map(p=>{
@@ -487,7 +490,7 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
   };
   let operationalRecordsPromise:ReturnType<typeof readOperationalRecordDocs>|undefined;
   const operationalRecords=()=>operationalRecordsPromise??=
-    readOperationalRecordDocs(db,snapshotId);
+    once(snapshotId+'|operational-records',()=>readOperationalRecordDocs(db,snapshotId));
   let operationalLedgerPromise:ReturnType<typeof readOperationalHouseLedger>|undefined;
   const operationalLedger=()=>operationalLedgerPromise??=
     readOperationalHouseLedger(db,snapshotId);
