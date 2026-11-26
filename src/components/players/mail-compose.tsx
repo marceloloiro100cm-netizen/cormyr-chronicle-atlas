@@ -126,10 +126,13 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  const formRef=useRef<HTMLFormElement>(null);
  const key=useRef<string|null>(null);
  const change=(next:MailComposerDraft)=>{setDraft(next);writeMailComposerDraft(scope,next);};
+ const patchDraft=(updater:(prev:MailComposerDraft)=>MailComposerDraft)=>{
+  setDraft(prev=>{const next=updater(prev);if(next!==prev)writeMailComposerDraft(scope,next);return next;});
+ };
  useEffect(()=>{writeMailComposerDraft(scope,draft);},[scope]);
  // Pré-preenche automaticamente a data oficial de Cormyr assim que o relógio carrega.
- useEffect(()=>{if(officialDate&&!draft.campaignDate)change({...draft,campaignDate:officialDate});},[officialDate]);// eslint-disable-line react-hooks/exhaustive-deps
- useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house&&!draft.links.origin)change({...draft,links:{...draft.links,origin:house.id}});},[options]);
+ useEffect(()=>{if(officialDate)patchDraft(prev=>prev.campaignDate?prev:{...prev,campaignDate:officialDate});},[officialDate]);// eslint-disable-line react-hooks/exhaustive-deps
+ useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house)patchDraft(prev=>prev.links.origin?prev:{...prev,links:{...prev.links,origin:house.id}});},[options]);// eslint-disable-line react-hooks/exhaustive-deps
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(hasUnsavedMailComposerDraft(scope)){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=suggestNextLetterWeek(data.rounds);

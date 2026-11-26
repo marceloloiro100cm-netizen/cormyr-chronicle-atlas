@@ -19,7 +19,7 @@ beforeEach(()=>rpc.mockImplementation(async(name:string)=>{
  return {data:2,error:null};
 }));
 function mount(panel:Panel){currentPanel=panel;return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MissivasTab data={panel} me={panel.players[0]} onSave={vi.fn()} onError={vi.fn()}/></QueryClientProvider>);}
-afterEach(()=>{cleanup();rpc.mockClear();});
+afterEach(()=>{cleanup();rpc.mockClear();sessionStorage.clear();});
 async function findSentSubject(name:RegExp){
  const displayed=screen.queryByRole('button',{name});
  if(displayed)return displayed;
@@ -51,8 +51,6 @@ describe('interface de missivas',()=>{
   fireEvent.click(screen.getByRole('checkbox',{name:'Narrador (NPCs e assuntos da campanha)'}));
   fireEvent.change(screen.getByLabelText('Assunto'),{target:{value:'Assunto reservado ao NPC'}});
   fireEvent.change(screen.getByLabelText('Missiva'),{target:{value:'Solicitação ao conselho'}});
-  fireEvent.click(screen.getByText('Selecionar dia no calendário'));
-  fireEvent.click(await screen.findByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'Enviar missiva'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Enviar missiva'}));
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({
@@ -127,8 +125,7 @@ describe('novos destinatários e vínculos',()=>{
   fireEvent.change(screen.getByLabelText('Unidade militar (opcional)'),{target:{value:'u1'}});
   fireEvent.change(screen.getByLabelText('Assunto'),{target:{value:'Marcha'}});
   fireEvent.change(screen.getByLabelText('Missiva'),{target:{value:'Acompanhar a coluna'}});
-  fireEvent.click(screen.getByText('Selecionar dia no calendário'));
-  fireEvent.click(await screen.findByRole('button',{name:'1 de Hammer, 1522',hidden:true}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Enviar missiva'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Enviar missiva'}));
   await waitFor(()=>expect(rpc).toHaveBeenCalledWith('dated_mail_action',expect.objectContaining({p_action:'send_linked_mail',p_date:'1522-01-01',p_args:expect.objectContaining({p_targets:['h:other'],p_origin:'home',p_court:'c1',p_unit:'u1',p_role:'executor',p_draft:false})})));
  });
