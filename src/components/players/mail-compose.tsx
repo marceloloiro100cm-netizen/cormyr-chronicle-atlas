@@ -3,11 +3,12 @@ import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
 import {suggestNextLetterWeek} from '@/lib/weekly-delivery';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {ImagePicker,uploadImages} from '@/components/campaign-content';
+import {HouseMark} from '@/components/players/narrator/narrator-ui';
 import {handleTextareaTab} from '@/lib/text/textarea-indent';
 import {
  readMailComposerDraft,writeMailComposerDraft,discardMailComposerDraft,
@@ -22,6 +23,28 @@ export type MailOptions={players:{id:string;name:string;houses:string[]}[];house
 export function useMailOptions(){
  return useQuery({queryKey:['mail-options'],queryFn:async()=>{const r=await supabase.rpc('mail_compose_options');if(r.error)throw r.error;return r.data as unknown as MailOptions;},staleTime:30000});
 }
+/** Resolve nomes legíveis de membro da corte e unidade militar a partir de mail_compose_options. */
+export function resolveMailLinkLabels(
+ options:MailOptions|undefined,
+ courtId:string|null|undefined,
+ unitId:string|null|undefined,
+):{courtLabel:string|null;unitLabel:string|null}{
+ if(!options?.houses?.length)return {courtLabel:null,unitLabel:null};
+ let courtLabel:string|null=null;
+ let unitLabel:string|null=null;
+ for(const h of options.houses){
+  if(courtId&&!courtLabel){
+   const member=h.court?.find(c=>c.id===courtId);
+   if(member)courtLabel=member.role?`${member.name} · ${member.role}`:member.name;
+  }
+  if(unitId&&!unitLabel){
+   const unit=h.units?.find(u=>u.id===unitId);
+   if(unit)unitLabel=unit.name;
+  }
+  if((!courtId||courtLabel)&&(!unitId||unitLabel))break;
+ }
+ return {courtLabel,unitLabel};
+}
 export function mailSubmissionStatus(result:{duplicate:boolean;state:string;week:number|null;ids:string[]}):string{
  if(result.duplicate)return 'Envio já registrado; nenhuma cópia duplicada.';
  if(result.state==='draft')return `Rascunho salvo para ${result.ids.length} destinatário(s).`;
@@ -31,36 +54,103 @@ export function mailSubmissionStatus(result:{duplicate:boolean;state:string;week
 export const emptyLinks:MailLinks={origin:'',court:'',unit:'',role:'executor'};
 export function MailLinkFields({value,onChange,options,onManage}:{value:MailLinks;onChange:(v:MailLinks)=>void;options:MailOptions;onManage?:((house:string)=>void)|undefined}){
  const house=options.houses?.find(h=>h.id===value.origin);
+ const singleHouse=options.houses?.length===1&&Boolean(house);
+ const hasOptional=Boolean(value.court||value.unit);
  return <fieldset className="campaign-form mail-link-fields"><legend>Vínculos da missiva</legend>
- <label>Casa remetente<select value={value.origin} onChange={e=>onChange({...emptyLinks,origin:e.target.value})}><option value="">Selecione a casa</option>{options.houses?.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>
- <label>Membro da corte (opcional)<select value={value.court} onChange={e=>onChange({...value,court:e.target.value})}><option value="">Sem membro vinculado</option>{house?.court?.map(c=><option key={c.id} value={c.id}>{c.name} — {c.role}</option>)}{value.court&&!house?.court.some(c=>c.id===value.court)&&<option value={value.court}>Vínculo histórico indisponível — remova ou substitua</option>}</select></label>
- {value.court&&<label>Responsabilidade<select value={value.role} onChange={e=>onChange({...value,role:e.target.value})}><option value="executor">Executor</option><option value="order_recipient">Destinatário da ordem</option></select></label>}
- <label>Unidade militar (opcional)<select value={value.unit} onChange={e=>onChange({...value,unit:e.target.value})}><option value="">Sem unidade vinculada</option>{house?.units?.filter(u=>u.available).map(u=><option key={u.id} value={u.id}>{u.name}</option>)}{value.unit&&!house?.units.some(u=>u.id===value.unit&&u.available)&&<option value={value.unit}>Unidade indisponível — remova ou substitua</option>}</select></label>
- {house&&(!house.court.length||!house.units.some(u=>u.available))&&<div role="status">{!house.court.length&&<p>Nenhum membro da corte disponível. Cadastre o personagem e vincule-o à Corte na ficha.</p>}{!house.units.some(u=>u.available)&&<p>Nenhuma unidade disponível. Cadastre uma unidade no Exército da ficha.</p>}{onManage&&<Button type="button" variant="outline" onClick={()=>onManage(house.id)}>Abrir ficha da casa</Button>}</div>}
- <details className="mail-link-note"><summary>Sobre os vínculos</summary><p className="text-muted-foreground text-sm">Membro e unidade são opcionais. Os vínculos não executam ordens nem alteram o exército. A identificação privada só aparece a quem tem acesso à ficha.</p></details>
+ {singleHouse
+  ?<p className="mail-origin-pill"><b>Casa remetente:</b> Casa {house!.name}</p>
+  :<label>Casa remetente<select value={value.origin} onChange={e=>onChange({...emptyLinks,origin:e.target.value})}><option value="">Selecione a casa</option>{options.houses?.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></label>}
+ <details className="mail-link-optional" open={hasOptional||undefined}>
+  <summary>Vincular membro da corte ou unidade militar (opcional){hasOptional?' · ativo':''}</summary>
+  <div className="mail-link-optional-body">
+   <label>Membro da corte (opcional)<select value={value.court} onChange={e=>onChange({...value,court:e.target.value})}><option value="">Sem membro vinculado</option>{house?.court?.map(c=><option key={c.id} value={c.id}>{c.name} — {c.role}</option>)}{value.court&&!house?.court.some(c=>c.id===value.court)&&<option value={value.court}>Vínculo histórico indisponível — remova ou substitua</option>}</select></label>
+   {value.court&&<label>Responsabilidade<select value={value.role} onChange={e=>onChange({...value,role:e.target.value})}><option value="executor">Executor</option><option value="order_recipient">Destinatário da ordem</option></select></label>}
+   <label>Unidade militar (opcional)<select value={value.unit} onChange={e=>onChange({...value,unit:e.target.value})}><option value="">Sem unidade vinculada</option>{house?.units?.filter(u=>u.available).map(u=><option key={u.id} value={u.id}>{u.name}</option>)}{value.unit&&!house?.units.some(u=>u.id===value.unit&&u.available)&&<option value={value.unit}>Unidade indisponível — remova ou substitua</option>}</select></label>
+   {house&&(!house.court.length||!house.units.some(u=>u.available))&&<div role="status">{!house.court.length&&<p>Nenhum membro da corte disponível. Cadastre o personagem e vincule-o à Corte na ficha.</p>}{!house.units.some(u=>u.available)&&<p>Nenhuma unidade disponível. Cadastre uma unidade no Exército da ficha.</p>}{onManage&&<Button type="button" variant="outline" onClick={()=>onManage(house.id)}>Abrir ficha da casa</Button>}</div>}
+   <p className="text-muted-foreground text-sm">Membro e unidade são opcionais e identificam quem executa ou recebe a ordem. A identificação privada aparece apenas a quem tem acesso à ficha.</p>
+  </div>
+ </details>
  </fieldset>;
 }
 export function replaceMailDraft(userId:string){
  return !hasUnsavedMailComposerDraft(userId+':mail-compose')||
    window.confirm('Substituir o texto da missiva ainda não enviada?');
 }
+type MailTemplate={id:string;label:string;build:(origin:Panel['houses'][number]|undefined,target:Panel['houses'][number]|undefined)=>({subject:string;content:string;preferNarrator?:boolean})};
+const MAIL_TEMPLATES:MailTemplate[]=[
+ {
+  id:'diplomacia',
+  label:'Carta diplomática',
+  build:(origin,target)=>{
+   const dest=target?`Lorde ${target.lord_name||`da Casa ${target.name}`}`:'nobre casa';
+   const sig=origin?`${origin.lord_name||`Casa ${origin.name}`}\nCasa ${origin.name}${origin.castle?` · ${origin.castle}`:''}`:'';
+   return {
+    subject:target?`Saudações e proposta à Casa ${target.name}`:'Correspondência diplomática',
+    content:`Saudações, ${dest},\n\nEscrevo sob o selo de nossa Casa para tratar de assunto de interesse mútuo nesta semana.\n\n[Escreva aqui sua proposta, tratado ou pedido]\n\nCom estima e honra,\n${sig}`,
+   };
+  },
+ },
+ {
+  id:'ordem',
+  label:'Ordem interna / Corte',
+  build:(origin)=>{
+   const sig=origin?`${origin.lord_name||`Casa ${origin.name}`}\nCasa ${origin.name}`:'';
+   return {
+    subject:'Ordens da Casa para esta semana',
+    content:`Ao Conselho e executores da Casa,\n\nDetermino as seguintes providências para o período corrente:\n\n1. [Ação principal / destino / responsável]\n2. [Recursos ou cuidados necessários]\n\nReportem o andamento assim que houver retorno.\n\n${sig}`,
+    preferNarrator:true,
+   };
+  },
+ },
+ {
+  id:'narrador',
+  label:'Ação ao Narrador',
+  build:(origin)=>{
+   const sig=origin?`${origin.lord_name||`Casa ${origin.name}`}\nCasa ${origin.name}`:'';
+   return {
+    subject:'Ação semanal da Casa',
+    content:`Objetivo da semana:\n[Descreva o que sua Casa ou personagem pretende fazer]\n\nAbordagem e envolvidos:\n[Quem conduz, onde ocorre e que recursos ou contatos serão usados]\n\nResultado desejado:\n[O que espera obter ou descobrir]\n\n${sig}`,
+    preferNarrator:true,
+   };
+  },
+ },
+];
+
 export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Panel['players'][number]|undefined;initial?:{subject:string;content:string}|null;onSave:()=>void;onManage?:((house:string)=>void)|undefined}){
  const {data:options,error,refetch}=useMailOptions();
  const {data:campaignTime}=useCampaignTime();
+ const officialDate=campaignTime?dateKey(campaignTime):'';
  const scope=data.user.id+':mail-compose';
- const [draft,setDraft]=useState<MailComposerDraft>(()=>{const seed=initial?{subject:initial.subject,content:initial.content,targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]}:readMailComposerDraft(scope)??{subject:'',content:'',targets:[],links:{...emptyLinks},week:'',campaignDate:'',signedBy:'',images:[]};return {...seed,targets:seed.targets.filter(target=>target==='narrator'||target.startsWith('h:'))};});
+ const [draft,setDraft]=useState<MailComposerDraft>(()=>{const seed=initial?{subject:initial.subject,content:initial.content,targets:[],links:{...emptyLinks},week:'',campaignDate:officialDate,signedBy:'',images:[]}:readMailComposerDraft(scope)??{subject:'',content:'',targets:[],links:{...emptyLinks},week:'',campaignDate:officialDate,signedBy:'',images:[]};return {...seed,campaignDate:seed.campaignDate||officialDate,targets:seed.targets.filter(target=>target==='narrator'||target.startsWith('h:'))};});
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const formRef=useRef<HTMLFormElement>(null);
  const key=useRef<string|null>(null);
  const change=(next:MailComposerDraft)=>{setDraft(next);writeMailComposerDraft(scope,next);};
+ const patchDraft=(updater:(prev:MailComposerDraft)=>MailComposerDraft)=>{
+  setDraft(prev=>{const next=updater(prev);if(next!==prev)writeMailComposerDraft(scope,next);return next;});
+ };
  useEffect(()=>{writeMailComposerDraft(scope,draft);},[scope]);
- useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house&&!draft.links.origin)change({...draft,links:{...draft.links,origin:house.id}});},[options]);
+ // Pré-preenche automaticamente a data oficial de Cormyr assim que o relógio carrega.
+ useEffect(()=>{if(officialDate)patchDraft(prev=>prev.campaignDate?prev:{...prev,campaignDate:officialDate});},[officialDate]);// eslint-disable-line react-hooks/exhaustive-deps
+ useEffect(()=>{const house=options?.houses?.[0];if(options?.houses?.length===1&&house)patchDraft(prev=>prev.links.origin?prev:{...prev,links:{...prev.links,origin:house.id}});},[options]);// eslint-disable-line react-hooks/exhaustive-deps
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(hasUnsavedMailComposerDraft(scope)){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[scope]);
  const current=data.rounds.find(r=>r.status==='open')?.number??null;
  const suggested=suggestNextLetterWeek(data.rounds);
+ const selectedHouses=useMemo(()=>draft.targets
+  .filter(t=>t.startsWith('h:'))
+  .map(t=>data.houses.find(h=>h.id===t.slice(2)))
+  .filter((h):h is Panel['houses'][number]=>Boolean(h)),[draft.targets,data.houses]);
+ const originHouse=useMemo(()=>data.houses.find(h=>h.id===draft.links.origin),[data.houses,draft.links.origin]);
+ const applyTemplate=(tpl:MailTemplate)=>{
+  if((draft.subject.trim()||draft.content.trim())&&!window.confirm('Aplicar este modelo e substituir o texto atual?'))return;
+  const built=tpl.build(originHouse,selectedHouses[0]);
+  const nextTargets=!data.admin&&tpl.id!=='diplomacia'&&draft.targets.length===0&&built.preferNarrator?['narrator']:draft.targets;
+  change({...draft,subject:built.subject,content:built.content,targets:nextTargets});
+ };
  return <section id="nova-missiva" className="mail-compose-panel"><h2>Escrever missiva</h2>
  <p className="mail-compose-intro">Selecione uma ou mais casas, ou o Narrador para tratar com NPCs. Missivas entre casas são acompanhadas automaticamente pelo Narrador.</p>
  {error&&<p role="alert">Não foi possível carregar os cadastros. <Button type="button" variant="outline" onClick={()=>refetch()}>Tentar novamente</Button></p>}
- <form className="campaign-form mail-compose-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
+ <form ref={formRef} className="campaign-form mail-compose-form" onSubmit={async e=>{e.preventDefault();if(busy)return;setBusy(true);setMessage('');key.current??=crypto.randomUUID();try{
  if(!draft.campaignDate)throw new Error('Selecione a data da campanha antes de salvar ou enviar a missiva.');
  if(!draft.targets.length||draft.targets.some(t=>t!=='narrator'&&!t.startsWith('h:'))||draft.targets.includes('narrator')&&(data.admin||draft.targets.length!==1))throw new Error('Selecione o Narrador ou uma ou mais casas. Não é permitido enviar diretamente a jogadores.');
  const content=await uploadImages(draft.content,draft.images,key.current);
@@ -74,18 +164,35 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
  <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
  {draft.targets.length===0&&<p role="status" className="text-muted-foreground text-sm">Nenhum destinatário selecionado. Escolha uma casa ou o Narrador.</p>}
+ {selectedHouses.length>0&&<div className="mail-target-cards" aria-label="Resumo dos destinatários selecionados">
+  {selectedHouses.slice(0,4).map(h=><div key={h.id} className="mail-target-card">
+   <HouseMark house={h} size="sm"/>
+   <div className="mail-target-card-info">
+    <strong>Casa {h.name}</strong>
+    <span>{[h.lord_name,h.castle,h.region].filter(Boolean).join(' · ')||'Casa nobre de Cormyr'}</span>
+   </div>
+  </div>)}
+  {selectedHouses.length>4&&<span className="mail-target-more">+{selectedHouses.length-4} outra(s) casa(s)</span>}
+ </div>}
  <div className="mail-compose-meta">
- <CampaignDatePicker value={draft.campaignDate} referenceDate={campaignTime?dateKey(campaignTime):undefined} onChange={campaignDate=>change({...draft,campaignDate})}/>
+ <CampaignDatePicker value={draft.campaignDate} referenceDate={officialDate||undefined} onChange={campaignDate=>change({...draft,campaignDate})}/>
  {data.admin&&<MailPeriodNotice date={draft.campaignDate}/>}
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
  </div>
  {data.admin&&<label>Assinado por (NPC / cargo)<input maxLength={120} value={draft.signedBy??''} placeholder="Ex.: Conselho de Elversult" onChange={e=>change({...draft,signedBy:e.target.value})}/></label>}
+ {!data.admin&&<div className="mail-templates" role="group" aria-label="Modelos rápidos de missiva">
+  <span className="mail-templates-label">Modelos rápidos:</span>
+  {MAIL_TEMPLATES.map(tpl=><button key={tpl.id} type="button" className="mail-template-btn" onClick={()=>applyTemplate(tpl)}>{tpl.label}</button>)}
+ </div>}
  <label className="mail-compose-subject">Assunto<input required value={draft.subject} onChange={e=>change({...draft,subject:e.target.value})}/></label>
  <label className="mail-compose-text">Missiva<textarea required rows={9} value={draft.content}
    aria-describedby="mail-compose-indent-hint"
    onChange={e=>change({...draft,content:e.target.value})}
-   onKeyDown={e=>handleTextareaTab(e,content=>change({...draft,content}))}/></label>
- <small id="mail-compose-indent-hint">Tab insere recuo; Shift+Tab volta ao campo anterior.</small>
+   onKeyDown={e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();formRef.current?.requestSubmit();return;}
+    handleTextareaTab(e,content=>change({...draft,content}));
+   }}/></label>
+ <small id="mail-compose-indent-hint">Tab insere recuo · Shift+Tab volta ao campo anterior · Ctrl+Enter envia a missiva.</small>
  <MailLinkFields value={draft.links} onChange={links=>change({...draft,links})} options={options??{players:[],houses:[]}} onManage={onManage}/>
  <ImagePicker images={draft.images} onChange={images=>change({...draft,images})} disabled={busy}/>
  <p>{data.admin?`Entrega prevista: Semana ${draft.week||suggested}.`:current?`Entrega na Semana ${current}.`:'Sem semana aberta. Você pode salvar rascunhos.'}</p>

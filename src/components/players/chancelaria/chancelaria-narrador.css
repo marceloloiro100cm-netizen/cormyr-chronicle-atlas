@@ -226,3 +226,26 @@
 
 /* Pastas e cartas como links (botão direito > abrir em nova guia). */
 a.chn-q,a.chn-it-open{text-decoration:none}
+
+
+/* Chancelaria do Jogador v5: altura confortável dentro da página do Conselho + gaveta Minha Casa */
+.chn--player{height:min(78vh,860px);min-height:600px;padding:0;margin-top:8px}
+.chn-house-drawer{position:fixed;top:0;right:0;bottom:0;width:min(360px,92vw);z-index:66;display:flex;flex-direction:column;border-radius:0;box-shadow:-10px 0 30px rgb(20 8 28/.25)}
+.chn-house-drawer .chn-ph{border-radius:0}
+.chn-drawer-close{color:#fffdf7!important;border-color:transparent!important}
+.chn-hd-body{flex:1;overflow-y:auto;padding:14px;display:grid;gap:14px;align-content:start;scrollbar-width:thin}
+.chn-hd-warn{font-size:12px;color:var(--chn-wax);font-weight:600}
+.chn-hd-res{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.chn-hd-res-item{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border:1px solid var(--chn-line);border-radius:6px;background:#fff;font-size:12px}
+.chn-hd-res-item--neg{border-color:var(--chn-wax);background:#fbefef;color:var(--chn-wax)}
+.chn-hd-list{margin:0;padding-left:16px;display:grid;gap:4px;font-size:12.5px}
+
+/* Chips rápidos de assinatura de NPC (Narrador) */
+.chn-sign-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%}
+.chn-sign-chips{display:flex;flex-wrap:wrap;gap:5px}
+.chn-sign-chip{border:1px solid var(--chn-line);background:#fffdf8;color:var(--chn-purple);border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s}
+.chn-sign-chip:hover{border-color:var(--chn-gold);background:#f6eedc}
+
+@media (max-width:767px){
+ .chn--player{height:calc(100vh - 190px);min-height:480px}
+}

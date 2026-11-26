@@ -1,27 +1,30 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
-import {CampaignContent,ImagePicker,uploadImages} from '@/components/campaign-content';
+import {CampaignContent} from '@/components/campaign-content';
 import {MailComposer,replaceMailDraft} from '@/components/players/mail-compose';
+import {resolveLinkNames,useMailLinkCatalog,type MailLinkOptionHouse} from '@/lib/mail/link-labels';
 import {NarratorMailNotes} from '@/components/players/narrator-mail-notes';
 import {LetterConsequences,type LetterConsequenceRow} from '@/components/players/letter-consequences';
-import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey,formatDate,formatCampaignPeriod} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
+import {mailWeekTimeline} from '@/lib/weekly-delivery';
 import type {Panel} from '@/components/players/panel-data';
 import {readUrlParam,setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
+import {HouseMark,Icon,NARRATOR_NARROW,useMedia} from '@/components/players/narrator/narrator-ui';
+import {HouseQuickDrawer} from './HouseQuickDrawer';
 import {
-  buildConversations,conversationUnread,queueMembers,
-  type MailRow,type ReplyRow,type Conversation,type QueueId,
+  buildConversations,conversationUnread,lastAuthor,queueMembers,
+  type MailRow,type ReplyRow,type Conversation,type QueueId,type QueueContext,
 } from './chancelaria-model';
-import './chancelaria.css';
+import './chancelaria-narrador.css';
 
 /**
- * Chancelaria de Missivas (protótipo v4) ligada ao Firebase.
- * Filas de trabalho, lista e leitura lado a lado, leitura que só conta
- * quando marcada, resposta, edição e cancelamento enquanto a semana estiver
- * aberta e as ferramentas do Narrador. Toda permissão é do servidor.
+ * Chancelaria de Missivas do Jogador (layout v5): pastas à esquerda com
+ * seletor compacto no celular, lista com brasões e prévia, leitura em
+ * pergaminho, escrita ampla no lugar do leitor, atalhos de teclado e gaveta
+ * rápida "Minha Casa" (saldos, Corte, Exército e projetos).
  */
 const loose=(name:string,args:Record<string,unknown>)=>
   (supabase.rpc as unknown as (this:unknown,n:string,a:Record<string,unknown>)=>
@@ -39,79 +42,112 @@ async function allMail(trash:boolean):Promise<MailPage>{
   const pages=[first,...rest];
   return {total:first.total,letters:pages.flatMap(p=>p.letters),replies:pages.flatMap(p=>p.replies)};
 }
-const GROUP_OPTIONS:[string,string][]=[['','Ambos'],...NARRATION_GROUPS.map(g=>[g.id,g.label] as [string,string])];
-const QUEUE_TEXT:Record<QueueId,[string,string]>={
-  attention:['Precisa de atenção','Cartas ou respostas novas para você'],
-  yourturn:['Sua vez','A última palavra não é sua'],
-  waiting:['Aguardando outros','Você escreveu por último'],
-  mediation:['Mediação','Cartas entre Casas (acompanhamento)'],
-  scheduled:['Programadas','Saem quando a semana delas abrir'],
-  drafts:['Rascunhos','Ainda não enviadas'],
-  trash:['Lixeira','Canceladas ou excluídas, com restauração'],
-  all:['Todas','Tudo o que você pode ler'],
-};
 
-export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:{
+const PLAYER_QUEUES:QueueId[]=['attention','yourturn','waiting','scheduled','drafts','trash','all'];
+const QUEUE_TEXT:Record<QueueId,[string,string,string]>={
+  attention:['Precisa de atenção','Cartas ou respostas novas para você','alert'],
+  yourturn:['Sua vez','A última palavra não é sua','reply'],
+  waiting:['Aguardando outros','Você escreveu por último','wait'],
+  mediation:['Mediação','Cartas entre Casas (acompanhamento)','scale'],
+  scheduled:['Programadas','Saem quando a semana delas abrir','hour'],
+  drafts:['Rascunhos','Ainda não enviadas','file'],
+  trash:['Lixeira','Canceladas ou excluídas, com restauração','trash'],
+  all:['Todas','Tudo o que você pode ler','inbox'],
+};
+const plain=(text:string)=>text.replace(/!\[[^\]]*\]\([^)]*\)/g,'').replace(/\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/[#*_>`]/g,'').replace(/\s+/g,' ').trim();
+const str=(value:unknown)=>typeof value==='string'&&value?value:null;
+type Compose={subject:string;content:string}|null|false;
+
+function readLocalReplyDraft(key:string):string{
+  try{return localStorage.getItem(key)??sessionStorage.getItem(key)??'';}catch{return '';}
+}
+function writeLocalReplyDraft(key:string,value:string){
+  try{
+    if(value)localStorage.setItem(key,value);
+    else{localStorage.removeItem(key);sessionStorage.removeItem(key);}
+  }catch{/* armazenamento indisponível */}
+}
+
+export function ChancelariaMissivas({data,me,onSave,onError,onManage}:{
   data:Panel;me:Panel['players'][number]|undefined;onSave:()=>void;onError:(m:string)=>void;
   onManage?:((house:string)=>void)|undefined;onClassic?:(()=>void)|undefined;
 }){
   const qc=useQueryClient();
   const admin=data.admin,uid=data.user.id;
-  // Pasta e carta abertas ficam no endereço (?pasta=all&carta=...): cada carta
-  // pode ser aberta em nova guia. A carta só aparece se estiver na caixa visível.
+  const narrow=useMedia(NARRATOR_NARROW);
   const [queueParam]=useUrlParam('pasta','attention');
   const queue:QueueId=queueParam in QUEUE_TEXT?queueParam as QueueId:'attention';
   const [selectedParam]=useUrlParam('carta','');
   const selected=selectedParam||null;
-  const setSelected=(id:string|null,replace=false)=>setUrlParams({carta:id},{replace});
+  const [composeParam]=useUrlParam('compor','');
+  const setSelected=(id:string|null,replace=false)=>setUrlParams({carta:id,compor:null},{replace});
   useUrlSearch();
-  const [pane,setPane]=useState<'list'|'reader'>(()=>readUrlParam('carta')?'reader':'list');
+  const [pane,setPane]=useState<'list'|'reader'|'compose'>(()=>readUrlParam('compor')==='1'?'compose':readUrlParam('carta')?'reader':'list');
   const [search,setSearch]=useState('');
-  const [group,setGroup]=useState('');
-  const [house,setHouse]=useState('');
   const [week,setWeek]=useState('');
   const [timeline,setTimeline]=useState(false);
-  const [compose,setCompose]=useState<{subject:string;content:string}|null|false>(false);
+  const [compose,setCompose]=useState<Compose>(()=>readUrlParam('compor')==='1'?null:false);
+  const [houseDrawerOpen,setHouseDrawerOpen]=useState(false);
+  const [filtersOpen,setFiltersOpen]=useState(false);
   const [message,setMessage]=useState('');
   const {data:clock}=useCampaignTime();
+  const {data:linkCatalog}=useMailLinkCatalog(true);
   const today=clock?dateKey(clock):'';
   const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
   const mail=useQuery({queryKey:['chancelaria-mail',uid],queryFn:()=>allMail(false),refetchInterval:30000});
-  // A Lixeira só é lida quando aberta (como na visão do Narrador): antes ela
-  // relia a caixa inteira a cada 30 s mesmo fechada.
-  const trash=useQuery({queryKey:['chancelaria-trash',uid],queryFn:()=>allMail(true),
-    enabled:queue==='trash',refetchInterval:30000});
-  const myHouses=useMemo(()=>new Set(data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id)),[data.members,me?.id]);
-  const editHouses=useMemo(()=>new Set(data.members.filter(m=>m.player_id===me?.id&&
-    m.can_edit).map(m=>m.house_id)),[data.members,me?.id]);
-  const houseName=(id:string|null|undefined)=>id?data.houses.find(h=>h.id===id)?.name??'Casa':'Narrador';
+  const trash=useQuery({queryKey:['chancelaria-trash',uid],queryFn:()=>allMail(true),enabled:queue==='trash'});
+
+  const myHouseIds=useMemo(()=>new Set(data.members.filter(m=>m.player_id===me?.id).map(m=>m.house_id)),[data.members,me?.id]);
+  const editHouses=useMemo(()=>new Set(data.members.filter(m=>m.player_id===me?.id&&m.can_edit).map(m=>m.house_id)),[data.members,me?.id]);
+  const myPrimaryHouse=useMemo(()=>{
+    const roster=me?.roster_house_id?data.houses.find(h=>h.id===me.roster_house_id):null;
+    if(roster)return roster;
+    for(const id of myHouseIds){const found=data.houses.find(h=>h.id===id);if(found)return found;}
+    return null;
+  },[data.houses,me?.roster_house_id,myHouseIds]);
+  const houseOf=(id:string|null|undefined)=>id?data.houses.find(h=>h.id===id)??null:null;
+  const houseName=(id:string|null|undefined)=>id?houseOf(id)?.name??'Casa':'Narrador';
+
   const conversations=useMemo(()=>buildConversations(mail.data?.letters??[],mail.data?.replies??[]),[mail.data]);
   const trashConversations=useMemo(()=>buildConversations(trash.data?.letters??[],trash.data?.replies??[]),[trash.data]);
-  const ctx={uid,admin,receipts:data.receipts,openRound,editHouses};
-  const groupHouses=group?new Set(narrationHouseIds(group,data.houses.map(h=>h.id))):null;
+  const ctx:QueueContext={uid,admin,receipts:data.receipts,openRound,editHouses};
+
+  // Resumo da atividade do jogador na semana aberta.
+  const weekStats=useMemo(()=>{
+    if(openRound===null)return {sent:0,drafts:0};
+    let sent=0,drafts=0;
+    for(const l of mail.data?.letters??[]){
+      if(l.deleted_at||l.sender_user_id!==uid)continue;
+      if(l.publication_state==='draft'&&l.creation_week===openRound)drafts++;
+      else if((l.creation_week===openRound||l.delivery_week===openRound)&&l.publication_state!=='draft')sent++;
+    }
+    return {sent,drafts};
+  },[mail.data?.letters,openRound,uid]);
+
   const inScope=(c:Conversation)=>{
-    const ids=[c.root.origin_house_id,c.root.recipient_house_id].filter(Boolean) as string[];
-    if(groupHouses&&!ids.some(id=>groupHouses.has(id)))return false;
-    if(house&&!ids.includes(house))return false;
     if(week&&String(c.root.delivery_week??'')!==week)return false;
     if(search.trim()){
       const q=search.trim().toLowerCase();
-      const hay=[c.root.subject,c.root.content,c.root.sender_name,...c.items.map(i=>i.content+' '+(i.author??''))].join(' ').toLowerCase();
+      const hay=[c.root.subject,c.root.content,c.root.sender_name,houseName(c.root.origin_house_id),houseName(c.root.recipient_house_id),...c.items.map(i=>i.content+' '+(i.author??''))].join(' ').toLowerCase();
       if(!hay.includes(q))return false;
     }
     return true;
   };
   const base=conversations.filter(inScope);
-  const queues:QueueId[]=admin?['attention','yourturn','mediation','scheduled','drafts','trash','all']
-    :['attention','yourturn','waiting','scheduled','drafts','trash','all'];
   const members=(q:QueueId)=>q==='trash'?trashConversations.filter(inScope):queueMembers(q,base,ctx);
   const list=members(queue).slice().sort((a,b)=>
-    timeline?(a.root.delivery_week??0)-(b.root.delivery_week??0)||a.root.created_at.localeCompare(b.root.created_at)
+    timeline?(b.root.delivery_week??0)-(a.root.delivery_week??0)||b.lastAt.localeCompare(a.lastAt)
       :Number(conversationUnread(b,ctx))-Number(conversationUnread(a,ctx))||b.lastAt.localeCompare(a.lastAt));
   const current=list.find(c=>c.root.id===selected)??null;
+
   useEffect(()=>{
-    if(!current&&list[0]&&window.innerWidth>=1000)setSelected(list[0].root.id,true);
-  },[queue,list.length]);// eslint-disable-line react-hooks/exhaustive-deps
+    if(composeParam==='1'&&compose===false){setCompose(null);setPane('compose');}
+  },[composeParam]);// eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{
+    if(!current&&list[0]&&!narrow&&compose===false)setSelected(list[0].root.id,true);
+  },[queue,list.length,narrow]);// eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{if(!message)return;const t=setTimeout(()=>setMessage(''),4500);return()=>clearTimeout(t);},[message]);
+
   const refresh=()=>{
     void qc.invalidateQueries({queryKey:['chancelaria-mail']});
     void qc.invalidateQueries({queryKey:['chancelaria-trash']});
@@ -124,125 +160,248 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage,onClassic}:
     if(r.error){onError(r.error.message);setMessage(r.error.message);}
     else{setMessage(label);refresh();}
   };
-  const markRead=(c:Conversation)=>run('Marcada como lida.',async()=>{
+  const markReadSilent=async(c:Conversation)=>{
     for(const id of c.unreadLetterIds(ctx)){
       const r=await loose('mark_letter_read',{p_id:id});
       if(r.error&&!/23505/.test(r.error.message))return r;
     }
     return {error:null};
-  });
+  };
+  const markRead=(c:Conversation)=>run('Marcada como lida.',()=>markReadSilent(c));
   const markUnread=(c:Conversation)=>run('Marcada como não lida.',()=>loose('mark_letter_unread',{p_id:c.lastIncomingLetterId(uid)??c.root.id}));
-  const weeks=[...new Set(conversations.map(c=>c.root.delivery_week).filter((n):n is number=>typeof n==='number'))].sort((a,b)=>a-b);
-  if(mail.isPending)return <section className="chancelaria"><p role="status">Carregando a Chancelaria…</p></section>;
-  if(mail.error)return <section className="chancelaria"><p role="alert">Não foi possível carregar as missivas. {mail.error.message}</p>
-    <button type="button" className="ch-btn" onClick={()=>void mail.refetch()}>Tentar novamente</button></section>;
-  return <section className={'chancelaria'+(pane==='reader'?' ch-reading':'')} aria-label="Chancelaria de Missivas">
-    <header className="ch-top">
-      <div><div className="ch-sub">{openRound?`Semana ${openRound} aberta`:'Sem semana aberta'}{clock?' · '+formatCampaignPeriod(clock):''}</div>
-        <h2>Chancelaria de Missivas</h2></div>
-      <div className="ch-actions">
-        <span className="ch-badge">{admin?'Narrador':'Casa '+[...myHouses].map(houseName).join(', ')}</span>
-        {admin&&<a className="ch-btn" href="/firebase-hub">⏭ Abrir semana no HUB</a>}
-        <button type="button" className="ch-btn primary" onClick={()=>{if(replaceMailDraft(uid))setCompose(null);}}>🪶 Nova missiva</button>
+  const toggleRead=(c:Conversation)=>void(conversationUnread(c,ctx)?markRead(c):markUnread(c));
+
+  const openCompose=(initial:{subject:string;content:string}|null=null)=>{
+    if(!replaceMailDraft(uid))return;
+    setCompose(initial);setPane('compose');setFiltersOpen(false);
+  };
+  const closeCompose=()=>{
+    setCompose(false);
+    setUrlParams({compor:null},{replace:true});
+    setPane(narrow?'list':'reader');
+  };
+  const pickQueue=(q:QueueId)=>{setUrlParams({pasta:q==='attention'?null:q,carta:null,compor:null});setPane('list');setCompose(false);};
+  const activeFilters=Number(Boolean(week))+Number(Boolean(search.trim()));
+  const resetFilters=()=>{setWeek('');setSearch('');};
+
+  // Atalhos de teclado (mesmo padrão da Chancelaria v5).
+  useEffect(()=>{
+    const onKey=(e:KeyboardEvent)=>{
+      if(e.metaKey||e.ctrlKey||e.altKey)return;
+      const t=e.target as HTMLElement|null;
+      const typing=Boolean(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable));
+      if(e.key==='Escape'){
+        if(houseDrawerOpen){setHouseDrawerOpen(false);return;}
+        if(filtersOpen){setFiltersOpen(false);return;}
+        if(compose!==false&&!typing){closeCompose();return;}
+        return;
+      }
+      if(typing)return;
+      if(e.key==='j'||e.key==='k'){
+        if(!list.length)return;
+        const i=list.findIndex(c=>c.root.id===selected);
+        const next=list[e.key==='j'?Math.min(i+1,list.length-1):Math.max(i-1,0)];
+        if(next){e.preventDefault();setCompose(false);setSelected(next.root.id);setPane('reader');}
+      }else if(e.key==='e'&&current&&queue!=='trash'){e.preventDefault();toggleRead(current);}
+      else if(e.key==='r'&&current&&compose===false){e.preventDefault();document.getElementById('ch-responder-'+current.root.id)?.focus();}
+      else if(e.key==='n'){e.preventDefault();openCompose();}
+      else if(e.key==='/'){e.preventDefault();document.getElementById('chp-search')?.focus();}
+    };
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[list,selected,current,queue,compose,houseDrawerOpen,filtersOpen]);// eslint-disable-line react-hooks/exhaustive-deps
+
+  const weeks=[...new Set(conversations.map(c=>c.root.delivery_week).filter((n):n is number=>typeof n==='number'))].sort((a,b)=>b-a);
+  const queueCount=(q:QueueId)=>q==='trash'&&trash.isPending?'…':String(members(q).length);
+
+  if(mail.isPending)return <section className="chn chn--status"><p role="status">Carregando a Chancelaria…</p></section>;
+  if(mail.error)return <section className="chn chn--status"><p role="alert">Não foi possível carregar as missivas. {mail.error.message}</p>
+    <button type="button" className="chn-btn" onClick={()=>void mail.refetch()}>Tentar novamente</button></section>;
+
+  let lastWeek:number|null|undefined;
+  const items=list.map(c=>{
+    const unread=conversationUnread(c,ctx);
+    const otherHouseId=c.root.origin_house_id&&!myHouseIds.has(c.root.origin_house_id)
+      ?c.root.origin_house_id
+      :c.root.recipient_house_id&&!myHouseIds.has(c.root.recipient_house_id)
+        ?c.root.recipient_house_id
+        :c.root.origin_house_id??c.root.recipient_house_id;
+    const markHouse=houseOf(otherHouseId);
+    const lastBody=c.items.at(-1)?.content??c.root.content;
+    const preview=plain(lastBody).slice(0,140);
+    const lastUid=lastAuthor(c);
+    const lastWho=lastUid===uid?'você':c.items.at(-1)?.author??c.root.sender_name;
+    const sep=timeline&&c.root.delivery_week!==lastWeek
+      ?<div className="chn-wsep">{c.root.delivery_week?`Semana ${c.root.delivery_week}`:'Sem semana definida'}</div>:null;
+    lastWeek=c.root.delivery_week;
+    return <div key={c.root.id}>{sep}
+      <div role="listitem" className={'chn-it'+(unread?' chn-it--unread':'')} aria-current={c.root.id===selected&&compose===false?'true':undefined}>
+        <a className="chn-it-open" {...urlLinkProps({carta:c.root.id,compor:null},{onNavigate:()=>{setCompose(false);setPane('reader');}})}>
+          <HouseMark house={markHouse} size="sm"/>
+          <span className="chn-tags">
+            {unread&&<span className="chn-udot" aria-hidden="true"/>}
+            <span className={'chn-kind chn-kind--'+c.kind}>{c.kindLabel}</span>
+            <span>Sem. {c.root.delivery_week??'?'}</span>
+            {c.root.publication_state==='scheduled'&&<span className="chn-chip chn-chip--sched">Programada</span>}
+            {c.root.publication_state==='draft'&&<span className="chn-chip chn-chip--draft">Rascunho</span>}
+            {unread&&<span className="chn-chip chn-chip--new">Nova</span>}
+            {c.items.length>0&&<span>{c.items.length} resp.</span>}
+          </span>
+          <span className="chn-it-title">{c.root.subject}</span>
+          <span className="chn-it-who">{houseName(c.root.origin_house_id)} → {houseName(c.root.recipient_house_id)}{lastWho?` · última: ${lastWho}`:''}</span>
+          <span className="chn-it-pv">{preview}</span>
+        </a>
+        {queue!=='trash'&&<button type="button" className="chn-it-read" aria-label={unread?'Marcar como lida':'Marcar como não lida'}
+          title={unread?'Marcar como lida':'Marcar como não lida'} onClick={()=>toggleRead(c)}><Icon name={unread?'missivas':'mailopen'} size={16}/></button>}
       </div>
-    </header>
-    <div className="ch-toolbar">
-      {admin?<div className="ch-seg" role="group" aria-label="Grupo de narração">
-        {GROUP_OPTIONS.map(([id,label])=>
-          <button type="button" key={id} aria-pressed={group===id} className={group===id?'on':''}
-            onClick={()=>{setGroup(id);setHouse('');}}>{label}</button>)}
-      </div>:<span className="ch-muted">Você só vê cartas da sua Casa e as gerais do seu grupo.</span>}
-      {admin&&<label className="ch-inline">Casa<select value={house} onChange={e=>setHouse(e.target.value)}>
-        <option value="">Todas</option>
-        {data.houses.filter(h=>h.active&&(!groupHouses||groupHouses.has(h.id))).map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-      </select></label>}
-      <input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar em cartas e respostas" aria-label="Buscar"/>
-      <label className="ch-inline">Semana<select value={week} onChange={e=>setWeek(e.target.value)}>
-        <option value="">Todas</option>{weeks.map(w=><option key={w} value={String(w)}>Semana {w}</option>)}</select></label>
-      <button type="button" className="ch-btn" aria-pressed={timeline} onClick={()=>setTimeline(t=>!t)}>{timeline?'📋 Escrivaninha':'🕰️ Linha do tempo'}</button>
-    </div>
-    <nav className="ch-queues" aria-label="Pastas">
-      {queues.map(q=>{const n=members(q).length;return <a key={q} aria-current={queue===q?'page':undefined}
-        className={'ch-queue'+(queue===q?' on':'')} {...urlLinkProps({pasta:q==='attention'?null:q,carta:null},{onNavigate:()=>setPane('list')})}>
-        <span className="ch-q-title">{QUEUE_TEXT[q][0]}</span>
-        <span className={'ch-q-count'+(q==='attention'&&n?' hot':'')}>{q==='trash'&&trash.isPending?'…':n}</span>
-        <span className="ch-q-desc">{QUEUE_TEXT[q][1]}</span></a>;})}
-    </nav>
-    <p className="ch-note">Mostrando <b>{list.length}</b> conversa(s). <b>A leitura só conta quando você marca.</b> {message&&<span role="status">{message}</span>}</p>
-    <div className="ch-ws">
-      <div className="ch-list" role="list">
-        {list.length===0&&<p className="ch-empty">Nada nesta pasta.</p>}
-        {list.map(c=>{const unread=conversationUnread(c,ctx);return <div key={c.root.id} role="listitem"
-          className={'ch-item'+(c.root.id===selected?' sel':'')+(unread?' unread':'')}>
-          <a className="ch-item-open" {...urlLinkProps({carta:c.root.id},{onNavigate:()=>setPane('reader')})}>
-            <span className="ch-item-top">
-              <span className={'ch-kind '+c.kind}>{c.kindLabel}</span>
-              <span className="ch-muted">Sem. {c.root.delivery_week??'?'}</span>
-              {c.root.publication_state==='scheduled'&&<span className="ch-tag sched">⏳ Programada</span>}
-              {c.root.publication_state==='draft'&&<span className="ch-tag sched">Rascunho</span>}
-              {unread&&<span className="ch-tag new">Nova</span>}
-              {c.items.length>0&&<span className="ch-muted">{c.items.length} resp.</span>}
-            </span>
-            <span className="ch-item-title">{c.root.subject}</span>
-            <span className="ch-item-meta">{c.root.sender_name} · {houseName(c.root.origin_house_id)} → {houseName(c.root.recipient_house_id)}</span>
-          </a>
-          {queue!=='trash'&&<button type="button" className="ch-readtoggle" aria-label={unread?'Marcar como lida':'Marcar como não lida'}
-            title={unread?'Marcar como lida':'Marcar como não lida'} onClick={()=>void(unread?markRead(c):markUnread(c))}>{unread?'✉':'📭'}</button>}
-        </div>;})}
+    </div>;
+  });
+
+  return <section className={'chn chn--player'+(houseDrawerOpen?' chn--with-drawer':'')} data-pane={pane} aria-label="Chancelaria de Missivas">
+    <aside className="chn-queues" aria-label="Pastas da Chancelaria">
+      <section className="chn-panel">
+        <div className="chn-ph"><span className="chn-ph-t">Pastas</span></div>
+        <nav className="chn-qlist" aria-label="Pastas">
+          {PLAYER_QUEUES.map(q=>{const n=queueCount(q);return <a key={q} className="chn-q"
+            aria-current={queue===q?'true':undefined} title={QUEUE_TEXT[q][1]}
+            {...urlLinkProps({pasta:q==='attention'?null:q,carta:null,compor:null},{onNavigate:()=>{setPane('list');setCompose(false);}})}>
+            <Icon name={QUEUE_TEXT[q][2]}/><span className="chn-q-label">{QUEUE_TEXT[q][0]}<small>{QUEUE_TEXT[q][1]}</small></span>
+            <span className={'chn-cnt'+(q==='attention'&&n!=='0'?' chn-cnt--hot':'')}>{n}</span></a>;})}
+        </nav>
+      </section>
+    </aside>
+
+    <section className="chn-panel chn-toolbar" aria-label="Ferramentas da Chancelaria">
+      <div className="chn-tbrow">
+        <div className="chn-titles">
+          <p className="chn-eyebrow">
+            {openRound?`Semana ${openRound} aberta`:'Sem semana aberta'}
+            {clock?' · '+formatCampaignPeriod(clock):''}
+            {openRound!==null?` · ${weekStats.sent} enviada${weekStats.sent===1?'':'s'} esta semana`:''}
+            {weekStats.drafts>0?` · ${weekStats.drafts} rascunho${weekStats.drafts===1?'':'s'}`:''}
+          </p>
+          <h2>Chancelaria de Missivas</h2>
+        </div>
+        <span className="chn-spacer"/>
+        <div className="chn-seg chn-viewseg" role="group" aria-label="Visualização">
+          <button type="button" aria-pressed={!timeline} onClick={()=>setTimeline(false)}>Caixa</button>
+          <button type="button" aria-pressed={timeline} onClick={()=>setTimeline(true)}>Linha do tempo</button>
+        </div>
+        {myPrimaryHouse&&<button type="button" className="chn-btn" aria-pressed={houseDrawerOpen} onClick={()=>setHouseDrawerOpen(v=>!v)}>
+          <Icon name="castle" size={16}/>Minha Casa</button>}
+        <button type="button" className="chn-btn chn-filters-btn" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)}>
+          <Icon name="filter" size={16}/>{activeFilters?`Filtros (${activeFilters})`:'Filtros'}</button>
+        <button type="button" className="chn-btn chn-btn--primary chn-new" onClick={()=>openCompose()}>
+          <Icon name="feather" size={16}/>Nova missiva</button>
       </div>
-      <div className="ch-reader">
-        {current?<Reader c={current} data={data} uid={uid} admin={admin} today={today} openRound={openRound}
-          editHouses={editHouses} houseName={houseName} trashMode={queue==='trash'} ctx={ctx}
-          onBack={()=>setPane('list')} onRead={()=>void markRead(current)} onUnread={()=>void markUnread(current)}
-          onForward={()=>{if(replaceMailDraft(uid))setCompose({subject:'Enc.: '+current.root.subject,
+      <div className={'chn-filters'+(filtersOpen?' chn-filters--open':'')} role="group" aria-label="Filtros">
+        <div className="chn-sheet-h"><span>Filtros</span>
+          <button type="button" className="chn-btn chn-btn--ghost" aria-label="Fechar filtros" onClick={()=>setFiltersOpen(false)}><Icon name="close" size={16}/></button></div>
+        <div className="chn-search"><Icon name="search" size={15}/>
+          <input id="chp-search" type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar em cartas, casas e respostas" aria-label="Buscar"/></div>
+        <label className="chn-inline">Semana<select value={week} onChange={e=>setWeek(e.target.value)}>
+          <option value="">Todas</option>{weeks.map(w=><option key={w} value={String(w)}>Semana {w}</option>)}</select></label>
+        {activeFilters>0&&<span className="chn-factive">{activeFilters} filtro(s) ativo(s) · <button type="button" className="chn-link" onClick={resetFilters}>Limpar</button></span>}
+      </div>
+    </section>
+
+    <section className="chn-panel chn-list" aria-label="Conversas">
+      <div className="chn-ph"><span className="chn-ph-t chn-qname">{QUEUE_TEXT[queue][0]}</span>
+        <select className="chn-qsel" aria-label="Pasta" value={queue} onChange={e=>pickQueue(e.target.value as QueueId)}>
+          {PLAYER_QUEUES.map(q=><option key={q} value={q}>{QUEUE_TEXT[q][0]} ({queueCount(q)})</option>)}</select>
+        <span className="chn-spacer"/><span>{list.length} conversa{list.length===1?'':'s'}</span></div>
+      <div className="chn-items" role="list">
+        {list.length===0?<div className="chn-empty"><Icon name="inbox" size={28}/>
+          <p>Nada nesta pasta{activeFilters?' com os filtros atuais':''}.</p>
+          {activeFilters>0&&<button type="button" className="chn-btn" onClick={resetFilters}>Limpar filtros</button>}</div>:items}
+      </div>
+      <div className="chn-lfoot"><span>Responder marca como lida automaticamente.</span>
+        <span className="chn-keys"><kbd>j</kbd>/<kbd>k</kbd> navegar · <kbd>e</kbd> lida · <kbd>r</kbd> responder · <kbd>n</kbd> nova</span></div>
+    </section>
+
+    <section className="chn-panel chn-reader" aria-label="Leitura">
+      {compose!==false?<>
+        <div className="chn-rh">
+          <button type="button" className="chn-btn chn-btn--sm chn-back" onClick={closeCompose}><Icon name="back" size={15}/>Voltar</button>
+          <b className="chn-rh-title"><Icon name="feather" size={16}/>Nova missiva</b>
+          <span className="chn-spacer"/>
+          {myPrimaryHouse&&<button type="button" className="chn-btn chn-btn--sm" onClick={()=>setHouseDrawerOpen(v=>!v)}>
+            <Icon name="castle" size={14}/>Minha Casa</button>}
+          <button type="button" className="chn-btn chn-btn--sm" onClick={closeCompose}><Icon name="close" size={15}/>Fechar</button>
+        </div>
+        <div className="chn-rbody"><div className="chn-sheet chn-compose">
+          <MailComposer key={compose?compose.subject:'nova'} data={data} me={me} initial={compose}
+            onSave={()=>{closeCompose();setMessage('Missiva registrada.');refresh();}} onManage={onManage}/>
+        </div></div></>
+      :current?<PlayerReader key={current.root.id} c={current} data={data} uid={uid} admin={admin} today={today} openRound={openRound}
+          editHouses={editHouses} houseName={houseName} houseOf={houseOf} trashMode={queue==='trash'} ctx={ctx}
+          mailOptions={linkCatalog?.houses}
+          onBack={()=>setPane('list')}
+          onRead={()=>void markRead(current)}
+          onUnread={()=>void markUnread(current)}
+          onAutoRead={async()=>{if(conversationUnread(current,ctx))await markReadSilent(current);}}
+          onForward={()=>{openCompose({subject:'Enc.: '+current.root.subject,
             content:`\n\n--- Missiva encaminhada ---\nDe: ${current.root.sender_name}\nAssunto: ${current.root.subject}\n\n${current.root.content}`});}}
-          onDone={refresh} onError={(m)=>{onError(m);setMessage(m);}}/>
-          :<p className="ch-empty">Selecione uma missiva.</p>}
-      </div>
-    </div>
-    {compose!==false&&<div className="ch-modal" role="dialog" aria-modal="true" aria-label="Nova missiva">
-      <div className="ch-sheet"><div className="ch-sheet-h"><span>🪶 Nova missiva</span>
-        <button type="button" className="ch-btn" onClick={()=>setCompose(false)}>✕ Fechar</button></div>
-        <div className="ch-sheet-b"><MailComposer key={compose?compose.subject:'nova'} data={data} me={me} initial={compose}
-          onSave={()=>{setCompose(false);refresh();}} onManage={onManage}/></div></div></div>}
+          onDone={refresh}
+          onError={(m)=>{onError(m);setMessage(m);}}/>
+      :<div className="chn-rbody"><div className="chn-empty"><Icon name="missivas" size={28}/><p>Selecione uma missiva para ler ou clique em Nova missiva.</p></div></div>}
+    </section>
+
+    {houseDrawerOpen&&myPrimaryHouse&&<HouseQuickDrawer house={myPrimaryHouse} onClose={()=>setHouseDrawerOpen(false)} onOpenSheet={onManage}/>}
+    {(houseDrawerOpen||filtersOpen)&&<div className={'chn-scrim'+(filtersOpen&&!houseDrawerOpen?' chn-scrim--filters':'')} aria-hidden="true"
+      onClick={()=>{setHouseDrawerOpen(false);setFiltersOpen(false);}}/>}
+    {pane==='list'&&compose===false&&<button type="button" className="chn-fab" aria-label="Escrever nova missiva" onClick={()=>openCompose()}><Icon name="feather" size={22}/></button>}
+    {message&&<div className="chn-toast" role="status" aria-live="polite">{message}</div>}
   </section>;
 }
 
-function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode,ctx,onBack,onRead,onUnread,onForward,onDone,onError}:{
+type HouseRow=Panel['houses'][number];
+
+function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,houseOf,trashMode,ctx,mailOptions,onBack,onRead,onUnread,onAutoRead,onForward,onDone,onError}:{
   c:Conversation;data:Panel;uid:string;admin:boolean;today:string;openRound:number|null;editHouses:Set<string>;
-  houseName:(id:string|null|undefined)=>string;trashMode:boolean;ctx:Parameters<typeof conversationUnread>[1];
-  onBack:()=>void;onRead:()=>void;onUnread:()=>void;onForward:()=>void;onDone:()=>void;onError:(m:string)=>void;
+  houseName:(id:string|null|undefined)=>string;houseOf:(id:string|null|undefined)=>HouseRow|null;
+  trashMode:boolean;ctx:QueueContext;mailOptions:MailLinkOptionHouse[]|undefined;
+  onBack:()=>void;onRead:()=>void;onUnread:()=>void;onAutoRead:()=>Promise<void>;onForward:()=>void;onDone:()=>void;onError:(m:string)=>void;
 }){
   const unread=conversationUnread(c,ctx);
-  // Rascunho da resposta guardado por conversa nesta aba: trocar de carta,
-  // atualizar a lista ou uma falha de envio não apagam o texto.
   const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
-  const readDraft=()=>{try{return sessionStorage.getItem(draftKey)??'';}catch{return '';}};
-  const [reply,setReplyState]=useState(readDraft);const [signed,setSigned]=useState('');
-  const setReply=(value:string)=>{setReplyState(value);
-    try{if(value)sessionStorage.setItem(draftKey,value);else sessionStorage.removeItem(draftKey);}catch{/* só em memória */}};
-  const [busy,setBusy]=useState(false);const [key,setKey]=useState(()=>crypto.randomUUID());
-  const [editing,setEditing]=useState<MailRow|null>(null);const [editText,setEditText]=useState('');const [editSubject,setEditSubject]=useState('');
+  const [reply,setReplyState]=useState(()=>readLocalReplyDraft(draftKey));
+  const setReply=(value:string)=>{setReplyState(value);writeLocalReplyDraft(draftKey,value);};
+  const [busy,setBusy]=useState(false);
+  const [key,setKey]=useState(()=>crypto.randomUUID());
+  const [editing,setEditing]=useState<MailRow|null>(null);
+  const [editText,setEditText]=useState('');
+  const [editSubject,setEditSubject]=useState('');
   const [confirmCancel,setConfirmCancel]=useState<string|null>(null);
-  useEffect(()=>{setReplyState(readDraft());setEditing(null);setConfirmCancel(null);setKey(crypto.randomUUID());},[c.root.id]);// eslint-disable-line react-hooks/exhaustive-deps
+  const [focused,setFocused]=useState(false);
+  const replyRef=useRef<HTMLTextAreaElement>(null);
+
+  useEffect(()=>{
+    const t=replyRef.current;
+    if(!t)return;
+    t.style.height='auto';
+    t.style.height=Math.min(t.scrollHeight+2,Math.round(window.innerHeight*.38))+'px';
+  },[reply]);
+
   const consequences=useQuery({queryKey:['letter-consequences',uid,c.root.id],enabled:!trashMode,queryFn:async()=>{
     const r=await supabase.from('campaign_letter_consequences').select('id,letter_id,house_id,changes,active,created_at').eq('letter_id',c.root.id);
     if(r.error)throw r.error;return (r.data??[]) as LetterConsequenceRow[];
   }});
+
   const target=c.replyTarget(uid,admin,editHouses);
   const historicalReplyId=c.replyToHistoricalId(uid,admin,editHouses);
   const canSend=Boolean(target&&!trashMode&&openRound!==null&&today);
   const blockedReason=trashMode?'Restaure a missiva na Lixeira antes de responder.':
     openRound===null?'O Narrador ainda não abriu uma semana para novas respostas.':
-    !today?'Data oficial do HUB indisponível.':
+    !today?'Data oficial da campanha indisponível.':
     c.root.publication_state!=='delivered'?'A carta ainda não foi entregue.':
-    admin&&c.kind==='entre'?'O Narrador acompanha cartas entre Casas, sem responder em nome delas.':
     !admin&&editHouses.size===0?'Sua conta não possui permissão para escrever por esta Casa.':
     'Aguarde uma resposta recebida ou confira o vínculo atual da Casa.';
   const own=(m:MailRow)=>m.sender_user_id===uid&&m['source']==='firebase-cloud';
   const pending=(m:MailRow)=>m.publication_state==='draft'||m.publication_state==='scheduled';
   const editable=(m:MailRow)=>own(m)&&!m.deleted_at&&
     openRound!==null&&(pending(m)?m.creation_week===openRound:m.delivery_week===openRound);
+
   const act=async(work:()=>PromiseLike<{error:{message:string}|null}>):Promise<boolean>=>{
     setBusy(true);const r=await work();setBusy(false);
     if(r.error){onError(r.error.message);return false;}
@@ -251,111 +410,130 @@ function Reader({c,data,uid,admin,today,openRound,editHouses,houseName,trashMode
   const sendReply=async(draft:boolean)=>{
     if(!canSend||!target||!reply.trim())return;
     if(!today){onError('Data oficial da campanha indisponível.');return;}
-    // Storage privado não homologado. A resposta continua somente texto.
-    const safeContent=await uploadImages(reply,[],key);
     const letterId=historicalReplyId?c.root.id:target;
-    const ok=await act(()=>draft
-      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:letterId,p_reply:historicalReplyId,p_content:safeContent,p_signed_by:admin?signed.trim()||null:null},today)
-      :datedMail('reply_weekly_message',{p_letter:letterId,p_reply:historicalReplyId,p_content:safeContent,p_key:key,p_draft:false,p_signed_by:admin?signed.trim()||null:null},today));
-    if(!ok)return;
-    setReply('');setKey(crypto.randomUUID());
+    setBusy(true);
+    const r=await (draft
+      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:letterId,p_reply:historicalReplyId,p_content:reply,p_signed_by:null},today)
+      :datedMail('reply_weekly_message',{p_letter:letterId,p_reply:historicalReplyId,p_content:reply,p_key:key,p_draft:false,p_signed_by:null},today));
+    if(r.error){setBusy(false);onError(r.error.message);return;}
+    if(!draft){await onAutoRead();}
+    setBusy(false);
+    setReply('');
+    setKey(crypto.randomUUID());
+    onDone();
   };
+
+  const {courtLabel,unitLabel}=resolveLinkNames(mailOptions,c.root.court_member_id,c.root.military_unit_id);
+
   const statusBar=(m:MailRow)=>{
-    if(trashMode)return m.deleted_at?<div className="ch-status trash"><span>🗑 {m['removal_kind']==='cancelada'?'Envio cancelado':'Excluída'} em {new Date(m.deleted_at).toLocaleString('pt-BR')}.</span>
-      {(admin||(own(m)&&m['removal_kind']==='cancelada'))&&<button type="button" className="ch-btn small primary" disabled={busy}
-        onClick={()=>void act(()=>loose('restore_campaign_letter',{p_id:m.id}))}>↺ Restaurar</button>}</div>:null;
-    const parts=[];
-    if(m.publication_state==='scheduled')parts.push(<span key="s">⏳ Programada para a <b>Semana {m.delivery_week}</b>. Só você e o Narrador a veem até a abertura.</span>);
-    if(m.publication_state==='draft')parts.push(<span key="d">Rascunho: ninguém recebeu ainda.</span>);
+    if(trashMode)return m.deleted_at?<div className="chn-status chn-status--trash"><Icon name="trash" size={15}/>
+      <span>{m['removal_kind']==='cancelada'?'Envio cancelado':'Excluída'} em {new Date(m.deleted_at).toLocaleString('pt-BR')}.</span>
+      {own(m)&&m['removal_kind']==='cancelada'&&<button type="button" className="chn-btn chn-btn--sm chn-btn--primary" disabled={busy}
+        onClick={()=>void act(()=>loose('restore_campaign_letter',{p_id:m.id}))}><Icon name="undo" size={14}/>Restaurar</button>}</div>:null;
+    const parts:ReactNode[]=[];
+    if(m.publication_state==='scheduled')parts.push(<span key="s"><Icon name="hour" size={14}/> Programada para a <b>Semana {m.delivery_week}</b>.</span>);
+    if(m.publication_state==='draft')parts.push(<span key="d"><Icon name="file" size={14}/> Rascunho: ninguém recebeu ainda.</span>);
     if(editable(m)){
-      parts.push(<button key="e" type="button" className="ch-btn small" onClick={()=>{setEditing(m);setEditText(m.content);setEditSubject(m.subject);}}>✏️ Editar envio</button>);
-      if(m.publication_state==='draft')parts.push(<button key="p" type="button" className="ch-btn small primary" disabled={busy}
-        onClick={()=>void act(()=>loose('schedule_letter_draft',{p_id:m.id,p_week:m.delivery_week??openRound}))}>✉ Enviar agora</button>);
-      parts.push(confirmCancel===m.id?<span key="c" className="ch-row"><b>Cancelar este envio para todos?</b>
-        <button type="button" className="ch-btn small wax" disabled={busy} onClick={()=>void act(()=>loose('delete_campaign_letter',{p_id:m.id}))}>Sim, cancelar</button>
-        <button type="button" className="ch-btn small" onClick={()=>setConfirmCancel(null)}>Não</button></span>
-        :<button key="c" type="button" className="ch-btn small wax" onClick={()=>setConfirmCancel(m.id)}>✕ Cancelar envio</button>);
-      parts.push(<span key="m" className="ch-muted">{pending(m)?'Possível até a entrega.':`Possível enquanto a Semana ${openRound} estiver aberta.`}</span>);
-    }else if(admin&&!m.deleted_at&&!own(m)){
-      parts.push(confirmCancel===m.id?<span key="x" className="ch-row"><b>Excluir para todos?</b>
-        <button type="button" className="ch-btn small wax" disabled={busy} onClick={()=>void act(()=>loose('delete_campaign_letter',{p_id:m.id}))}>Excluir</button>
-        <button type="button" className="ch-btn small" onClick={()=>setConfirmCancel(null)}>Não</button></span>
-        :<button key="x" type="button" className="ch-btn small" onClick={()=>setConfirmCancel(m.id)}>🗑 Excluir (moderação)</button>);
+      parts.push(<button key="e" type="button" className="chn-btn chn-btn--sm" onClick={()=>{setEditing(m);setEditText(m.content);setEditSubject(m.subject);}}><Icon name="edit" size={14}/>Editar envio</button>);
+      if(m.publication_state==='draft')parts.push(<button key="p" type="button" className="chn-btn chn-btn--sm chn-btn--primary" disabled={busy}
+        onClick={()=>void act(()=>loose('schedule_letter_draft',{p_id:m.id,p_week:m.delivery_week??openRound}))}><Icon name="send" size={14}/>Enviar agora</button>);
+      parts.push(confirmCancel===m.id?<span key="c" className="chn-confirm"><b>Cancelar este envio para todos?</b>
+        <button type="button" className="chn-btn chn-btn--sm chn-btn--wax" disabled={busy} onClick={()=>void act(()=>loose('delete_campaign_letter',{p_id:m.id}))}>Sim, cancelar</button>
+        <button type="button" className="chn-btn chn-btn--sm" onClick={()=>setConfirmCancel(null)}>Não</button></span>
+        :<button key="c" type="button" className="chn-btn chn-btn--sm chn-btn--wax" onClick={()=>setConfirmCancel(m.id)}><Icon name="close" size={14}/>Cancelar envio</button>);
+      parts.push(<span key="m" className="chn-muted">{pending(m)?'Editável até a entrega.':`Editável enquanto a Semana ${openRound} estiver aberta.`}</span>);
     }
     if(own(m)&&m.publication_state==='delivered'&&!m.deleted_at)
-      parts.push(<span key="r" className={'ch-pill'+(m['recipient_read']?' ok':'')}>{m['recipient_read']?'✓✓ lida pelo destinatário':'✓ entregue'}</span>);
-    return parts.length?<div className="ch-status">{parts}</div>:null;
+      parts.push(<span key="r" className={'chn-pill'+(m['recipient_read']?' chn-pill--ok':'')}>{m['recipient_read']?'✓✓ lida pelo destinatário':'✓ entregue'}</span>);
+    return parts.length?<div className="chn-status">{parts}</div>:null;
   };
-  const editForm=(m:MailRow)=><form className="ch-form" onSubmit={e=>{e.preventDefault();
-    void uploadImages(editText,[],key).then(content=>
-      act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:content},(m['campaign_date'] as string|null|undefined)??''))
-      .then(ok=>{if(ok)setEditing(null);}));}}>
-    <b>✏️ Editando o envio</b><span className="ch-muted">Quem já leu verá "Editada"; a versão anterior fica no histórico.</span>
+
+  const editForm=(m:MailRow)=><form className="chn-form" onSubmit={e=>{e.preventDefault();
+    void act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:editText},(m['campaign_date'] as string|null|undefined)??''))
+      .then(ok=>{if(ok)setEditing(null);});}}>
+    <b>Editando o envio</b><span className="chn-muted">Quem já leu verá "Editada"; a versão anterior fica preservada.</span>
     {!m['conversation_id']||m['conversation_id']===m.id?<label>Assunto<input value={editSubject} onChange={e=>setEditSubject(e.target.value)} required/></label>:null}
     <label>Texto<textarea rows={8} value={editText} onChange={e=>setEditText(e.target.value)} required/></label>
-    <ImagePicker images={[]} onChange={()=>{}} disabled/>
-    <p className="ch-muted" role="note">Imagens disponíveis após a homologação do Firebase Storage. Nenhum arquivo é enviado nesta edição.</p>
-    <div className="ch-row"><button type="button" className="ch-btn" onClick={()=>setEditing(null)}>Descartar</button>
-      <button type="submit" className="ch-btn primary" disabled={busy}>Salvar nova versão</button></div>
+    <div className="chn-row"><button type="button" className="chn-btn" onClick={()=>setEditing(null)}>Descartar</button>
+      <button type="submit" className="chn-btn chn-btn--primary" disabled={busy}>Salvar nova versão</button></div>
   </form>;
-  return <article className="ch-card" aria-labelledby="ch-reader-title">
-    <div className="ch-back"><button type="button" className="ch-btn" onClick={onBack}>← Voltar</button></div>
-    <div className="ch-badges"><span className={'ch-kind '+c.kind}>{c.kindLabel}</span>
-      <span className="ch-pill">Semana {c.root.delivery_week??'?'}</span>
-      {c.root['campaign_date']?<span className="ch-pill">{formatDate(c.root['campaign_date'] as string)}</span>:null}
-      {c.root['edited_at']?<span className="ch-pill">Editada</span>:null}
-      <span className="ch-spacer"/>
-      {!trashMode&&(unread?<button type="button" className="ch-btn small primary" onClick={onRead}>✓ Marcar como lida</button>
-        :<button type="button" className="ch-btn small" onClick={onUnread}>📭 Marcar como não lida</button>)}
-      {!trashMode&&!admin&&c.root.publication_state==='delivered'&&<button type="button" className="ch-btn small" onClick={onForward}>↪ Encaminhar</button>}
+
+  const rootDate=str(c.root['campaign_date']);
+  const itemHouse=(i:Conversation['items'][number])=>{
+    const id=i.letter?.origin_house_id??str((i.reply as unknown as Record<string,unknown>|null)?.['house_id']);
+    return houseOf(id);
+  };
+  const itemDate=(i:Conversation['items'][number])=>{
+    const d=str(i.letter?.['campaign_date'])??str((i.reply as unknown as Record<string,unknown>|null)?.['campaign_date']);
+    return d?formatDate(d):i.at?new Date(i.at).toLocaleString('pt-BR'):'';
+  };
+  const activeConsequences=(consequences.data??[]).filter(x=>x.active);
+
+  return <>
+    <div className="chn-rh">
+      <button type="button" className="chn-btn chn-btn--sm chn-back" onClick={onBack}><Icon name="back" size={15}/>Voltar</button>
+      <span className={'chn-kind chn-kind--'+c.kind}>{c.kindLabel}</span>
+      <span className="chn-rh-tl">{mailWeekTimeline(c.root.creation_week,c.root.delivery_week,c.root.publication_state)}</span>
+      {!trashMode&&(unread?<button type="button" className="chn-btn chn-btn--sm chn-btn--primary" aria-label="Marcar como lida" onClick={onRead}><Icon name="check" size={15}/><span className="chn-bl">Marcar como lida</span></button>
+        :<button type="button" className="chn-btn chn-btn--sm" aria-label="Marcar como não lida" onClick={onUnread}><Icon name="mailopen" size={15}/><span className="chn-bl">Não lida</span></button>)}
+      {!trashMode&&c.root.publication_state==='delivered'&&<button type="button" className="chn-btn chn-btn--sm" onClick={onForward}><span className="chn-bl">↪ Encaminhar</span></button>}
     </div>
-    {statusBar(c.root)}
-    {editing?.id===c.root.id?editForm(c.root):<>
-      <h3 id="ch-reader-title">{c.root.subject}</h3>
-      <div className="ch-meta"><span><b>De:</b> {c.root.sender_name==='Narrador'&&c.root.origin_house_id===null
-          ?'Narrador':c.root.sender_name+' ('+houseName(c.root.origin_house_id)+')'}</span>
-        <span><b>Para:</b> {houseName(c.root.recipient_house_id)}</span>
-        {c.root['historical_source']?<span className="ch-muted">Arquivo histórico</span>:null}</div>
-      {c.root.court_member_id||c.root.military_unit_id?<div className="ch-links">
-        {c.root.court_member_id&&<span className="ch-pill">👤 Corte vinculada</span>}
-        {c.root.military_unit_id&&<span className="ch-pill">⚔️ Unidade vinculada</span>}</div>:null}
-      <div className="ch-body"><CampaignContent content={c.root.content}/></div></>}
-    <section className="ch-thread" aria-label="Fio de respostas"><h4>Fio de respostas ({c.items.length})</h4>
-      {c.items.length===0&&<p className="ch-muted">Nenhuma resposta ainda.</p>}
-      {c.items.map(i=><div key={i.id} className={'ch-reply'+(i.mine(uid)?' mine':'')+(i.isNewFor(ctx)?' new':'')}>
-        <div className="ch-reply-h"><b>{i.author}</b>{i.isNewFor(ctx)&&<span className="ch-tag new">Nova</span>}
-          <span className="ch-spacer"/><span className="ch-muted">{i.letter?.['campaign_date']
-            ?formatDate(String(i.letter['campaign_date']))+' · ':''}{i.at?new Date(i.at).toLocaleString('pt-BR'):''}</span></div>
-        {i.letter&&editing?.id===i.letter.id?editForm(i.letter):<div className="ch-body small"><CampaignContent content={i.content}/></div>}
-        {i.letter&&!editing&&statusBar(i.letter)}
-      </div>)}
-    </section>
-    {!trashMode&&(canSend?<form className="ch-form" onSubmit={e=>{e.preventDefault();void sendReply(false);}}>
-      <b>{admin?'Responder como Narrador':'Responder'}</b>
-      {admin&&<label>Assinado por (NPC ou cargo)<input maxLength={120} value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Ex.: Vetrus, Intendente"/></label>}
-      <textarea id={'ch-responder-'+c.root.id} rows={5} value={reply} onChange={e=>setReply(e.target.value)} placeholder="Escreva sua resposta ou ordem…" aria-label="Texto da resposta"/>
-      <ImagePicker images={[]} onChange={()=>{}} disabled/>
-      <p className="ch-muted" role="note">Imagens indisponíveis até a homologação do Firebase Storage. A resposta é enviada somente como texto.</p>
-      <div className="ch-row"><button type="button" className="ch-btn" disabled={busy||!reply.trim()} onClick={()=>void sendReply(true)}>Salvar rascunho</button>
-        <button type="submit" className="ch-btn primary" disabled={busy||!reply.trim()}>✉ Enviar resposta</button></div>
-    </form>:<div className="ch-readonly" role="status">{blockedReason}</div>)}
-    <div className="ch-actions ch-read-actions" role="group" aria-label="Ações da missiva">
-      {!trashMode&&(unread?<button type="button" className="ch-btn small" onClick={onRead}>✓ Marcar como lida</button>
-        :<button type="button" className="ch-btn small" onClick={onUnread}>📭 Marcar como não lida</button>)}
-      <button type="button" className="ch-btn primary" disabled={!canSend}
-        aria-label="Responder" title={canSend?'Escrever resposta':blockedReason}
-        onClick={()=>document.getElementById('ch-responder-'+c.root.id)?.focus()}>✉ Responder</button>
-      {!trashMode&&!admin&&c.root.publication_state==='delivered'&&
-        <button type="button" className="ch-btn" onClick={onForward}>↪ Encaminhar</button>}
-      {!canSend&&<span className="ch-muted" role="note">{blockedReason}</span>}
+
+    <div className="chn-rbody">
+      <article className="chn-sheet" aria-labelledby="ch-reader-title">
+        <img className="chn-wm" src="/newspaper/brasao_reino.webp" alt=""/>
+        {editing?.id===c.root.id?editForm(c.root):<>
+          <div className="chn-lh">
+            <p className="chn-lh-eyebrow">Chancelaria Real de Cormyr{rootDate?' · '+formatDate(rootDate):''}{c.root['edited_at']?' · Editada':''}</p>
+            <h3 id="ch-reader-title">{c.root.subject}</h3>
+            <div className="chn-who">
+              <span><b>De:</b> <HouseMark house={houseOf(c.root.origin_house_id)} size="xs"/>{c.root.sender_name==='Narrador'&&c.root.origin_house_id===null?'Narrador':`${c.root.sender_name}${c.root.origin_house_id?` (${houseName(c.root.origin_house_id)})`:''}`}</span>
+              <span><b>Para:</b> <HouseMark house={houseOf(c.root.recipient_house_id)} size="xs"/>{houseName(c.root.recipient_house_id)}</span>
+              {unread&&<span className="chn-chip chn-chip--new">Nova</span>}
+              {c.root['historical_source']?<span className="chn-muted">Arquivo histórico</span>:null}
+            </div>
+            {(c.root.court_member_id||c.root.military_unit_id)&&<div className="chn-links">
+              {c.root.court_member_id&&<span className="chn-pill">👤 {courtLabel??'Membro da Corte vinculado'}</span>}
+              {c.root.military_unit_id&&<span className="chn-pill">⚔️ {unitLabel??'Unidade militar vinculada'}</span>}
+            </div>}
+          </div>
+          <div className="chn-body"><CampaignContent content={c.root.content}/></div></>}
+        {statusBar(c.root)}
+      </article>
+
+      {activeConsequences.length>0&&<div className="chn-thread">
+        <LetterConsequences letterId={c.root.id} admin={false} houses={[]} suggestedHouse="" items={activeConsequences} onSaved={onDone} onError={onError}/>
+      </div>}
+
+      <section className="chn-thread" aria-label="Fio de respostas">
+        <h4>Fio de respostas ({c.items.length})</h4>
+        {c.items.length===0&&<p className="chn-muted">Nenhuma resposta ainda.</p>}
+        {c.items.map(i=>{const isNew=i.isNewFor(ctx);return <article key={i.id} className={'chn-msg'+(i.mine(uid)?' chn-msg--mine':'')+(isNew?' chn-msg--new':'')+(i.letter?.deleted_at?' chn-msg--cancelled':'')}>
+          <div className="chn-mh"><HouseMark house={itemHouse(i)} size="xs"/><b>{i.author}</b>{isNew&&<span className="chn-chip chn-chip--new">Nova</span>}
+            {i.letter?.publication_state==='scheduled'&&<span className="chn-chip chn-chip--sched">Programada</span>}
+            <span className="chn-spacer"/><span className="chn-muted">{itemDate(i)}</span></div>
+          {i.letter&&editing?.id===i.letter.id?editForm(i.letter):<div className="chn-body chn-body--small"><CampaignContent content={i.content}/></div>}
+          {i.letter&&!editing&&statusBar(i.letter)}
+        </article>;})}
+      </section>
+
+      {admin&&!trashMode&&<div className="chn-thread"><NarratorMailNotes letterId={c.root.id} userId={uid}/></div>}
     </div>
-    {admin&&!trashMode&&<>
-      <NarratorMailNotes letterId={c.root.id} userId={uid}/>
-      <LetterConsequences letterId={c.root.id} admin houses={data.houses.filter(h=>h.active).map(h=>({id:h.id,name:h.name}))}
-        suggestedHouse={c.root.origin_house_id??c.root.recipient_house_id??''} items={consequences.data??[]}
-        onSaved={onDone} onError={onError}/>
-    </>}
-    {!admin&&(consequences.data??[]).filter(x=>x.active).length>0&&<LetterConsequences letterId={c.root.id} admin={false}
-      houses={[]} suggestedHouse="" items={consequences.data??[]} onSaved={onDone} onError={onError}/>}
-  </article>;
+
+    {trashMode?<div className="chn-readonly"><Icon name="trash" size={15}/>Conversa na Lixeira. Restaure para continuar o fio.</div>
+    :canSend?<form className={'chn-reply'+(focused||reply.trim()?' chn-reply--active':'')} onSubmit={e=>{e.preventDefault();void sendReply(false);}}
+      onFocus={()=>setFocused(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setFocused(false);}}>
+      <div className="chn-reply-main">
+        <textarea id={'ch-responder-'+c.root.id} ref={replyRef} rows={2} value={reply} onChange={e=>setReply(e.target.value)}
+          onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&reply.trim()&&!busy){e.preventDefault();void sendReply(false);}}}
+          placeholder="Escreva sua resposta ou ordem… (Ctrl+Enter envia)" aria-label="Texto da resposta"/>
+        <button type="submit" className="chn-btn chn-btn--primary" disabled={busy||!reply.trim()}><Icon name="send" size={15}/>Enviar</button>
+      </div>
+      <div className="chn-reply-extra">
+        <span className="chn-note">Rascunho salvo automaticamente neste navegador · <kbd>Ctrl+Enter</kbd> envia</span>
+        <button type="button" className="chn-btn chn-btn--sm" disabled={busy||!reply.trim()} onClick={()=>void sendReply(true)}>Salvar rascunho</button>
+      </div>
+    </form>
+    :<div className="chn-readonly"><Icon name="lock" size={15}/>{blockedReason}</div>}
+  </>;
 }

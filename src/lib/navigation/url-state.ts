@@ -19,7 +19,7 @@ export type UrlParamChanges=Record<string,string|null|undefined>;
 
 /** Parâmetros das telas internas. Trocar de módulo ou de aba principal limpa
  * os níveis abaixo, para um link nunca carregar uma carta ou seção de outra tela. */
-export const NESTED_URL_PARAMS=['parte','espionagem','ficha','pasta','carta','dossie','modalidade','redacao','filtroCasa','hub'] as const;
+export const NESTED_URL_PARAMS=['parte','espionagem','ficha','pasta','carta','compor','dossie','modalidade','redacao','filtroCasa','hub'] as const;
 
 const listeners=new Set<()=>void>();
 let bound=false;
