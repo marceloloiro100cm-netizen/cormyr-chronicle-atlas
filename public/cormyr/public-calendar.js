@@ -1,203 +1,572 @@
-/* Public, read-only Harptos explorer. Never reads authenticated House data. */
+/* Calendário público visual de Harptos (somente leitura, sem dados privados). */
 (function () {
   'use strict';
-  const root=document.getElementById('chronicle-calendar');
+  const root = document.getElementById('chronicle-calendar');
   if (!root) return;
-  const byId=(id)=>document.getElementById(id);
-  const months=['Hammer','Alturiak','Ches','Tarsakh','Mirtul','Kythorn','Flamerule','Eleasis','Eleint','Marpenoth','Uktar','Nightal'];
-  const fixed=[
-    {id:'midwinter',month:0,name:'Meio do Inverno'},
-    {id:'greengrass',month:3,name:'Relva Verde'},
-    {id:'midsummer',month:6,name:'Meio do Verão'},
-    {id:'shieldmeet',month:6,name:'Encontro dos Escudos',leapOnly:true},
-    {id:'highharvestide',month:8,name:'Grande Colheita'},
-    {id:'feast-moon',month:10,name:'Festa da Lua'}
+  const byId = (id) => document.getElementById(id);
+
+  const MONTHS = [
+    { name: 'Hammer', title: 'O Fundo do Inverno', season: 'Inverno' },
+    { name: 'Alturiak', title: 'A Garra do Inverno', season: 'Inverno' },
+    { name: 'Ches', title: 'A Garra dos Sóis Poentes', season: 'Primavera' },
+    { name: 'Tarsakh', title: 'A Garra das Tempestades', season: 'Primavera' },
+    { name: 'Mirtul', title: 'O Derretimento', season: 'Primavera' },
+    { name: 'Kythorn', title: 'O Tempo das Flores', season: 'Verão' },
+    { name: 'Flamerule', title: 'O Tempo do Fogo', season: 'Verão' },
+    { name: 'Eleasis', title: 'O Sol Alto', season: 'Verão' },
+    { name: 'Eleint', title: 'O Desbotar', season: 'Outono' },
+    { name: 'Marpenoth', title: 'Queda das Folhas', season: 'Outono' },
+    { name: 'Uktar', title: 'O Apodrecimento', season: 'Outono' },
+    { name: 'Nightal', title: 'A Descida', season: 'Inverno' }
   ];
-  const waukeen=[[15,'Conforto da Contagem Fria'],[20,'Grande Tecelagem'],[30,'Moeda Alta'],
-    [10,'Esferas'],[12,'Sammardach'],[21,'Brightbuckle'],[3,'Sornyn'],
-    [17,'Huldark'],[7,'Spryndalstar'],[1,'Marthoon'],
-    [10,'Tehennteahan · Noite de Martelos e Pregos'],[25,'Orbar']];
-  const seasons=[[2,19,'Equinócio da primavera'],[5,20,'Solstício de verão'],
-    [8,21,'Equinócio do outono'],[11,20,'Solstício de inverno']];
-  const state={year:1522,month:9,day:21,mode:'year',region:'all',search:'',
-    official:null,timeline:[],published:[],error:'',loading:true};
-  const controls={year:byId('chronicle-year'),month:byId('chronicle-month'),
-    tenday:byId('chronicle-tenday'),day:byId('chronicle-day'),mode:byId('chronicle-mode'),
-    region:byId('chronicle-region'),search:byId('chronicle-search')};
-  months.forEach((m,i)=>{const o=new Option(m,String(i));controls.month.add(o);});
-  for(let i=1;i<=30;i++)controls.day.add(new Option(String(i),String(i)));
-  const normalize=(value)=>String(value||'').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  const yearValue=(v)=>Number.isSafeInteger(v)&&v>=1&&v<=9999;
-  const pad=(n)=>String(n).padStart(2,'0');
-  const iso=(year,month,day)=>String(year).padStart(4,'0')+'-'+pad(month+1)+'-'+pad(day);
-  const row=(title,description,meta,type)=>{
-    const article=document.createElement('article');article.className='chronicle-card';
-    article.dataset.type=type;
-    const metadata=document.createElement('div');metadata.className='chronicle-meta';metadata.textContent=meta;article.append(metadata);
-    const head=document.createElement('h3');head.textContent=title;article.append(head);
-    if(description){
-      const details=document.createElement('details');
-      const summary=document.createElement('summary');summary.textContent='Ler o acontecimento completo';
-      const p=document.createElement('p');p.textContent=description;
-      details.append(summary,p);article.append(details);
+
+  const FIXED = [
+    {
+      id: 'midwinter', month: 0, name: 'Meio do Inverno',
+      description: 'Em Cormyr: renovação de alianças entre famílias nobres, anúncios da Coroa e dos Dragões Púrpuras, e planejamento político e militar do ano.'
+    },
+    {
+      id: 'greengrass', month: 3, name: 'Relva Verde',
+      description: 'Dia de bênção das colheitas pelos sacerdotes de Chauntea, música e banquetes ao ar livre da nobreza e da plebe.'
+    },
+    {
+      id: 'midsummer', month: 6, name: 'Meio do Verão',
+      description: 'Dia de festas, torneios e tratados abertos no auge do verão.'
+    },
+    {
+      id: 'shieldmeet', month: 6, name: 'Encontro dos Escudos', leapOnly: true,
+      description: 'Dia bissexto de tratados abertos, renovação de pactos, torneios reais e petições públicas ao Rei; marcado em Cormyr pela memória sombria do massacre dos Magos de Guerra na Fortaleza Real em 1396 CV.'
+    },
+    {
+      id: 'highharvestide', month: 8, name: 'Grande Colheita',
+      description: 'Festa da colheita, cobrança de impostos em alimentos pelas casas nobres, partida de caravanas e assinatura de tratados antes do inverno.'
+    },
+    {
+      id: 'feast-moon', month: 10, name: 'Festa da Lua',
+      description: 'Festival solene de tributo aos ancestrais, heróis caídos e reis passados; procissões com tochas e cerimônia da família real no mausoléu de Suzail.'
     }
-    return article;
+  ];
+
+  const WAUKEEN = [
+    [15, 'Conforto da Contagem Fria', 'Balanço de inverno de guildas e tesoureiros nobres; juros reduzidos em Suzail.'],
+    [20, 'Grande Tecelagem', 'Feira têxtil de tecelões, alfaiates, sedas de Marsember e lãs das Stonelands.'],
+    [30, 'Moeda Alta', 'Reabertura oficial das grandes rotas de caravanas após o degelo e assinatura de contratos comerciais.'],
+    [10, 'Esferas', 'Festival de joalheiros, ourives e artesãos de luxo em Suzail; encomendas de joias e armas ornamentadas pela nobreza.'],
+    [12, 'Sammardach', 'Grande feira popular de rua, leilões de mercadorias exóticas e jogos de azar onde nobres jogam pequenas moedas ao povo.'],
+    [21, 'Brightbuckle', 'Feira de armeiros, ferreiros, seleiros e equipamentos para caravanas e exércitos em Arabel e fortalezas reais.'],
+    [3, 'Sornyn', 'Ápice do comércio marítimo no Lago dos Dragões (Suzail e Marsember), chegada de frotas mercantes e leilões de especiarias (3 a 5 de Flamerule).'],
+    [17, 'Huldark', 'Celebração conjunta de Waukeen e Chauntea com feiras de grãos, frutas, cervejas e vinhos.'],
+    [7, 'Spryndalstar', 'Semana de feiras móveis, procissões com moedas douradas e redução temporária de tarifas em Suzail, Marsember e Arabel.'],
+    [1, 'Marthoon', 'Fechamento de grandes contratos anuais, quitação de dívidas e renegociação de empréstimos entre casas nobres e guildas.'],
+    [10, 'Tehennteahan · Noite de Martelos e Pregos', 'Dia de doações a orfanatos, veteranos de guerra e obras públicas para afastar a má sorte no comércio do ano seguinte.'],
+    [25, 'Orbar', 'Auditoria anual de cofres reais, guildas e casas nobres antes do fim do ano, seguida pelo Banquete das Balanças Douradas.']
+  ];
+
+  const TYR = [
+    [1, 'Ver a Justiça', 'Abertura formal de sessões de julgamento nos tribunais reais de Suzail, leitura de leis reais e petições de camponeses e mercadores.'],
+    [13, 'Mutilamento', 'Rito mensal de Tyr: cerimônias militares da Ordem do Dragão Púrpura, juramentos de soldados e cavaleiros e execução de sentenças importantes.'],
+    [22, 'O Vínculo', 'Rito mensal de Tyr: julgamentos de traição, corrupção e crimes contra a Coroa, penitências públicas e concessão do Perdão da Mão Cortada.']
+  ];
+
+  const SEASONS = [
+    [2, 19, 'Equinócio da primavera', 'Início astronômico da primavera em Faerûn.'],
+    [5, 20, 'Solstício de verão', 'Dia mais longo do ano em Harptos.'],
+    [8, 21, 'Equinócio do outono', 'Início astronômico do outono em Faerûn.'],
+    [11, 20, 'Solstício de inverno', 'Noite mais longa do ano em Harptos.']
+  ];
+
+  const state = {
+    tab: 'calendar',
+    year: 1522,
+    month: 9,
+    selectedKey: null, // null = mostrar todos os eventos do mês
+    region: 'all',
+    search: '',
+    era: 'all',
+    timelineSearch: '',
+    official: null,
+    timeline: [],
+    published: [],
+    error: '',
+    loadingTimeline: true
   };
-  const empty=(message)=>{const p=document.createElement('p');p.className='chronicle-empty';p.textContent=message;return p;};
-  const getAnnual=(year)=>state.timeline.filter(x=>x.year<=year&&(x.yearEnd||x.year)>=year);
-  function knownObservances(year){
-    const result=[];
-    const add=(month,day,title,id,festival)=>result.push({id,year,month,day,festival:festival||null,
-      date:festival?String(year).padStart(4,'0')+'-F-'+festival:iso(year,month,day),
-      title,scope:'kingdom',region:null,type:'observance'});
-    fixed.forEach(f=>{if(!f.leapOnly||year%4===0)add(f.month,31,f.name,f.id,f.id);});
-    for(let m=0;m<12;m++){
-      [[1,'Ver a Justiça'],[13,'Mutilamento'],[22,'O Vínculo']].forEach(([d,n])=>
-        add(m,d,'Tyr · '+n,'tyr-'+m+'-'+d));
-      // Sornyn in Flamerule lasts three days (3–5), per the canonical calendar.
-      for(let day=waukeen[m][0];day<=(m===6?5:waukeen[m][0]);day++)
-        add(m,day,'Waukeen · '+waukeen[m][1],'waukeen-'+m+'-'+day);
+
+  const controls = {
+    year: byId('chronicle-year'),
+    month: byId('chronicle-month'),
+    region: byId('chronicle-region'),
+    search: byId('chronicle-search'),
+    mode: byId('chronicle-mode'),
+    tenday: byId('chronicle-tenday'),
+    day: byId('chronicle-day'),
+    timelineSearch: byId('chronicle-timeline-search')
+  };
+
+  MONTHS.forEach((m, i) => {
+    controls.month.add(new Option(m.name, String(i)));
+  });
+  for (let i = 1; i <= 30; i++) controls.day.add(new Option(String(i), String(i)));
+
+  const normalize = (value) =>
+    String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const yearValue = (v) => Number.isSafeInteger(v) && v >= 1 && v <= 9999;
+  const pad = (n) => String(n).padStart(2, '0');
+  const iso = (year, month, day) => String(year).padStart(4, '0') + '-' + pad(month + 1) + '-' + pad(day);
+  const festivalKey = (year, id) => String(year).padStart(4, '0') + '-F-' + id;
+
+  const regionLabel = (x) =>
+    x.scope === 'kingdom' ? 'Reino inteiro' : x.region === '1' ? 'Costa do Dragão' : 'Horselands';
+
+  const regionMatches = (x) =>
+    state.region === 'all' || x.scope === 'kingdom' || x.region === state.region;
+
+  function knownObservances(year) {
+    const result = [];
+    const add = (month, day, title, description, id, type, festival) =>
+      result.push({
+        id, year, month, day, festival: festival || null,
+        date: festival ? festivalKey(year, festival) : iso(year, month, day),
+        title, description: description || '', scope: 'kingdom', region: null, type
+      });
+
+    FIXED.forEach((f) => {
+      if (!f.leapOnly || year % 4 === 0) {
+        add(f.month, 31, f.name, f.description, f.id, 'festival', f.id);
+      }
+    });
+    for (let m = 0; m < 12; m++) {
+      TYR.forEach(([d, n, desc]) => add(m, d, 'Tyr · ' + n, desc, 'tyr-' + m + '-' + d, 'tyr'));
+      const [wDay, wTitle, wDesc] = WAUKEEN[m];
+      for (let d = wDay; d <= (m === 6 ? 5 : wDay); d++) {
+        add(m, d, 'Waukeen · ' + wTitle, wDesc, 'waukeen-' + m + '-' + d, 'festival');
+      }
     }
-    seasons.forEach(([m,d,n])=>add(m,d,n,'season-'+m));
+    SEASONS.forEach(([m, d, n, desc]) => add(m, d, n, desc, 'season-' + m, 'season'));
     return result;
   }
-  function parsePublished(event,year){
-    if(!event||typeof event.title!=='string'||typeof event.date!=='string'||event.title.length>200)return null;
-    const m=/^(\d{4})-(?:(\d{2})-(\d{2})|F-([a-z-]+))$/.exec(event.date);
-    if(!m||Number(m[1])!==year)return null;
-    let month=Number(m[2])-1,day=Number(m[3]),festival=null;
-    if(m[4]){const f=fixed.find(x=>x.id===m[4]);if(!f||f.leapOnly&&year%4!==0)return null;
-      month=f.month;day=31;festival=f.id;
-    } else if(month<0||month>11||day<1||day>30)return null;
-    if(event.scope!=='kingdom'&&event.scope!=='region')return null;
-    if(event.scope==='region'&&!['1','2'].includes(event.region))return null;
-    return {id:String(event.id||event.date),year,month,day,festival,date:event.date,title:event.title,
-      description:typeof event.description==='string'?event.description:'',scope:event.scope,
-      region:event.scope==='region'?event.region:null,type:'published'};
+
+  function parsePublished(event, year) {
+    if (!event || typeof event.title !== 'string' || typeof event.date !== 'string' || event.title.length > 200) return null;
+    const m = /^(\d{4})-(?:(\d{2})-(\d{2})|F-([a-z-]+))$/.exec(event.date);
+    if (!m || Number(m[1]) !== year) return null;
+    let month = Number(m[2]) - 1, day = Number(m[3]), festival = null;
+    if (m[4]) {
+      const f = FIXED.find((x) => x.id === m[4]);
+      if (!f || (f.leapOnly && year % 4 !== 0)) return null;
+      month = f.month; day = 31; festival = f.id;
+    } else if (month < 0 || month > 11 || day < 1 || day > 30) {
+      return null;
+    }
+    if (event.scope !== 'kingdom' && event.scope !== 'region') return null;
+    if (event.scope === 'region' && !['1', '2'].includes(event.region)) return null;
+    return {
+      id: String(event.id || event.date), year, month, day, festival, date: event.date,
+      title: event.title, description: typeof event.description === 'string' ? event.description : '',
+      scope: event.scope, region: event.scope === 'region' ? event.region : null,
+      type: event.title.indexOf('Festival · ') === 0 ? 'festival' : 'published'
+    };
   }
-  const regionLabel=(x)=>x.scope==='kingdom'?'Reino inteiro':x.region==='1'?'Costa do Dragão · Grupo 1':'Horselands · Grupo 2';
-  const searchable=(x)=>normalize([x.title,x.description,x.year,x.yearEnd||'',x.region,regionLabel(x)].join(' '));
-  const regionMatches=(x)=>state.region==='all'||x.scope==='kingdom'||x.region===state.region;
-  function dateMatches(x){
-    if(state.mode==='year')return true;
-    if(x.month!==state.month)return false;
-    if(state.mode==='month')return true;
-    if(state.mode==='tenday')return x.day===31?Math.ceil(state.day/10)===3:Math.ceil(x.day/10)===Math.ceil(state.day/10);
-    return !x.festival&&x.day===state.day;
+
+  function allYearEvents() {
+    const known = knownObservances(state.year);
+    const seen = new Set(known.map((x) => x.date + '|' + normalize(x.title)));
+    const cloud = state.published
+      .map((x) => parsePublished(x, state.year))
+      .filter(Boolean)
+      .filter((x) => {
+        const k = x.date + '|' + normalize(x.title);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    return [...known, ...cloud];
   }
-  function sync(){
-    controls.year.value=String(state.year);controls.month.value=String(state.month);
-    controls.tenday.value=String(Math.ceil(state.day/10));controls.day.value=String(state.day);
-    controls.mode.value=state.mode;controls.region.value=state.region;controls.search.value=state.search;
-    const hasMonth=state.mode!=='year',hasTenday=state.mode==='tenday'||state.mode==='day';
-    for(const [control,enabled] of [[controls.month,hasMonth],[controls.tenday,hasTenday],
-      [controls.day,state.mode==='day']]){control.disabled=!enabled;control.parentElement.dataset.off=String(!enabled);}
-    byId('chronicle-prev-year').disabled=state.year===1;
-    byId('chronicle-next-year').disabled=state.year===9999;
-    byId('chronicle-previous').disabled=state.year===1&&
-      (state.mode==='year'||state.month===0&&(state.mode==='month'||state.day===1));
-    byId('chronicle-next').disabled=state.year===9999&&
-      (state.mode==='year'||state.month===11&&(state.mode==='month'||state.day===30));
-    const period=state.mode==='year'?'Ano '+state.year:
-      (state.mode==='month'?months[state.month]+' · '+state.year:
-      state.mode==='tenday'?Math.ceil(state.day/10)+'ª désdia · '+months[state.month]+' · '+state.year:
-      state.day+' de '+months[state.month]+' · '+state.year);
-    byId('chronicle-period').textContent=period;
-    if(state.official){
-      byId('chronicle-official').textContent='Data oficial: '+state.official.day+' de '+
-        months[state.official.month]+' de '+state.official.year+' CV';
-    }else{
-      byId('chronicle-official').textContent='Data oficial não confirmada nesta consulta.';
+
+  function makeCard(title, description, meta, type, collapsible) {
+    const article = document.createElement('article');
+    article.className = 'chronicle-card';
+    article.dataset.type = type;
+    const metaEl = document.createElement('div');
+    metaEl.className = 'chronicle-meta';
+    metaEl.textContent = meta;
+    article.append(metaEl);
+    const head = document.createElement('h3');
+    head.textContent = title;
+    article.append(head);
+    if (description) {
+      if (collapsible && description.length > 210) {
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = 'Ler relato completo';
+        const p = document.createElement('p');
+        p.textContent = description;
+        details.append(summary, p);
+        article.append(details);
+      } else {
+        const p = document.createElement('p');
+        p.textContent = description;
+        article.append(p);
+      }
+    }
+    return article;
+  }
+
+  const makeEmpty = (text) => {
+    const p = document.createElement('p');
+    p.className = 'chronicle-empty';
+    p.textContent = text;
+    return p;
+  };
+
+  function formatKeyLabel(key) {
+    const m = /^(\d{4})-(?:(\d{2})-(\d{2})|F-([a-z-]+))$/.exec(key || '');
+    if (!m) return MONTHS[state.month].name + ' · ' + state.year + ' CV';
+    if (m[4]) {
+      const f = FIXED.find((x) => x.id === m[4]);
+      return (f ? f.name : m[4]) + ' · ' + Number(m[1]) + ' CV';
+    }
+    return Number(m[3]) + ' de ' + MONTHS[Number(m[2]) - 1].name + ' de ' + Number(m[1]) + ' CV';
+  }
+
+  function setTab(nextTab) {
+    state.tab = nextTab;
+    const isCal = nextTab === 'calendar';
+    byId('tab-calendar').setAttribute('aria-selected', String(isCal));
+    byId('tab-chronicles').setAttribute('aria-selected', String(!isCal));
+    byId('panel-calendar').hidden = !isCal;
+    byId('panel-chronicles').hidden = isCal;
+    if (!isCal) renderChroniclesTab();
+  }
+
+  function renderGrid(monthEvents) {
+    const board = byId('chronicle-harptos-grid');
+    board.replaceChildren();
+    const byDate = new Map();
+    monthEvents.forEach((ev) => {
+      const arr = byDate.get(ev.date) || [];
+      arr.push(ev);
+      byDate.set(ev.date, arr);
+    });
+
+    const todayKey = state.official
+      ? (state.official.festival
+        ? festivalKey(state.official.year, state.official.festival)
+        : iso(state.official.year, state.official.month, state.official.day))
+      : null;
+
+    function createCell(key, label, isFestival) {
+      const items = byDate.get(key) || [];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'harptos-cell' +
+        (isFestival ? ' is-festival' : '') +
+        (key === todayKey ? ' is-today' : '') +
+        (key === state.selectedKey ? ' is-selected' : '');
+      btn.setAttribute('aria-pressed', String(key === state.selectedKey));
+      if (key === todayKey) btn.setAttribute('aria-current', 'date');
+      btn.setAttribute('aria-label', formatKeyLabel(key) + (items.length ? ' — ' + items.length + ' evento(s)' : ''));
+
+      const num = document.createElement('span');
+      num.className = 'harptos-cell-num';
+      num.textContent = isFestival ? '✦ ' + label : label;
+      btn.append(num);
+
+      const dots = document.createElement('span');
+      dots.className = 'harptos-dots';
+      dots.setAttribute('aria-hidden', 'true');
+      const types = new Set(items.map((x) => x.type));
+      ['festival', 'published', 'tyr', 'season'].forEach((t) => {
+        if (types.has(t)) {
+          const i = document.createElement('i');
+          i.className = 'dot dot-' + t;
+          dots.append(i);
+        }
+      });
+      btn.append(dots);
+
+      btn.addEventListener('click', () => {
+        state.selectedKey = state.selectedKey === key ? null : key;
+        renderCalendarTab();
+      });
+      return btn;
+    }
+
+    for (let t = 0; t < 3; t++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'harptos-tenday';
+      const title = document.createElement('p');
+      title.className = 'harptos-tenday-label';
+      title.textContent = (t + 1) + 'ª désdia · dias ' + (t * 10 + 1) + '–' + (t * 10 + 10);
+      const grid = document.createElement('div');
+      grid.className = 'harptos-days';
+      for (let i = 1; i <= 10; i++) {
+        const day = t * 10 + i;
+        grid.append(createCell(iso(state.year, state.month, day), String(day), false));
+      }
+      wrap.append(title, grid);
+      board.append(wrap);
+    }
+
+    const monthFestivals = FIXED.filter(
+      (f) => f.month === state.month && (!f.leapOnly || state.year % 4 === 0)
+    );
+    if (monthFestivals.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'harptos-tenday';
+      const title = document.createElement('p');
+      title.className = 'harptos-tenday-label';
+      title.textContent = 'Dia festivo intercalar';
+      const grid = document.createElement('div');
+      grid.className = 'harptos-days';
+      monthFestivals.forEach((f) => {
+        grid.append(createCell(festivalKey(state.year, f.id), f.name, true));
+      });
+      wrap.append(title, grid);
+      board.append(wrap);
     }
   }
-  function display(){
-    sync();
-    const query=normalize(state.search.trim());
-    const yearly=getAnnual(state.year)
-      .filter(x=>regionMatches(x)&&(!query||searchable(x).includes(query)));
-    const yBox=byId('chronicle-year-events');yBox.replaceChildren();
-    byId('chronicle-year-heading').textContent='Crônicas de '+state.year+' CV';
-    byId('chronicle-year-count').textContent=yearly.length+' acontecimento(s)';
-    if(state.loading){yBox.append(empty('Carregando os acontecimentos anuais…'));}
-    else if(!yearly.length){yBox.append(empty('Nenhuma crônica anual registrada para este ano e filtro.'));}
-    else yearly.forEach(x=>yBox.append(row(x.title,x.description,
-      (x.yearEnd?x.year+'–'+x.yearEnd:x.year)+' CV · Acontecimento do ano · '+regionLabel(x),'annual')));
-    const known=knownObservances(state.year);
-    const seen=new Set(known.map(x=>x.date+'|'+normalize(x.title)));
-    const cloud=state.published.map(x=>parsePublished(x,state.year)).filter(Boolean)
-      .filter(x=>{const k=x.date+'|'+normalize(x.title);if(seen.has(k))return false;seen.add(k);return true;});
-    const dated=[...known,...cloud].filter(x=>dateMatches(x)&&regionMatches(x)&&
-      (!query||searchable(x).includes(query))).sort((a,b)=>a.month-b.month||a.day-b.day||a.title.localeCompare(b.title,'pt-BR'));
-    const dBox=byId('chronicle-dated-events');dBox.replaceChildren();
-    byId('chronicle-dated-count').textContent=dated.length+' evento(s)';
-    if(!dated.length)dBox.append(empty('Nenhuma data pública encontrada para a seleção.'));
-    else dated.forEach(x=>dBox.append(row(x.title,x.description||'',
-      (x.festival?'Festival intercalar após '+months[x.month]+' · ':x.day+' de '+months[x.month]+' · ')+
-      state.year+' CV · '+regionLabel(x),'dated')));
-    byId('chronicle-cloud-note').textContent=state.error||
-      'Somente festas públicas e acontecimentos explicitamente publicados para o Reino entram nesta consulta; missivas e registros privados permanecem excluídos.';
+
+  function renderCalendarTab() {
+    controls.year.value = String(state.year);
+    controls.month.value = String(state.month);
+    controls.region.value = state.region;
+    controls.search.value = state.search;
+    byId('chronicle-prev-year').disabled = state.year <= 1;
+    byId('chronicle-next-year').disabled = state.year >= 9999;
+    byId('chronicle-previous').disabled = state.year <= 1 && state.month === 0;
+    byId('chronicle-next').disabled = state.year >= 9999 && state.month === 11;
+
+    const mInfo = MONTHS[state.month];
+    byId('chronicle-season-label').textContent = mInfo.season + ' · ' + mInfo.title;
+    byId('chronicle-month-heading').textContent = mInfo.name + ' · ' + state.year + ' CV';
+    byId('chronicle-period').textContent = mInfo.name + ' · ' + state.year + ' CV';
+
+    const officialEl = byId('chronicle-official');
+    const todayBtn = byId('chronicle-current');
+    if (state.official) {
+      const offLabel = state.official.festival
+        ? (FIXED.find((f) => f.id === state.official.festival)?.name || state.official.festival) + ' · ' + state.official.year + ' CV'
+        : state.official.day + ' de ' + MONTHS[state.official.month].name + ' de ' + state.official.year + ' CV';
+      officialEl.textContent = 'Hoje em Cormyr: ' + offLabel;
+      const isAtToday = state.year === state.official.year && state.month === state.official.month;
+      todayBtn.hidden = isAtToday && !state.selectedKey;
+    } else {
+      officialEl.textContent = 'Calendário de Harptos';
+      todayBtn.hidden = true;
+    }
+
+    const query = normalize(state.search.trim());
+    const allMonthEvents = allYearEvents()
+      .filter((x) => x.month === state.month && regionMatches(x))
+      .filter((x) => !query || normalize([x.title, x.description, regionLabel(x)].join(' ')).includes(query))
+      .sort((a, b) => a.day - b.day || a.title.localeCompare(b.title, 'pt-BR'));
+
+    byId('chronicle-month-count').textContent = allMonthEvents.length + ' evento(s) no mês';
+    renderGrid(allMonthEvents);
+
+    const visible = state.selectedKey
+      ? allMonthEvents.filter((x) => x.date === state.selectedKey)
+      : allMonthEvents;
+
+    byId('chronicle-detail-eyebrow').textContent = state.selectedKey ? 'DIA SELECIONADO' : 'FESTAS E EVENTOS DO MÊS';
+    byId('chronicle-dated-heading').textContent = state.selectedKey
+      ? formatKeyLabel(state.selectedKey)
+      : mInfo.name + ' de ' + state.year + ' CV';
+    byId('chronicle-dated-count').textContent = visible.length + ' evento(s)';
+    byId('chronicle-show-month').hidden = !state.selectedKey;
+
+    const listEl = byId('chronicle-dated-events');
+    listEl.replaceChildren();
+    if (!visible.length) {
+      listEl.append(makeEmpty(
+        state.selectedKey
+          ? 'Nenhum evento público registrado neste dia.'
+          : 'Nenhum evento encontrado para este filtro.'
+      ));
+    } else {
+      visible.forEach((ev) => {
+        const meta = (ev.festival ? 'Dia festivo · ' : ev.day + ' de ' + mInfo.name + ' · ') + regionLabel(ev);
+        listEl.append(makeCard(ev.title, ev.description, meta, ev.type, false));
+      });
+    }
+
+    const noteEl = byId('chronicle-cloud-note');
+    noteEl.hidden = !state.error;
+    noteEl.textContent = state.error;
+
+    // Mostra crônicas históricas inline somente quando o ano navegado possuir registros (1350–1520 CV)
+    const yearChron = state.timeline.filter((x) => x.year <= state.year && (x.yearEnd || x.year) >= state.year);
+    const inlineWrap = byId('chronicle-year-banner');
+    const inlineList = byId('chronicle-year-inline-list');
+    inlineWrap.hidden = yearChron.length === 0;
+    if (yearChron.length > 0) {
+      byId('chronicle-year-inline-heading').textContent = 'Crônicas históricas de ' + state.year + ' CV';
+      inlineList.replaceChildren();
+      yearChron.forEach((x) => {
+        const meta = (x.yearEnd ? x.year + '–' + x.yearEnd : x.year) + ' CV · Crônica do Reino';
+        inlineList.append(makeCard(x.title, x.description, meta, 'annual', true));
+      });
+    }
   }
-  function changeYear(y){if(!yearValue(y))return;state.year=y;state.published=[];state.error='';display();void loadPublished(y);}
-  function move(delta){
-    if(state.mode==='year'){changeYear(state.year+delta);return;}
-    if(state.mode==='month'){let n=state.year*12+state.month+delta;if(n<12||n>9999*12+11)return;
-      state.month=(n%12);changeYear(Math.floor(n/12));return;}
-    const step=state.mode==='tenday'?10:1;
-    let day=state.day+delta*step,month=state.month,year=state.year;
-    while(day<1){month--;if(month<0){month=11;year--;}day+=30;}
-    while(day>30){day-=30;month++;if(month>11){month=0;year++;}}
-    if(!yearValue(year))return;
-    state.day=day;state.month=month;changeYear(year);
+
+  function renderChroniclesTab() {
+    const box = byId('chronicle-year-events');
+    box.replaceChildren();
+    const query = normalize(state.timelineSearch.trim());
+    const items = state.timeline.filter((x) => {
+      if (state.era === '1350-1399' && x.year > 1399) return false;
+      if (state.era === '1400-1459' && (x.year < 1400 || x.year > 1459)) return false;
+      if (state.era === '1460-1520' && x.year < 1460) return false;
+      if (query && !normalize([x.year, x.yearEnd || '', x.title, x.description].join(' ')).includes(query)) return false;
+      return true;
+    });
+    byId('chronicle-year-count').textContent = items.length + ' crônica(s)';
+    if (state.loadingTimeline) {
+      box.append(makeEmpty('Carregando as crônicas históricas…'));
+    } else if (!items.length) {
+      box.append(makeEmpty('Nenhuma crônica encontrada para essa busca.'));
+    } else {
+      items.forEach((x) => {
+        const meta = (x.yearEnd ? x.year + '–' + x.yearEnd : x.year) + ' CV · História de Cormyr';
+        box.append(makeCard(x.title, x.description, meta, 'annual', true));
+      });
+    }
   }
-  let loadIndex=0;
-  async function loadPublished(year){
-    const index=++loadIndex;
-    try{
-      const res=await fetch('/api/public/calendar-events?year='+year,{credentials:'omit',cache:'no-store'});
-      if(!res.ok)throw new Error('Os eventos públicos adicionais do Hub estão temporariamente indisponíveis.');
-      const json=await res.json();
-      if(!json||!Array.isArray(json.events))throw new Error('A projeção dos eventos públicos está inválida.');
-      if(index!==loadIndex||year!==state.year)return;
-      state.published=json.events;state.error='';display();
-    }catch(e){if(index!==loadIndex||year!==state.year)return;state.published=[];
-      state.error='Eventos adicionais do Hub não disponíveis nesta consulta. As crônicas anuais e as festas históricas continuam visíveis.';display();}
+
+  let loadIndex = 0;
+  async function loadPublished(year) {
+    const index = ++loadIndex;
+    try {
+      const res = await fetch('/api/public/calendar-events?year=' + year, { credentials: 'omit' });
+      if (!res.ok) throw new Error('unavailable');
+      const json = await res.json();
+      if (!json || !Array.isArray(json.events)) throw new Error('invalid');
+      if (index !== loadIndex || year !== state.year) return;
+      state.published = json.events;
+      state.error = '';
+      renderCalendarTab();
+    } catch {
+      if (index !== loadIndex || year !== state.year) return;
+      state.published = [];
+      state.error = '';
+      renderCalendarTab();
+    }
   }
-  controls.year.addEventListener('change',()=>changeYear(Number(controls.year.value)));
-  controls.month.addEventListener('change',()=>{state.month=Number(controls.month.value);display();});
-  controls.tenday.addEventListener('change',()=>{state.day=(Number(controls.tenday.value)-1)*10+1;display();});
-  controls.day.addEventListener('change',()=>{state.day=Number(controls.day.value);display();});
-  controls.mode.addEventListener('change',()=>{state.mode=controls.mode.value;display();});
-  controls.region.addEventListener('change',()=>{state.region=controls.region.value;display();});
-  controls.search.addEventListener('input',()=>{state.search=controls.search.value;display();});
-  byId('chronicle-prev-year').addEventListener('click',()=>changeYear(state.year-1));
-  byId('chronicle-next-year').addEventListener('click',()=>changeYear(state.year+1));
-  byId('chronicle-previous').addEventListener('click',()=>move(-1));
-  byId('chronicle-next').addEventListener('click',()=>move(1));
-  byId('chronicle-current').addEventListener('click',()=>{if(!state.official)return;
-    state.year=state.official.year;state.month=state.official.month;
-    state.day=state.official.day;changeYear(state.year);
+
+  function goYear(y) {
+    if (!yearValue(y)) return;
+    const changedYear = y !== state.year;
+    state.year = y;
+    state.selectedKey = null;
+    renderCalendarTab();
+    if (changedYear) void loadPublished(y);
+  }
+
+  function shiftMonth(delta) {
+    const n = state.year * 12 + state.month + delta;
+    if (n < 12 || n > 9999 * 12 + 11) return;
+    const nextYear = Math.floor(n / 12);
+    state.month = n % 12;
+    state.selectedKey = null;
+    if (nextYear !== state.year) {
+      state.year = nextYear;
+      renderCalendarTab();
+      void loadPublished(nextYear);
+    } else {
+      renderCalendarTab();
+    }
+  }
+
+  // Eventos de interface
+  byId('tab-calendar').addEventListener('click', () => setTab('calendar'));
+  byId('tab-chronicles').addEventListener('click', () => setTab('chronicles'));
+  byId('chronicle-open-timeline').addEventListener('click', () => setTab('chronicles'));
+  byId('chronicle-show-month').addEventListener('click', () => {
+    state.selectedKey = null;
+    renderCalendarTab();
   });
-  async function initialise(){
-    display();
+  byId('chronicle-previous').addEventListener('click', () => shiftMonth(-1));
+  byId('chronicle-next').addEventListener('click', () => shiftMonth(1));
+  byId('chronicle-prev-year').addEventListener('click', () => goYear(state.year - 1));
+  byId('chronicle-next-year').addEventListener('click', () => goYear(state.year + 1));
+  byId('chronicle-current').addEventListener('click', () => {
+    if (!state.official) return;
+    const changedYear = state.official.year !== state.year;
+    state.year = state.official.year;
+    state.month = state.official.month;
+    state.selectedKey = state.official.festival
+      ? festivalKey(state.official.year, state.official.festival)
+      : iso(state.official.year, state.official.month, state.official.day);
+    renderCalendarTab();
+    if (changedYear) void loadPublished(state.year);
+  });
+  controls.month.addEventListener('change', () => {
+    state.month = Number(controls.month.value);
+    state.selectedKey = null;
+    renderCalendarTab();
+  });
+  controls.year.addEventListener('change', () => goYear(Number(controls.year.value)));
+  controls.region.addEventListener('change', () => {
+    state.region = controls.region.value;
+    renderCalendarTab();
+  });
+  controls.search.addEventListener('input', () => {
+    state.search = controls.search.value;
+    if (state.search.trim()) state.selectedKey = null;
+    renderCalendarTab();
+  });
+  controls.timelineSearch.addEventListener('input', () => {
+    state.timelineSearch = controls.timelineSearch.value;
+    renderChroniclesTab();
+  });
+  document.querySelectorAll('.era-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.era = btn.dataset.era || 'all';
+      document.querySelectorAll('.era-pill').forEach((other) => {
+        const active = other === btn;
+        other.classList.toggle('active', active);
+        other.setAttribute('aria-pressed', String(active));
+      });
+      renderChroniclesTab();
+    });
+  });
+
+  async function initialise() {
+    renderCalendarTab();
     await Promise.allSettled([
-      fetch('/cormyr/chronicle-timeline.json',{credentials:'omit'}).then(r=>{
-        if(!r.ok)throw Error('timeline unavailable');return r.json();}).then(data=>{
-        if(!data||!Array.isArray(data.events))throw Error('timeline invalid');
-        state.timeline=data.events.filter(e=>yearValue(e.year)&&yearValue(e.yearEnd||e.year)&&
-          (e.yearEnd===undefined||e.yearEnd>=e.year)).filter(e=>
-          e.scope==='kingdom'&&typeof e.title==='string'&&typeof e.description==='string');
-      }).catch(()=>{state.error='Não foi possível carregar as crônicas anuais. Tente atualizar a página.';}),
-      fetch('/api/public/time',{credentials:'omit',cache:'no-store'}).then(r=>{
-        if(!r.ok)throw Error('clock unavailable');return r.json();}).then(clock=>{
-        if(yearValue(clock.year)&&Number.isInteger(clock.month)&&clock.month>=0&&clock.month<12&&
-          Number.isInteger(clock.day)&&clock.day>=1&&clock.day<=30){
-          state.official={year:clock.year,month:clock.month,day:clock.day};
-          state.year=clock.year;state.month=clock.month;state.day=clock.day;
-        }
-      }).catch(()=>{}),
+      fetch('/cormyr/chronicle-timeline.json', { credentials: 'omit' })
+        .then((r) => { if (!r.ok) throw Error('timeline unavailable'); return r.json(); })
+        .then((data) => {
+          if (!data || !Array.isArray(data.events)) throw Error('timeline invalid');
+          state.timeline = data.events.filter(
+            (e) => yearValue(e.year) && yearValue(e.yearEnd || e.year) &&
+              (e.yearEnd === undefined || e.yearEnd >= e.year) &&
+              e.scope === 'kingdom' && typeof e.title === 'string' && typeof e.description === 'string'
+          );
+          const badge = byId('chronicles-badge');
+          if (badge) badge.textContent = String(state.timeline.length);
+        })
+        .catch(() => {}),
+      fetch('/api/public/time', { credentials: 'omit' })
+        .then((r) => { if (!r.ok) throw Error('clock unavailable'); return r.json(); })
+        .then((clock) => {
+          if (yearValue(clock.year) && Number.isInteger(clock.month) && clock.month >= 0 && clock.month < 12 &&
+            Number.isInteger(clock.day) && clock.day >= 1 && clock.day <= 30) {
+            state.official = { year: clock.year, month: clock.month, day: clock.day, festival: clock.festival || null };
+            state.year = clock.year;
+            state.month = clock.month;
+            state.selectedKey = clock.festival
+              ? festivalKey(clock.year, clock.festival)
+              : iso(clock.year, clock.month, clock.day);
+          }
+        })
+        .catch(() => {})
     ]);
-    state.loading=false;display();void loadPublished(state.year);
+    state.loadingTimeline = false;
+    renderCalendarTab();
+    if (state.tab === 'chronicles') renderChroniclesTab();
+    void loadPublished(state.year);
   }
+
   void initialise();
 })();
