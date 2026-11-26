@@ -39,18 +39,18 @@ test('public flags appear in the archive header and share locale with player are
     assert.equal(controls.length, 4);
     assert.deepEqual([...controls].map(b=>b.dataset.locale), ['pt','en','es','de']);
     assert.equal(d.documentElement.lang, 'en');
-    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Kingdom and regions');
+    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'The Kingdom');
     assert.equal(d.querySelector('#public-language-switcher button[data-locale="en"]').getAttribute('aria-pressed'), 'true');
     assert.equal(d.querySelector('#region-content .region-description').textContent, 'The Crownlands of Cormyr.');
     d.querySelector('#public-language-switcher button[data-locale="es"]').click();
     await settle();
     assert.equal(d.documentElement.lang, 'es');
     assert.equal(writtenLocale(dom), 'es');
-    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Reino y regiones');
+    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'El Reino');
     d.querySelector('#public-language-switcher button[data-locale="pt"]').click();
     await settle();
     assert.equal(d.documentElement.lang, 'pt-BR');
-    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Reino e regiões');
+    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'O Reino');
     assert.notEqual(d.querySelector('#region-content .region-description').textContent, 'The Crownlands of Cormyr.');
   } finally { dom.window.close(); }
 });
@@ -65,7 +65,7 @@ test('newly rendered public region views keep interface locale', async () => {
     select.value='Horselands';
     select.dispatchEvent(new dom.window.Event('change'));
     await settle();
-    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Königreich und Regionen');
+    assert.equal(d.querySelector('[data-view="reino"]').textContent, 'Das Königreich');
     assert.equal(d.documentElement.lang,'de');
     assert.ok(d.querySelector('#region-content .region-description').textContent.length>0);
   } finally { dom.window.close(); }
