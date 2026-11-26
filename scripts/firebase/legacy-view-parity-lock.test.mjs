@@ -200,6 +200,11 @@
  * ficha-tab.tsx oculta a aba redundante Economia Firebase; admin-panel.tsx
  * remove o exportador legado do Supabase (StorageExport). Todas as abas de
  * jogo, filtros e permissões permanecem intactos.
+ * 2026-11-26 (Melhorias UX — Ondas 1–3, PR #730): players-workspace.tsx
+ * adiciona o painel acionável "Minha Semana" (PlayerWeekDashboard) no topo da
+ * aba Casa do jogador e remove dois avisos técnicos residuais ("Diagnóstico
+ * Firebase" e "pasta pendente: Falha no Drive"). Todas as abas, filtros,
+ * permissões e controles originais permanecem intactos.
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -210,7 +215,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'e934dd81a027e8066891dbfb2e21f65ce5f733fe',
+  'src/components/players/players-workspace.tsx':'92e17b0fa8792ff5c040bd07d654bc8f71834520',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'ab0553588660e4165e21aa9d8b6e7ec1e2b30cc2',
