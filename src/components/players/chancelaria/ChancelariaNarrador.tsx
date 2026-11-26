@@ -3,6 +3,7 @@ import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
 import {CampaignContent} from '@/components/campaign-content';
 import {MailComposer,replaceMailDraft} from '@/components/players/mail-compose';
+import {loadRecentSignatures,rememberSignature,resolveLinkNames,useMailLinkCatalog} from '@/lib/mail/link-labels';
 import {NarratorMailNotes} from '@/components/players/narrator-mail-notes';
 import {LetterConsequences,type LetterConsequenceRow} from '@/components/players/letter-consequences';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
@@ -373,13 +374,16 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
   onBack:()=>void;onRead:()=>void;onUnread:()=>void;onContext?:(()=>void)|undefined;onDone:()=>void;onError:(m:string)=>void;
 }){
   const unread=conversationUnread(c,ctx);
-  // Rascunho da resposta guardado por conversa nesta aba: trocar de carta,
-  // atualizar a lista ou uma falha de envio não apagam o texto.
+  // Rascunho da resposta guardado por conversa no navegador: trocar de carta,
+  // fechar a aba ou uma falha de envio não apagam o texto.
   const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
-  const readDraft=()=>{try{return sessionStorage.getItem(draftKey)??'';}catch{return '';}};
+  const readDraft=()=>{try{return localStorage.getItem(draftKey)??sessionStorage.getItem(draftKey)??'';}catch{return '';}};
   const [reply,setReplyState]=useState(readDraft);const [signed,setSigned]=useState('');
+  const [recentSigs,setRecentSigs]=useState<string[]>(()=>loadRecentSignatures());
   const setReply=(value:string)=>{setReplyState(value);
-    try{if(value)sessionStorage.setItem(draftKey,value);else sessionStorage.removeItem(draftKey);}catch{/* só em memória */}};
+    try{if(value)localStorage.setItem(draftKey,value);else{localStorage.removeItem(draftKey);sessionStorage.removeItem(draftKey);}}catch{/* só em memória */}};
+  const linkCatalog=useMailLinkCatalog(Boolean(c.root.court_member_id||c.root.military_unit_id));
+  const {courtLabel,unitLabel}=resolveLinkNames(linkCatalog.data?.houses,c.root.court_member_id,c.root.military_unit_id);
   const [busy,setBusy]=useState(false);const [key,setKey]=useState(()=>crypto.randomUUID());
   const [editing,setEditing]=useState<MailRow|null>(null);const [editText,setEditText]=useState('');const [editSubject,setEditSubject]=useState('');
   const [confirmCancel,setConfirmCancel]=useState<string|null>(null);
@@ -402,10 +406,12 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
   const sendReply=async(draft:boolean)=>{
     if(!target||!reply.trim())return;
     if(!today){onError('Data oficial da campanha indisponível.');return;}
+    const cleanSigned=admin?signed.trim()||null:null;
     const ok=await act(()=>draft
-      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:historicReplyId,p_content:reply,p_signed_by:admin?signed.trim()||null:null},today)
-      :datedMail('reply_weekly_message',{p_letter:target,p_reply:historicReplyId,p_content:reply,p_key:key,p_draft:false,p_signed_by:admin?signed.trim()||null:null},today));
+      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:historicReplyId,p_content:reply,p_signed_by:cleanSigned},today)
+      :datedMail('reply_weekly_message',{p_letter:target,p_reply:historicReplyId,p_content:reply,p_key:key,p_draft:false,p_signed_by:cleanSigned},today));
     if(!ok)return;
+    if(cleanSigned){rememberSignature(cleanSigned);setRecentSigs(loadRecentSignatures());}
     setReply('');setKey(crypto.randomUUID());
   };
   const statusBar=(m:MailRow)=>{
@@ -479,8 +485,8 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
               {c.root['historical_source']?<span className="chn-muted">Arquivo histórico</span>:null}
             </div>
             {c.root.court_member_id||c.root.military_unit_id?<div className="chn-links">
-              {c.root.court_member_id&&<span className="chn-pill">Corte vinculada</span>}
-              {c.root.military_unit_id&&<span className="chn-pill">Unidade vinculada</span>}</div>:null}
+              {c.root.court_member_id&&<span className="chn-pill">👤 {courtLabel??'Corte vinculada'}</span>}
+              {c.root.military_unit_id&&<span className="chn-pill">⚔️ {unitLabel??'Unidade vinculada'}</span>}</div>:null}
           </div>
           <div className="chn-body"><CampaignContent content={c.root.content}/></div></>}
         {statusBar(c.root)}
@@ -502,14 +508,21 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
       onFocus={()=>setFocused(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setFocused(false);}}>
       <div className="chn-reply-main">
         <textarea id="chn-reply" ref={replyRef} rows={1} value={reply} onChange={e=>setReply(e.target.value)}
-          placeholder={`Responder como Narrador para ${houseName(c.root.origin_house_id??c.root.recipient_house_id)}…`} aria-label="Texto da resposta"/>
+          onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&reply.trim()&&!busy){e.preventDefault();void sendReply(false);}}}
+          placeholder={`Responder como Narrador para ${houseName(c.root.origin_house_id??c.root.recipient_house_id)}… (Ctrl+Enter envia)`} aria-label="Texto da resposta"/>
         <button type="submit" className="chn-btn chn-btn--primary" disabled={busy||!reply.trim()}><Icon name="send" size={15}/>Enviar</button>
       </div>
       <div className="chn-reply-extra">
-        {admin&&<input className="chn-sign" maxLength={120} value={signed} onChange={e=>setSigned(e.target.value)}
-          placeholder="Assinado por (NPC ou cargo), opcional" aria-label="Assinado por (NPC ou cargo)"/>}
+        {admin&&<div className="chn-sign-row">
+          <input className="chn-sign" list="chn-npc-sigs" maxLength={120} value={signed} onChange={e=>setSigned(e.target.value)}
+            placeholder="Assinado por (NPC ou cargo), opcional" aria-label="Assinado por (NPC ou cargo)"/>
+          <datalist id="chn-npc-sigs">{recentSigs.map(s=><option key={s} value={s}/>)}</datalist>
+          {recentSigs.length>0&&<div className="chn-sign-chips" aria-label="Assinaturas recentes">
+            {recentSigs.slice(0,4).map(s=><button key={s} type="button" className="chn-sign-chip" onClick={()=>setSigned(s)}>{s}</button>)}
+          </div>}
+        </div>}
         <span className="chn-note"><Icon name="hour" size={14}/> {deliveryWeek!==null?<>Chega à Casa na <b>Semana {deliveryWeek}</b> (próxima abertura). </>:null}
-          Dá para editar ou cancelar até a entrega.</span>
+          Dá para editar ou cancelar até a entrega · <kbd>Ctrl+Enter</kbd> envia.</span>
         <button type="button" className="chn-btn chn-btn--sm" disabled={busy||!reply.trim()} onClick={()=>void sendReply(true)}>Salvar rascunho</button>
       </div>
     </form>

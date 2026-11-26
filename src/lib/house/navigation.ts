@@ -5,6 +5,8 @@
  * Narrator-only panels remain outside the player menu.
  */
 export const HIDDEN_HOUSE_SECTIONS:readonly string[]=['reconciliation','coverage','kingdom','history','rules'];
-export function houseNavigationVisible(id:string,_admin:boolean,_firebase:boolean):boolean{
- return !HIDDEN_HOUSE_SECTIONS.includes(id);
+export function houseNavigationVisible(id:string,admin:boolean,_firebase:boolean,phase?:string):boolean{
+ if(HIDDEN_HOUSE_SECTIONS.includes(id))return false;
+ if(id==='creation'&&phase==='active'&&!admin)return false;
+ return true;
 }

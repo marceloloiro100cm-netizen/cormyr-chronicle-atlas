@@ -432,8 +432,10 @@
 .region-list-bar .region-view-toolbar{padding:0;border:0;border-radius:0;background:none}
 .region-list-bar .region-download-bar{margin:0 0 0 auto;justify-content:flex-end}
 @media(max-width:600px){.region-list-bar{padding:10px}.region-list-bar #region-toolbar-slot{flex:1 1 100%}.region-list-bar .region-download-bar{margin:0;width:100%;justify-content:stretch}.region-list-bar .region-download{flex:1}}
-.newspaper-frame{display:block;width:100%;height:calc(100vh - 210px);min-height:640px;border:1px solid var(--line);border-radius:9px;background:#f3ecdd;box-shadow:0 4px 15px #21182e08}
-@media(max-width:600px){.newspaper-frame{height:calc(100vh - 160px);min-height:520px}}
+.newspaper-frame{display:block;width:100%;height:calc(100vh - 190px);min-height:680px;border:0;border-radius:10px;background:transparent;box-shadow:none}
+@media(max-width:600px){.newspaper-frame{height:calc(100vh - 150px);min-height:540px}}
+.login-cta{background:#2a1638!important;color:#fffdf7!important;border-color:#b49048!important;font-weight:600!important}
+.login-cta:hover{background:#3c2050!important;border-color:#d4b26a!important}
 
 /* Menu principal como links (botão direito > abrir em nova guia). */
 .nav a{text-decoration:none;cursor:pointer}

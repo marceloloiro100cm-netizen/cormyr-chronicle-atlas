@@ -416,6 +416,28 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
      </section>
     </div>
    </div>
+   <section className="ht-card" aria-label="Checklist de virada de semana">
+    <div className="ht-head"><h2>Checklist de virada de semana</h2><span className="ht-hint">conferência rápida antes de abrir a Semana {openRound+1}</span></div>
+    <div className="ht-checklist">
+     <div className={'ht-chk-item '+(rascunhos.length===0?'ht-chk-item--ok':'ht-chk-item--warn')}>
+      <Ic n={rascunhos.length===0?'check':'alert'}/><span><b>Missivas em rascunho:</b> {rascunhos.length===0?'nenhum pendente':`${rascunhos.length} na Semana ${openRound}`}</span>
+     </div>
+     <div className={'ht-chk-item '+(entr.length>0?'ht-chk-item--ok':'ht-chk-item--warn')}>
+      <Ic n="mail"/><span><b>Prontas para entrega:</b> {entr.length} {plural(entr.length,'missiva','missivas')}</span>
+     </div>
+     <div className={'ht-chk-item '+(pendingHouseEffectMonths===0?'ht-chk-item--ok':'ht-chk-item--warn')}>
+      <Ic n={pendingHouseEffectMonths===0?'check':'alert'}/><span><b>Efeitos mensais:</b> {pendingHouseEffectMonths===0?'em dia':`${pendingHouseEffectMonths} mês(es) pendente(s)`}</span>
+     </div>
+     <div className={'ht-chk-item '+(hub?.newspaper.thisWeek.length?'ht-chk-item--ok':'ht-chk-item--warn')}>
+      <Ic n="news"/><span><b>A Folha Sem Selo:</b> {hub?.newspaper.thisWeek.length?`${hub.newspaper.thisWeek.length} edição(ões) na semana`:'sem edição nesta semana'}</span>
+     </div>
+    </div>
+    <div className="ht-chk-links">
+     <a className="ht-btn ht-btn--ghost ht-btn--sm" href={hrefWithParams({secao:'missivas'},['hub'])}><Ic n="mail"/>Revisar Missivas</a>
+     <a className="ht-btn ht-btn--ghost ht-btn--sm" href={hrefWithParams({secao:'dossies'},['hub'])}><Ic n="flag"/>Revisar Dossiês de Espionagem</a>
+     <a className="ht-btn ht-btn--ghost ht-btn--sm" href={hrefWithParams({secao:'jornal'},['hub'])}><Ic n="news"/>Abrir Jornal</a>
+    </div>
+   </section>
    <section>{notaOpen?<div className="ht-fg"><label htmlFor="ht-nota">Nota para o histórico (opcional)</label>
     <input id="ht-nota" value={nota} maxLength={280} autoComplete="off" onChange={e=>setNota(e.target.value)}
      placeholder="Ex.: Início da 3ª désdia, após a sessão de sábado"/></div>
