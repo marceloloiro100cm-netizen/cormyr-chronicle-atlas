@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- limite do Firebase Admin. */
 import {createHash} from 'node:crypto';
 import {deletedNewspaperIds} from '../../../scripts/firebase/newspaper-deleted.mjs';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import {publishedImageSrc} from './firebase-published-image.server';
 import {publicStaffPhotoSrc} from './firebase-public-staff-photo.server';
 import {releaseDueNewspapers} from './firebase-scheduled-publication.server';
@@ -37,7 +38,7 @@ async function cloudRoot(db:any,snapshotId:string){
  const v=doc.data();
  if(!doc.exists||v?.status!=='active'||v.private!==true||v.sourceSnapshotId!==snapshotId||
     v.sourceSnapshotReconciled!==true||v.applicationEnabled!==true||
-    v.newspaperWriteApproved!==true||v.newspaperSequenceReconciled!==true)return null;
+    !runtimeApprovalEnabled(v,'newspaperWriteApproved')||v.newspaperSequenceReconciled!==true)return null;
  return root;
 }
 const publishedRow=(v:Row|undefined)=>Boolean(v)&&['published','archived'].includes(v!['state'])&&

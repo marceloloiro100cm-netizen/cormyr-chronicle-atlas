@@ -19,8 +19,6 @@ import type { Panel } from "./panel-data";
 import { RecordEditor } from "./records";
 import { FichaCasaForm } from "./ficha-form";
 import {CharacterV2PlayerSheet} from '@/components/character-v2/player-sheet';
-import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
-import {FirebaseCouncilHouseTools} from '@/components/houses/FirebaseCouncilHouseTools';
 
 export function FichaTab({
   current,
@@ -29,7 +27,6 @@ export function FichaTab({
   onSave,
   npcManager,
   playerId,
-  admin=false,
 }: {
   npcManager?: ReactNode;
   playerId?:string|undefined;
@@ -41,8 +38,8 @@ export function FichaTab({
 }) {
   // Tipo de ficha no endereço (?ficha=personagem): cada uma abre em nova guia.
   const [viewParam] = useUrlParam("ficha", "casa");
-  const view = (viewParam === "personagem" ? "character" : viewParam === "economia" ? "cloud" : "house") as
-    "house" | "character" | "legacy" | "cloud";
+  const view = (viewParam === "personagem" ? "character" : "house") as
+    "house" | "character" | "legacy";
   const [editingId,setEditingId]=useState<string|null>(null);
   const [creating,setCreating]=useState(false);
   const load=useServerFn(loadHouseHub);
@@ -90,11 +87,6 @@ export function FichaTab({
             Ficha do Personagem
           </a>
         </Button>
-        {firebaseWorkspaceClient()!==null&&canEdit&&<Button asChild variant={view === "cloud" ? "default" : "outline"}>
-          <a {...urlLinkProps({ ficha: "economia", parte: null, espionagem: null })} aria-current={view === "cloud" ? "page" : undefined}>
-            Economia Firebase
-          </a>
-        </Button>}
       </nav>
       {view === "house" && (
         <NobleHouseHub
@@ -106,9 +98,6 @@ export function FichaTab({
           courtMembers={records.filter(isNarrativeNpc).map((r) => ({ id: r.id, title: r.title }))}
         />
       )}
-      {firebaseWorkspaceClient()!==null&&canEdit&&view === "cloud" &&
-        <FirebaseCouncilHouseTools key={current.id}
-          houseId={current.id} houseName={current.name} narrator={admin}/>}
       {view === "legacy" && (
         <>
           <h2>Ficha da casa — registro anterior</h2>

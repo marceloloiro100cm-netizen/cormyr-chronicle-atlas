@@ -4,6 +4,7 @@
  * Firestore Rules, so identity and live review gates are mandatory.
  */
 import {createHash} from 'node:crypto';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 
@@ -75,7 +76,7 @@ export async function readApprovedFirebasePrivateGmContent(
      runtime['sourceSnapshotId']!==args.snapshotId||
      runtime['sourceSnapshotReconciled']!==true||
      runtime['applicationEnabled']!==true||
-     runtime['privateGmContentApproved']!==true)
+     !runtimeApprovalEnabled(runtime,'privateGmContentApproved'))
     return reject(503);
   // Historic imported GM content has no versioned editing/publishing pipeline.
   // The Narrator's explicit, audited runtime approval is its publication gate.

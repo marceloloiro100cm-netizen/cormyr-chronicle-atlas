@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- limite do Firebase Admin. */
 import {createHash} from 'node:crypto';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 
 /**
  * Aprovações do runtime Firebase (campaignCloudRuntime/{snapshot}), ligadas
@@ -38,7 +39,7 @@ export async function readRuntimeApprovals(db:any,snapshotId:string){
  const v=doc.exists?doc.data():{};
  return {
   runtimeActive:v?.status==='active'&&v?.applicationEnabled===true,
-  items:RUNTIME_APPROVALS.map(([key,label])=>({key,label,approved:v?.[key]===true})),
+  items:RUNTIME_APPROVALS.map(([key,label])=>({key,label,approved:runtimeApprovalEnabled(v,key)})),
  };
 }
 

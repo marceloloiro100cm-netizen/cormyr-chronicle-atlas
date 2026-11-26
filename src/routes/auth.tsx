@@ -63,8 +63,6 @@ function Auth() {
   queryFn:()=>loadFirebasePublicSeasonHouses(),
  });
  const houses = (housesQuery.data?.houses ?? []).filter(h => h.id !== 'espiao');
- const houseErrors = housesQuery.data?.errors ?? (housesQuery.error ? ['Catálogo de Casas indisponível.'] : []);
- const loadingHouses = housesQuery.isPending || housesQuery.isFetching;
 
  async function submit(event:FormEvent) {
   event.preventDefault();
@@ -148,7 +146,7 @@ function Auth() {
   <h1>Portal de Cormyr</h1>
   <div className="campaign-auth-layout">
    <section className="campaign-auth">
-    <h2>Entrar com Firebase</h2>
+    <h2>Entrar no Conselho</h2>
     <form onSubmit={submit} className="campaign-form">
      <label>E-mail
       <input type="email" required autoComplete="email" value={email}
@@ -158,11 +156,7 @@ function Auth() {
       <input type="password" minLength={6} required autoComplete="current-password"
        value={password} onChange={e=>setPassword(e.target.value)}/>
      </label>
-     <p className="campaign-hint">
-      O perfil, a Casa e as permissões são conferidos no Firebase.
-      O login não autoriza funções da campanha ainda não homologadas.
-     </p>
-     <Button disabled={busy} type="submit">{busy?'Verificando…':'Entrar com Firebase'}</Button>
+     <Button disabled={busy} type="submit">{busy?'Entrando…':'Entrar'}</Button>
      <Button disabled={busy||!email.trim()} type="button" variant="outline"
       onClick={()=>void requestPasswordReset()}>Recuperar senha</Button>
     </form>
@@ -170,23 +164,15 @@ function Auth() {
      <p className="campaign-hint">Ou entre com sua conta Google:</p>
      <FirebaseGoogleSignIn disabled={busy} onCredential={signInWithGoogle} onPopupSignIn={signInWithGooglePopupFlow}/>
      <p className="campaign-hint">
-      Já tem conta com e-mail e senha? Entre normalmente e vincule seu Google em <strong>Conta Google</strong> no topo do Conselho para manter sua Casa.
+      Já tem conta com e-mail e senha? Entre normalmente e vincule seu Google em <strong>Senha e Google</strong> no topo do Conselho para manter sua Casa.
      </p>
     </div>
     {message&&<p role="status">{message}</p>}
    </section>
-   <section>
+   {houses.length>0&&<section>
     <h2>Casas da segunda temporada</h2>
-    <p>O catálogo público é informativo e não define sua Casa autorizada.</p>
-    {loadingHouses&&<p role="status">Consultando Casas…</p>}
-    {!loadingHouses&&houseErrors.length>0&&<div role="status">
-     <p>Catálogo público temporariamente indisponível. O login Firebase continua disponível.</p>
-     <Button type="button" variant="outline" onClick={()=>void housesQuery.refetch()}>Tentar novamente</Button>
-    </div>}
-    {!loadingHouses&&!houseErrors.length&&!houses.length&&
-     <p role="status">Nenhuma Casa publicada no momento.</p>}
     <ul className="campaign-roster">{houses.map(h=><li key={h.id}>{h.name}</li>)}</ul>
-   </section>
+   </section>}
   </div>
  </CampaignShell>;
 }

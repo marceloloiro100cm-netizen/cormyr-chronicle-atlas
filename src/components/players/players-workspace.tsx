@@ -8,7 +8,6 @@ import { NpcHub, CollapsibleText } from '@/components/npc-hub';
 import {useWeekFestivals,WeekFestivalBanner} from '@/components/calendar/hub-temporal/week-festivals';
 import { CampaignShell } from '@/components/campaign-shell';
 import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
-import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar';
 import { Button } from '@/components/ui/button';
 import { CampaignContent } from '@/components/campaign-content';
 import { narrativeText } from '@/lib/campaign-content';
@@ -44,8 +43,7 @@ const NarratorCalendar=lazy(()=>import('@/components/calendar/narrator-calendar'
 const PlayerRepresentation=lazy(()=>import('@/components/player-representation').then(m=>({default:m.PlayerRepresentation})));
 const GmEventos=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmEventos})));
 const GmAventuras=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmAventuras})));
-const FirebaseCouncilAccessReview=lazy(()=>import('@/components/firebase/FirebaseCouncilAccessReview').then(m=>({default:m.FirebaseCouncilAccessReview})));
-const FirebaseRuntimeApprovals=lazy(()=>import('@/components/firebase/FirebaseRuntimeApprovals').then(m=>({default:m.FirebaseRuntimeApprovals})));
+const FirebaseAccountManager=lazy(()=>import('@/components/firebase/FirebaseAccountManager').then(m=>({default:m.FirebaseAccountManager})));
 const SpyNarratorDossiers=lazy(()=>import('@/components/house/espionage/spy-dossier-panel').then(m=>({default:m.SpyNarratorDossiers})));
 const BattleNarratorHub=lazy(()=>import('@/components/battle/BattleNarratorHub').then(m=>({default:m.BattleNarratorHub})));
 const BattleV3PlayerEntry=lazy(()=>import('@/components/battle/BattleV3PlayerEntry').then(m=>({default:m.BattleV3PlayerEntry})));
@@ -241,13 +239,9 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   }
   const mailPanel=firebaseMode&&(mailbox.isPending||mailbox.isError)
     ?<section role="status" className="campaign-form">
-      <p>{mailbox.isPending?'Carregando Missivas do Firebase…':
+      <p>{mailbox.isPending?'Carregando Missivas…':
         'As Missivas estão temporariamente indisponíveis. As demais áreas da campanha continuam acessíveis.'}</p>
-      {mailbox.isError&&<>
-        <Button variant="outline" onClick={()=>void mailbox.refetch()}>Tentar novamente as Missivas</Button>
-        {typeof (mailbox.error as {serverCode?:unknown}|null)?.serverCode==='string'&&
-         <p className="text-xs">Diagnóstico Firebase: {String((mailbox.error as unknown as {serverCode:string}).serverCode)}</p>}
-      </>}
+      {mailbox.isError&&<Button variant="outline" onClick={()=>void mailbox.refetch()}>Tentar novamente</Button>}
     </section>:null;
   const me=data.players.find(p=>p.user_id===data.user.id);
   if(me&&!data.admin&&(!me.active||me.require_password_change))return <CampaignShell><h1>{me.active?'Altere sua senha para continuar':'Acesso à campanha inativo'}</h1>{me.require_password_change&&<ChangePassword/>}<Button variant="outline" onClick={signout}>Sair</Button></CampaignShell>;
@@ -267,7 +261,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     {tab==='casa'&&current&&<><section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText></>}
     {tab==='galeria'&&current&&<GalleryTab key={current.id} houseId={current.id}
      houseName={current.name} records={data.records.filter(r=>r.house_id===current.id)}/>}
-    {tab==='calendario'&&<><WeekFestivalBanner festivals={weekFestivals.festivals}/><CampaignCalendar/>{firebaseMode&&<PublicChronicleCalendar/>}</>}
+    {tab==='calendario'&&<><WeekFestivalBanner festivals={weekFestivals.festivals}/><CampaignCalendar/></>}
     {tab==='ficha'&&current&&<FichaTab playerId={me?.id} admin={data.admin} npcManager={<NpcHub records={data.records.filter(r=>r.house_id===current.id)} houseId={current.id} playerId={me?.id} admin={data.admin} canEdit={canEdit} onSave={afterSave} renderEditor={row=><RecordEditor row={row} canEdit={canEdit} onSave={afterSave}/>}/>} current={current} records={data.records.filter(r=>r.house_id===current.id)} canEdit={canEdit} onSave={afterSave}/>}
     {tab==='documentos'&&current&&<><h2>Documentos do acervo</h2><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind==='document')} canEdit={canEdit} onSave={afterSave}/>{canEdit&&<RecordForm houseId={current.id} playerId={me?.id} admin={data.admin} onSave={afterSave} kind="document"/>}</>}
     {tab==='jornal'&&!data.admin&&<NewspaperHub userId={data.user.id} editor={false} {...(current?{houseId:current.id}:{})}/>}
@@ -283,16 +277,17 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       requestAnimationFrame(()=>document.getElementById('nw-house-admin')?.scrollIntoView({behavior:'smooth',block:'start'}));};
     const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
     const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}><Suspense fallback={tabLoading}>{section==='acessos-firebase'?
-      // Contas: revisão das contas Firebase pendentes e a administração (antes um botão dentro das fichas).
+      // Contas: gestão unificada de jogadores e Editor-Chefe (sem chaves técnicas de migração).
       <div className="nw-page nw-accounts">
-        {firebaseWorkspaceClient()!==null&&<FirebaseRuntimeApprovals/>}
-        {firebaseWorkspaceClient()!==null&&<FirebaseCouncilAccessReview narrator={data.admin} houses={data.houses}/>}
-        <section aria-label="Administração"><h2 className="nw-group-title">Administração</h2><AdminPanel data={data} onSave={afterSave}/></section>
+        {firebaseWorkspaceClient()!==null
+          ?<><FirebaseAccountManager houses={data.houses}/>
+             <details className="campaign-add"><summary>Opções avançadas da campanha</summary><AdminPanel data={data} onSave={afterSave}/></details></>
+          :<section aria-label="Administração"><h2 className="nw-group-title">Administração</h2><AdminPanel data={data} onSave={afterSave}/></section>}
       </div>:
       section==='missivas'?(mailPanel??<MissivasArea data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}
         onOpenHub={()=>goSection('calendario')} initialHouse={mailHouse||undefined}
         classic={<NarratorMissivasHub filterHost={null} data={data} me={me} onSave={()=>{void refresh();}} onError={setMessage} onManage={manage}/>}/>):
-      <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<><FirebaseNarratorWeekDraft/><PublicChronicleCalendar/></>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
+      <div className="nw-page">{section==='jornal'?<NewspaperHub userId={data.user.id} editor/>:section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>:section==='dossies'?<SpyNarratorDossiers/>:section==='batalha'&&BATTLE_MODULE_ENABLED?<BattleNarratorHub/>:section==='eventos'?<GmEventos/>:section==='aventuras'?<GmAventuras/>:
         <NarratorCouncil houses={authorized} players={data.players} onOpenMail={id=>setUrlParams({secao:'missivas',filtroCasa:id},{reset:NESTED_URL_PARAMS})} onOpenSheet={manage}>{conselho}</NarratorCouncil>}</div>}</Suspense></div>:null;
     return <NarratorWorkspace menu={NARRATOR_MENU.filter(([id])=>id!=='batalha'||BATTLE_MODULE_ENABLED)}
       extra={['acessos-firebase','Contas e administração'] as const}

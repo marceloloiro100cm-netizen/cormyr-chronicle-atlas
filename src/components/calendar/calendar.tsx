@@ -5,15 +5,18 @@ import {Shield,Flame,Leaf} from 'lucide-react';
 import {supabase} from '@/integrations/supabase/client';
 import {Button} from '@/components/ui/button';
 import {MONTHS,MONTH_DETAILS,FESTIVALS,annualEvents,dateKey,formatDate,formatCampaignPeriod,type CalendarEvent} from '@/lib/calendar/harptos';
+import {loadAnnualChronicles,type AnnualChronicle} from './hub-temporal/hub-model';
 import {useCampaignCalendarRealtime} from './realtime';
 import './harptos.css';
 
 export type CalendarState=CampaignTimeSnapshot;
 function Symbol({kind}:{kind:CalendarEvent['kind']}){const Icon=kind==='mail'?Flame:kind==='season'?Leaf:Shield;return <Icon size={16} className={'harptos-'+kind} aria-hidden="true"/>;}
 export function CampaignCalendar(){
- const realtimeStatus=useCampaignCalendarRealtime();
+ useCampaignCalendarRealtime();
  const calendar=useCampaignTime();
  const [year,setYear]=useState(1),[month,setMonth]=useState(0),[selected,setSelected]=useState(''),[followCurrent,setFollowCurrent]=useState(true);
+ const [chronicles,setChronicles]=useState<AnnualChronicle[]>([]);
+ useEffect(()=>{let on=true;void loadAnnualChronicles().then(items=>{if(on)setChronicles(items);});return()=>{on=false;};},[]);
  // Não renderizar/fazer buscas de um ano provisório enquanto o snapshot publicado chega.
  const viewReady=Boolean(calendar.data&&!calendar.isError&&(!followCurrent||(year===calendar.data.year&&month===calendar.data.month)));
  // Update the open player calendar when the Narrator publishes a different date,
@@ -29,12 +32,12 @@ export function CampaignCalendar(){
  // Cached private correspondence must never remain visible after a failed RLS/RPC read.
  // Annual public observances remain available; no date is inferred from cache errors.
  const events=[...annualEvents(year),...(mail.isError?[]:mail.data??[]),...(published.isError?[]:published.data??[])],onDay=(key:string)=>events.filter(e=>e.date===key);
+ const yearChronicles=chronicles.filter(c=>c.year<=year&&(c.yearEnd??c.year)>=year);
  const chooseMonth=(m:number)=>{setFollowCurrent(false);const y=m<0?year-1:m>11?year+1:year;if(y<1||y>9999)return;const next=(m+12)%12;setYear(y);setMonth(next);setSelected(dateKey({year:y,month:next,day:1,festival:null}));};
  // Apenas a ativação do botão (clique, Enter ou Espaço) seleciona um dia; hover e foco não alteram o painel de eventos.
  const cell=(key:string,label:string)=>{const items=onDay(key);return <button type="button" key={key} aria-current={calendar.data&&dateKey(calendar.data)===key?'date':undefined} aria-pressed={selected===key} aria-describedby={selected===key?'harptos-events':undefined} aria-label={`${formatDate(key)}: ${items.length} evento(s)`} title={items.map(e=>e.title).join('\n')||'Nenhum evento visível neste dia'} onClick={()=>setSelected(key)}><span>{label}</span><span className="harptos-symbols">{(['kingdom','mail','season'] as const).filter(kind=>items.some(e=>e.kind===kind)).map(kind=><Symbol key={kind} kind={kind}/>)}</span></button>;};
- if(!viewReady)return <section className="harptos"><h2>Calendário de Harptos</h2><p role={calendar.error?'alert':'status'}>{calendar.error?'Calendário oficial indisponível; nenhuma data foi presumida.':'Sincronizando data oficial da campanha…'}</p></section>;
+ if(!viewReady)return <section className="harptos"><h2>Calendário de Harptos</h2><p role={calendar.error?'alert':'status'}>{calendar.error?'Calendário oficial indisponível no momento.':'Carregando calendário da campanha…'}</p></section>;
  return <section className="harptos"><div className="harptos-intro"><div className="harptos-intro-copy"><h2>Calendário de Harptos</h2>
- <p className="harptos-sync-status" role="status">{realtimeStatus==='live'?'Sincronização em tempo real ativa':realtimeStatus==='fallback'?'Conexão em tempo real indisponível · atualização automática a cada 15 segundos':'Conectando calendário em tempo real · atualização automática ativa'}</p>
  {calendar.data&&!calendar.isError&&<p className="harptos-week" role="status" aria-live="polite">{formatCampaignPeriod(calendar.data)}</p>}
  <details><summary>Os doze meses de Harptos</summary><div className="harptos-months">{MONTHS.map((name,i)=><button type="button" key={name} aria-pressed={month===i} onClick={()=>chooseMonth(i)}><strong>{i+1}. {name}</strong><small>{MONTH_DETAILS[i]![0]} · {MONTH_DETAILS[i]![1]}</small></button>)}</div></details><p>Três désdias de dez dias por mês. Os festivais são dias intercalares.</p>
  </div>
@@ -45,7 +48,8 @@ export function CampaignCalendar(){
  {[0,1,2].map(row=><div key={row} className={calendar.data&&calendar.data.year===year&&calendar.data.month===month&&!calendar.data.festival&&Math.floor((calendar.data.day-1)/10)===row?'harptos-current-desdia':undefined}><p className="harptos-day-label">{row+1}ª désdia</p><div className="harptos-days">{Array.from({length:10},(_,i)=>{const day=row*10+i+1;return cell(dateKey({year,month,day,festival:null}),String(day));})}</div></div>)}
  <div className="harptos-festivals">{FESTIVALS.filter(f=>f.month===month&&(f.id!=='shieldmeet'||year%4===0)).map(f=>cell(dateKey({year,month,day:30,festival:f.id}),f.name))}</div>
  <div id="harptos-events" className="harptos-events" aria-live="polite"><h4>{formatDate(selected)}</h4>{onDay(selected).length?onDay(selected).map(e=><div className="harptos-event" key={e.id}><Symbol kind={e.kind}/><div><strong>{e.title}</strong>{e.description&&<p>{e.description}</p>}</div></div>):<p>Nenhum evento visível neste dia.</p>}</div>
- {(calendar.error||mail.error||published.error)&&<p role="alert">Não foi possível carregar {calendar.error?'a data global':published.error?'os eventos publicados':'as missivas'}. As festas continuam disponíveis para consulta. Verifique a migração 0038 e tente novamente. <Button onClick={()=>{calendar.refetch();mail.refetch();published.refetch();}}>Recarregar</Button></p>}
+ {yearChronicles.length>0&&<div className="harptos-events"><h4>Crônicas históricas de {year} CV</h4>{yearChronicles.map(c=><div className="harptos-event" key={c.id}><Symbol kind="kingdom"/><div><strong>{c.yearEnd?`${c.year}–${c.yearEnd} CV · `:''}{c.title}</strong><p>{c.description}</p></div></div>)}</div>}
+ {(calendar.error||mail.error||published.error)&&<p role="alert">Não foi possível carregar {calendar.error?'a data oficial':published.error?'os eventos publicados':'as missivas'}. As festas continuam disponíveis para consulta. <Button onClick={()=>{calendar.refetch();mail.refetch();published.refetch();}}>Recarregar</Button></p>}
 
  </section>;
 }

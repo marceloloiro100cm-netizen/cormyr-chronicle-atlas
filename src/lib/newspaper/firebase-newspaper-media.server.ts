@@ -3,6 +3,7 @@
  * immutable object has a Firestore registry row used by editorial publication.
  */
 import {createHash,randomUUID} from 'node:crypto';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import {createFirebaseCloudReadonly,CloudAccessError}
  from '../../../scripts/firebase/cloud-readonly-service.mjs';
 
@@ -134,7 +135,7 @@ export function createNewspaperMediaService({db,auth,bucket,snapshotId,env=proce
   if(!stage.exists||stage.data()?.status!=='complete'||stage.data()?.private!==true||
      !live.exists||v?.status!=='active'||v.private!==true||
      v.sourceSnapshotId!==snapshotId||v.sourceSnapshotReconciled!==true||
-     v.applicationEnabled!==true||v.newspaperWriteApproved!==true)
+     v.applicationEnabled!==true||!runtimeApprovalEnabled(v,'newspaperWriteApproved'))
    fail('media_not_approved',503);
  };
  const scope=async(token:string):Promise<Scope>=>{

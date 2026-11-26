@@ -4,6 +4,7 @@
  */
 import {createHash} from 'node:crypto';
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 // @ts-expect-error -- Legacy temporal runtime has no global declaration (same as House consumers).
 import {validateHarptosDate,harptosKey} from '../../../scripts/firebase/stage-temporal-emulator.mjs';
 import {validateEditorialContent} from '../../../scripts/firebase/cloud-editorial-content.mjs';
@@ -20,7 +21,7 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
  const config=root.data();
  if(!root.exists||config?.status!=='active'||config.private!==true||
     config.sourceSnapshotId!==snapshotId||config.sourceSnapshotReconciled!==true||
-    config.applicationEnabled!==true||config.newspaperWriteApproved!==true||
+    config.applicationEnabled!==true||!runtimeApprovalEnabled(config,'newspaperWriteApproved')||
     config.newspaperSequenceReconciled!==true||
     !source.exists||source.data()?.status!=='complete'||source.data()?.private!==true||
     !clock.exists)return 0;
@@ -55,7 +56,7 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
       settings.sourceSnapshotId!==snapshotId||
       settings.sourceSnapshotReconciled!==true||
       settings.newspaperSequenceReconciled!==true||
-      settings.applicationEnabled!==true||settings.newspaperWriteApproved!==true||
+      settings.applicationEnabled!==true||!runtimeApprovalEnabled(settings,'newspaperWriteApproved')||
       !entry.exists||v?.source!=='firebase-cloud'||v.sourceSnapshotId!==snapshotId||
       v.state!=='draft'||!v.publishOn||v.publishedAt!=null)return false;
    const d=effectiveCloudCalendar(calendar.data(),settings,snapshotId);
@@ -93,8 +94,8 @@ export async function releaseDueNewspapers(db:any,snapshotId:string):Promise<num
    }))return false;
    const commissions=commissionIdsOf(v.blocks);
    if(commissions.length>20||commissions.length&&
-     (settings.newspaperCommissionsReadApproved!==true||
-      settings.newspaperCommissionsWriteApproved!==true))return false;
+     (!runtimeApprovalEnabled(settings,'newspaperCommissionsReadApproved')||
+      !runtimeApprovalEnabled(settings,'newspaperCommissionsWriteApproved')))return false;
    const refs=commissions.map((id:string)=>runtime.collection('newspaperCommissions').doc(id));
    const docs=await Promise.all(refs.map((r:any)=>tx.get(r)));
    if(docs.some((doc:any,i:number)=>!doc.exists||doc.data()?.id!==commissions[i]||

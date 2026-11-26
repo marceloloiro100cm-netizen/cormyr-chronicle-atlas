@@ -192,6 +192,14 @@
  * React.lazy + Suspense e refetchIntervalInBackground:false em
  * players-workspace.tsx. Todos os menus, abas, filtros, controles e
  * verificações de escopo/revogação permanecem idênticos.
+ * 2026-11-26 (Unificação Hub Temporal + limpeza de ações técnicas, pedido do
+ * proprietário): players-workspace.tsx remove o iframe duplicado do Calendário
+ * do Reino (unificado em HubTemporal e CampaignCalendar) e remove os painéis
+ * técnicos de migração em Contas (FirebaseRuntimeApprovals e
+ * FirebaseCouncilAccessReview), mantendo FirebaseAccountManager + AdminPanel;
+ * ficha-tab.tsx oculta a aba redundante Economia Firebase; admin-panel.tsx
+ * remove o exportador legado do Supabase (StorageExport). Todas as abas de
+ * jogo, filtros e permissões permanecem intactos.
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -202,15 +210,15 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'373159bcc1325b724c7cac1ee3827d2ee6cb0cec',
+  'src/components/players/players-workspace.tsx':'e934dd81a027e8066891dbfb2e21f65ce5f733fe',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'ab0553588660e4165e21aa9d8b6e7ec1e2b30cc2',
   'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
   'src/components/newspaper/newspaper-editorial.css':'b9bbeeacdd54e7885066a94864f1612235f10a2d',
   'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
-  'src/components/players/admin-panel.tsx':'a9c1153d693176c0b0698773894dd123078f5a10',
-  'src/components/players/ficha-tab.tsx':'baad9942071d55721d9e0fb33ffd3c0ea93663a0',
+  'src/components/players/admin-panel.tsx':'5d228c335901891fdba102cd301f92b18927486a',
+  'src/components/players/ficha-tab.tsx':'709de1b9b54ea1768b314ca9bbed4674dcdc01a0',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',
 };
 for(const [path,expected] of Object.entries(originals)){

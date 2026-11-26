@@ -1,4 +1,5 @@
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 /**
  * Narrator-only diagnostic of operational House-state reconciliation.
  * READ ONLY: no seed, approval, Firestore Rules or cutover changes.
@@ -70,10 +71,10 @@ const configuredRuntime=(v:unknown,snapshotId:string,calendarVersion:number)=>
   v['applicationEnabled']===true&&
   v['calendarVersion']===calendarVersion;
 const approvedRead=(v:unknown)=>
-  record(v)&&v['constructionReadApproved']===true&&
+  record(v)&&runtimeApprovalEnabled(v,'constructionReadApproved')&&
   v['constructionSeededVerified']===true;
 const approvedWrite=(v:unknown)=>
-  record(v)&&v['constructionWriteApproved']===true&&
+  record(v)&&runtimeApprovalEnabled(v,'constructionWriteApproved')&&
   v['constructionSeededVerified']===true;
 const officialMonth=(v:unknown):{month:number;version:number}|null=>{
   if(!record(v)||!integer(v['year'],1,9999)||

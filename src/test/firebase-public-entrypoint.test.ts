@@ -6,7 +6,7 @@ describe('Atlas público: entrada Firebase visível, sem ponte Supabase',()=>{
     const html=read('public/cormyr/index.html');
     expect(html).toContain('<a id="login-button"');
     expect(html).toContain('href="/auth"');
-    expect(html).toContain('Acessar o Atlas com Firebase');
+    expect(html).toContain('Entrar no Conselho de Cormyr');
     // 21/11/2026: o site aberto saiu do modo manutenção. Calendário, catálogo
     // e traduções vêm das APIs públicas; se elas responderem erro, o acervo
     // estático continua como está (cada script ignora a falha).

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Firebase Admin boundary. */
 import {createFirebaseCloudReadonly} from '../../../scripts/firebase/cloud-readonly-service.mjs';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import {createWorkspaceService} from './service';
 import {PRIVATE_MEDIA_LIMIT,PRIVATE_MEDIA_UUID,privateMediaType,
  privateMediaHash,privateMediaRef,privateMediaFail,privateMediaReferenced,
@@ -54,8 +55,8 @@ export function createFirebasePrivateMedia({db,auth,bucket,verifiedBucket,snapsh
   const value=doc.data();
   return doc.exists&&value?.status==='active'&&value.private===true&&
    value.sourceSnapshotId===snapshotId&&value.sourceSnapshotReconciled===true&&
-   value.applicationEnabled===true&&value.privateMediaReadApproved===true&&
-   (!write||value.privateMediaWriteApproved===true);
+   value.applicationEnabled===true&&runtimeApprovalEnabled(value,'privateMediaReadApproved')&&
+   (!write||runtimeApprovalEnabled(value,'privateMediaWriteApproved'));
  };
  const approved=async(write=false)=>{
   if(!runtimeApproved(await root.get(),write))

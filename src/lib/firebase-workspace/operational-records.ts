@@ -4,6 +4,7 @@
  * A origem importada e o histórico permanecem imutáveis.
  */
 import {createHash} from 'node:crypto';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import type {Scope} from './service';
 import {readAllPaged} from './paged-read';
 
@@ -139,7 +140,7 @@ async function operationalRecordReadGate(root:any,snapshotId:string):Promise<boo
     v?.applicationEnabled!==true||v?.sourceSnapshotId!==snapshotId||
     v?.sourceSnapshotReconciled!==true)
    fail('record_runtime_not_approved');
- if(v.recordsReadApproved===true)return true;
+ if(runtimeApprovalEnabled(v,'recordsReadApproved'))return true;
  const [current,versions]=await Promise.all([
    root.collection('records').limit(1).get(),
    root.collection('recordVersions').limit(1).get(),

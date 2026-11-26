@@ -1,4 +1,5 @@
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 /**
  * Firebase-only, strictly gated House construction purchases.
  * The historical migration stages are READ ONLY. An operator must
@@ -115,7 +116,7 @@ function runtimeReady(v:unknown,snapshot:string,calendarVersion:number):boolean{
   return record(v)&&v['status']==='active'&&v['private']===true&&
     v['sourceSnapshotId']===snapshot&&v['sourceSnapshotReconciled']===true&&
     v['applicationEnabled']===true&&
-    v['constructionWriteApproved']===true&&
+    runtimeApprovalEnabled(v,'constructionWriteApproved')&&
     v['constructionSeededVerified']===true&&
     v['calendarVersion']===calendarVersion;
 }

@@ -1,4 +1,5 @@
 import {assertTransactionActor} from './transaction-actor';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 /**
  * Escrita transacional do item 6. O snapshot migrado nunca é alterado.
  * A identidade do autor e as Casas editáveis são recebidas do Firebase Admin.
@@ -37,8 +38,8 @@ const text=(v:unknown,max:number,empty=false):v is string=>
 function assertRuntime(data:any,snapshotId:string){
  if(!data||data.status!=='active'||data.private!==true||
    data.applicationEnabled!==true||data.sourceSnapshotId!==snapshotId||
-   data.sourceSnapshotReconciled!==true||data.recordsReadApproved!==true||
-   data.recordsWriteApproved!==true)
+   data.sourceSnapshotReconciled!==true||!runtimeApprovalEnabled(data,'recordsReadApproved')||
+   !runtimeApprovalEnabled(data,'recordsWriteApproved'))
    fail('record_write_not_approved',503);
 }
 function validateDraft(actor:Scope,row:RecordRow){
@@ -107,8 +108,8 @@ export async function commitOperationalRecord({
    deny:()=>fail('access_denied',403),
   });
   if(representation){
-   if(rt.data()?.representationReadApproved!==true||
-      rt.data()?.representationWriteApproved!==true)
+   if(!runtimeApprovalEnabled(rt.data(),'representationReadApproved')||
+      !runtimeApprovalEnabled(rt.data(),'representationWriteApproved'))
     fail('representation_write_not_approved',503);
    if(actor.profile!=='jogador'||actor.uid===representation.realActorUid||
      !validId(representation.realActorUid)||!uuid(representation.sessionNonce))

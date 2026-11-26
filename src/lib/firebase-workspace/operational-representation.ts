@@ -4,6 +4,8 @@ import {randomUUID,createHash} from 'node:crypto';
 import type {Scope} from './service';
 import {chooseCurrentAccountAccess}
  from '../../../scripts/firebase/operational-account-access.mjs';
+import {runtimeApprovalEnabled}
+ from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import {activeSeason2HouseScopeValid}
  from '../../../scripts/firebase/cloud-season2-house-scope.mjs';
 
@@ -28,7 +30,7 @@ function narrator(scope:Scope){
 function runtime(v:any,snapshot:string){
  if(!v||v.status!=='active'||v.private!==true||
  v.applicationEnabled!==true||v.sourceSnapshotId!==snapshot||
- v.sourceSnapshotReconciled!==true||v.representationReadApproved!==true)
+ v.sourceSnapshotReconciled!==true||!runtimeApprovalEnabled(v,'representationReadApproved'))
   deny('representation_not_approved',503);
 }
 async function proof(tx:any,db:any,root:any,snapshot:string,

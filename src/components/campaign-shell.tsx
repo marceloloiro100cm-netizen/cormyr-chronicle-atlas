@@ -39,7 +39,6 @@ export function CampaignShell({ children,publicTime=false,heraldry=null }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
         <nav style={{display:'flex',gap:'0.8rem',alignItems:'center'}}>
           <a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a>
-          {!publicTime&&<a href="/diagnostico">Verificar meu acesso</a>}
         </nav>
         <LanguageSwitcher />
       </div>

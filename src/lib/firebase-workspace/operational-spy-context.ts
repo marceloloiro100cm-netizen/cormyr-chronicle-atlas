@@ -3,6 +3,8 @@
 import {createHash} from 'node:crypto';
 import {projectSpyOverlay,SPY_OVERLAY_COLLECTIONS}
  from '../../../scripts/firebase/workspace-spy-overlay.mjs';
+import {runtimeApprovalEnabled}
+ from '../../../scripts/firebase/runtime-approval-policy.mjs';
 
 export const spyDigest=(value:string)=>createHash('sha256').update(value).digest('hex');
 export const spyUuid=(v:unknown):v is string=>typeof v==='string'&&
@@ -50,8 +52,8 @@ export async function readSpyTx({tx,root,snapshotId,source,calendar,write=true}:
  const meta=metaDoc.data();
  if(!metaDoc.exists||meta?.status!=='active'||meta?.private!==true||
     meta?.applicationEnabled!==true||meta?.sourceSnapshotId!==snapshotId||
-    meta?.sourceSnapshotReconciled!==true||meta?.spyReadApproved!==true||
-    write&&meta?.spyWriteApproved!==true||
+    meta?.sourceSnapshotReconciled!==true||!runtimeApprovalEnabled(meta,'spyReadApproved')||
+    write&&!runtimeApprovalEnabled(meta,'spyWriteApproved')||
     !Number.isSafeInteger(calendar?.version)||meta?.calendarVersion!==calendar.version)
   spyFail('spy_runtime_not_approved',503);
  const overlay:Record<string,unknown>={};

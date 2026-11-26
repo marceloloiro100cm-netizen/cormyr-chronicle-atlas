@@ -17,7 +17,7 @@ describe('Portal principal de login — migração Firebase',()=>{
   expect(src).not.toContain('campaign-selected-house');
   expect(src).not.toContain('setProfile(');
   expect(src).not.toContain('setHouse(');
-  expect(src).toContain('perfil, a Casa e as permissões são conferidos no Firebase');
+  expect(src).toContain('Entrar no Conselho');
  });
  it('recuperação de senha é genérica e não permite enumerar contas',()=>{
   expect(src).toContain('requestPasswordReset(email.trim())');
@@ -27,7 +27,7 @@ describe('Portal principal de login — migração Firebase',()=>{
  });
  it('catálogo público indisponível não bloqueia a autenticação',()=>{
   expect(src).toContain('loadFirebasePublicSeasonHouses()');
-  expect(src).toContain('O login Firebase continua disponível.');
+  expect(src).toContain('houses.length>0&&');
   expect(src).not.toContain('sessionStorage.setItem');
  });
 });

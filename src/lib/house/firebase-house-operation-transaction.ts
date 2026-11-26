@@ -4,6 +4,7 @@
  * Nunca grava no snapshot importado ou modifica fichas de outra Casa.
  */
 import {createHash,randomInt} from 'node:crypto';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import type {Auth} from 'firebase-admin/auth';
 import type {Firestore} from 'firebase-admin/firestore';
 import {operationSchema,catalogSchema} from './schemas';
@@ -160,7 +161,7 @@ export function createFirebaseHouseOperation({
    const cfg=docs[4].data() as RuntimeRoot|undefined;
    if(!docs[4].exists||cfg?.status!=='active'||cfg?.private!==true||
      cfg?.sourceSnapshotId!==snapshotId||cfg?.sourceSnapshotReconciled!==true||
-     cfg?.applicationEnabled!==true||cfg?.houseOpsWriteApproved!==true)
+     cfg?.applicationEnabled!==true||!runtimeApprovalEnabled(cfg,'houseOpsWriteApproved'))
      fail('house_operations_not_approved',503);
    let access:ReturnType<typeof chooseCurrentAccountAccess>=null;
    try{access=chooseCurrentAccountAccess(uid,docs[5].data(),
@@ -230,8 +231,8 @@ export function createFirebaseHouseOperation({
      state.month!==monthFromHarptosDate({year:c.year,month:c.month}))
       fail('house_calendar_conflict',409);
    if(action==='crest_import'){
-    if(cfg.privateMediaReadApproved!==true||
-       cfg.privateMediaWriteApproved!==true)
+    if(!runtimeApprovalEnabled(cfg,'privateMediaReadApproved')||
+       !runtimeApprovalEnabled(cfg,'privateMediaWriteApproved'))
      fail('house_crest_media_not_approved',503);
     const doc=await tx.get(crestRef!);
     const meta=doc.data();
@@ -281,7 +282,7 @@ export function createFirebaseHouseOperation({
       const imported=recordPairs[i*2],operational=recordPairs[i*2+1];
       const old=imported?.exists?imported.data():null;
       const overlay=operational?.exists?operational.data():null;
-      if(overlay&&(cfg?.recordsReadApproved!==true||
+      if(overlay&&(!runtimeApprovalEnabled(cfg,'recordsReadApproved')||
          overlay['sourceSnapshotId']!==snapshotId||overlay['id']!==id||
          !overlay['record']||overlay['record']['id']!==id))
        fail('house_npc_source_unavailable',503);

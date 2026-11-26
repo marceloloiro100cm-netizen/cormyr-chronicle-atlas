@@ -111,9 +111,8 @@ it('reconexão Realtime busca alterações perdidas e limpa inscrição quando d
  mock.current={...mock.current,day:21,version:2};
  await act(async()=>{onStatus?.('SUBSCRIBED');await qc.refetchQueries({queryKey:['campaign-calendar']});});
  expect(await screen.findByText('3ª désdia · Hammer · 1522 CV')).toBeInTheDocument();
- expect(screen.getByText('Sincronização em tempo real ativa')).toBeInTheDocument();
  act(()=>onStatus?.('CHANNEL_ERROR'));
- expect(screen.getByText(/atualização automática a cada 15 segundos/)).toBeInTheDocument();
+ expect(screen.queryByText(/atualização automática a cada 15 segundos/)).not.toBeInTheDocument();
  cleanup();
  expect(mock.removeChannel).toHaveBeenCalledTimes(1);
 });
