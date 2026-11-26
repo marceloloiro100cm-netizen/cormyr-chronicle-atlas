@@ -240,3 +240,10 @@ env:
     value: "true"
     availability:
       - RUNTIME
+  # Campanha ativa em produção: libera automaticamente as funções operacionais
+  # (mantendo Firebase Auth, perfis e isolamento por Casa no servidor) sem
+  # exigir o painel manual de 17 aprovações técnicas.
+  - variable: CORMYR_FIREBASE_ALL_CAMPAIGN_FUNCTIONS_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME

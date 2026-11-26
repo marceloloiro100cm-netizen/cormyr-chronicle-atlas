@@ -186,4 +186,7 @@ button.ht-it{cursor:pointer}button.ht-it:hover{border-color:var(--ht-ms)}
 .ht-dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:14px;margin:0}
 .ht-dl dt{color:var(--muted-foreground)}.ht-dl dd{margin:0}
 .ht-status{padding:8px 12px;border-radius:9px;background:var(--ht-light);border:1px solid var(--ht-line);font-size:14px}
+.ht-details summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ht-details summary::-webkit-details-marker{display:none}
+.ht-details[open] summary{margin-bottom:12px}
 @media(prefers-reduced-motion:reduce){.ht-tg i::after{transition:none}}

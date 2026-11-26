@@ -1,5 +1,6 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {verifyMediaReferences,MediaReferenceError} from './private-media-references.mjs';
+import {runtimeApprovalEnabled} from './runtime-approval-policy.mjs';
 /**
  * Cormyr Firebase Cloud — fail-closed transactional mail.
  *
@@ -458,8 +459,8 @@ export function createFirebaseCloudMail({
       deny('representation_disabled',501);
     const actual=await readyTransaction(tx,realUid);
     const root=await tx.get(runtime);
-    if(root.data()?.representationReadApproved!==true||
-       root.data()?.representationWriteApproved!==true)
+    if(!runtimeApprovalEnabled(root.data(),'representationReadApproved')||
+       !runtimeApprovalEnabled(root.data(),'representationWriteApproved'))
       deny('representation_write_not_approved',503);
     if(actual.actor.role!=='narrador')deny('representation_denied',403);
     const ref=runtime.collection('representationSessions').doc(realUid);

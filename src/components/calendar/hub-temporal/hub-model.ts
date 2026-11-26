@@ -3,7 +3,7 @@
  * formatação em português. As regras de data vêm do núcleo compartilhado
  * com o servidor (scripts/firebase/hub-temporal-core.mjs).
  */
-import {MONTHS} from '@/lib/calendar/harptos';
+import {EVENT_DETAILS,MONTHS} from '@/lib/calendar/harptos';
 import {absoluteDay,fromAbsoluteDay,nextTendayStart,weekPeriod,parseDateKey,dateKeyOf,
   festivalsInRange,fixedFestivalEntries,FIXED_FESTIVALS,HUB_REGIONS,dayOfYear,
   type HarptosDate,type HubFestival,type FestivalOccurrence} from '../../../../scripts/firebase/hub-temporal-core.mjs';
@@ -11,6 +11,90 @@ import {absoluteDay,fromAbsoluteDay,nextTendayStart,weekPeriod,parseDateKey,date
 export {absoluteDay,fromAbsoluteDay,nextTendayStart,weekPeriod,parseDateKey,dateKeyOf,
   festivalsInRange,fixedFestivalEntries,FIXED_FESTIVALS,HUB_REGIONS,dayOfYear};
 export type {HarptosDate,HubFestival,FestivalOccurrence};
+
+/** Festividades anuais canônicas de Waukeen unificadas do Calendário do Reino. */
+export const WAUKEEN_FESTIVALS:readonly {month:number;day:number;durationDays:number;name:string;detailKey:string}[]=[
+  {month:0,day:15,durationDays:1,name:'Waukeen · Conforto da Contagem Fria',detailKey:'Cold Counting'},
+  {month:1,day:20,durationDays:1,name:'Waukeen · Grande Tecelagem',detailKey:'Great Weave'},
+  {month:2,day:30,durationDays:1,name:'Waukeen · Moeda Alta',detailKey:'High Coin'},
+  {month:3,day:10,durationDays:1,name:'Waukeen · Esferas',detailKey:'Springsheen'},
+  {month:4,day:12,durationDays:1,name:'Waukeen · Sammardach',detailKey:'Coinswarm'},
+  {month:5,day:21,durationDays:1,name:'Waukeen · Brightbuckle',detailKey:'Brightbuckle'},
+  {month:6,day:3,durationDays:3,name:'Waukeen · Sornyn',detailKey:'Goldensun'},
+  {month:7,day:17,durationDays:1,name:'Waukeen · Huldark',detailKey:'Bountiful Harvest'},
+  {month:8,day:7,durationDays:1,name:'Waukeen · Spryndalstar',detailKey:'Grandmasster’s March'},
+  {month:9,day:1,durationDays:1,name:'Waukeen · Marthoon',detailKey:'Coin’s Rest'},
+  {month:10,day:10,durationDays:1,name:'Waukeen · Tehennteahan · Noite de Martelos e Pregos',detailKey:'Darkcoin'},
+  {month:11,day:25,durationDays:1,name:'Waukeen · Orbar',detailKey:'Audit'},
+];
+
+/** Ritos mensais de Tyr (todo mês nos dias 1, 13 e 22). */
+export const TYR_OBSERVANCES:readonly {day:number;name:string;description:string}[]=[
+  {day:1,name:'Tyr · Ver a Justiça',description:EVENT_DETAILS['Ver a Justiça']??''},
+  {day:13,name:'Tyr · Mutilamento',description:EVENT_DETAILS['Mutilamento']??''},
+  {day:22,name:'Tyr · O Vínculo',description:EVENT_DETAILS['O Vínculo']??''},
+];
+
+/** Marcos anuais das estações em Harptos. */
+export const SEASON_MARKERS:readonly {month:number;day:number;name:string}[]=[
+  {month:2,day:19,name:'Equinócio da primavera'},
+  {month:5,day:20,name:'Solstício de verão'},
+  {month:8,day:21,name:'Equinócio do outono'},
+  {month:11,day:20,name:'Solstício de inverno'},
+];
+
+/** Descrição canônica de Cormyr para os dias festivos fixos de Harptos. */
+export function fixedFestivalDescription(id:string|null|undefined,fallback:string):string{
+  const detail=id?EVENT_DETAILS[id]:undefined;
+  if(!detail)return fallback;
+  const cleaned=detail.replace(/^:\s*/,'').trim();
+  return cleaned.charAt(0).toUpperCase()+cleaned.slice(1)+'.';
+}
+
+/** Observâncias canônicas anuais (Waukeen, Tyr e Estações) no formato do Hub Temporal. */
+export function canonicalObservanceEntries():HubFestival[]{
+  const out:HubFestival[]=[];
+  WAUKEEN_FESTIVALS.forEach((w,i)=>{
+    out.push({
+      id:`canon-waukeen-${i}`,fixed:true,name:w.name,scope:'kingdom',region:null,
+      date:{year:1,month:w.month,day:w.day,festival:null},repeat:'yearly',
+      durationDays:w.durationDays,notify:false,
+      description:EVENT_DETAILS[w.detailKey]??'Festival de Waukeen no calendário de Cormyr.',
+    });
+  });
+  for(let month=0;month<12;month++){
+    for(const t of TYR_OBSERVANCES){
+      out.push({
+        id:`canon-tyr-${month}-${t.day}`,fixed:true,name:t.name,scope:'kingdom',region:null,
+        date:{year:1,month,day:t.day,festival:null},repeat:'yearly',durationDays:1,
+        notify:false,description:t.description,
+      });
+    }
+  }
+  SEASON_MARKERS.forEach((s,i)=>{
+    out.push({
+      id:`canon-season-${i}`,fixed:true,name:s.name,scope:'kingdom',region:null,
+      date:{year:1,month:s.month,day:s.day,festival:null},repeat:'yearly',durationDays:1,
+      notify:false,description:'Marco sazonal do calendário de Harptos.',
+    });
+  });
+  return out;
+}
+
+export type AnnualChronicle={id:string;year:number;yearEnd?:number;title:string;description:string;scope:string};
+let chroniclesCache:Promise<AnnualChronicle[]>|null=null;
+/** Carrega e mantém em cache as 77 crônicas históricas anuais (1350–1520 CV). */
+export function loadAnnualChronicles():Promise<AnnualChronicle[]>{
+  if(!chroniclesCache){
+    chroniclesCache=fetch('/cormyr/chronicle-timeline.json',{credentials:'omit'})
+      .then(r=>r.ok?r.json():null)
+      .then((data:{events?:AnnualChronicle[]}|null)=>
+        Array.isArray(data?.events)?data.events.filter(e=>
+          typeof e?.year==='number'&&typeof e?.title==='string'&&typeof e?.description==='string'):[])
+      .catch(()=>[]);
+  }
+  return chroniclesCache;
+}
 
 export type OfficialDate=HarptosDate&{version:number};
 export type HubSeason={number:number;name:string;startRound:number|null;

@@ -3,10 +3,12 @@ import {workspaceRequest} from '@/lib/firebase-workspace/client';
 import {useUrlParam,useUrlSearch,urlLinkProps,hrefWithParams,setUrlParams} from '@/lib/navigation/url-state';
 import {absoluteDay,fromAbsoluteDay,nextTendayStart,weekPeriod,parseDateKey,dateKeyOf,
   festivalsInRange,fixedFestivalEntries,FIXED_FESTIVALS,HUB_REGIONS,dayOfYear,
+  WAUKEEN_FESTIVALS,TYR_OBSERVANCES,SEASON_MARKERS,fixedFestivalDescription,
+  canonicalObservanceEntries,loadAnnualChronicles,
   fmtDate,fmtShort,fmtRange,desdia,plural,listPt,regionLabel,houseLabel,keyAbs,monthSlots,
   viewOf,newKey,HUB_ERRORS,monthName,
   type HarptosDate,type HubFestival,type FestivalOccurrence,type OfficialDate,type HubData,
-  type HubEvent,type HubLetter,type HistoryItem,type HubRequest} from './hub-model';
+  type HubEvent,type HubLetter,type HistoryItem,type HubRequest,type AnnualChronicle} from './hub-model';
 import './hub-temporal.css';
 
 /* ---------- Ícones ---------- */
@@ -94,6 +96,8 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
  const [filt,setFilt]=useState<Record<Layer,boolean>>({oficial:true,regional:true,festival:true,missiva:true,rascunho:true});
  const [reg,setReg]=useState('');
  const [hl,setHl]=useState<string|null>(null);
+ const [chronicles,setChronicles]=useState<AnnualChronicle[]>([]);
+ useEffect(()=>{let on=true;void loadAnnualChronicles().then(items=>{if(on)setChronicles(items);});return()=>{on=false;};},[]);
 
  const load=useCallback(async()=>{
   setLoadError('');
@@ -121,7 +125,9 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
  const tooFar=!flashback&&monthsForward>3;
  const tooFarBack=flashback&&calendar.year-target.year>50;
  const salto=tAbs-absoluteDay(sug);
+ const canonicalObservances=useMemo(()=>canonicalObservanceEntries(),[]);
  const allFestivals=useMemo(()=>[...fixedFestivalEntries(hub?.fixedFestivalNotify??{}),...(hub?.festivals??[])],[hub]);
+ const agendaFestivals=useMemo(()=>[...allFestivals,...canonicalObservances],[allFestivals,canonicalObservances]);
  const newFest=festivalsInRange(allFestivals,period.start,period.end);
  const letters=hub?.letters??[];
  const trav=letters.filter(l=>l.creationRound===openRound&&l.state!=='draft');
@@ -257,7 +263,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
   const r=ctx==='ag'?reg:'';
   const evs=events.filter(e=>keyAbs(e.date)===n&&(e.scope==='region'?f.regional:f.oficial)&&
    (!e.pending||e.published||f.rascunho)&&(!r||e.scope!=='region'||e.region===r)&&!(e.deleted&&!e.published));
-  const fes=f.festival?festivalsInRange(allFestivals,n,n+1).filter(o=>!r||o.festival.scope!=='region'||o.festival.region===r):[];
+  const fes=f.festival?festivalsInRange(ctx==='ag'?agendaFestivals:allFestivals,n,n+1).filter(o=>!r||o.festival.scope!=='region'||o.festival.region===r):[];
   const ms=f.missiva?letters.filter(l=>l.state!=='draft'&&keyAbs(l.date)===n):[];
   return {evs,fes,ms};
  };
@@ -318,7 +324,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
   <div className="ht-itb"><b>{e.title}</b><span>{e.scope==='region'?'Regional · '+regionLabel(e.region):'Oficial do Reino'} · {e.pending?(e.published?'publicado, com alteração em rascunho':'rascunho'):'publicado'}</span></div>
   <button type="button" className="ht-icon-btn" aria-label={'Editar '+e.title} onClick={()=>openEvent(e)}><Ic n="pen"/></button></li>;
  const itFest=(o:FestivalOccurrence)=><li key={'f'+o.festival.id+o.start} className="ht-it"><i className="ht-sw ht-sw--fe"/>
-  <div className="ht-itb"><b>{o.festival.name}</b><span>Festival · {fmtRange(o.start,o.end)} · {regionLabel(o.festival.scope==='region'?o.festival.region:null)}</span></div></li>;
+  <div className="ht-itb"><b>{o.festival.name}</b><span>Festival · {fmtRange(o.start,o.end)} · {regionLabel(o.festival.scope==='region'?o.festival.region:null)}{o.festival.description?' · '+o.festival.description:''}</span></div></li>;
  const itLetter=(l:HubLetter)=><li key={'m'+l.id}><button type="button" className="ht-it" onClick={()=>setModal({t:'letter',letter:l})}>
   <i className="ht-sw ht-sw--ms"/><div className="ht-itb"><b>{houseLabel(l.from)} → {houseLabel(l.to)}</b>
   <span>{l.subject||'Sem assunto'} · Semana {l.creationRound??'?'} · {l.state==='scheduled'?`agendada para a Semana ${l.deliveryRound}`:l.creationRound===openRound?'enviada, ainda editável':'entregue'}</span></div><Ic n="right"/></button></li>;
@@ -406,7 +412,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
      <section className="ht-card"><div className="ht-head"><h2>A Folha Sem Selo</h2>
       <a className="ht-btn ht-btn--ghost ht-btn--sm" {...urlLinkProps({hub:'ajustes'})}>Ajustes</a></div>
       <p>{hub?.newspaper.thisWeek.length?`${hub.newspaper.thisWeek.length} ${plural(hub.newspaper.thisWeek.length,'edição','edições')} nesta semana (Nº ${listPt(hub.newspaper.thisWeek.map(String))})`:'Nenhuma edição nesta semana'}</p>
-      <p className="ht-hint">{hub?.settings.newspaperOneEditionPerWeek?'Limite ativo: uma edição por semana.':'Sem limite semanal; o Atlas só registra a numeração.'} Total: {hub?.newspaper.total??0} {plural(hub?.newspaper.total??0,'edição','edições')} no Firebase.</p>
+      <p className="ht-hint">{hub?.settings.newspaperOneEditionPerWeek?'Limite ativo: uma edição por semana.':'Sem limite semanal; o Atlas só registra a numeração.'} Total: {hub?.newspaper.total??0} {plural(hub?.newspaper.total??0,'edição','edições')}.</p>
      </section>
     </div>
    </div>
@@ -440,6 +446,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
      <ul className="ht-list">{g.items}</ul></div>)
      :<p className="ht-empty">Nada neste período com as camadas escolhidas.</p>}</>;
   }
+  const yearChronicles=chronicles.filter(c=>c.year<=cv.year&&(c.yearEnd??c.year)>=cv.year);
   return <>
    <div className="ht-filters"><div className="ht-filters" role="group" aria-label="Camadas visíveis">
     {chips.map(([k,l,c])=><button type="button" key={k} className="ht-fchip" aria-pressed={filt[k]}
@@ -449,6 +456,11 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
     <button type="button" className="ht-gold ht-btn--sm" onClick={()=>openEvent(undefined,sel!==null?fromAbsoluteDay(sel):{year:cv.year,month:cv.month,day:1,festival:null})}>
      <Ic n="plus"/>Novo evento</button></div>
    <div className="ht-g2"><section className="ht-card">{renderCalendar('ag')}</section><section className="ht-card">{list}</section></div>
+   {yearChronicles.length>0&&<section className="ht-card" aria-label={`Crônicas históricas de ${cv.year} CV`}>
+    <div className="ht-head"><h2>Crônicas históricas de {cv.year} CV</h2><span className="ht-hint">{yearChronicles.length} {plural(yearChronicles.length,'registro','registros')}</span></div>
+    <ul className="ht-list">{yearChronicles.map(c=><li key={c.id} className="ht-li"><div className="ht-li-b">
+     <b>{c.yearEnd?`${c.year}–${c.yearEnd} CV · `:''}{c.title}</b>
+     <span>{c.description}</span></div></li>)}</ul></section>}
   </>;
  }
  function renderFestivais(){
@@ -460,18 +472,40 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
     if(o)return (o.end<=today?'Já aconteceu: ':'Próxima: ')+fmtRange(o.start,o.end);}
    return f.repeat==='yearly'&&f.date.year>calendar.year?`Começa em ${f.date.year} CV`:'Sem ocorrência próxima';
   };
-  const card=(f:HubFestival)=><li key={f.id} className="ht-li"><div className="ht-li-b"><b><Ic n="star"/>{f.name}</b>
-   <span>{regionLabel(f.scope==='region'?f.region:null)} · {fmtDate(f.date,false)}{f.durationDays>1?` · ${f.durationDays} dias`:''} · {f.fixed?'todo ano':f.repeat==='yearly'?`todo ano desde ${f.date.year} CV`:`só em ${f.date.year} CV`}</span>
-   <span className="ht-hint">{next(f)}{f.description?' · '+f.description:''}</span></div>
-   <button type="button" className="ht-tg" role="switch" aria-checked={f.notify} disabled={busy} onClick={()=>void toggleFestival(f)}><i/>Avisar jogadores</button>
-   {!f.fixed&&<button type="button" className="ht-icon-btn" aria-label={'Editar '+f.name} onClick={()=>openFestival(f)}><Ic n="pen"/></button>}</li>;
+  const card=(f:HubFestival)=>{
+   const desc=f.fixed&&f.date.festival?fixedFestivalDescription(f.date.festival,f.description):f.description;
+   return <li key={f.id} className="ht-li"><div className="ht-li-b"><b><Ic n="star"/>{f.name}</b>
+    <span>{regionLabel(f.scope==='region'?f.region:null)} · {fmtDate(f.date,false)}{f.durationDays>1?` · ${f.durationDays} dias`:''} · {f.fixed?'todo ano':f.repeat==='yearly'?`todo ano desde ${f.date.year} CV`:`só em ${f.date.year} CV`}</span>
+    <span className="ht-hint">{next(f)}{desc?' · '+desc:''}</span></div>
+    <button type="button" className="ht-tg" role="switch" aria-checked={f.notify} disabled={busy} onClick={()=>void toggleFestival(f)}><i/>Avisar jogadores</button>
+    {!f.fixed&&<button type="button" className="ht-icon-btn" aria-label={'Editar '+f.name} onClick={()=>openFestival(f)}><Ic n="pen"/></button>}</li>;
+  };
+  const fixedEntries=fixedFestivalEntries(hub?.fixedFestivalNotify??{});
+  const waukeenEntries=canonicalObservances.filter(x=>x.id.startsWith('canon-waukeen-'));
+  const seasonEntries=canonicalObservances.filter(x=>x.id.startsWith('canon-season-'));
   return <div className="ht-stack">
    <section className="ht-card"><div className="ht-head"><h2>Festivais cadastrados</h2>
     <button type="button" className="ht-gold ht-btn--sm" onClick={()=>openFestival()}><Ic n="plus"/>Cadastrar festival</button></div>
     {hub?.festivals.length?<ul className="ht-list">{hub.festivals.map(card)}</ul>:<p className="ht-empty">Nenhum festival cadastrado ainda.</p>}
     <p className="ht-hint" style={{marginTop:10}}>Quando a semana aberta inclui um festival com aviso ligado, as Casas do Reino (ou da região) veem uma bolinha em Calendário até abrirem a tela.</p></section>
-   <section className="ht-card"><div className="ht-head"><h2>Dias festivos de Harptos</h2></div>
-    <ul className="ht-list">{fixedFestivalEntries(hub?.fixedFestivalNotify??{}).map(card)}</ul></section></div>;
+   <section className="ht-card"><div className="ht-head"><h2>Dias festivos de Harptos</h2><span className="ht-hint">{fixedEntries.length} datas intercalares</span></div>
+    <ul className="ht-list">{fixedEntries.map(card)}</ul></section>
+   <details className="ht-card ht-details"><summary><h2>Festivais de Waukeen em Cormyr</h2><span className="ht-hint">{WAUKEEN_FESTIVALS.length} datas anuais · abrir</span></summary>
+    <ul className="ht-list">{waukeenEntries.map(f=><li key={f.id} className="ht-li"><div className="ht-li-b">
+     <b><Ic n="star"/>{f.name}</b>
+     <span>Todo o Reino · {fmtDate(f.date,false)}{f.durationDays>1?` · ${f.durationDays} dias`:''} · todo ano</span>
+     <span className="ht-hint">{next(f)}{f.description?' · '+f.description:''}</span></div></li>)}</ul></details>
+   <details className="ht-card ht-details"><summary><h2>Ritos mensais de Tyr e estações</h2><span className="ht-hint">{TYR_OBSERVANCES.length} ritos mensais · {SEASON_MARKERS.length} estações · abrir</span></summary>
+    <div className="ht-stack">
+     <ul className="ht-list">{TYR_OBSERVANCES.map(t=><li key={t.day} className="ht-li"><div className="ht-li-b">
+      <b><Ic n="star"/>{t.name}</b>
+      <span>Todo o Reino · dia {t.day} de cada mês</span>
+      {t.description&&<span className="ht-hint">{t.description}</span>}</div></li>)}</ul>
+     <ul className="ht-list">{seasonEntries.map(s=><li key={s.id} className="ht-li"><div className="ht-li-b">
+      <b><Ic n="star"/>{s.name}</b>
+      <span>Todo o Reino · {fmtDate(s.date,false)} · todo ano</span>
+      <span className="ht-hint">{next(s)}</span></div></li>)}</ul>
+    </div></details></div>;
  }
  function renderTemporadas(){
   const seasons=[...(hub?.seasons??[])].sort((a,b)=>b.number-a.number);
@@ -507,7 +541,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
     <span className="ht-hint">{new Date(h.at).toLocaleString('pt-BR')}</span></div></li>)}</ul></section>;
  }
  function renderAjustes(){
-  return <div className="ht-g2"><div className="ht-stack">
+  return <div className={tools?'ht-g2':'ht-stack'}><div className="ht-stack">
    <section className="ht-card"><div className="ht-head"><h2>Jornal · A Folha Sem Selo</h2></div>
     <label className="ht-check"><input type="checkbox" checked={hub?.settings.newspaperOneEditionPerWeek===true} disabled={busy||!hub}
      onChange={e=>void saveJournal(e.target.checked)}/>
@@ -518,7 +552,7 @@ export function HubTemporal({calendar,openRound,pendingHouseEffectMonths,request
      const r=await request<{published:number}>('publishEvents');
      return r.published?`${r.published} ${plural(r.published,'evento publicado','eventos publicados')} sem abrir semana.`:'Nenhum evento pendente de publicação.';})}>
      <Ic n="send"/>Publicar todos os rascunhos agora, sem abrir semana</button></section></div>
-   <section className="ht-card"><div className="ht-head"><h2>Ferramentas do Narrador</h2></div>{tools}</section></div>;
+   {tools&&<section className="ht-card"><div className="ht-head"><h2>Ferramentas do Narrador</h2></div>{tools}</section>}</div>;
  }
 
  /* ---------- Modais ---------- */

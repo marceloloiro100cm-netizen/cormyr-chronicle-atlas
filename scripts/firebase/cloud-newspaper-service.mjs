@@ -4,6 +4,7 @@ import {deletedNewspaperIds,deletedEditionDocId} from './newspaper-deleted.mjs';
 import {commissionIdsOf} from './newspaper-core.mjs';
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {currentAccountAccess,chooseCurrentAccountAccess} from './operational-account-access.mjs';
+import {runtimeApprovalEnabled} from './runtime-approval-policy.mjs';
 /**
  * Firebase Cloud-only newspaper publishing. Preserves imported editions.
  *
@@ -56,7 +57,7 @@ function readyRoots(roots){
 function readyRuntime(v,snapshot,calendar){
   if(!v||v.status!=='active'||v.private!==true||
      v.sourceSnapshotId!==snapshot||v.sourceSnapshotReconciled!==true||
-     v.applicationEnabled!==true||v.newspaperWriteApproved!==true||
+     v.applicationEnabled!==true||!runtimeApprovalEnabled(v,'newspaperWriteApproved')||
      v.newspaperSequenceReconciled!==true||
      !number(v.newspaperImportedMaxEditionNo,0,99999999)||
      !number(v.nextNewspaperEditionNo,1,99999999)||
@@ -522,8 +523,8 @@ export function createFirebaseCloudNewspaper({
         if(commissionIds.length>20)deny('edition_commissions_too_many',400);
         if(commissionIds.length&&(
            env.CORMYR_FIREBASE_NEWSPAPER_COMMISSIONS_ENABLED!=='true'||
-           config.newspaperCommissionsReadApproved!==true||
-           config.newspaperCommissionsWriteApproved!==true))
+           !runtimeApprovalEnabled(config,'newspaperCommissionsReadApproved',env)||
+           !runtimeApprovalEnabled(config,'newspaperCommissionsWriteApproved',env)))
           deny('edition_commissions_not_approved',503);
         const commissionRefs=commissionIds.map(cid=>
           runtime.collection('newspaperCommissions').doc(cid));

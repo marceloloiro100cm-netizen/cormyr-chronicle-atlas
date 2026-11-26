@@ -205,8 +205,7 @@ export function FirebaseNarratorWeekDraft(){
   if(loaded?.calendarPublished&&loaded.operationalCalendar&&loaded.mailEnabled&&loaded.openRound!=null)
     return <HubTemporal calendar={loaded.operationalCalendar} openRound={loaded.openRound}
       pendingHouseEffectMonths={loaded.pendingHouseEffectMonths??0}
-      request={requestWeek} advance={advanceWeek} onChanged={()=>void refresh()}
-      tools={<HouseActivationTool onDone={()=>void refresh()}/>}/>;
+      request={requestWeek} advance={advanceWeek} onChanged={()=>void refresh()}/>;
   return <section aria-label="Configuração de semana pelo Narrador no Firebase"
     className="rounded border border-amber-800/40 p-4 space-y-3">
     <div>

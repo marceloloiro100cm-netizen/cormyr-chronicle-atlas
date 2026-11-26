@@ -1,5 +1,6 @@
 import {effectiveCloudCalendar} from './cloud-operational-calendar.mjs';
 import {deletedNewspaperIds} from './newspaper-deleted.mjs';
+import {runtimeApprovalEnabled} from './runtime-approval-policy.mjs';
 import {inspectWorkspaceMetadata} from './workspace-audit.mjs';
 import {inspectWorkspaceLinks} from './workspace-link-audit.mjs';
 import {listWorkspaceRecords,getWorkspaceRecord,listWorkspaceRecordVersions,
@@ -115,7 +116,7 @@ export function createFirebaseCloudReadonly({auth,db,snapshotId,projectId,enable
     if(!doc.exists||v?.status!=='active'||v.private!==true||
        v.sourceSnapshotId!==snapshotId||
        v.sourceSnapshotReconciled!==true||
-       v.applicationEnabled!==true||v.newspaperWriteApproved!==true||
+       v.applicationEnabled!==true||!runtimeApprovalEnabled(v,'newspaperWriteApproved')||
        v.newspaperSequenceReconciled!==true)
       return null;
     return root;

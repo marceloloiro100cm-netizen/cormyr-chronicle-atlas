@@ -4,12 +4,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const root=resolve(import.meta.dirname,'../..');
-test('Calendário do Narrador usa o HUB Firebase sem montar RPC legada',()=>{
+test('Calendário do Narrador usa o HUB Firebase sem montar RPC legada nem calendário duplicado',()=>{
  const src=readFileSync(resolve(root,'src/components/players/players-workspace.tsx'),'utf8');
  assert.match(src,/import \{FirebaseNarratorWeekDraft\} from '@\/components\/calendar\/FirebaseNarratorWeekDraft';/);
- assert.ok(src.includes("section==='calendario'?firebaseWorkspaceClient()!==null?<><FirebaseNarratorWeekDraft/><PublicChronicleCalendar/></>:<NarratorCalendar/>"));
- assert.ok(src.includes("import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar'"));
- assert.ok(src.includes("<CampaignCalendar/>{firebaseMode&&<PublicChronicleCalendar/>}"),
+ assert.ok(src.includes("section==='calendario'?firebaseWorkspaceClient()!==null?<FirebaseNarratorWeekDraft/>:<NarratorCalendar/>"));
+ assert.equal(src.includes('<PublicChronicleCalendar/>'),false,
+  'Calendário do Reino duplicado foi unificado ao Hub Temporal e ao Calendário do jogador');
+ assert.ok(src.includes('<CampaignCalendar/>'),
   'O calendário original do jogador deve permanecer operacional');
  assert.equal(src.includes('section===\'calendario\'?<>{firebaseWorkspaceClient()'),false);
 });

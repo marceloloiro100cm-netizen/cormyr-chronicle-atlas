@@ -46,7 +46,7 @@ describe('Notícias contratadas: interface',()=>{
  it('o portal Firebase mostra A Folha Sem Selo apenas após autorização do perfil',()=>{
   const login=read('src/routes/auth.tsx');
   const pilot=read('src/routes/firebase-access.tsx');
-  expect(login).toContain('Entrar com Firebase');
+  expect(login).toContain('Entrar no Conselho');
   expect(login).not.toContain('supabase.auth.signInWithPassword');
   expect(pilot).toContain('A Folha Sem Selo</h2>');
   expect(pilot).toContain("view.profile==='editor'");

@@ -79,22 +79,20 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
     attrHouseIds:role==='editor'?[]:attrs,
    });
    setPassword('');setSelected(result.uid);setRequestKey(key());
-   setMessage(result.duplicate?'Operação já registrada.':
-    'Conta registrada no Firebase. O histórico importado foi preservado.');
+   setMessage(result.duplicate?'Conta já atualizada.':
+    'Conta salva com sucesso.');
    await refresh();
   }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar a conta.');}
   finally{setBusy(false);}
  }
- return <section aria-label="Gerenciamento de contas Firebase"
+ return <section aria-label="Gerenciamento de contas"
    className="rounded border border-current/25 p-4 space-y-3">
-   <h2 className="text-lg font-semibold">Gerenciar contas Firebase</h2>
+   <h2 className="text-lg font-semibold">Gerenciar contas</h2>
    <p className="text-sm">
-    Cadastro, desativação e vínculos conferidos no servidor pelo Narrador.
-    Contas novas exigem troca de senha. Nenhum acesso ao acervo é concedido
-    pela seleção de uma Casa nesta tela.
+    Cadastre jogadores ou o Editor-Chefe, vincule às Casas e defina permissões de edição.
    </p>
    <button type="button" disabled={busy} onClick={()=>void refresh()}
-    className="rounded border px-3 py-1 text-sm">Atualizar contas</button>
+    className="rounded border px-3 py-1 text-sm">Atualizar lista</button>
    <label className="block">Conta
     <select className="block rounded border p-2 w-full" value={selected}
       disabled={busy} onChange={e=>setSelected(e.target.value)}>
@@ -106,9 +104,7 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
     </select>
    </label>
    {loaded&&readOnly&&<p role="status" className="text-sm">
-     Inventário disponível somente para conferência. Cadastro, edição de
-     vínculo, ativação de usuários e mudança de senha ainda exigem
-     homologação de segurança no Firebase.
+     Lista em modo somente leitura.
    </p>}
    {loaded&&!readOnly&&<form className="campaign-form" onSubmit={e=>void save(e)}>
     <label>Nome<input required maxLength={160} value={name} disabled={busy}
@@ -149,13 +145,8 @@ export function FirebaseAccountManager({houses}: {houses:House[]}){
     <label><input type="checkbox" checked={requireChange} disabled={busy}
        onChange={e=>{dirty();setRequireChange(e.target.checked);}}/>
        Exigir troca de senha</label>
-    <p className="text-xs">
-      Versão atual: {record?.version??0}. O servidor recusa versões
-      desatualizadas. Alterações de e-mail e transferência de perfil
-      existentes exigem revisão administrativa separada.
-    </p>
     <button className="rounded border px-4 py-2" disabled={busy||!requestKey}>
-      {busy?'Conferindo…':'Salvar conta Firebase'}
+      {busy?'Salvando…':'Salvar conta'}
     </button>
    </form>}
    {message&&<p role="status">{message}</p>}

@@ -92,7 +92,6 @@ export function NarratorWorkspace({menu,extra,section,onSection,sectionHref,unre
      <div className="nw-menu-actions">{account}</div>
      <hr/>
      <a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a>
-     <a href="/diagnostico">Verificar meu acesso</a>
      <div className="nw-menu-lang"><LanguageSwitcher/></div>
     </div>
    </div>

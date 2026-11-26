@@ -4,6 +4,7 @@
  */
 import {createHash} from 'node:crypto';
 import {chooseCurrentAccountAccess} from './operational-account-access.mjs';
+import {runtimeApprovalEnabled} from './runtime-approval-policy.mjs';
 
 const SNAP=/^[a-f0-9]{64}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
@@ -88,7 +89,7 @@ export function createFirebaseHouseRulesService({db,auth,snapshotId,
     tx.get(source.collection('houses').doc(hash('house:'+houseId))),
    ]);
    if(!rootReady(s)||!rootReady(a)||!live(liveDoc.data(),snapshotId)||
-     liveDoc.data()?.houseRulesWriteApproved!==true)
+     !runtimeApprovalEnabled(liveDoc.data(),'houseRulesWriteApproved'))
     invalid('house_rules_not_approved',503);
    const current=chooseCurrentAccountAccess(uid,actorDoc.data(),
     overlay.exists?overlay.data():null,liveDoc.data());

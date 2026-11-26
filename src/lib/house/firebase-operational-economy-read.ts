@@ -1,5 +1,6 @@
 import {effectiveCloudCalendar} from '../../../scripts/firebase/cloud-operational-calendar.mjs';
 import {chooseCurrentAccountAccess} from '../../../scripts/firebase/operational-account-access.mjs';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 /**
  * Safe, per-House operational economy read. No Firestore response bodies from
  * private documents are forwarded: only an allowlisted projection is returned.
@@ -65,7 +66,7 @@ function runtimeReady(v:unknown,snapshotId:string,calendarVersion:number){
     v['sourceSnapshotId']===snapshotId&&
     v['sourceSnapshotReconciled']===true&&
     v['applicationEnabled']===true&&
-    v['constructionReadApproved']===true&&
+    runtimeApprovalEnabled(v,'constructionReadApproved')&&
     v['constructionSeededVerified']===true&&
     v['calendarVersion']===calendarVersion;
 }

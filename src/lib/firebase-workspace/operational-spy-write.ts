@@ -1,4 +1,5 @@
 import {assertTransactionActor} from './transaction-actor';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 /* eslint-disable @typescript-eslint/no-explicit-any -- limite do Firebase Admin e das regras puras de espionagem. */
 /** Item 7a: operações do jogador, transação única, acervo importado imutável. */
 import {createHash,randomUUID} from 'node:crypto';
@@ -42,8 +43,8 @@ const activeOperation=(list:any[],agentId:string)=>list.some(o=>o.assetId===agen
 function runtimeReady(root:any,snapshotId:string,calendar:any){
  if(root?.status!=='active'||root?.private!==true||
     root?.applicationEnabled!==true||root?.sourceSnapshotId!==snapshotId||
-    root?.sourceSnapshotReconciled!==true||root?.spyReadApproved!==true||
-    root?.spyWriteApproved!==true||
+    root?.sourceSnapshotReconciled!==true||!runtimeApprovalEnabled(root,'spyReadApproved')||
+    !runtimeApprovalEnabled(root,'spyWriteApproved')||
     !Number.isSafeInteger(calendar?.version)||root.calendarVersion!==calendar.version)
   fail('spy_runtime_not_approved',503);
 }
@@ -216,7 +217,7 @@ export async function commitSpyAction({
   for(const r of removals)writes.push([root.collection('spyRemovals').doc(digest('removal:'+r.agentId)),
    {key:r.agentId,sourceSnapshotId:snapshotId,payload:r}]);
   if(newEconomy){
-   if(!liveEconomy||rootDoc.data()?.houseOpsWriteApproved!==true)
+   if(!liveEconomy||!runtimeApprovalEnabled(rootDoc.data(),'houseOpsWriteApproved'))
     fail('spy_economy_not_approved',503);
    if(newEconomy.version!==sheet.version+(extra.ledgers?.length??1))
     fail('spy_economy_version_conflict',409);

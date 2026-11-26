@@ -4,6 +4,7 @@
  * Sem Supabase, sem reescrever a importação e sem autoconceder permissões.
  */
 import {randomUUID,createHash} from 'node:crypto';
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 import {constructionStateHash} from '../house/firebase-construction-transaction';
 import {verifiedEconomicState,calculateFirebaseHouseEconomy}
  from '../house/firebase-economic-readonly';
@@ -38,9 +39,9 @@ const assertRuntime=(v:any,snapshotId:string,write=false)=>{
  if(!v||v.status!=='active'||v.private!==true||
  v.sourceSnapshotId!==snapshotId||v.sourceSnapshotReconciled!==true||
  v.applicationEnabled!==true||
- v.newspaperCommissionsReadApproved!==true||
- (write&&v.newspaperWriteApproved!==true)||
- (write&&v.newspaperCommissionsWriteApproved!==true))
+ !runtimeApprovalEnabled(v,'newspaperCommissionsReadApproved')||
+ (write&&!runtimeApprovalEnabled(v,'newspaperWriteApproved'))||
+ (write&&!runtimeApprovalEnabled(v,'newspaperCommissionsWriteApproved')))
   fail('newspaper_commissions_not_approved',503);
 };
 async function currentActor(tx:any,db:any,root:any,snapshot:string,actor:Scope){

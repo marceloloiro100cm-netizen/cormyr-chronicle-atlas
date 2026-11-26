@@ -3,6 +3,7 @@
  * endpoints revalidate session, House and runtime inside Firestore.
  * Unknown/absent flags and documents fail closed.
  */
+import {runtimeApprovalEnabled} from '../../../scripts/firebase/runtime-approval-policy.mjs';
 type Root={
  status?:unknown;private?:unknown;sourceSnapshotId?:unknown;
  sourceSnapshotReconciled?:unknown;applicationEnabled?:unknown;
@@ -26,10 +27,10 @@ export function houseReleaseReadiness({
   root.sourceSnapshotReconciled===true&&root.applicationEnabled===true;
  return {
   houseOperationsWritable:rootOk&&houseEconomyReconciled&&
-   root?.houseOpsWriteApproved===true&&
+   runtimeApprovalEnabled(root,'houseOpsWriteApproved',env)&&
    env['CORMYR_FIREBASE_HOUSE_OPS_ENABLED']==='true',
   houseRulesWritable:rootOk&&narrator&&
-   root?.houseRulesWriteApproved===true&&
+   runtimeApprovalEnabled(root,'houseRulesWriteApproved',env)&&
    env['CORMYR_FIREBASE_HOUSE_RULES_ENABLED']==='true',
   houseRulesReadable:rootOk&&(
    env['CORMYR_FIREBASE_HOUSE_RULES_READ_ENABLED']==='true'||
