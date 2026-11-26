@@ -6,6 +6,7 @@ import { CampaignShell } from '@/components/campaign-shell';
 import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { firebasePilotAuth } from '@/lib/auth/firebase-pilot-session';
 import { FirebaseAuthError } from '@/integrations/auth/firebase-rest-auth';
+import { googleAuthFeedback, signInWithGooglePopup } from '@/integrations/auth/firebase-google-popup';
 import { FirebaseGoogleSignIn } from '@/components/firebase/FirebaseGoogleSignIn';
 import { firebasePilotLoginFailure } from '@/lib/auth/firebase-pilot-login-feedback';
 import { loadFirebasePublicSeasonHouses } from '@/lib/auth/season-houses';
@@ -96,13 +97,33 @@ function Auth() {
    if(!auth)throw Error('Firebase Auth indisponível');
    await auth.signInWithGoogleIdToken(credential,window.location.origin+'/auth');
    signedIn=true;
+   void import('@/components/firebase/FirebaseCampaignWorkspace');
    await goInside();
   }catch(e){
    if(signedIn)auth?.signOut();
-   setMessage(e instanceof FirebaseAuthError&&e.code==='ACCOUNT_LINK_REQUIRED'
-    ?'Esta conta Google precisa ser vinculada à conta Firebase já existente. Entre com e-mail e senha e solicite a vinculação ao administrador.'
-    :signedIn?firebasePilotLoginFailure(true):
-     'Não foi possível entrar com Google. Verifique se o provedor está habilitado no Firebase e se esta conta possui acesso ao Atlas.');
+   setMessage(e instanceof FirebaseAuthError
+    ?googleAuthFeedback(e.code)
+    :signedIn?firebasePilotLoginFailure(true):googleAuthFeedback('GOOGLE_AUTH_FAILED'));
+  }finally{setBusy(false);}
+ }
+
+ async function signInWithGooglePopupFlow(){
+  if(busy)return;
+  setBusy(true);setMessage('');
+  const auth=firebasePilotAuth();
+  let signedIn=false;
+  try{
+   if(!auth)throw Error('Firebase Auth indisponível');
+   const popupSession=await signInWithGooglePopup();
+   auth.acceptExternalSession(popupSession);
+   signedIn=true;
+   void import('@/components/firebase/FirebaseCampaignWorkspace');
+   await goInside();
+  }catch(e){
+   if(signedIn)auth?.signOut();
+   setMessage(e instanceof FirebaseAuthError
+    ?googleAuthFeedback(e.code)
+    :signedIn?firebasePilotLoginFailure(true):googleAuthFeedback('GOOGLE_AUTH_FAILED'));
   }finally{setBusy(false);}
  }
 
@@ -147,7 +168,10 @@ function Auth() {
     </form>
     <div className="campaign-auth-google">
      <p className="campaign-hint">Ou entre com sua conta Google:</p>
-     <FirebaseGoogleSignIn disabled={busy} onCredential={signInWithGoogle}/>
+     <FirebaseGoogleSignIn disabled={busy} onCredential={signInWithGoogle} onPopupSignIn={signInWithGooglePopupFlow}/>
+     <p className="campaign-hint">
+      Já tem conta com e-mail e senha? Entre normalmente e vincule seu Google em <strong>Conta Google</strong> no topo do Conselho para manter sua Casa.
+     </p>
     </div>
     {message&&<p role="status">{message}</p>}
    </section>

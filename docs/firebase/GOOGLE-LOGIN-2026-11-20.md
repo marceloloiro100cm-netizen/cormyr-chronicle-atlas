@@ -1,52 +1,23 @@
-# Entrada com Google pelo Firebase — 20/11/2026
+# Entrada com Google pelo Firebase — Atualizado em 26/11/2026
 
-## Implementação
+## Como funciona
 
-A tela oficial `/auth` continua única. O botão do Google usa Google Identity
-Services para obter um ID token de curta duração e `accounts:signInWithIdp`
-para trocá-lo por credenciais do Firebase Auth no projeto `cormyr`.
-O ID token Google **nunca** é utilizado como credencial para as APIs privadas.
-O servidor continua exigindo UID ativo, perfil e permissões de Casa no Firebase.
-Não existe criação de jogador, vínculo de Casa ou aprovação automática pelo e-mail.
+A tela oficial `/auth` continua única e exibe o botão **Entrar com Google** imediatamente:
 
-Em caso de e-mail já existente em outro provedor, o Firebase pode exigir
-vinculação explícita da credencial ao UID original. O sistema mostra uma
-mensagem de bloqueio, sem transferir permissões nem gerar uma nova vinculação.
-Essa associação deve preservar o UID original antes de ser habilitada para cada
-conta — não se deve substituir as contas já importadas.
+1. **Modo padrão (Firebase Auth Popup, zero configuração de build):** ao clicar em **Entrar com Google**, o navegador carrega sob demanda (`import()` lazy, 0 KB no bundle inicial) o SDK `firebase/auth` com `inMemoryPersistence`, executa `signInWithPopup(auth, new GoogleAuthProvider())` usando o `authDomain` (`cormyr.firebaseapp.com`) e transfere a sessão validada para o `firebasePilotAuth()` compartilhado entre abas.
+2. **Modo opcional (Google Identity Services):** caso `VITE_CORMYR_GOOGLE_CLIENT_ID` seja definido no build (`apphosting.yaml`), o botão usa Google Identity Services e troca o ID token por sessão Firebase via `accounts:signInWithIdp`.
+3. **Vinculação self-service para jogadores já cadastrados:** dentro do Conselho, no botão **Senha e Google** no topo da tela, qualquer jogador, Editor-Chefe ou Narrador já autenticado pode clicar em **Vincular minha conta Google** (`prepareGoogleLink` + `linkWithPopup`). Isso vincula o provedor `google.com` ao **mesmo UID existente**, preservando Casa, perfil, missivas e fichas. Também é possível desvincular caso a conta tenha senha cadastrada (impedindo auto-bloqueio).
 
-## Configuração obrigatória antes da disponibilidade em produção
+**Regras de segurança preservadas:**
+- O servidor continua exigindo UID ativo, perfil e permissões de Casa no Firestore (`migrationDomainStage` / `campaignCloudRuntime`).
+- Não existe criação automática de jogador, atribuição de Casa ou elevação de privilégio por e-mail Google.
+- `prepareGoogleLink` e `unlinkGoogle` operam **exclusivamente** sobre o `uid` verificado do próprio token Bearer da requisição.
 
-1. Em Firebase Console > Authentication > Sign-in method, ativar **Google**
-   para o projeto `cormyr`, com e-mail de suporte configurado.
-2. Em Firebase Authentication > Settings > Authorized domains, validar
-   `atlas.cormyr.com.br`. Em Google Cloud, credenciais OAuth, conferir se
-   a origem JavaScript autorizada inclui `https://atlas.cormyr.com.br`.
-3. Obter o **OAuth 2.0 Client ID tipo Web** do mesmo projeto, no formato
-   `<números>-<identificador>.apps.googleusercontent.com`.
-   Não é a API key do Firebase, nem um client secret. Configurar a variável
-   pública `VITE_CORMYR_GOOGLE_CLIENT_ID` com disponibilidade **BUILD**
-   no `apphosting.yaml` ou na configuração de build equivalente.
-4. Publicar via Firebase App Hosting (branch `main`). Sem essa variável
-   o formulário tradicional continua operando, e a tela apenas informa
-   que a opção Google aguarda ativação.
-5. Testar com uma conta autorizada, uma conta Google não vinculada e uma
-   conta desativada. Verificar que a UID, a Casa e o perfil não mudam;
-   validar que uma conta sem vínculo não abre a área privada.
+## Checklist obrigatório no Firebase Console (projeto `cormyr`)
 
-## Desempenho e integridade
-
-- `queryRows` devolve somente as colunas simples solicitadas, **depois**
-  do filtro de autorização, ordenação e paginação. O acervo permanece intacto.
-- `firebase-rest-auth` preserva o ID token ainda válido apenas na aba atual
-  para evitar um refresh extra a cada reload; o servidor verifica a sessão
-  em cada pedido.
-- Falhas de renovação ou troca de identidade não devem repor sessão anterior.
-- O fluxo de login não precisa carregar caixa, jornal e calendário antes de
-  renderizar o Conselho. Esses módulos continuam sob demanda.
-
-## Homologação
-
-Os testes automatizados não comprovam o desempenho real em produção nem
-verificam a configuração de OAuth do projeto. Para isso são necessários
-um deploy aprovado e um teste autenticado de ponta a ponta.
+1. **Firebase Console → Authentication → Sign-in method:** ativar o provedor **Google** e informar um e-mail de suporte do projeto.
+2. **Firebase Console → Authentication → Settings → Authorized domains:** confirmar que `atlas.cormyr.com.br` está listado (e `localhost` para testes locais). **Não** inclua protocolo (`https://`) nem porta.
+3. **IAM da conta de serviço do App Hosting (para vinculação via `createCustomToken`):** garantir que a conta de serviço de runtime do Firebase App Hosting tenha permissão `iam.serviceAccounts.signBlob` (papel *Service Account Token Creator* / *Criador de tokens da conta de serviço*) no projeto `cormyr`.
+4. **Teste de homologação após deploy:**
+   - Entrar com e-mail/senha → abrir **Senha e Google** → clicar em **Vincular minha conta Google** → sair → entrar novamente clicando em **Entrar com Google** e confirmar que a Casa, as missivas e o perfil continuam idênticos.
+   - Testar uma conta Google sem vínculo no Atlas e confirmar que o acesso privado continua recusado.

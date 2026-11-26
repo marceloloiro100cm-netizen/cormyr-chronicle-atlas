@@ -1,6 +1,6 @@
 import {firebasePilotAuth} from '@/lib/auth/firebase-pilot-session';
 
-type AccountAction='status'|'list'|'submit'|'completePassword';
+type AccountAction='status'|'list'|'submit'|'completePassword'|'googleStatus'|'prepareGoogleLink'|'unlinkGoogle';
 export async function firebaseAccountRequest<T>(
  action:AccountAction,input:Record<string,unknown>={},
 ):Promise<T>{
