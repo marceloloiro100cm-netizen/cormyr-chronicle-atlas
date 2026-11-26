@@ -187,6 +187,12 @@
  * As nove seções, controles, filtros, permissões e publicações permanecem.
  */
 
+/**
+ * 2026-11-26 (Fase 1 performance, PR #721): code-splitting por aba via
+ * React.lazy + Suspense e refetchIntervalInBackground:false em
+ * players-workspace.tsx. Todos os menus, abas, filtros, controles e
+ * verificações de escopo/revogação permanecem idênticos.
+ */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
@@ -196,7 +202,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'c58c754657226c37a4b5459ef1378bfd16a51622',
+  'src/components/players/players-workspace.tsx':'-',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'ab0553588660e4165e21aa9d8b6e7ec1e2b30cc2',

@@ -7,6 +7,8 @@ import { ChangePassword, ChangePasswordButton } from '@/components/change-passwo
 import { NpcHub, CollapsibleText } from '@/components/npc-hub';
 import {useWeekFestivals,WeekFestivalBanner} from '@/components/calendar/hub-temporal/week-festivals';
 import { CampaignShell } from '@/components/campaign-shell';
+import {FirebaseNarratorWeekDraft} from '@/components/calendar/FirebaseNarratorWeekDraft';
+import {PublicChronicleCalendar} from '@/components/calendar/PublicChronicleCalendar';
 import { Button } from '@/components/ui/button';
 import { CampaignContent } from '@/components/campaign-content';
 import { narrativeText } from '@/lib/campaign-content';
@@ -39,8 +41,6 @@ const GalleryTab=lazy(()=>import('@/components/players/gallery-tab').then(m=>({d
 const AdminPanel=lazy(()=>import('@/components/players/admin-panel').then(m=>({default:m.AdminPanel})));
 const CampaignCalendar=lazy(()=>import('@/components/calendar/calendar').then(m=>({default:m.CampaignCalendar})));
 const NarratorCalendar=lazy(()=>import('@/components/calendar/narrator-calendar').then(m=>({default:m.NarratorCalendar})));
-const FirebaseNarratorWeekDraft=lazy(()=>import('@/components/calendar/FirebaseNarratorWeekDraft').then(m=>({default:m.FirebaseNarratorWeekDraft})));
-const PublicChronicleCalendar=lazy(()=>import('@/components/calendar/PublicChronicleCalendar').then(m=>({default:m.PublicChronicleCalendar})));
 const PlayerRepresentation=lazy(()=>import('@/components/player-representation').then(m=>({default:m.PlayerRepresentation})));
 const GmEventos=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmEventos})));
 const GmAventuras=lazy(()=>import('@/components/gm-panels').then(m=>({default:m.GmAventuras})));
