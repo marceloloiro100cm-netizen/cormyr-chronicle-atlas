@@ -1,82 +1,83 @@
 # Cormyr Chronicle Atlas
 
-Site da campanha de Cormyr, com acervo público e Conselho dos Jogadores da segunda temporada.
+Site oficial da campanha de RPG **Cormyr (Forgotten Realms)**, reunindo o acervo público do reino ([atlas.cormyr.com.br](https://atlas.cormyr.com.br/cormyr/index.html)), o jornal **A Folha Sem Selo** (`/jornal`) e o **Conselho dos Jogadores** (`/auth` → `/firebase-access`).
 
-- Hospedagem: Firebase App Hosting (`apphosting.yaml`). O editor Lovable não é mais usado; veja `docs/firebase/LEAVING-LOVABLE.md`.
-- Branch principal: `main`.
+- **Site em produção:** https://atlas.cormyr.com.br/cormyr/index.html
+- **Hospedagem e backend:** Firebase App Hosting ([`apphosting.yaml`](apphosting.yaml)), Firebase Auth (E-mail/Senha + Login com Google), Cloud Firestore e Cloud Storage.
+- **Branch principal:** `main` (deploy automático via Firebase App Hosting).
 
-## Estrutura
+---
+
+## Arquitetura e Estrutura de Pastas
 
 | Caminho | Responsabilidade |
 | --- | --- |
-| `public/cormyr/` | Acervo original em HTML, CSS e JavaScript |
-| `public/cormyr/data.js` | Catálogo inicial: 11 regiões e 172 casas |
-| `public/cormyr/regions/` | Textos integrais regionais, carregados ao abrir “Ler mais” |
-| `public/cormyr/histories/` | 170 arquivos JSON de histórias; o total não equivale ao número de casas |
-| `src/routes/` | Rotas TanStack Start, autenticação e endpoints |
-| `src/components/players/` | Conselho: carregamento, fichas, registros, administração e missivas |
-| `src/lib/house/` | Regras de recursos, compras, exércitos, corte e vassalos |
-| `campaign_private_gm_content` (Supabase) | Eventos e aventuras do Narrador com RLS |
-| `drizzle/migrations/` | Migrações SQL de esquema, sem dados privados de campanha |
-| `src/test/` | Testes unitários, de componentes e de integração |
+| `public/cormyr/` | Acervo público estático (HTML, CSS, JS, 11 regiões, 172 casas, calendário de Harptos e trilha sonora) |
+| `public/spy-portraits/`, `public/maps/`, `public/assets/`, `public/battle/`, `public/newspaper/` | Mídias otimizadas do Conselho, unidades militares, mapas e gravuras |
+| `src/routes/` | Rotas TanStack Start (`/auth`, `/firebase-access`, `/jornal`, `/reset-password`) e APIs server-side (`/api/firebase-*`, `/api/public/*`) |
+| `src/lib/firebase/admin.server.ts` | Singleton compartilhado do Firebase Admin SDK (Auth, Firestore e Storage) |
+| `src/lib/firebase-workspace/` | Adaptador operacional do Conselho no Firestore (cache de tabelas imutáveis, overlays filtrados, registros e economia) |
+| `src/lib/` | Motores puros de regras de jogo (Casas Nobres, Prosperidade, Missivas, Hub Temporal, Espionagem, Jornal, Batalha) |
+| `src/components/` | Interface do Conselho (Jogadores, Narrador e Editor-Chefe), com code-splitting por aba |
+| `firebase/` | Regras de produção (`firestore.rules`, `storage.rules` — deny-all para Client SDK), `firestore.indexes.json` e configuração de emuladores |
+| `scripts/firebase/` | Serviços Firebase server-side e testes unitários de contrato |
+| `docs/` | Documentação viva de operação, deploy e Login com Google (veja [`docs/README.md`](docs/README.md)) |
+| `drizzle/` | Migrações SQL históricas usadas pela suíte de regressão de contratos do CI |
+| `.github/workflows/` | Workflows essenciais de CI (`validate.yml`, `build-check.yml`) e monitoramento operacional |
 
-Stack: React 19, TypeScript, TanStack Start, Vite, Tailwind, Supabase/PostgreSQL e Drizzle. O build usa `vite.config.ts` próprio, com Nitro em saída Node. A rota `/` encaminha ao acervo estático; a área autenticada fica em `/jogadores`.
+**Stack:** React 19, TypeScript, TanStack Start + Nitro (`node-server`), Vite, Tailwind CSS, Firebase Admin SDK, Firebase Auth Web SDK (lazy-loaded para Login com Google) e Vitest.
 
-## Desenvolvimento
+---
 
-Use Node.js 24 e Bun 1.3.3. O lockfile versionado é `bun.lock`; não crie um segundo lockfile com npm.
+## Desenvolvimento Local
 
-```sh
+Requisitos: **Node.js 22+** e **Bun 1.3.3** (usado no CI).
+
+```bash
+# Instalar dependências (lockfile versionado: bun.lock + package-lock.json)
 bun install --frozen-lockfile
+
+# Servidor de desenvolvimento
 bun run dev
 ```
 
-Antes de enviar alterações:
+### Validação antes de abrir PR
 
-```sh
-node --test scripts/*.test.mjs
-bun run test
+```bash
+# Build de produção (gera src/routeTree.gen.ts)
 bun run build
+
+# Verificação de tipos
+bunx tsc --noEmit
+
+# Gate de privacidade do repositório público
+node scripts/verify-public-repo.mjs
+
+# Testes unitários (scripts + Vitest)
+node --test scripts/*.test.mjs
+node --test scripts/firebase/*.test.mjs
+bun run test
 ```
 
-`bun run lint` executa ESLint e regras de formatação do projeto. O workflow inicial valida acervo, testes e build; lint ainda não é um bloqueio global, pois o código legado não foi reformatado integralmente.
+---
 
-## Atualizações pelo GitHub
+## Publicação e Operação no Firebase
 
-1. Crie uma branch a partir da `main`.
-2. Faça as alterações e abra um pull request.
-3. Confira o workflow **Validate** e revise o resultado.
-4. Integre na `main`, mantendo o histórico existente.
-5. O rollout no Firebase App Hosting parte da branch ativa do backend; confira o resultado no console do Firebase.
+1. Crie uma branch a partir da `main` e abra um Pull Request.
+2. Aguarde o workflow **Validate** ficar verde antes do merge.
+3. Ao fazer merge na `main`, o **Firebase App Hosting** compila (`npm run build`) e sobe a nova revisão automaticamente a partir de [`apphosting.yaml`](apphosting.yaml).
+4. **Login com Google:** veja o passo a passo completo do Firebase Console e da vinculação self-service em [`docs/firebase/GOOGLE-LOGIN-2026-11-20.md`](docs/firebase/GOOGLE-LOGIN-2026-11-20.md).
 
-O workflow roda em pull requests, pushes para `main` e execução manual. Ele não publica, não aplica migrações e não recebe credenciais administrativas do banco. Para exigir aprovação dos checks antes do merge, configure uma regra de proteção da branch no GitHub.
+> **Histórico de migração (2024–2026):** logs antigos de lotes, workflows descartáveis de migração e documentos do período Lovable/Supabase foram preservados integralmente na tag Git `archive/pre-cleanup-2026-11-26`.
 
-Não use force push nem reescreva commits já enviados sem plano coordenado, pois o App Hosting acompanha a branch ativa. A remoção dos arquivos do estado atual **não remove automaticamente** segredos de commits antigos.
+---
 
-## Banco, credenciais e testes de integração
+## Segurança do Repositório Público
 
-As variáveis de servidor e as credenciais do Drive permanecem no ambiente de hospedagem. Nunca exponha chaves administrativas no navegador ou no repositório.
+Este repositório é **público**. Nunca commite:
+- Segredos, chaves JSON de conta de serviço ou arquivos `.env` reais (use segredos do App Hosting via `firebase apphosting:secrets:set`).
+- E-mails privados de jogadores, senhas, missivas, fichas privadas ou material reservado do Narrador.
+- Consulte [`AGENTS.md`](AGENTS.md) antes de alterar regras de acesso, Hub Temporal, economia das Casas ou o Jornal.
 
-Os testes de integração que exigem `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são pulados quando essas variáveis estão ausentes. **Execute-os apenas em um banco descartável de testes com as migrações aplicadas**: alguns alteram rodadas e criam usuários. A aprovação do CI comum não certifica permissões do banco em produção.
-
-Mudanças SQL exigem um procedimento próprio de aplicação e verificação. A presença de arquivos no GitHub não comprova que as migrações estão aplicadas.
-
-## Acervo e desempenho
-
-Textos regionais são preservados integralmente em JSON e carregados somente quando solicitados, com cache na sessão, mensagem de falha e opção de tentar novamente. O catálogo inicial permanece disponível para busca e navegação.
-
-Os mapas originais e seus downloads são preservados. As imagens de mapas já usam carregamento adiado; compressão ou novas miniaturas podem ser feitas separadamente, com conferência visual da legibilidade.
-
-Consulte `AGENTS.md` antes de alterar regras de acesso, sincronização, conteúdo privado ou gestão das casas.
-
-## Segurança do repositório público
-
-O código pode ser público; e-mails de acesso, credenciais, fichas privadas, missivas e segredos do Narrador não podem ser versionados. Os eventos do Narrador são obtidos da tabela `campaign_private_gm_content` sob RLS; as planilhas importadas das vassalas ficam em `campaign_private_vassal_workbooks` e são lidas por função autenticada. O arquivo `.env.example` só documenta nomes de variáveis: segredos reais devem estar configurados no ambiente de hospedagem.
-
-A remoção de conteúdo da branch atual **não apaga histórico Git, forks, clones, caches ou PRs anteriores**. Material já exposto deve ser tratado como comprometido até a revisão do histórico e a mitigação das credenciais. O script `scripts/setup-admin.ts` nunca altera senha ou e-mail nem cria usuários.
-
-### Aviso de conteúdo de fã
-Cormyr Chronicle Atlas é um projeto de fã não oficial, sem endosso da Wizards of the Coast. Forgotten Realms e materiais relacionados pertencem a seus respectivos titulares. Materiais originais da campanha permanecem sujeitos aos direitos de seus autores. Este aviso não concede licença para reproduzir conteúdo de livros não abertos.
-
-### Inicialização pública do Supabase
-O navegador necessita de uma URL de projeto e de uma **chave publicável**, que não é senha, não é `service_role` e sempre é observável pelo cliente HTTP. `src/integrations/supabase/public-config.ts` guarda somente estes dois valores não secretos como fallback para builds sem `VITE_*`. Qualquer privilégio real depende de sessão autenticada, RLS e verificações do servidor. Nunca coloque dados pessoais, chaves de servidor ou senhas nesse módulo.
+### Aviso de Conteúdo de Fã
+Cormyr Chronicle Atlas é um projeto de fã não oficial, sem endosso da Wizards of the Coast. *Forgotten Realms* e materiais relacionados pertencem a seus respectivos titulares.
