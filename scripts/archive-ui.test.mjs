@@ -82,7 +82,7 @@ test('Reino e Regiões inicia em Crownlands (Terras da Coroa) sem link específi
   } finally { dom.window.close(); }
 });
 
-test('menu Reino e Regiões volta às Terras da Coroa; seletor ainda permite outras regiões', async () => {
+test('menu Regiões volta às Terras da Coroa; seletor ainda permite outras regiões', async () => {
   const dom=boot(async()=>({ok:true,json:async()=>({text:'Outro texto'})}));
   try {
     await settle();
@@ -92,7 +92,7 @@ test('menu Reino e Regiões volta às Terras da Coroa; seletor ainda permite out
     assert.equal(select.value,'Horselands');
     assert.match(w.location.hash,/regiao-horselands/);
     d.querySelector('[data-view="nobreza"]').click();
-    d.querySelector('[data-view="reino"]').click();
+    d.querySelector('[data-view="regioes"]').click();
     assert.equal(select.value,'Crownlands');
     assert.match(w.location.hash,/regiao-crownlands/);
     assert.match(d.getElementById('region-content').textContent,/Phelles/);

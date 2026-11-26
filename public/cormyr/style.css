@@ -257,8 +257,8 @@
 .house-parent-link{border:0;background:transparent;color:#5a3479;text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:0;text-align:left;font:inherit}
 .house-parent-link:focus-visible{outline:2px solid #5a3479}
 #house-history-back:not([hidden]){display:block;margin-bottom:12px}
-.parchment-reading #view-reino .panel,.parchment-reading #view-constituicao .panel,.parchment-reading #view-constituicao .law-card,.parchment-reading .region-full-text,.parchment-reading .law-full{background:#fff7e6!important;color:#302318!important}
-.parchment-reading #view-constituicao p,.parchment-reading #view-reino .region-description{line-height:1.85}
+.parchment-reading #view-reino .panel,.parchment-reading #view-regioes .panel,.parchment-reading #view-constituicao .panel,.parchment-reading #view-constituicao .law-card,.parchment-reading .region-full-text,.parchment-reading .law-full{background:#fff7e6!important;color:#302318!important}
+.parchment-reading #view-constituicao p,.parchment-reading #view-regioes .region-description,.parchment-reading #view-reino .kingdom-panel p{line-height:1.85}
 .law-cite{margin-top:12px;min-height:36px}
 @media(max-width:1024px){.global-search-open kbd{display:none}.workspace-bar{flex-wrap:wrap;gap:7px}.global-search-open{white-space:normal}#noble-detail{min-width:0;max-width:100%}#house-details{overflow-wrap:anywhere}}
 @media print{.sidebar,.workspace-bar,.nav,.region-view-toolbar,.pagination,.global-search-modal,.bard-player,.law-cite{display:none!important}.workspace,.view,.panel{width:100%!important;max-width:none!important;background:white!important;color:black!important;box-shadow:none!important}.view[hidden]{display:none!important}details{break-inside:avoid}.law-card,.house-card{break-inside:avoid}}
@@ -441,3 +441,71 @@
 /* Public Chronicle calendar: full-width read-only embed below Jornal. */
 .chronicle-frame{display:block;width:100%;height:max(860px,calc(100vh - 200px));min-height:860px;border:0;border-radius:10px;background:transparent}
 @media(max-width:700px){.chronicle-frame{height:1150px;min-height:1050px}}
+
+/* O Reino: página institucional (mapa regional, ficha rápida e capítulos em abas) */
+.kingdom-intro{padding:26px 30px;margin-bottom:24px;background:#fbf6ec;border-color:#e6dcc9;border-top:3px solid var(--gold)}
+.kingdom-intro p{font-size:16px;line-height:1.75;max-width:1050px;margin:0}
+.kingdom-intro p+p{margin-top:14px}
+.kingdom-stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,330px);gap:22px;align-items:start;margin-bottom:28px}
+.kingdom-stage>*{min-width:0}
+.kingdom-map{padding:20px 22px;background:#fbf6ec;border-color:#e6dcc9;border-radius:10px}
+.kingdom-map .region-map-heading{margin-bottom:12px;flex-wrap:wrap}
+.kingdom-map .region-map-heading h2{font-size:24px}
+.kingdom-map .region-map-heading p{margin:0}
+.kingdom-map-figure{position:relative;margin:0;line-height:0;border-radius:6px;overflow:hidden;box-shadow:0 6px 18px #24133422}
+.kingdom-map-figure img{display:block;width:100%;height:auto;cursor:zoom-in}
+.kingdom-map-hotspots{position:absolute;inset:0;pointer-events:none}
+.kingdom-spot{position:absolute;pointer-events:auto;border-radius:14px;border:2px solid transparent;transition:background .15s,border-color .15s,box-shadow .15s}
+.kingdom-spot:hover,.kingdom-spot.is-hover,.kingdom-spot:focus-visible{background:#fff4d533;border-color:#f6e2a0;box-shadow:0 0 0 3px #24133455,0 0 22px #f6e2a0aa}
+.kingdom-spot:focus-visible{outline:3px solid #9d6c22;outline-offset:2px}
+.kingdom-map-hint{min-height:24px;margin:12px 0 0;font-size:14px;color:#5b4a3a}
+.kingdom-map-hint strong{font-family:var(--serif);font-size:16px;color:var(--purple)}
+.kingdom-region-links{margin-top:18px;border-top:1px solid #e6dcc9;padding-top:16px}
+#kingdom-region-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.kingdom-region-chip{display:block;padding:10px 12px;border:1px solid #e1d5bf;border-radius:7px;background:white;text-decoration:none;color:var(--ink);line-height:1.35;transition:border-color .15s,transform .15s}
+.kingdom-region-chip strong{display:block;font:17px/1.25 var(--serif);color:var(--purple)}
+.kingdom-region-chip small{display:block;margin-top:3px;font-size:12px;color:var(--muted)}
+.kingdom-region-chip:hover,.kingdom-region-chip.is-hover{border-color:var(--gold);transform:translateY(-2px)}
+.kingdom-geo-note{margin:16px 0 0}
+.kingdom-infobox{padding:0;overflow:hidden;position:sticky;top:20px;border-top:3px solid var(--gold)}
+.kingdom-infobox header{display:flex;gap:14px;align-items:center;padding:20px;background:var(--purple);color:white}
+.kingdom-infobox header img{width:60px;height:auto;border-radius:3px;flex-shrink:0}
+.kingdom-infobox header .eyebrow{color:#d5b681;font-size:10px;margin:0 0 4px}
+.kingdom-infobox header h2{font-size:23px;color:white}
+.kingdom-infobox dl{margin:0;padding:6px 20px 18px}
+.kingdom-infobox dt{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-top:14px}
+.kingdom-infobox dd{margin:3px 0 0;font-size:15px;line-height:1.5;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.kingdom-infobox dd:last-of-type{border-bottom:0;padding-bottom:0}
+.kingdom-coins{list-style:none;margin:4px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.kingdom-coins li{padding:6px 9px;border:1px solid #e6dcc9;border-radius:5px;background:#fbf6ec;font-size:12px;color:var(--muted);line-height:1.35}
+.kingdom-coins b{display:block;font:15px var(--serif);color:var(--ink)}
+.kingdom-chapters{margin-bottom:20px}
+.kingdom-tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:8px;background:#ebe9f0;margin-bottom:14px;overflow-x:auto}
+.kingdom-tabs button{flex:1 0 auto;min-height:46px;padding:9px 16px;border:1px solid transparent;border-radius:5px;background:transparent;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.kingdom-tabs button:hover{color:var(--purple)}
+.kingdom-tabs button[aria-selected="true"]{background:white;border-color:#d5cbdc;color:var(--purple);box-shadow:0 2px 4px #24133410}
+.kingdom-panel{padding:28px 32px}
+.kingdom-panel h3{font-size:27px;margin-bottom:14px}
+.kingdom-panel p{font-size:16px;line-height:1.75;max-width:980px}
+.kingdom-panel-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:28px;align-items:start}
+.kingdom-callout{padding:20px 22px;background:#f6f1e7;border-left:3px solid var(--gold);border-radius:0 8px 8px 0}
+.kingdom-callout h4{font-size:21px;margin-bottom:6px}
+.kingdom-callout p{font-size:15px;margin:8px 0 0}
+.kingdom-inline-link{font-weight:600}
+.kingdom-panel-actions{display:flex;flex-wrap:wrap;gap:10px}
+.kingdom-pillars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:6px}
+.kingdom-pillars section{padding:18px;border:1px solid #e6dcc9;border-radius:8px;background:#fbf6ec}
+.kingdom-pillars span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--purple);color:#e7d3a0;font-size:19px;margin-bottom:10px}
+.kingdom-pillars h4{font-size:19px}
+.kingdom-pillars p{font-size:14px;line-height:1.6;margin:8px 0 0}
+.kingdom-law-note{margin:20px 0 0;padding:14px 16px;border-top:1px dashed #d7c69e;max-width:none}
+.kingdom-timeline{list-style:none;margin:8px 0 18px;padding:0 0 0 22px;border-left:2px solid var(--gold);max-width:900px}
+.kingdom-timeline li{position:relative;padding:0 0 18px 18px}
+.kingdom-timeline li:before{content:'';position:absolute;left:-30px;top:6px;width:12px;height:12px;border-radius:50%;background:white;border:3px solid var(--gold)}
+.kingdom-timeline li.is-current:before{background:var(--plum);border-color:var(--plum);box-shadow:0 0 0 4px #51326633}
+.kingdom-timeline b{font:600 18px var(--serif);color:var(--plum)}
+.kingdom-timeline p{margin:4px 0 0;font-size:15px}
+@media(max-width:1100px){.kingdom-stage{grid-template-columns:minmax(0,1fr)}.kingdom-infobox{position:static}.kingdom-infobox dl{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}.kingdom-infobox dd{border-bottom:0}.kingdom-pillars{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.kingdom-intro{padding:20px}.kingdom-intro p{font-size:15px}.kingdom-map{padding:14px}.kingdom-infobox dl{display:block}.kingdom-panel{padding:22px 18px}.kingdom-panel-grid{grid-template-columns:1fr}.kingdom-pillars{grid-template-columns:1fr}#kingdom-region-links{grid-template-columns:1fr 1fr}.kingdom-tabs button{flex:0 0 auto;font-size:13px;padding:9px 12px}}
+@media print{.kingdom-tabs,.region-map-actions,.kingdom-map-hint{display:none!important}.kingdom-panel[hidden]{display:block!important}.kingdom-infobox{position:static}}
+@media(hover:none){.kingdom-map-hint{display:none}}
