@@ -7,14 +7,16 @@
  const PLAYER_HOUSES=new Set();
  const ROYAL_HOUSE='Phelles';
  const imageViewer=document.createElement('script');imageViewer.src='image-viewer.js';document.body.append(imageViewer);
-const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
+const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
+ const KINGDOM_TABS=['coroa','casas','pilares','linha'];
  const lawState={query:'',topic:'',page:1,article:null};
   const regionSelect=$('region-select');
  $('kingdom-music').innerHTML=musicLinks(data.kingdomMusic,'Música do reino');
  regionSelect.innerHTML=data.regions.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
  regionSelect.value=state.region;
  function routeHash(){
-  if(state.view==='reino'){const params=new URLSearchParams();if(state.regionView==='hierarchy')params.set('visao','hierarquia');if(state.regionView==='hierarchy'&&['Elfhold','Helmlands'].includes(state.region))params.set('epoca',state.hierarchyEra==='before'?'antes-1522':'pos-1522');return '#regiao-'+normalize(state.region).replace(/\s+/g,'-')+(params.size?'?'+params:'');}
+  if(state.view==='reino')return '#reino'+(state.kingdomTab!=='coroa'?'?aba='+state.kingdomTab:'');
+  if(state.view==='regioes'){const params=new URLSearchParams();if(state.regionView==='hierarchy')params.set('visao','hierarquia');if(state.regionView==='hierarchy'&&['Elfhold','Helmlands'].includes(state.region))params.set('epoca',state.hierarchyEra==='before'?'antes-1522':'pos-1522');return '#regiao-'+normalize(state.region).replace(/\s+/g,'-')+(params.size?'?'+params:'');}
   if(state.view==='aventura')return '#aventura-'+state.adventure;
   if(state.view==='eventos'){const params=new URLSearchParams({tipo:state.kind});if(state.query)params.set('busca',state.query);if(state.theme)params.set('tema',state.theme);if(state.eventPage>1)params.set('pagina',String(state.eventPage));return '#eventos?'+params;}
   if(state.view==='nobreza'){const params=new URLSearchParams();for(const [key,value] of Object.entries(state.noble))if(value&&!(key==='page'&&value===1))params.set(key,String(value));return '#nobreza'+(params.size?'?'+params:'');}
@@ -26,7 +28,8 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
  }
  function writeRoute(push=false){const next=routeHash();if(location.hash!==next)history[push?'pushState':'replaceState'](null,'',next);}
  function readHash(){const [h,query='']=location.hash.slice(1).split('?');const params=new URLSearchParams(query);state.deepEvent=null;
-  if(!h){state.view='reino';state.regionView='houses';}
+  if(!h||h==='reino'){state.view='reino';state.kingdomTab=KINGDOM_TABS.includes(params.get('aba'))?params.get('aba'):'coroa';}
+  else if(h==='regioes'){state.view='regioes';state.region='Crownlands';state.regionView='houses';state.hierarchyEra='post';}
   else if(h==='nobreza'){state.view='nobreza';state.noble={region:params.get('region')||'',name:params.get('name')||'',leader:params.get('leader')||'',castle:params.get('castle')||'',city:params.get('city')||'',page:Math.max(1,parseInt(params.get('page'),10)||1),house:params.get('house')||''};}
   else if(h==='eventos'){state.view='eventos';state.kind=params.get('tipo')==='misticos'?'misticos':'mundanos';state.query=params.get('busca')||'';state.theme=params.get('tema')||'';state.eventPage=Math.max(1,parseInt(params.get('pagina'),10)||1);}
   else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas'||h==='jornal'||h==='calendario'){state.view=h;
@@ -35,7 +38,7 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
    else if(h.startsWith('adv-sec-')){state.view='aventura';}
   else if(h==='pacto'){state.view='aventura';state.adventure='pacto-varzea';}
   else if(h.startsWith('aventura-')){const a=data.adventures.find(x=>x.id===h.slice(9));if(a)state.adventure=a.id;state.view='aventura';}
-  else if(h.startsWith('regiao-')){const r=data.regions.find(x=>normalize(x.name).replace(/\s+/g,'-')===h.slice(7));if(r)state.region=r.name;state.regionView=params.get('visao')==='hierarquia'?'hierarchy':'houses';state.hierarchyEra=params.get('epoca')==='antes-1522'?'before':'post';state.view='reino';}
+  else if(h.startsWith('regiao-')){const r=data.regions.find(x=>normalize(x.name).replace(/\s+/g,'-')===h.slice(7));if(r)state.region=r.name;state.regionView=params.get('visao')==='hierarquia'?'hierarchy':'houses';state.hierarchyEra=params.get('epoca')==='antes-1522'?'before':'post';state.view='regioes';}
   else if(/^evento-(mundanos|misticos)-\d+$/.test(h)){const [,kind,id]=h.match(/^evento-(mundanos|misticos)-(\d+)$/);state.view='eventos';state.kind=kind;state.query='';state.theme='';state.deepEvent=+id;}
  }
  readHash();regionSelect.value=state.region;
@@ -45,7 +48,7 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   renderRegion();renderNobility();
  }).catch(()=>{});
 
- function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'Reino e regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas',jornal:'Jornal',calendario:'Calendário'}[view]||'Cormyr')+' · Atlas Cormyr';
+ function showView(view,updateHash=true){state.view=view;document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!==`view-${view}`);document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.title=({reino:'O Reino',regioes:'Regiões',eventos:'Eventos',aventura:'Aventuras','notebook-lm':'Notebook LM',constituicao:'Constituição de Cormyr',nobreza:'Nobreza',musicas:'Músicas',jornal:'Jornal',calendario:'Calendário'}[view]||'Cormyr')+' · Atlas Cormyr';
   // O jornal e o calendário só carregam quando o leitor abre a respectiva seção.
   if(view==='jornal'){const frame=document.getElementById('newspaper-frame');if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',frame.dataset.src||'/jornal?embed=1');}
   if(view==='calendario'){const frame=document.getElementById('chronicle-frame');if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',frame.dataset.src||'/cormyr/calendar.html');}
@@ -61,9 +64,10 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
    state.houseHistory=[];
    renderNobility();
   }
-  // Opening Reino e Regiões from the main menu starts on Terras da Coroa.
+  // Opening Regiões from the main menu starts on Terras da Coroa.
   // Explicit #regiao-... URLs and dropdown changes still select other regions.
-  if(b.dataset.view==='reino'){
+  if(b.dataset.view==='reino'){state.kingdomTab='coroa';renderKingdomTabs();}
+  if(b.dataset.view==='regioes'){
    state.region='Crownlands';
    state.regionView='houses';
    state.hierarchyEra='post';
@@ -75,6 +79,55 @@ const state={view:'reino',region:'Crownlands',regionView:'houses',hierarchyEra:'
   const h=document.querySelector('#view-'+state.view+' h1');h?.focus({preventScroll:true});
   window.scrollTo({top:0,behavior:'instant'});
  }));
+
+ // O Reino: mapa regional com áreas clicáveis, atalhos para as onze regiões e capítulos em abas.
+ // As áreas são aproximadas em torno dos NOMES impressos no mapa (porcentagens da imagem 2400x1792);
+ // não representam fronteiras oficiais.
+ const KINGDOM_MAP_SPOTS=[
+  {region:'Veilstone',label:'Veilstone',x:20.8,y:23.4,w:12.5,h:8.9},
+  {region:'Stonelands',label:'StoneLands',x:57.9,y:15.6,w:18.3,h:9.5},
+  {region:'Volkumburgh',label:'Volkumburgh',x:80.4,y:22.9,w:17.9,h:8.9},
+  {region:'Helmlands',label:'Helmlands',x:40.4,y:32.9,w:17.5,h:8.9},
+  {region:'Elfhold',label:'Elfhold',x:66.7,y:35.2,w:12.9,h:8.9},
+  {region:'Ferlin',label:'Ferlin',x:7.5,y:48.5,w:10.4,h:7.8},
+  {region:'Swordmark',label:'Swordmark',x:26.2,y:41.9,w:6.7,h:25.1},
+  {region:'Crownlands',label:'Crownlands',x:38.3,y:55.8,w:17.9,h:8.4},
+  {region:'Shieldmark',label:'Shieldmark',x:68.7,y:56.4,w:17.1,h:8.9},
+  {region:'Horselands',label:'Horselands',x:10,y:77,w:18.8,h:9.5},
+  {region:'Dragon Coast',label:'Costa do Dragão',x:46.7,y:89.3,w:26.7,h:7.3},
+ ];
+ const regionHash=name=>'#regiao-'+normalize(name).replace(/\s+/g,'-');
+ function renderKingdom(){
+  const regions=KINGDOM_MAP_SPOTS.map(spot=>({...spot,data:data.regions.find(r=>r.name===spot.region)})).filter(x=>x.data);
+  const total=data.regions.reduce((n,r)=>n+r.houses.length,0);
+  if($('kingdom-house-count'))$('kingdom-house-count').textContent=String(total);
+  $('kingdom-map-hotspots').innerHTML=regions.map(r=>`<a class="kingdom-spot" href="${regionHash(r.region)}" data-kingdom-region="${esc(r.region)}" style="left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%" aria-label="Abrir a região ${esc(r.label)}"><span class="sr-only">${esc(r.label)}</span></a>`).join('');
+  const sorted=[...regions].sort((a,b)=>a.label.localeCompare(b.label,'pt-BR'));
+  $('kingdom-region-links').innerHTML=sorted.map(r=>`<a class="kingdom-region-chip" href="${regionHash(r.region)}" data-kingdom-region="${esc(r.region)}"><strong>${esc(r.label)}</strong><small>${esc(r.data.subtitle)} · ${r.data.houses.length} casas</small></a>`).join('');
+  const hint=$('kingdom-map-hint'),defaultHint=hint.textContent;
+  const describe=name=>{const r=regions.find(x=>x.region===name);if(!r)return;hint.innerHTML=`<strong>${esc(r.label)}</strong> · ${esc(r.data.subtitle)} · Casa principal: ${esc(r.data.major)} · ${r.data.houses.length} casas`;$('view-reino').querySelectorAll('[data-kingdom-region]').forEach(a=>a.classList.toggle('is-hover',a.dataset.kingdomRegion===name));};
+  const reset=()=>{hint.textContent=defaultHint;$('view-reino').querySelectorAll('.is-hover').forEach(a=>a.classList.remove('is-hover'));};
+  $('view-reino').querySelectorAll('[data-kingdom-region]').forEach(a=>{
+   a.addEventListener('mouseenter',()=>describe(a.dataset.kingdomRegion));a.addEventListener('focus',()=>describe(a.dataset.kingdomRegion));
+   a.addEventListener('mouseleave',reset);a.addEventListener('blur',reset);
+   a.addEventListener('click',event=>{
+    // Links reais: Ctrl/Cmd/Shift/clique do meio abrem a região em nova guia.
+    if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();
+    state.region=a.dataset.kingdomRegion;state.regionView='houses';state.hierarchyEra='post';state.houseQuery='';regionSelect.value=state.region;renderRegion();showView('regioes');
+    window.scrollTo({top:0,behavior:'instant'});document.querySelector('#view-regioes h1')?.focus({preventScroll:true});
+   });
+  });
+  $('kingdom-map-expand').addEventListener('click',()=>$('view-reino').querySelector('.kingdom-map-figure img')?.click());
+  const tabs=[...document.querySelectorAll('[data-kingdom-tab]')];
+  tabs.forEach((tab,i)=>{
+   tab.addEventListener('click',()=>{state.kingdomTab=tab.dataset.kingdomTab;renderKingdomTabs();writeRoute();});
+   tab.addEventListener('keydown',event=>{const step={ArrowRight:1,ArrowLeft:-1}[event.key];let next=null;if(step)next=tabs[(i+step+tabs.length)%tabs.length];if(event.key==='Home')next=tabs[0];if(event.key==='End')next=tabs[tabs.length-1];if(next){event.preventDefault();next.focus();next.click();}});
+  });
+ }
+ function renderKingdomTabs(){
+  document.querySelectorAll('[data-kingdom-tab]').forEach(tab=>{const on=tab.dataset.kingdomTab===state.kingdomTab;tab.setAttribute('aria-selected',String(on));tab.tabIndex=on?0:-1;$('kingdom-panel-'+tab.dataset.kingdomTab).hidden=!on;});
+ }
+ renderKingdom();
  function regionAtEra(region,era='post'){
   if(!['Elfhold','Helmlands'].includes(region.name))return region;
   const oldMajor=region.name==='Elfhold'?'Drauthglas':'Marliir';
@@ -293,7 +346,7 @@ function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=
  loadHouseHistory(h);
  }
  document.querySelectorAll('[data-region-view]').forEach(button=>button.addEventListener('click',()=>{state.regionView=button.dataset.regionView;renderRegion();writeRoute();}));
- regionSelect.addEventListener('change',()=>{state.region=regionSelect.value;state.houseQuery='';renderRegion();showView('reino');});
+ regionSelect.addEventListener('change',()=>{state.region=regionSelect.value;state.houseQuery='';renderRegion();showView('regioes');});
  function setThemes(){const themes=[...new Set(data.events.filter(e=>e.kind===state.kind).map(e=>e.theme))];$('theme').innerHTML='<option value="">Todos os temas</option>'+themes.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');if(!themes.includes(state.theme))state.theme='';$('theme').value=state.theme;}
  function filtered(){const q=normalize(state.query.trim());return data.events.filter(e=>e.kind===state.kind&&(!state.theme||e.theme===state.theme)&&(!q||normalize([e.id,e.title,e.hook,e.a,e.b,e.clue,e.theme,e.scale||''].join(' ')).includes(q)));}
  function renderEvents(){const list=filtered(),mystic=state.kind==='misticos';const pages=Math.max(1,Math.ceil(list.length/12));state.eventPage=Math.min(Math.max(1,state.eventPage),pages);const visible=list.slice((state.eventPage-1)*12,state.eventPage*12);$('event-list-title').textContent=mystic?'Eventos místicos':'Eventos mundanos';$('event-count').textContent=`${list.length} encontrados · ${visible.length} nesta página`;
@@ -484,7 +537,7 @@ function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=
  $('law-prev').addEventListener('click',()=>moveLawPage(-1));$('law-next').addEventListener('click',()=>moveLawPage(1));renderLaws();
  function restoreRoute(){state.houseQuery='';readHash();
   $('law-search').value=lawState.query;$('law-topic').value=lawState.topic;renderLaws();
-  renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
+  renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();renderKingdomTabs();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
  restoreRoute();
  window.addEventListener('hashchange',restoreRoute);
 })();
