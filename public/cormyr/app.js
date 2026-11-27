@@ -294,14 +294,14 @@ const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'hou
  let nobleCatalogReturn=null;
  function captureNobleCatalogPosition(h){
   if(state.view==='nobreza'&&!$('noble-catalog').hidden){
-   nobleCatalogReturn={hash:location.hash,scrollY:window.scrollY,focusId:h.nobleId};
+   nobleCatalogReturn={hash:routeHash(),scrollY:window.scrollY,focusId:h.nobleId};
    history.replaceState({...history.state,[nobleCatalogReturnKey]:nobleCatalogReturn},'',location.href);
   }else if(state.view!=='nobreza')nobleCatalogReturn=null;
  }
  function restoreNobleCatalogPosition(fromBrowser=false){
   if(state.view!=='nobreza'||state.noble.house)return;
   const remembered=fromBrowser?history.state?.[nobleCatalogReturnKey]:nobleCatalogReturn;
-  if(!remembered||remembered.hash!==location.hash)return;
+  if(!remembered||remembered.hash!==routeHash())return;
   requestAnimationFrame(()=>{
    if(state.view!=='nobreza'||state.noble.house)return;
    const focused=[...$('noble-list').querySelectorAll('[data-noble]')].find(b=>b.dataset.noble===remembered.focusId);
