@@ -427,9 +427,9 @@ function renderHouse(h){
     <figure class="noble-heraldry-flag${h.crest?'':' is-missing'}">${flag}</figure>
    </aside>
   </div></article>`;
- const downloads=[h.crest?`<a class="quiet" href="${esc(h.crest)}" download="Brasao-${esc(h.nobleId)}.webp">Baixar brasão</a>`:'',
-  h.portrait?`<a class="quiet" href="${esc(h.portrait)}" download="Retrato-${esc(h.nobleId)}.jpg">Baixar retrato</a>`:''].filter(Boolean).join('');
- $('noble-media').innerHTML=`${musicLinks(h.music,'Música da casa')}${downloads?`<div class="noble-downloads">${downloads}</div>`:''}`;
+ // A área de mídia exibe somente músicas. Brasões e retratos permanecem na ficha,
+ // sem apresentar a faixa de ações "Baixar brasão" / "Baixar retrato".
+ $('noble-media').innerHTML=musicLinks(h.music,'Música da casa');
  $('noble-media').hidden=!$('noble-media').innerHTML.trim();
  watchNobleImages($('house-details'));
  renderHouseGallery(h);loadDriveGallery(h);
