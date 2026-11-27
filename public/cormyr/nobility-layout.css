@@ -139,3 +139,171 @@
  #view-nobreza .noble-filters{grid-template-columns:1fr}
  #view-nobreza .noble-history-toc nav{grid-template-columns:1fr;max-height:310px}
 }
+
+
+/* História e registro da casa · Ideia 1 Adaptativa.
+   Todas as regras abaixo ficam estritamente dentro de .noble-story. */
+#view-nobreza .noble-story #noble-history{
+ max-width:none;width:100%;margin:0;min-width:0;color:#302738;overflow-wrap:anywhere;
+}
+#view-nobreza .noble-story .noble-history-meta{
+ width:100%;background:#f8f4ec;border:1px solid #e3dcd0;border-radius:10px;
+ padding:14px 18px;margin:0 0 24px;
+}
+#view-nobreza .noble-story .noble-history-meta dl{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+ gap:12px 18px;align-items:start;margin:0;padding:0;
+}
+#view-nobreza .noble-story .noble-history-meta-field{min-width:0}
+#view-nobreza .noble-story .noble-history-meta-field dt{
+ color:#4a3851;font:700 11px/1.45 var(--sans);text-transform:uppercase;
+ letter-spacing:.07em;margin:0 0 4px;
+}
+#view-nobreza .noble-story .noble-history-meta-field dd{
+ color:#2e2532;font:600 14px/1.48 var(--sans);margin:0;
+ text-align:left;overflow-wrap:anywhere;hyphens:auto;
+}
+#view-nobreza .noble-story .noble-history-grid{
+ display:grid;grid-template-columns:245px minmax(0,1fr);
+ gap:32px;align-items:start;width:100%;min-width:0;
+}
+#view-nobreza .noble-story .noble-history-grid.no-toc{
+ grid-template-columns:minmax(0,1fr);
+}
+#view-nobreza .noble-story .noble-history-sidebar{
+ box-sizing:border-box;min-width:0;position:sticky;top:72px;align-self:start;
+ background:#fbf8f1;border:1px solid #e3dcd0;border-radius:9px;
+ padding:13px 10px 12px;
+}
+#view-nobreza .noble-story .noble-history-sidebar.is-long{
+ max-height:calc(100vh - 110px);overflow-y:auto;overscroll-behavior:contain;
+ scrollbar-width:thin;scrollbar-color:#b9a989 transparent;
+}
+#view-nobreza .noble-story .noble-history-sidebar-head{
+ display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+ border-bottom:1px solid #e6dfd5;padding:2px 5px 11px;margin-bottom:9px;
+}
+#view-nobreza .noble-story .noble-history-sidebar-head strong{
+ font:700 14px/1.3 var(--sans);color:#3f2850;
+}
+#view-nobreza .noble-story .noble-history-sidebar-head span{
+ font:600 11px/1.35 var(--sans);color:#54485b;white-space:nowrap;
+}
+#view-nobreza .noble-story .noble-history-search-label{
+ display:block;font:700 11px/1.3 var(--sans);color:#4a3851;
+ padding:0 5px 5px;
+}
+#view-nobreza .noble-story .noble-history-search{
+ display:block;box-sizing:border-box;width:100%;min-width:0;
+ border:1px solid #b9ac99;border-radius:6px;background:#fffdfa;
+ color:#302538;font:400 13px/1.4 var(--sans);padding:8px 9px;
+ min-height:38px;margin:0 0 10px;
+}
+#view-nobreza .noble-story .noble-history-search:focus-visible{
+ outline:2px solid #775088;outline-offset:1px;
+}
+#view-nobreza .noble-story .noble-history-toc-items{
+ display:flex;flex-direction:column;gap:2px;min-width:0;
+}
+#view-nobreza .noble-story .noble-history-toc-link{
+ width:100%;min-width:0;box-sizing:border-box;display:grid;
+ grid-template-columns:26px minmax(0,1fr);align-items:start;gap:5px;
+ padding:9px 6px;margin:0;border:0;border-left:3px solid transparent;
+ border-radius:4px;background:transparent;color:#453b4d;
+ font:500 12px/1.4 var(--sans);text-align:left;cursor:pointer;
+}
+#view-nobreza .noble-story .noble-history-toc-link.is-subsection{
+ padding-left:15px;font-size:11px;color:#594f60;
+ grid-template-columns:19px minmax(0,1fr);
+}
+#view-nobreza .noble-story .noble-history-toc-link .noble-history-toc-number{
+ font:700 11px/1.4 var(--sans);color:#755780;font-variant-numeric:tabular-nums;
+}
+#view-nobreza .noble-story .noble-history-toc-link .noble-history-toc-text{
+ overflow-wrap:anywhere;hyphens:auto;
+}
+#view-nobreza .noble-story .noble-history-toc-link:hover{background:#f1e9da;color:#30223f}
+#view-nobreza .noble-story .noble-history-toc-link.is-active{
+ border-left-color:#765087;background:#eee5d6;color:#31243a;font-weight:700;
+}
+#view-nobreza .noble-story .noble-history-toc-link:focus-visible{
+ outline:2px solid #765087;outline-offset:1px;
+}
+#view-nobreza .noble-story .noble-history-toc-link[hidden],
+#view-nobreza .noble-story .noble-history-no-matches[hidden]{display:none!important}
+#view-nobreza .noble-story .noble-history-no-matches{
+ font:400 12px/1.5 var(--sans);color:#574b58;margin:8px 5px;
+}
+#view-nobreza .noble-story .noble-history-narrative{
+ min-width:0;max-width:72ch;width:100%;margin:0;justify-self:start;
+ text-align:left;overflow-wrap:anywhere;
+}
+#view-nobreza .noble-story .noble-history-narrative p,
+#view-nobreza .noble-story .noble-history-narrative li{
+ font:400 16px/1.7 Georgia,serif;margin:0 0 1.05em;
+ color:#302738;white-space:pre-wrap;text-align:left;hyphens:auto;
+ overflow-wrap:anywhere;
+}
+#view-nobreza .noble-story .noble-history-narrative .noble-history-preface{
+ font-style:italic;color:#514455;
+}
+#view-nobreza .noble-story .noble-history-narrative h3,
+#view-nobreza .noble-story .noble-history-narrative h4{
+ color:#382344;max-width:100%;overflow-wrap:anywhere;scroll-margin-top:85px;
+}
+#view-nobreza .noble-story .noble-history-narrative h3{
+ font:600 clamp(20px,2vw,25px)/1.3 Georgia,serif;
+ margin:24px 0 14px;padding-top:2px;
+}
+#view-nobreza .noble-story .noble-history-narrative h3.has-divider{
+ border-top:1px solid #e3dcd0;padding-top:23px;margin-top:28px;
+}
+#view-nobreza .noble-story .noble-history-narrative h4{
+ font:600 19px/1.4 Georgia,serif;margin:20px 0 10px;color:#624d68;
+}
+#view-nobreza .noble-story .noble-history-narrative h3:focus-visible,
+#view-nobreza .noble-story .noble-history-narrative h4:focus-visible{
+ outline:2px solid #765087;outline-offset:4px;
+}
+#view-nobreza .noble-story .noble-history-narrative .noble-history-list{
+ margin:0 0 18px;padding-left:27px;
+}
+#view-nobreza .noble-story .noble-history-narrative .noble-history-list li{
+ margin:0 0 7px;padding-left:2px;
+}
+#view-nobreza .noble-story .noble-history-narrative blockquote{
+ border-left:3px solid #b9a17b;padding:5px 0 5px 17px;margin:18px 0;
+ color:#4d3c56;font:italic 16px/1.7 Georgia,serif;white-space:pre-wrap;
+}
+#view-nobreza .noble-story .noble-history-narrative hr{
+ border:0;border-top:1px solid #e3dcd0;margin:22px 0;
+}
+#view-nobreza .noble-story .noble-history-empty{
+ display:block;max-width:72ch;margin:0;text-align:left;
+ border-left:3px solid #c5b18c;padding:12px 17px;
+ background:#faf7f0;border-radius:0 7px 7px 0;
+}
+#view-nobreza .noble-story .noble-history-empty p{
+ color:#493b4b;font:400 15px/1.65 var(--sans);margin:0 0 6px;
+}
+@media(max-width:860px){
+ #view-nobreza .noble-story .noble-history-grid{
+  grid-template-columns:minmax(0,1fr);gap:18px;
+ }
+ #view-nobreza .noble-story .noble-history-sidebar,
+ #view-nobreza .noble-story .noble-history-sidebar.is-long{
+  position:static;top:auto;max-height:220px;overflow-y:auto;overscroll-behavior:contain;
+ }
+ #view-nobreza .noble-story .noble-history-meta dl{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ #view-nobreza .noble-story .noble-history-narrative{max-width:72ch}
+}
+@media(max-width:520px){
+ #view-nobreza .noble-story .noble-history-meta{padding:13px 14px}
+ #view-nobreza .noble-story .noble-history-meta dl{grid-template-columns:minmax(0,1fr)}
+ #view-nobreza .noble-story .noble-history-toc-link{font-size:13px;min-height:40px}
+}
+@media(prefers-reduced-motion:reduce){
+ #view-nobreza .noble-story{scroll-behavior:auto}
+}
