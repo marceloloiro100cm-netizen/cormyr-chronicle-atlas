@@ -111,3 +111,31 @@
 @media(prefers-reduced-motion:reduce){
  #view-nobreza .noble-card__flag img{transition:none}
 }
+
+
+/* Fase 3 — filtros políticos, árvore navegável e índice por títulos reais. */
+#view-nobreza .noble-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+#view-nobreza .noble-relationship-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#view-nobreza .noble-relationship-list li{min-width:0;border:1px solid #e0d6ca;background:#fffdfa;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center}
+#view-nobreza .noble-related-link{display:inline-flex;align-items:center;min-height:40px;text-align:left;border:0;background:transparent;padding:4px 1px;color:#512d64;font:600 14px/1.4 var(--sans);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere;cursor:pointer}
+#view-nobreza .noble-related-link:hover{color:#241334}
+#view-nobreza .noble-related-link:focus-visible{outline:3px solid #9d6c22;outline-offset:2px}
+#view-nobreza .noble-relationship-list li>span{color:var(--noble-label);font-size:11px;line-height:1.4;margin-top:2px}
+#view-nobreza .noble-history-toc{border:1px solid #d5c6aa;border-top:3px solid var(--gold);background:#fbf7f0;margin:12px 0 28px;border-radius:7px}
+#view-nobreza .noble-history-toc summary{display:list-item;color:var(--purple);font-weight:700;cursor:pointer;padding:15px 18px;list-style:inside}
+#view-nobreza .noble-history-toc nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:8px 14px 17px;max-height:360px;overflow:auto;overscroll-behavior:contain}
+#view-nobreza .noble-history-toc button{border:1px solid #e2d6c1;border-radius:4px;background:#fffdf9;color:#382744;font:500 13px/1.4 var(--sans);padding:10px 11px;min-height:44px;overflow-wrap:break-word;text-align:left}
+#view-nobreza .noble-history-toc button:hover{background:#f2e9d8}
+#view-nobreza .noble-history-toc button:focus-visible{outline:3px solid #9d6c22;outline-offset:1px}
+#view-nobreza #noble-history h4[id]{scroll-margin-top:34px}
+#view-nobreza #noble-history h4[id]:focus-visible{outline:2px solid #9d6c22;outline-offset:5px}
+@media(max-width:1100px){
+ #view-nobreza .noble-relationship-list{grid-template-columns:1fr}
+}
+@media(max-width:980px){
+ #view-nobreza .noble-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ #view-nobreza .noble-filters{grid-template-columns:1fr}
+ #view-nobreza .noble-history-toc nav{grid-template-columns:1fr;max-height:310px}
+}
