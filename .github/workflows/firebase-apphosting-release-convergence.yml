@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
     paths:
+      # Identidade e layout do Atlas público também alteram o bundle servido.
+      - 'public/cormyr/index.html'
+      - 'public/cormyr/style.css'
       - 'apphosting.yaml'
       - 'vite.config.ts'
       - 'src/server.ts'
