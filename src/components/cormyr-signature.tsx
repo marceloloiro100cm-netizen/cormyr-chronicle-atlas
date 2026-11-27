@@ -7,7 +7,7 @@ export function CormyrSignature({subtitle='Crônicas do Reino',compact=false,chi
   children?:ReactNode;
 }){
   return <span className={'cormyr-signature'+(compact?' cormyr-signature--compact':'')}>
-    <img className="cormyr-signature__mark" src="/cormyr/brand/cormyr-icone-favicon.svg"
+    <img className="cormyr-signature__mark" src="/cormyr/brand/cormyr-brasao-escuro.svg"
       alt="" aria-hidden="true" width={67} height={74}/>
     <span className="cormyr-signature__copy">
       <span className="cormyr-signature__kicker">ATLAS DE</span>
