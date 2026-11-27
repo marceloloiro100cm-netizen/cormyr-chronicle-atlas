@@ -512,13 +512,115 @@
 @media print{.kingdom-tabs,.region-map-actions,.kingdom-map-hint{display:none!important}.kingdom-panel[hidden]{display:block!important}.kingdom-infobox{position:static}}
 @media(hover:none){.kingdom-map-hint{display:none}}
 
-/* Kit oficial 2026: o monograma do dragão completa a palavra CORMYR. */
-.brand{padding:22px 12px}
-.brand .cormyr-signature{display:flex;align-items:center;min-width:0;width:100%;text-decoration:none;color:#f6e8c8;gap:0}
-.brand .cormyr-signature-mark{display:block;flex:none;width:67px;height:74px;object-fit:contain;margin-right:-9px;border-radius:0}
-.brand .cormyr-signature-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;margin-top:0}
-.brand .cormyr-signature-kicker{display:block;margin:0;color:#d6bd91;font:700 10px/1.2 var(--sans);letter-spacing:.17em;white-space:nowrap}
-.brand .cormyr-signature-word{display:block;color:#fff0d3;font:700 29px/1.08 Georgia,serif;letter-spacing:.025em;white-space:nowrap}
-.brand .cormyr-signature-tagline{display:block;margin:4px 0 0;color:#d7c4d9;font:600 8px/1.3 var(--sans);letter-spacing:.115em;white-space:nowrap}
-.brand .cormyr-signature:hover .cormyr-signature-word{color:#f2cf8b}
-@media(max-width:900px){.brand{padding:12px 17px}.brand .cormyr-signature-mark{width:58px;height:64px;margin-right:-8px}.brand .cormyr-signature-word{font-size:27px}.brand .cormyr-signature-tagline{display:block}}
+/* Kit oficial 2026 — cabeçalho creme do Atlas de Cormyr.
+ * O C do dragão completa ORMYR; em telas estreitas reduz-se a proporção,
+ * preservando a navegação e sem recortar o nome ou o brasão. */
+.brand{
+  min-height:154px;
+  padding:25px 9px;
+  justify-content:center;
+  gap:0;
+  background:
+    repeating-linear-gradient(125deg,rgba(144,103,41,.025) 0 1px,transparent 1px 9px),
+    radial-gradient(ellipse at 49% 41%,#fffaf1 0%,#f9edcf 62%,#ecd6ab 100%);
+  border-bottom:1px solid #a37741;
+  box-shadow:inset 0 -3px 0 #bf924d;
+}
+.brand .cormyr-signature{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:0;
+  min-width:0;
+  width:100%;
+  color:#43185a;
+  text-decoration:none;
+}
+.brand .cormyr-signature-mark{
+  display:block;
+  flex:none;
+  width:81px;
+  height:95px;
+  object-fit:contain;
+  margin-right:-15px;
+  border:0;
+  border-radius:0;
+}
+.brand .cormyr-signature-copy{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  min-width:0;
+  margin-top:4px;
+}
+.brand .cormyr-signature-kicker{
+  display:block;
+  margin:0;
+  position:relative;
+  top:-4px;
+  color:#95611b;
+  font:700 12px/1.15 Georgia,'Times New Roman',serif;
+  letter-spacing:.115em;
+  white-space:nowrap;
+}
+.brand .cormyr-signature-word{
+  display:block;
+  margin:0;
+  position:relative;
+  top:1px;
+  color:#43135c;
+  font:700 35px/.99 Georgia,'Times New Roman',serif;
+  letter-spacing:.007em;
+  white-space:nowrap;
+}
+.brand .cormyr-signature-tagline{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin:9px 0 0;
+  color:#4e1a69;
+  font:700 8.6px/1.25 Georgia,'Times New Roman',serif;
+  letter-spacing:.06em;
+  white-space:nowrap;
+}
+.brand .cormyr-signature-tagline::before,
+.brand .cormyr-signature-tagline::after{
+  content:"";
+  display:block;
+  flex:none;
+  width:10px;
+  height:1px;
+  background:#b38135;
+}
+.brand .cormyr-signature:hover .cormyr-signature-word,
+.brand .cormyr-signature:focus-visible .cormyr-signature-word{color:#6b2783}
+.brand .cormyr-signature:focus-visible{outline:3px solid #713985;outline-offset:3px;border-radius:3px}
+/* Sidebar compacta em laptops: não alargar a coluna principal da campanha. */
+@media(min-width:901px) and (max-width:1200px){
+  .brand{min-height:142px;padding:21px 7px}
+  .brand .cormyr-signature-mark{width:75px;height:88px;margin-right:-15px}
+  .brand .cormyr-signature-word{font-size:31px}
+  .brand .cormyr-signature-kicker{font-size:10.5px}
+  .brand .cormyr-signature-tagline{font-size:7.7px;gap:3px}
+  .brand .cormyr-signature-tagline::before,
+  .brand .cormyr-signature-tagline::after{width:7px}
+}
+/* A assinatura permanece inteira na barra horizontal de tablets e celulares. */
+@media(max-width:900px){
+  .brand{min-height:0;padding:14px 19px 16px;justify-content:flex-start}
+  .brand .cormyr-signature{justify-content:flex-start;width:max-content;max-width:100%}
+  .brand .cormyr-signature-mark{width:78px;height:88px;margin-right:-14px}
+  .brand .cormyr-signature-word{font-size:34px}
+  .brand .cormyr-signature-kicker{font-size:11.5px}
+  .brand .cormyr-signature-tagline{display:inline-flex;font-size:8.4px}
+}
+@media(max-width:380px){
+  .brand{padding:12px}
+  .brand .cormyr-signature-mark{width:68px;height:78px;margin-right:-13px}
+  .brand .cormyr-signature-word{font-size:30px}
+  .brand .cormyr-signature-kicker{font-size:10px}
+  .brand .cormyr-signature-tagline{font-size:7.5px;gap:3px}
+  .brand .cormyr-signature-tagline::before,
+  .brand .cormyr-signature-tagline::after{width:7px}
+}
