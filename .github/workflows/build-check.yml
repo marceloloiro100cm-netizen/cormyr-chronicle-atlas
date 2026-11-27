@@ -37,4 +37,4 @@ jobs:
       - name: Newspaper typography component tests
         run: bun run test -- src/components/newspaper/NewspaperCanvas.test.tsx src/components/newspaper/NewspaperEditorialDesk.test.tsx
       - name: Public Nobreza layout and editorial regression tests
-        run: bun run test -- src/test/public-nobility-phases12.test.ts src/test/public-nobility-phases34.test.ts src/test/frontend-audit-public.test.ts
+        run: bun run test -- src/test/public-nobility-phases12.test.ts src/test/public-nobility-phases34.test.ts src/test/public-nobility-history-idea1.test.ts src/test/frontend-audit-public.test.ts

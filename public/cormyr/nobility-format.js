@@ -75,5 +75,38 @@
   });
   return {preface,supplemental,body};
  }
- root.CORMYR_NOBILITY_FORMAT=Object.freeze({clean,normalize,isMissingPlace,colorTokens,parseHistory});
+ /* Somente a apresentação da história; não modifica documentos nem as fichas principais. */
+ const absentMetadata=/^(?:-|—|–|n\/?a|n\.?\s*a\.?|não\s+informad[oa]s?|nao\s+informad[oa]s?|não\s+definid[oa]s?(?:\s+no\s+acervo)?|nao\s+definid[oa]s?(?:\s+no\s+acervo)?|sem\s+(?:vassal(?:o|os)|cidade|castelo|fama|registro)|nenhum(?:a|s|as)?)$/i;
+ function metadataVisible(value){
+  const plain=clean(value).replace(/[.!;,\s]+$/g,'').trim();
+  return Boolean(plain)&&!absentMetadata.test(plain);
+ }
+ const numberedChapter=/^(?:[IVXLCDM]{1,8}\s*[.)]\s+|\d{1,2}[.)]\s+|(?:cap[ií]tulo|ato|parte|livro)\s+(?:[IVXLCDM\d]+|\w+))/i;
+ function historyDisplayModel(parsed){
+  const source=parsed||{},body=Array.isArray(source.body)?source.body:[],
+   preface=Array.isArray(source.preface)?source.preface:[],
+   supplemental=Array.isArray(source.supplemental)?source.supplemental:[];
+  const metadata=supplemental.filter(item=>clean(item?.label)&&metadataVisible(item?.value));
+  const headings=body.map((item,index)=>item?.type==='heading'&&clean(item.text)?{index,text:item.text}:null).filter(Boolean);
+  const hasExplicitChapters=headings.some(entry=>numberedChapter.test(entry.text));
+  const entries=[];let primary=0,previousHeadingIndex=-2;
+  for(const entry of headings){
+   const isSubsection=hasExplicitChapters
+    ?!numberedChapter.test(entry.text)
+    :entry.index===previousHeadingIndex+1;
+   const level=isSubsection?2:1;
+   if(level===1)primary++;
+   entries.push({
+    index:entry.index,id:'noble-history-section-'+entry.index,title:entry.text,level,
+    number:level===1?String(primary).padStart(2,'0'):null,
+   });
+   previousHeadingIndex=entry.index;
+  }
+  const hasText=Boolean(preface.some(clean)||body.some(item=>clean(item?.text)));
+  return {
+   metadata:hasText?metadata:[],preface,body,entries,hasText,
+   showToc:hasText&&entries.length>=2,longToc:entries.length>10,
+  };
+ }
+ root.CORMYR_NOBILITY_FORMAT=Object.freeze({clean,normalize,isMissingPlace,colorTokens,parseHistory,metadataVisible,historyDisplayModel});
 })(window);

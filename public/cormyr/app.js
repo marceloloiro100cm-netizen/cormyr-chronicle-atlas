@@ -438,7 +438,7 @@ function renderHouse(h){
   const related=nobleHouses.find(x=>x.nobleId===button.dataset.nobleRelated);
   if(related)openHouse(related);
  }));
- const story=$('noble-detail').querySelector('.noble-story');if(story)story.open=false;
+ const story=$('noble-detail').querySelector('.noble-story');if(story)story.open=true;
  loadHouseHistory(h);
 }
 
@@ -542,7 +542,7 @@ function renderHouse(h){
  const nobleHouses=data.regions.flatMap(r=>r.houses).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
  $('noble-region').innerHTML='<option value="">Todas as regiões</option>'+data.regions.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
  $('noble-kind').innerHTML=(window.CORMYR_NOBILITY_NAV?.TYPES||[{value:'',label:'Todas as categorias'}]).map(t=>`<option value="${esc(t.value)}">${esc(t.label)}</option>`).join('');
- const historyCache=new Map();let historyRequest=0;
+ const historyCache=new Map();let historyRequest=0;let nobleHistoryHeadingObserver=null;
  function nobleMatches(h){const n=state.noble;return (!n.region||h.region===n.region)&&(!n.kind||window.CORMYR_NOBILITY_NAV?.matchesKind(h,n.kind))&&['name','leader','castle','city'].every(key=>{const value=normalize(n[key].trim());return !value||normalize([h[key],...(h[key+'Aliases']||[]),...(key==='name'?h.aliases||[]:[])].join(' ')).includes(value);});}
 function renderNobility(){
  const n=state.noble,fmt=window.CORMYR_NOBILITY_FORMAT;
@@ -581,36 +581,120 @@ function renderNobility(){
 
 async function loadHouseHistory(h){
  const request=++historyRequest,target=$('noble-history');
+ nobleHistoryHeadingObserver?.disconnect();nobleHistoryHeadingObserver=null;
+ const emptyMessage='A história desta casa ainda não está disponível nos documentos consultados. Os dados conhecidos estão na ficha acima.';
+ const showNotice=(message)=>{target.innerHTML='<div class="noble-history-empty" role="note"><p>'+esc(message)+'</p></div>';};
  target.innerHTML='<p role="status">Carregando história…</p>';
- if(!h.historyPath&&!h.publicNarrative){target.innerHTML='<p>A história desta casa ainda não está disponível nos documentos consultados. Os dados conhecidos estão na ficha acima.</p>';return;}
+ if(!h.historyPath&&!h.publicNarrative){showNotice(emptyMessage);return;}
  try{
   let doc=h.publicNarrative?{text:h.publicNarrative}:historyCache.get(h.historyPath);
-  if(!doc){const response=await fetch(h.historyPath);if(!response.ok)throw new Error('HTTP '+response.status);doc=await response.json();historyCache.set(h.historyPath,doc);}
-  if(request!==historyRequest)return;
-  const parsed=window.CORMYR_NOBILITY_FORMAT?.parseHistory(doc.text,h);
-  if(!parsed){
-   const paragraphs=String(doc.text||'').split(/\r?\n/).filter(t=>t.trim());
-   target.innerHTML=paragraphs.map(t=>`<p>${esc(t.trim())}</p>`).join('');return;
+  if(!doc){
+   const response=await fetch(h.historyPath);
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   doc=await response.json();historyCache.set(h.historyPath,doc);
   }
-  const preface=parsed.preface.map(t=>`<p class="noble-history-preface">${esc(t)}</p>`).join('');
-  const additional=parsed.supplemental.length?`<aside class="noble-source-metadata" aria-label="Informações adicionais do registro original"><h4>Informações do registro original</h4><dl>${parsed.supplemental.map(({label,value})=>`<div class="noble-fact"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl></aside>`:'';
-  const outline=window.CORMYR_NOBILITY_NAV?.outline(parsed.body);
-  const toc=outline?.show?`<details class="noble-history-toc"><summary>Índice do histórico · ${outline.entries.length} seções</summary><nav aria-label="Seções deste histórico">${outline.entries.map(entry=>`<button type="button" data-noble-section="${esc(entry.id)}">${esc(entry.title)}</button>`).join('')}</nav></details>`:'';
-  const narrative=parsed.body.map((item,index)=>item.type==='separator'?'<hr>':item.type==='heading'?`<h4 id="noble-history-section-${index}" tabindex="-1">${esc(item.text)}</h4>`:`<p>${esc(item.text)}</p>`).join('');
-  target.innerHTML=preface+additional+toc+narrative||'<p>A história desta casa ainda não está disponível no acervo.</p>';
-  target.querySelectorAll('[data-noble-section]').forEach(button=>button.addEventListener('click',()=>{
-   const heading=target.querySelector('#'+button.dataset.nobleSection);
+  if(request!==historyRequest)return;
+  const formatter=window.CORMYR_NOBILITY_FORMAT;
+  const parsed=formatter?.parseHistory(doc.text,h)||{
+   preface:[],supplemental:[],
+   body:String(doc.text||'').split(/\r?\n/).filter(Boolean).map(text=>({type:'paragraph',text})),
+  };
+  const model=formatter?.historyDisplayModel(parsed);
+  if(!model||!model.hasText){showNotice(emptyMessage);return;}
+  const metadata=model.metadata.length
+   ?'<aside class="noble-history-meta" aria-label="Dados complementares do registro"><dl>'+
+     model.metadata.map(({label,value})=>'<div class="noble-history-meta-field"><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>').join('')+
+     '</dl></aside>':'';
+  const outlineByIndex=new Map(model.entries.map(entry=>[entry.index,entry]));
+  let primaryRendered=0,openedList='';
+  const blocks=[];
+  const closeList=()=>{if(openedList){blocks.push('</'+openedList+'>');openedList='';}};
+  for(const [index,item] of model.body.entries()){
+   if(item.type==='heading'){
+    closeList();
+    const entry=outlineByIndex.get(index),level=entry?.level===2?4:3;
+    const isPrimary=level===3;
+    if(isPrimary)primaryRendered++;
+    blocks.push('<h'+level+' id="noble-history-section-'+index+'" tabindex="-1" data-noble-heading class="'+
+     (isPrimary?'noble-history-main-heading'+(primaryRendered>1?' has-divider':''):'noble-history-subheading')+'">'+esc(item.text)+'</h'+level+'>');
+   }else if(item.type==='separator'){
+    closeList();blocks.push('<hr class="noble-history-divider">');
+   }else{
+    const text=String(item.text||'');
+    const bullet=text.match(/^[-*•]\s+([\s\S]+)$/);
+    const ordered=text.match(/^(\d{1,3})[.)]\s+([\s\S]+)$/);
+    const kind=bullet?'ul':ordered?'ol':'';
+    if(kind){
+     if(openedList!==kind){
+      closeList();
+      blocks.push('<'+kind+(kind==='ol'?' start="'+Number(ordered[1])+'"':'')+' class="noble-history-list">');
+      openedList=kind;
+     }
+     blocks.push('<li'+(ordered?' value="'+Number(ordered[1])+'"':'')+'>'+esc(bullet?bullet[1]:ordered[2])+'</li>');
+    }else{
+     closeList();
+     blocks.push(/^>\s+/.test(text)?'<blockquote>'+esc(text.replace(/^>\s+/,''))+'</blockquote>':'<p>'+esc(text)+'</p>');
+    }
+   }
+  }
+  closeList();
+  const toc=model.showToc?
+   '<aside class="noble-history-sidebar'+(model.longToc?' is-long':'')+'" aria-label="Sumário lateral do histórico">'+
+    '<div class="noble-history-sidebar-head"><strong>Índice</strong><span>'+model.entries.length+' seções</span></div>'+
+    (model.longToc?'<label class="noble-history-search-label" for="noble-history-search">Filtrar capítulos</label>'+
+     '<input type="search" class="noble-history-search" id="noble-history-search" placeholder="Buscar capítulo…" autocomplete="off" aria-controls="noble-history-toc-items">':'')+
+    '<nav class="noble-history-toc-items" id="noble-history-toc-items" aria-label="Seções da história">'+
+    model.entries.map((entry,index)=>'<button type="button" class="noble-history-toc-link'+
+      (entry.level===2?' is-subsection':'')+(index===0?' is-active':'')+'" data-noble-section="'+esc(entry.id)+'"'+
+      (index===0?' aria-current="location"':'')+'><span class="noble-history-toc-number" aria-hidden="true">'+
+      (entry.number||'—')+'</span><span class="noble-history-toc-text">'+esc(entry.title)+'</span></button>').join('')+
+    '</nav><p class="noble-history-no-matches" role="status" hidden>Nenhum capítulo encontrado.</p></aside>':'';
+  const preface=model.preface.map(line=>'<p class="noble-history-preface">'+esc(line)+'</p>').join('');
+  target.innerHTML=metadata+'<div class="noble-history-grid'+(model.showToc?'':' no-toc')+'">'+toc+
+   '<div class="noble-history-narrative">'+preface+blocks.join('')+'</div></div>';
+  if(!model.showToc)return;
+  const sidebar=target.querySelector('.noble-history-sidebar');
+  const links=[...sidebar.querySelectorAll('[data-noble-section]')];
+  const activate=id=>{
+   for(const link of links){
+    const active=link.dataset.nobleSection===id;
+    link.classList.toggle('is-active',active);
+    if(active)link.setAttribute('aria-current','location');
+    else link.removeAttribute('aria-current');
+   }
+  };
+  for(const link of links)link.addEventListener('click',()=>{
+   const heading=target.querySelector('#'+link.dataset.nobleSection);
    if(!heading)return;
-   heading.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+   activate(heading.id);
+   heading.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
    heading.focus({preventScroll:true});
-  }));
+  });
+  const search=sidebar.querySelector('input[type="search"]');
+  if(search)search.addEventListener('input',()=>{
+   const term=normalize(search.value);
+   let visible=0;
+   for(const link of links){
+    const matched=!term||normalize(link.querySelector('.noble-history-toc-text')?.textContent||'').includes(term);
+    link.hidden=!matched;if(matched)visible++;
+   }
+   sidebar.querySelector('.noble-history-no-matches').hidden=visible!==0;
+  });
+  if(typeof IntersectionObserver==='function'){
+   nobleHistoryHeadingObserver=new IntersectionObserver(observations=>{
+    if(request!==historyRequest)return;
+    const shown=observations.filter(entry=>entry.isIntersecting)
+     .sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
+    if(shown.length)activate(shown[0].target.id);
+   },{rootMargin:'-78px 0px -62% 0px',threshold:0});
+   target.querySelectorAll('[data-noble-heading]').forEach(element=>nobleHistoryHeadingObserver.observe(element));
+  }
  }catch(error){
   if(request!==historyRequest)return;
-  target.innerHTML='<p>Não foi possível carregar a história. Tente novamente.</p><button type="button" class="quiet" data-retry-history>Tentar novamente</button>';
+  target.innerHTML='<div class="noble-history-empty" role="alert"><p>Não foi possível carregar a história. Tente novamente.</p><button type="button" class="quiet" data-retry-history>Tentar novamente</button></div>';
   target.querySelector('[data-retry-history]').addEventListener('click',()=>loadHouseHistory(h));
  }
 }
-
  for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).addEventListener(key==='region'?'change':'input',e=>{state.noble[key]=e.target.value;state.noble.page=1;renderNobility();writeRoute();});
  $('noble-kind').addEventListener('change',e=>{state.noble.kind=e.target.value;state.noble.page=1;renderNobility();writeRoute();});
  $('noble-reset').addEventListener('click',()=>{Object.assign(state.noble,{region:'',kind:'',name:'',leader:'',castle:'',city:'',page:1,house:''});renderNobility();writeRoute();$('noble-name').focus();});

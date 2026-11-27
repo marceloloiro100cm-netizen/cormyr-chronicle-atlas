@@ -27,10 +27,10 @@ const house=(name:string)=>{
 describe('Nobreza pública — fases 1 e 2',()=>{
  it('carrega os auxiliares antes do inicializador assíncrono do Atlas',()=>{
   const html=archiveFile('index.html'),loader=archiveFile('gm-loader.js');
-  expect(html).toContain('nobility-layout.css?v=20261127p34');
-  expect(html.indexOf('nobility-format.js?v=20261127p12')).toBeLessThan(html.indexOf('gm-loader.js?'));
-  expect(html).toContain('app.js?v=20261127nav');
-  expect(loader).toContain("s.src='app.js?v=20261127nav'");
+  expect(html).toContain('nobility-layout.css?v=20261127hist1');
+  expect(html.indexOf('nobility-format.js?v=20261127hist1')).toBeLessThan(html.indexOf('gm-loader.js?'));
+  expect(html).toContain('app.js?v=20261127hist1');
+  expect(loader).toContain("s.src='app.js?v=20261127hist1'");
   expect(()=>new Function(archiveFile('nobility-format.js'))).not.toThrow();
   expect(()=>new Function(archiveFile('app.js'))).not.toThrow();
  });
