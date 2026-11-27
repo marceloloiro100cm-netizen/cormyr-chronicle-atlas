@@ -1,0 +1,113 @@
+/* Nobreza — fases 1 e 2. Escopo restrito à página pública #nobreza. */
+#view-nobreza{--noble-paper:#f8f3e9;--noble-hair:#d7cbb8;--noble-ink:#372b3d;--noble-label:#4a4352}
+#view-nobreza .noble-list{align-items:stretch;gap:18px}
+#view-nobreza .noble-card{
+ display:grid;grid-template-columns:minmax(0,1fr) 76px;align-items:center;gap:18px;
+ min-height:190px;padding:19px 18px;text-align:left;overflow:hidden;
+ background:#fffdf9;border-radius:9px;box-shadow:0 3px 12px rgba(36,19,52,.035);
+}
+#view-nobreza .noble-card__copy{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;overflow-wrap:anywhere}
+#view-nobreza .noble-card__region{font-size:11px;text-transform:uppercase;letter-spacing:.075em;color:var(--noble-label)}
+#view-nobreza .noble-card__copy strong{font:600 clamp(18px,1.5vw,22px)/1.23 Georgia,serif;color:var(--purple);margin:0}
+#view-nobreza .noble-card__kind{font-size:11px;letter-spacing:.065em;text-transform:uppercase;color:#695127;font-weight:700}
+#view-nobreza .noble-card__kind.player-tag{color:var(--house-player)}
+#view-nobreza .noble-card__leader{font-size:14px;line-height:1.45;color:#38303d}
+#view-nobreza .noble-card__location{font-size:12px;line-height:1.45;color:var(--noble-label);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+#view-nobreza .noble-card__flag{
+ grid-column:2;grid-row:1;position:relative;display:flex;align-items:center;justify-content:center;
+ width:76px;aspect-ratio:2/3;margin:0;overflow:hidden;
+ border:1px solid var(--noble-hair);border-radius:4px;
+ background:linear-gradient(135deg,#eee5d6,#fcf9f2 55%,#e8ddca);
+}
+#view-nobreza .noble-card__flag img{display:block;width:100%;height:100%;object-fit:contain;background:transparent;border-radius:0;opacity:0;transition:opacity .15s}
+#view-nobreza .noble-card__flag img.is-loaded{opacity:1}
+#view-nobreza .noble-card__flag.is-missing:before{content:'Sem imagem';font-size:11px;line-height:1.2;color:#665d56;text-align:center;padding:8px}
+#view-nobreza .noble-card__flag.is-missing img{display:none}
+#view-nobreza .noble-card:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+#view-nobreza .noble-card.royal-house{background:#fffaf0}
+#view-nobreza .noble-card.major-house{border-color:var(--house-silver)}
+#view-nobreza .noble-card.player-house{border-color:var(--house-player)}
+/* Ficha individual: título legível, conteúdo cadastral à esquerda, heráldica à direita. */
+#view-nobreza .noble-sheet{padding:clamp(19px,2.7vw,34px);overflow:visible}
+#view-nobreza .noble-profile{min-width:0}
+#view-nobreza .noble-profile-heading{padding-bottom:20px;border-bottom:1px solid var(--noble-hair);margin-bottom:24px}
+#view-nobreza .noble-profile-heading .eyebrow{color:var(--plum);margin-bottom:7px}
+#view-nobreza .noble-profile-heading h2{font:500 clamp(30px,3.1vw,43px)/1.15 Georgia,serif;color:var(--purple);margin:0 0 12px}
+#view-nobreza .noble-profile-intro{max-width:76ch;margin:0;color:#403846;text-align:left;font-size:15px;line-height:1.65}
+#view-nobreza .noble-governor{display:flex;align-items:center;gap:13px;margin-top:18px}
+#view-nobreza .noble-governor img{display:block;flex:none;width:66px;height:76px;object-fit:contain;border:1px solid var(--noble-hair);border-radius:4px;background:var(--noble-paper)}
+#view-nobreza .noble-governor span{display:block;font-size:12px;line-height:1.4;color:var(--noble-label);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+#view-nobreza .noble-governor strong{display:block;font:500 18px/1.35 Georgia,serif;color:var(--noble-ink);margin-top:4px}
+#view-nobreza .noble-profile-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,310px);gap:clamp(24px,3vw,42px);align-items:start}
+#view-nobreza .noble-profile-facts{min-width:0}
+#view-nobreza .noble-profile-section+ .noble-profile-section{border-top:1px solid #e6dfd3;margin-top:22px;padding-top:20px}
+#view-nobreza .noble-profile-section h3{font:500 20px/1.25 Georgia,serif;color:var(--purple);margin:0 0 13px}
+#view-nobreza .noble-profile-section dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 22px;margin:0}
+#view-nobreza .noble-fact{min-width:0}
+#view-nobreza .noble-fact dt,
+#view-nobreza .noble-heraldry-info dt{font:700 11px/1.4 var(--sans);letter-spacing:.075em;text-transform:uppercase;color:var(--noble-label);margin:0 0 4px}
+#view-nobreza .noble-fact dd,
+#view-nobreza .noble-heraldry-info dd{margin:0;font-size:15px;line-height:1.5;overflow-wrap:break-word;color:#302b35;text-align:left;hyphens:manual}
+#view-nobreza .noble-profile-section .noble-fact--wide{grid-column:1/-1}
+#view-nobreza .noble-heraldry-panel{
+ position:sticky;top:20px;display:flex;flex-direction:column;gap:17px;
+ padding:18px;background:var(--noble-paper);border:1px solid var(--noble-hair);
+ border-top:3px solid var(--gold);border-radius:8px;min-width:0;
+}
+#view-nobreza .noble-heraldry-flag{
+ order:-1;margin:0 auto;width:min(100%,240px);aspect-ratio:2/3;
+ position:relative;display:flex;align-items:center;justify-content:center;
+ background:#e9e0ce;border:1px solid #c8b99d;border-radius:5px;overflow:hidden;
+}
+#view-nobreza .noble-heraldry-flag img{display:block;width:100%;height:100%;object-fit:contain}
+#view-nobreza .noble-heraldry-flag.is-missing::before{content:'Brasão não localizado no acervo';font-size:13px;color:#5c5247;text-align:center;padding:12px}
+#view-nobreza .noble-heraldry-flag.is-missing img{display:none}
+#view-nobreza .noble-heraldry-info h3{font:500 19px/1.25 Georgia,serif;color:var(--purple);margin:0 0 14px}
+#view-nobreza .noble-heraldry-info dl{display:grid;gap:13px;margin:0}
+#view-nobreza .noble-heraldry-info .noble-fact{min-width:0}
+#view-nobreza .noble-motto{font-family:Georgia,serif;font-style:italic;font-size:16px}
+#view-nobreza .noble-color-list{display:flex;flex-wrap:wrap;gap:7px}
+#view-nobreza .noble-color-chip{display:inline-flex;gap:6px;align-items:center;padding:5px 8px;background:#fffdf8;border:1px solid #dbd0be;border-radius:20px;font-size:12px;line-height:1.3;color:#34303a}
+#view-nobreza .noble-color-dot{display:inline-block;flex:none;width:13px;height:13px;background:var(--noble-swatch);border:1px solid rgba(0,0,0,.23);border-radius:50%}
+#view-nobreza .noble-media{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;padding:18px 23px}
+#view-nobreza .noble-media .music-links{flex:1 1 320px;margin:0;padding:12px 16px}
+#view-nobreza .noble-downloads{display:flex;flex:1 1 220px;justify-content:flex-end;gap:10px}
+#view-nobreza .noble-downloads .quiet{min-height:44px;font-size:13px}
+#view-nobreza .noble-story summary h3{font:500 23px Georgia,serif}
+#view-nobreza #noble-history{max-width:68ch;margin:0 auto;color:#302b35}
+#view-nobreza #noble-history p{font-size:16px;line-height:1.78;white-space:normal;text-align:left;hyphens:manual;overflow-wrap:break-word;margin:0 0 1.2em}
+#view-nobreza #noble-history h4{font:500 22px/1.35 Georgia,serif;margin:26px 0 12px;color:var(--purple)}
+#view-nobreza #noble-history .noble-history-preface{font-style:italic;color:#554b5b}
+#view-nobreza .noble-source-metadata{border:1px solid var(--noble-hair);border-left:3px solid var(--gold);border-radius:6px;background:#fbf8f2;padding:14px 17px;margin:0 0 24px}
+#view-nobreza .noble-source-metadata h4{font:600 16px/1.35 var(--sans)!important;margin:0 0 12px!important;color:#42344b!important}
+#view-nobreza .noble-source-metadata dl{display:grid;gap:8px;margin:0}
+#view-nobreza .noble-source-metadata .noble-fact dt{font-size:11px;color:var(--noble-label)}
+#view-nobreza .noble-source-metadata .noble-fact dd{font-size:14px;line-height:1.55;color:#403846}
+@media(max-width:1150px){
+ #view-nobreza .noble-card{grid-template-columns:minmax(0,1fr) 66px;gap:12px}
+ #view-nobreza .noble-card__flag{width:66px}
+ #view-nobreza .noble-profile-layout{grid-template-columns:minmax(0,1fr) minmax(210px,260px);gap:22px}
+}
+@media(max-width:767px){
+ #view-nobreza .noble-card{min-height:156px;grid-template-columns:minmax(0,1fr) 68px;padding:16px;gap:12px}
+ #view-nobreza .noble-card__flag{width:68px}
+ #view-nobreza .noble-profile-layout{display:flex;flex-direction:column;align-items:stretch;gap:20px}
+ #view-nobreza .noble-heraldry-panel{position:static;order:-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(88px,112px);gap:13px;align-items:start;padding:14px}
+ #view-nobreza .noble-heraldry-flag{order:0;grid-column:2;grid-row:1;align-self:start;width:100%}
+ #view-nobreza .noble-heraldry-info{grid-column:1;grid-row:1}
+ #view-nobreza .noble-profile-section dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #view-nobreza .noble-profile-section{padding-bottom:2px}
+ #view-nobreza .noble-downloads{justify-content:flex-start}
+}
+@media(max-width:480px){
+ #view-nobreza .noble-sheet,#view-nobreza .noble-story{padding:18px}
+ #view-nobreza .noble-profile-heading h2{font-size:31px}
+ #view-nobreza .noble-card__copy strong{font-size:20px}
+ #view-nobreza .noble-profile-section dl{grid-template-columns:1fr;gap:14px}
+ #view-nobreza .noble-heraldry-panel{grid-template-columns:minmax(0,1fr) 95px}
+ #view-nobreza .noble-media{padding:14px}
+ #view-nobreza .noble-downloads{flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){
+ #view-nobreza .noble-card__flag img{transition:none}
+}
