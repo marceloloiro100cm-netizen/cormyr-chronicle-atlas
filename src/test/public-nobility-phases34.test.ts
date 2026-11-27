@@ -92,6 +92,23 @@ describe('Nobreza — fase 3, navegação sem inferência política',()=>{
 });
 function torwinterNames(houses:House[]){return houses.map(h=>h.name).sort((a,b)=>a.localeCompare(b,'pt-BR'));}
 
+describe('Nobreza — faixa de mídia sem downloads',()=>{
+ it('oculta a linha de baixar brasão/retrato e mantém as músicas da casa',()=>{
+  const app=publicFile('app.js');
+  const start=app.indexOf('function renderHouse(h){');
+  const end=app.indexOf("document.querySelectorAll('[data-region-view]')",start);
+  const view=app.slice(start,end);
+  expect(view).toContain("musicLinks(h.music,'Música da casa')");
+  expect(view).toContain("$('noble-media').hidden=!$('noble-media').innerHTML.trim()");
+  const mediaAssignments=view.match(/\$\('noble-media'\)\.innerHTML\s*=\s*[^;]+;/g)||[];
+  expect(mediaAssignments).toHaveLength(1);
+  expect(mediaAssignments[0]).not.toMatch(/Baixar brasão|Baixar retrato|noble-downloads|download=/);
+  expect(view).not.toContain('class="noble-downloads"');
+  expect(view).toContain('noble-heraldry-flag');
+  expect(view).toContain('noble-governor');
+ });
+});
+
 describe('Nobreza — fase 4, integridade de todo o acervo público',()=>{
  it('mantém 172 bandeiras webp válidas, 98 retratos e 170 arquivos históricos acessíveis',()=>{
   const all=houses();
