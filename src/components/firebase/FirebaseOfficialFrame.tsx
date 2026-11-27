@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react';
+import {CormyrSignature} from '../cormyr-signature';
 import {
   BookOpen, CalendarDays, Castle, Crown, Feather, Home,
   Landmark, LogOut, Mail, Settings2, ShieldCheck,
@@ -50,11 +51,8 @@ export function FirebaseOfficialFrame({
   return <div className="firebase-official">
     <header className="firebase-official-top">
       <a className="firebase-official-brand" href="/cormyr/index.html"
-        aria-label="Atlas Cormyr: voltar ao reino">
-        <img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr"/>
-        <span>Atlas <em>Cormyr</em>
-          <small>Atlas das Casas Nobres · Segunda Temporada</small>
-        </span>
+        aria-label="Atlas de Cormyr: voltar ao reino">
+        <CormyrSignature subtitle="Casas Nobres · Segunda Temporada"/>
       </a>
       <div className="firebase-official-top-actions">
         <a href="/cormyr/index.html" className="firebase-official-kingdom">O Reino de Cormyr</a>
@@ -133,7 +131,7 @@ export function FirebaseOfficialHome({
         </button>
       </div>
       <div className="firebase-official-hero-insignia" aria-hidden="true">
-        <img src="/cormyr/assets/cormyr.jpg" alt=""/>
+        <img src="/cormyr/brand/cormyr-icone-favicon.svg" alt=""/>
       </div>
     </div>
     <div className="firebase-official-quickstats" aria-label="Resumo dos serviços">

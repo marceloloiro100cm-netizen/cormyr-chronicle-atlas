@@ -8,6 +8,7 @@ import {formatDate} from '@/lib/calendar/harptos';
 import {NEWSPAPER_FONTS,NEWSPAPER_TEMPLATES,safeNewspaperBlocks,type NewspaperEdition,
   type NewspaperFont,type NewspaperStaffMember,type NewspaperTemplate} from '@/lib/newspaper/model';
 import {hrefWithParams,isPlainLeftClick,setUrlParams,urlLinkProps,useUrlParam} from '@/lib/navigation/url-state';
+import {CormyrSignature} from '@/components/cormyr-signature';
 import '@/components/newspaper/newspaper.css';
 import '@/components/newspaper/newspaper-editorial.css';
 
@@ -114,8 +115,7 @@ function PublicNewspaper(){
 
   return <div className={'public-folha'+(embed?' public-folha--embed':'')}>
     {!embed&&<header className="public-folha-top">
-      <a href="/cormyr/index.html" className="public-folha-brand"><img src="/cormyr/assets/cormyr.jpg" alt="" width={30} height={36}/>
-        <span>Atlas <em>Cormyr</em></span></a>
+      <a href="/cormyr/index.html" className="public-folha-brand" aria-label="Atlas de Cormyr: voltar ao reino"><CormyrSignature compact subtitle=""/></a>
       <a href="/cormyr/index.html">Voltar ao Atlas</a>
     </header>}
     <div className="public-folha-masthead">

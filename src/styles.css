@@ -1133,3 +1133,19 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .ht-chk-item--ok{border-left:3px solid #3c6e47}
 .ht-chk-item--warn{border-left:3px solid #b49048;background:#fcf8ee}
 .ht-chk-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+/* Identidade oficial compartilhada — o símbolo do dragão é o C inicial de Cormyr. */
+.cormyr-signature{display:inline-flex;align-items:center;gap:0;max-width:100%;min-width:0;white-space:nowrap;vertical-align:middle;color:inherit}
+.cormyr-signature__mark{display:block;flex:none;width:69px;height:76px;object-fit:contain;margin-right:-11px;border:0;border-radius:0;background:transparent}
+.cormyr-signature__copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-width:0}
+.cormyr-signature__kicker{display:block;font:700 10px/1.2 system-ui,sans-serif;letter-spacing:.17em;color:#dac08d}
+.cormyr-signature__word{display:block;font:700 28px/1.1 Georgia,'Times New Roman',serif;letter-spacing:.03em;color:#f4e7cb}
+.cormyr-signature__subtitle{display:block;margin-top:5px;font:600 9px/1.4 system-ui,sans-serif;letter-spacing:.085em;text-transform:uppercase;color:#c6aec9;white-space:normal}
+.cormyr-signature__extra{display:block;margin-top:2px;white-space:normal;color:#d8c8dc;font:11px/1.35 system-ui,sans-serif}
+.cormyr-signature--compact .cormyr-signature__mark{width:47px;height:54px;margin-right:-8px}
+.cormyr-signature--compact .cormyr-signature__word{font-size:22px}
+.cormyr-signature--compact .cormyr-signature__kicker{font-size:9px}
+.campaign-brand .cormyr-signature__mark{width:69px;height:76px;object-fit:contain}
+.campaign-brand .cormyr-signature__subtitle{color:#d5c1d9}
+.campaign-brand .cormyr-signature__extra small{margin-top:0}
+@media(max-width:600px){.cormyr-signature__mark,.campaign-brand .cormyr-signature__mark{width:61px;height:68px;margin-right:-10px}.cormyr-signature__word{font-size:25px}.cormyr-signature__subtitle{font-size:8px}}

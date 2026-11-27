@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import type { HeraldicHouse } from '@/lib/house/heraldry';
 import {useQuery} from '@tanstack/react-query';
 import { LanguageSwitcher } from './language-switcher';
+import { CormyrSignature } from './cormyr-signature';
 import { useTranslation } from '@/lib/i18n/context';
 import {publicCampaignTimeProjection} from '@/lib/calendar/public-time';
 
@@ -35,7 +36,7 @@ export function CampaignShell({ children,publicTime=false,heraldry=null }: {
 
   return <div className="campaign-theme min-h-screen bg-background text-foreground" data-house-theme={heraldry??undefined}>
     <header className="campaign-top">
-      <a href="/cormyr/index.html" className="campaign-brand"><img src="/cormyr/assets/cormyr.jpg" alt="Brasão de Cormyr" /><span>Atlas <em>Cormyr</em>{publicTime?<PublicClock/>:<PrivateClock/>}</span></a>
+      <a href="/cormyr/index.html" className="campaign-brand" aria-label="Atlas de Cormyr: voltar ao reino"><CormyrSignature>{publicTime?<PublicClock/>:<PrivateClock/>}</CormyrSignature></a>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
         <nav style={{display:'flex',gap:'0.8rem',alignItems:'center'}}>
           <a href="/cormyr/index.html">{t('nav.kingdomAndRegions')}</a>

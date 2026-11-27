@@ -794,3 +794,8 @@
  .public-folha-editions-menu{padding:9px;max-height:60vh}
  .public-folha-editions-menu a{padding:10px}
 }
+
+/* Jornal em tela cheia: monograma e nome conectados. */
+.public-folha-brand .cormyr-signature__mark{width:47px;height:54px;object-fit:contain;border-radius:0}
+.public-folha-brand .cormyr-signature__word{color:#fff4d9}
+.public-folha-brand .cormyr-signature__kicker{color:#d8bf8d}
