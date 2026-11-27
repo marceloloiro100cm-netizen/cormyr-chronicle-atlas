@@ -2,7 +2,7 @@
 // via the future authenticated portal adapter. Legacy Supabase tokens are
 // never extracted from localStorage or forwarded to Cloud endpoints.
 (function(){
-  const start=()=>{const s=document.createElement('script');s.src='app.js?v=20261127nav';document.body.appendChild(s);};
+  const start=()=>{const s=document.createElement('script');s.src='app.js?v=20261127hist1';document.body.appendChild(s);};
   if(window.CORMYR_ARCHIVE_ONLY){start();return;}
   const provider=window.CORMYR_FIREBASE_ID_TOKEN_PROVIDER;
   if(typeof provider!=='function'){start();return;}
