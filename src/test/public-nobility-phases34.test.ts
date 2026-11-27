@@ -139,9 +139,9 @@ describe('Nobreza — fase 4, integridade de todo o acervo público',()=>{
  it('carrega os recursos e preserva layout de desktop e celular',()=>{
   const html=publicFile('index.html'),css=publicFile('nobility-layout.css'),loader=publicFile('gm-loader.js');
   expect(html.indexOf('nobility-navigation.js')).toBeLessThan(html.indexOf('gm-loader.js'));
-  expect(html).toContain('nobility-layout.css?v=20261127p34');
-  expect(html).toContain('app.js?v=20261127nav');
-  expect(loader).toContain("s.src='app.js?v=20261127nav'");
+  expect(html).toContain('nobility-layout.css?v=20261127hist1');
+  expect(html).toContain('app.js?v=20261127hist1');
+  expect(loader).toContain("s.src='app.js?v=20261127hist1'");
   for(const path of ['app.js','nobility-format.js','nobility-navigation.js']){
    expect(()=>new Function(publicFile(path)),path).not.toThrow();
   }
@@ -149,7 +149,7 @@ describe('Nobreza — fase 4, integridade de todo o acervo público',()=>{
    expect(css,breakpoint).toContain(breakpoint);
   }
   expect(css).toContain('.noble-relationship-list');
-  expect(css).toContain('.noble-history-toc');
+  expect(css).toContain('.noble-history-toc-link');
   expect(css).toContain('object-fit:contain');
   expect(css).toContain(':focus-visible');
  });
