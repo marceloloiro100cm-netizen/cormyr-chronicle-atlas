@@ -84,10 +84,10 @@ describe('Nobreza — fase 3, navegação sem inferência política',()=>{
   }
   expect(nav.outline([{type:'paragraph',text:'Texto sem capítulo'}]).show).toBe(false);
   const app=publicFile('app.js');
-  expect(app).toContain('Índice do histórico');
+  expect(app).toContain('noble-history-sidebar-head');
   expect(app).toContain('data-noble-section');
   expect(app).toContain('heading.focus({preventScroll:true})');
-  expect(app).toContain("if(story)story.open=false");
+  expect(app).toContain("if(story)story.open=true");
  });
 });
 function torwinterNames(houses:House[]){return houses.map(h=>h.name).sort((a,b)=>a.localeCompare(b,'pt-BR'));}
