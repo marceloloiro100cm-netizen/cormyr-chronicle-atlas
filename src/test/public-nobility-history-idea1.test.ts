@@ -97,7 +97,7 @@ describe('História e registro da casa — Ideia 1 Adaptativa',()=>{
   const heading=target.querySelector<HTMLElement>('[data-noble-heading]')!;
   heading.scrollIntoView=vi.fn();
   search.value='';search.dispatchEvent(new dom.window.Event('input'));
-  const first=buttons[0];first.click();
+  const first=buttons[0]!;first.click();
   expect(heading.scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({block:'start'}));
   expect(first.getAttribute('aria-current')).toBe('location');
  });
