@@ -336,15 +336,79 @@ const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'hou
    })
    .finally(()=>{h.galleryLoading=false;if(state.noble.house===h.nobleId)renderHouseGallery(h);});
  }
-function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=>normalize(x.name)===normalize(q.parent||''));const back=state.houseHistory.length?nobleHouses.find(x=>x.nobleId===state.houseHistory.at(-1)):null;
-  const backButton=$('house-history-back');if(backButton){backButton.hidden=!back;backButton.textContent=back?'← Voltar à Casa '+back.name:'← Voltar à casa anterior';}
-  const hierarchyLabel='Suserano';const fields=[['Região',h.region],[hierarchyLabel,q.parent|| (q.kind==='crown'?'Coroa reinante':'Não definido no acervo')],['Lorde / Lady',h.leader],['Ramo',h.clanBranch],['Precedência',h.clanRank?'Clã '+h.clanRank:null],['Regência',h.regent],['Idade',h.age],['Raça',h.race],['Títulos e epítetos',h.titles],['Fundação e investiduras',h.founding],['Condição',h.status],['Cores',h.colors],['Símbolo',h.symbol],['Lema',h.motto],['Cidade',h.city],['Castelo',h.castle]].filter(x=>x[1]);
- $('house-details').innerHTML=`<div class="house-detail-grid">${h.crest?`<img src="${esc(h.crest)}" alt="Brasão da Casa ${esc(h.name)}" width="230" height="350">`:'<div class="crest-missing" style="background:var(--purple)">Brasão não localizado no acervo</div>'}<div><p class="eyebrow">${esc(h.region)}</p><h2 id="house-title" tabindex="-1">Casa ${esc(h.name)}</h2>${h.description?`<p>${esc(h.description)}</p>`:''}<dl class="house-data">${fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${k===hierarchyLabel&&parent&&parent.nobleId!==h.nobleId?`<button type="button" class="house-parent-link" data-parent-noble="${esc(parent.nobleId)}">${esc(v)} · Ver ficha</button>`:esc(v)}</dd>`).join('')}</dl></div></div>`;
- $('noble-media').innerHTML=`${musicLinks(h.music,'Música da casa')}<div class="noble-downloads"><a class="quiet" href="${esc(h.crest)}" download="Brasao-${esc(h.nobleId)}.webp">Baixar brasão</a>${h.portrait?`<a class="quiet" href="${esc(h.portrait)}" download="Retrato-${esc(h.nobleId)}.jpg">Baixar imagem do lorde / lady</a>`:''}</div>${h.portrait?`<figure class="noble-portrait"><img src="${esc(h.portrait)}" alt="Imagem de ${esc(h.leader||h.name)}" loading="lazy"><figcaption>${esc(h.leader)}</figcaption></figure>`:'<p class="small">Retrato do lorde ou lady ainda não localizado no acervo.</p>'}`;
+function watchNobleImages(scope){
+ if(!scope)return;
+ scope.querySelectorAll('img[data-noble-crest]').forEach(img=>{
+  const frame=img.closest('.noble-card__flag,.noble-heraldry-flag');
+  const loaded=()=>img.classList.add('is-loaded');
+  const missing=()=>frame?.classList.add('is-missing');
+  img.addEventListener('load',loaded,{once:true});
+  img.addEventListener('error',missing,{once:true});
+  if(img.complete){if(img.naturalWidth>0)loaded();else missing();}
+ });
+}
+function renderHouse(h){
+ const q=h.hierarchy||{},fmt=window.CORMYR_NOBILITY_FORMAT;
+ const parent=nobleHouses.find(x=>normalize(x.name)===normalize(q.parent||''));
+ const back=state.houseHistory.length?nobleHouses.find(x=>x.nobleId===state.houseHistory.at(-1)):null;
+ const backButton=$('house-history-back');
+ if(backButton){backButton.hidden=!back;backButton.textContent=back?'← Voltar à Casa '+back.name:'← Voltar à casa anterior';}
+ const kind=q.kind==='crown'||h.catalogClassification==='royal'?'Casa Real':q.kind==='regional'||h.catalogClassification==='major'?'Casa Maior':q.kind==='historical'?'Casa Histórica':'Casa Nobre';
+ const fact=(label,value,options={})=>{
+  if(value===undefined||value===null||String(value).trim()==='')return '';
+  return `<div class="noble-fact${options.wide?' noble-fact--wide':''}"><dt>${esc(label)}</dt><dd>${options.html?value:esc(value)}</dd></div>`;
+ };
+ const section=(title,fields)=>{
+  const body=fields.filter(Boolean).join('');
+  return body?`<section class="noble-profile-section"><h3>${esc(title)}</h3><dl>${body}</dl></section>`:'';
+ };
+ const suzerain=q.parent?(parent&&parent.nobleId!==h.nobleId
+  ?`<button type="button" class="house-parent-link" data-parent-noble="${esc(parent.nobleId)}">${esc(q.parent)} · Ver ficha</button>`:esc(q.parent))
+  :(q.kind==='crown'?'Coroa reinante':'Não definido no acervo');
+ const government=section('Governo e relações políticas',[
+  fact('Suserano',suzerain,{html:true,wide:true}),
+  fact('Lorde / Lady',h.leader),
+  fact('Regência',h.regent),
+  fact('Condição',h.status),
+ ]);
+ const city=fmt?.isMissingPlace(h.city)?'':h.city;
+ const castle=fmt?.isMissingPlace(h.castle)?'':h.castle;
+ const territory=section('Terras e sede',[
+  fact('Região',h.region),
+  fact('Cidade',city),
+  fact('Castelo',castle),
+ ]);
+ const lineage=section('Linhagem e investiduras',[
+  fact('Ramo',h.clanBranch),
+  fact('Precedência',h.clanRank?'Clã '+h.clanRank:null),
+  fact('Idade',h.age),
+  fact('Raça',h.race),
+  fact('Títulos e epítetos',h.titles,{wide:true}),
+  fact('Fundação e investiduras',h.founding,{wide:true}),
+ ]);
+ const colorTokens=fmt?.colorTokens(h.colors)||[{label:h.colors,swatch:null}];
+ const colors=h.colors?`<div class="noble-fact"><dt>Cores</dt><dd><div class="noble-color-list">${colorTokens.map(token=>`<span class="noble-color-chip">${token.swatch?`<span class="noble-color-dot" style="--noble-swatch:${token.swatch}" aria-hidden="true"></span>`:''}${esc(token.label)}</span>`).join('')}</div></dd></div>`:'';
+ const heraldry=[fact('Lema',h.motto),colors,fact('Símbolo',h.symbol)].filter(Boolean).join('');
+ const portrait=h.portrait?`<div class="noble-governor"><img src="${esc(h.portrait)}" alt="Retrato de ${esc(h.leader||h.name)}" loading="lazy"><div><span>Retrato do governante</span><strong>${esc(h.leader||'Casa '+h.name)}</strong></div></div>`:'';
+ const flag=h.crest?`<img src="${esc(h.crest)}" data-noble-crest alt="Brasão da Casa ${esc(h.name)}" width="220" height="330" loading="eager">`:'';
+ $('house-details').innerHTML=`<article class="noble-profile">
+  <header class="noble-profile-heading"><p class="eyebrow">${esc(h.region)} · ${esc(kind)}</p><h2 id="house-title" tabindex="-1">Casa ${esc(h.name)}</h2>${h.description?`<p class="noble-profile-intro">${esc(h.description)}</p>`:''}${portrait}</header>
+  <div class="noble-profile-layout"><div class="noble-profile-facts">${government}${territory}${lineage}</div>
+   <aside class="noble-heraldry-panel" aria-label="Heráldica da Casa ${esc(h.name)}">
+    <div class="noble-heraldry-info"><h3>Heráldica</h3>${heraldry?`<dl>${heraldry}</dl>`:'<p class="small">Símbolos heráldicos ainda não registrados.</p>'}</div>
+    <figure class="noble-heraldry-flag${h.crest?'':' is-missing'}">${flag}</figure>
+   </aside>
+  </div></article>`;
+ const downloads=[h.crest?`<a class="quiet" href="${esc(h.crest)}" download="Brasao-${esc(h.nobleId)}.webp">Baixar brasão</a>`:'',
+  h.portrait?`<a class="quiet" href="${esc(h.portrait)}" download="Retrato-${esc(h.nobleId)}.jpg">Baixar retrato</a>`:''].filter(Boolean).join('');
+ $('noble-media').innerHTML=`${musicLinks(h.music,'Música da casa')}${downloads?`<div class="noble-downloads">${downloads}</div>`:''}`;
+ $('noble-media').hidden=!$('noble-media').innerHTML.trim();
+ watchNobleImages($('house-details'));
  renderHouseGallery(h);loadDriveGallery(h);
  $('house-details').querySelector('[data-parent-noble]')?.addEventListener('click',()=>{if(parent)openHouse(parent);});
  loadHouseHistory(h);
- }
+}
+
  document.querySelectorAll('[data-region-view]').forEach(button=>button.addEventListener('click',()=>{state.regionView=button.dataset.regionView;renderRegion();writeRoute();}));
  regionSelect.addEventListener('change',()=>{state.region=regionSelect.value;state.houseQuery='';renderRegion();showView('regioes');});
  function setThemes(){const themes=[...new Set(data.events.filter(e=>e.kind===state.kind).map(e=>e.theme))];$('theme').innerHTML='<option value="">Todos os temas</option>'+themes.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');if(!themes.includes(state.theme))state.theme='';$('theme').value=state.theme;}
@@ -446,23 +510,64 @@ function renderHouse(h){const q=h.hierarchy||{};const parent=nobleHouses.find(x=
  $('noble-region').innerHTML='<option value="">Todas as regiões</option>'+data.regions.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
  const historyCache=new Map();let historyRequest=0;
  function nobleMatches(h){const n=state.noble;return (!n.region||h.region===n.region)&&['name','leader','castle','city'].every(key=>{const value=normalize(n[key].trim());return !value||normalize([h[key],...(h[key+'Aliases']||[]),...(key==='name'?h.aliases||[]:[])].join(' ')).includes(value);});}
- function renderNobility(){
-  const n=state.noble;for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).value=n[key];
-  const selected=nobleHouses.find(h=>h.nobleId===n.house);$('noble-detail').hidden=!selected;$('noble-catalog').hidden=!!selected;
-  if(selected){renderHouse(selected);return;}historyRequest++;
-  const found=nobleHouses.filter(nobleMatches),pages=Math.max(1,Math.ceil(found.length/24));n.page=Math.min(n.page,pages);const visible=found.slice((n.page-1)*24,n.page*24);
-  $('noble-count').textContent=`${found.length} de ${nobleHouses.length} casas · ${visible.length} nesta página`;
-  $('noble-list').innerHTML=visible.map(h=>`<button class="noble-card${h.catalogClassification==='royal'||h.hierarchy?.kind==='crown'?' royal-house':PLAYER_HOUSES.has(h.nobleId)?' player-house':h.catalogClassification==='major'||h.hierarchy?.kind==='regional'?' major-house':''}" type="button" data-noble="${esc(h.nobleId)}"><img src="${esc(h.crest)}" alt="" width="70" height="100" loading="lazy"><span><small>${esc(h.region)}</small><strong>Casa ${esc(h.name)}</strong>${h.hierarchy?.kind==='crown'?'<small>Royal House</small>':h.hierarchy?.kind==='regional'?'<small>Major House</small>':''}${PLAYER_HOUSES.has(h.nobleId)?'<small class="player-tag">Casa de Jogador</small>':''}<span>${esc(h.leader||'Lorde / Lady a confirmar')}</span><span class="small">${esc([h.city,h.castle].filter(Boolean).join(' · '))}</span></span></button>`).join('');
-  $('noble-list').querySelectorAll('[data-noble]').forEach(b=>b.addEventListener('click',()=>openHouse(nobleHouses.find(h=>h.nobleId===b.dataset.noble))));
-  $('noble-empty').hidden=found.length>0;$('noble-pagination').hidden=found.length<=24;$('noble-prev').disabled=n.page<=1;$('noble-next').disabled=n.page>=pages;$('noble-page').textContent=`Página ${n.page} de ${pages}`;
+function renderNobility(){
+ const n=state.noble,fmt=window.CORMYR_NOBILITY_FORMAT;
+ for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).value=n[key];
+ const selected=nobleHouses.find(h=>h.nobleId===n.house);
+ $('noble-detail').hidden=!selected;$('noble-catalog').hidden=!!selected;
+ if(selected){renderHouse(selected);return;}historyRequest++;
+ const found=nobleHouses.filter(nobleMatches),pages=Math.max(1,Math.ceil(found.length/24));
+ n.page=Math.min(n.page,pages);
+ const visible=found.slice((n.page-1)*24,n.page*24);
+ $('noble-count').textContent=`${found.length} de ${nobleHouses.length} casas · ${visible.length} nesta página`;
+ $('noble-list').innerHTML=visible.map(h=>{
+  const q=h.hierarchy||{};
+  const royal=h.catalogClassification==='royal'||q.kind==='crown';
+  const major=h.catalogClassification==='major'||q.kind==='regional';
+  const classification=royal?' royal-house':PLAYER_HOUSES.has(h.nobleId)?' player-house':major?' major-house':'';
+  const type=royal?'Casa Real':major?'Casa Maior':'';
+  const places=[h.city,h.castle].filter(value=>value&&!(fmt?.isMissingPlace(value))).join(' · ');
+  const img=h.crest?`<img src="${esc(h.crest)}" alt="" width="76" height="114" loading="lazy" data-noble-crest>`:'';
+  return `<button class="noble-card${classification}" type="button" data-noble="${esc(h.nobleId)}">
+   <span class="noble-card__copy"><small class="noble-card__region">${esc(h.region)}</small>
+    <strong>Casa ${esc(h.name)}</strong>${type?`<small class="noble-card__kind">${esc(type)}</small>`:''}
+    ${PLAYER_HOUSES.has(h.nobleId)?'<small class="noble-card__kind player-tag">Casa de Jogador</small>':''}
+    ${h.leader?`<span class="noble-card__leader">${esc(h.leader)}</span>`:''}
+    ${places?`<span class="noble-card__location" title="${esc(places)}">${esc(places)}</span>`:''}
+   </span>
+   <span class="noble-card__flag${h.crest?'':' is-missing'}" aria-hidden="true">${img}</span>
+  </button>`;
+ }).join('');
+ watchNobleImages($('noble-list'));
+ $('noble-list').querySelectorAll('[data-noble]').forEach(b=>b.addEventListener('click',()=>openHouse(nobleHouses.find(h=>h.nobleId===b.dataset.noble))));
+ $('noble-empty').hidden=found.length>0;$('noble-pagination').hidden=found.length<=24;
+ $('noble-prev').disabled=n.page<=1;$('noble-next').disabled=n.page>=pages;$('noble-page').textContent=`Página ${n.page} de ${pages}`;
+}
+
+async function loadHouseHistory(h){
+ const request=++historyRequest,target=$('noble-history');
+ target.innerHTML='<p role="status">Carregando história…</p>';
+ if(!h.historyPath&&!h.publicNarrative){target.innerHTML='<p>A história desta casa ainda não está disponível nos documentos consultados. Os dados conhecidos estão na ficha acima.</p>';return;}
+ try{
+  let doc=h.publicNarrative?{text:h.publicNarrative}:historyCache.get(h.historyPath);
+  if(!doc){const response=await fetch(h.historyPath);if(!response.ok)throw new Error('HTTP '+response.status);doc=await response.json();historyCache.set(h.historyPath,doc);}
+  if(request!==historyRequest)return;
+  const parsed=window.CORMYR_NOBILITY_FORMAT?.parseHistory(doc.text,h);
+  if(!parsed){
+   const paragraphs=String(doc.text||'').split(/\r?\n/).filter(t=>t.trim());
+   target.innerHTML=paragraphs.map(t=>`<p>${esc(t.trim())}</p>`).join('');return;
+  }
+  const preface=parsed.preface.map(t=>`<p class="noble-history-preface">${esc(t)}</p>`).join('');
+  const additional=parsed.supplemental.length?`<aside class="noble-source-metadata" aria-label="Informações adicionais do registro original"><h4>Informações do registro original</h4><dl>${parsed.supplemental.map(({label,value})=>`<div class="noble-fact"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl></aside>`:'';
+  const narrative=parsed.body.map(item=>item.type==='separator'?'<hr>':item.type==='heading'?`<h4>${esc(item.text)}</h4>`:`<p>${esc(item.text)}</p>`).join('');
+  target.innerHTML=preface+additional+narrative||'<p>A história desta casa ainda não está disponível no acervo.</p>';
+ }catch(error){
+  if(request!==historyRequest)return;
+  target.innerHTML='<p>Não foi possível carregar a história. Tente novamente.</p><button type="button" class="quiet" data-retry-history>Tentar novamente</button>';
+  target.querySelector('[data-retry-history]').addEventListener('click',()=>loadHouseHistory(h));
  }
- async function loadHouseHistory(h){
-  const request=++historyRequest,target=$('noble-history');target.innerHTML='<p role="status">Carregando história…</p>';
-  if(!h.historyPath&&!h.publicNarrative){target.innerHTML='<p>A história desta casa ainda não está disponível nos documentos consultados. Os dados conhecidos estão na ficha acima.</p>';return;}
-  try{let doc=h.publicNarrative?{text:h.publicNarrative}:historyCache.get(h.historyPath);if(!doc){const response=await fetch(h.historyPath);if(!response.ok)throw new Error('HTTP '+response.status);doc=await response.json();historyCache.set(h.historyPath,doc);}if(request!==historyRequest)return;
-   const paragraphs=doc.text.split(/\r?\n/).filter(t=>t.trim());target.innerHTML=paragraphs.map(t=>/^[_━─]{4,}$/.test(t.trim())?'<hr>':t.trim().length<100&&!/[.!?;:]$/.test(t.trim())&&!t.includes(':')?`<h4>${esc(t)}</h4>`:`<p>${esc(t)}</p>`).join('');
-  }catch(error){if(request!==historyRequest)return;target.innerHTML='<p>Não foi possível carregar a história. Tente novamente.</p><button type="button" class="quiet" data-retry-history>Tentar novamente</button>';target.querySelector('[data-retry-history]').addEventListener('click',()=>loadHouseHistory(h));}
- }
+}
+
  for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).addEventListener(key==='region'?'change':'input',e=>{state.noble[key]=e.target.value;state.noble.page=1;renderNobility();writeRoute();});
  $('noble-reset').addEventListener('click',()=>{Object.assign(state.noble,{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''});renderNobility();writeRoute();$('noble-name').focus();});
  $('noble-back').addEventListener('click',()=>{state.houseHistory=[];state.noble.house='';renderNobility();writeRoute(true);$('nobility-title').focus();});
