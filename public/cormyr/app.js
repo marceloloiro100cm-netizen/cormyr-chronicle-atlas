@@ -594,8 +594,16 @@ async function loadHouseHistory(h){
   }
   const preface=parsed.preface.map(t=>`<p class="noble-history-preface">${esc(t)}</p>`).join('');
   const additional=parsed.supplemental.length?`<aside class="noble-source-metadata" aria-label="Informações adicionais do registro original"><h4>Informações do registro original</h4><dl>${parsed.supplemental.map(({label,value})=>`<div class="noble-fact"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl></aside>`:'';
-  const narrative=parsed.body.map(item=>item.type==='separator'?'<hr>':item.type==='heading'?`<h4>${esc(item.text)}</h4>`:`<p>${esc(item.text)}</p>`).join('');
-  target.innerHTML=preface+additional+narrative||'<p>A história desta casa ainda não está disponível no acervo.</p>';
+  const outline=window.CORMYR_NOBILITY_NAV?.outline(parsed.body);
+  const toc=outline?.show?`<details class="noble-history-toc"><summary>Índice do histórico · ${outline.entries.length} seções</summary><nav aria-label="Seções deste histórico">${outline.entries.map(entry=>`<button type="button" data-noble-section="${esc(entry.id)}">${esc(entry.title)}</button>`).join('')}</nav></details>`:'';
+  const narrative=parsed.body.map((item,index)=>item.type==='separator'?'<hr>':item.type==='heading'?`<h4 id="noble-history-section-${index}" tabindex="-1">${esc(item.text)}</h4>`:`<p>${esc(item.text)}</p>`).join('');
+  target.innerHTML=preface+additional+toc+narrative||'<p>A história desta casa ainda não está disponível no acervo.</p>';
+  target.querySelectorAll('[data-noble-section]').forEach(button=>button.addEventListener('click',()=>{
+   const heading=target.querySelector('#'+button.dataset.nobleSection);
+   if(!heading)return;
+   heading.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+   heading.focus({preventScroll:true});
+  }));
  }catch(error){
   if(request!==historyRequest)return;
   target.innerHTML='<p>Não foi possível carregar a história. Tente novamente.</p><button type="button" class="quiet" data-retry-history>Tentar novamente</button>';
