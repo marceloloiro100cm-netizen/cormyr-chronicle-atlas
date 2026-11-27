@@ -296,7 +296,7 @@ const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'hou
   if(state.view==='nobreza'&&!$('noble-catalog').hidden){
    nobleCatalogReturn={hash:location.hash,scrollY:window.scrollY,focusId:h.nobleId};
    history.replaceState({...history.state,[nobleCatalogReturnKey]:nobleCatalogReturn},'',location.href);
-  }else if(!state.noble.house)nobleCatalogReturn=null;
+  }else if(state.view!=='nobreza')nobleCatalogReturn=null;
  }
  function restoreNobleCatalogPosition(fromBrowser=false){
   if(state.view!=='nobreza'||state.noble.house)return;
