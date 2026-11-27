@@ -29,7 +29,7 @@ describe('Nobreza — fase 3, navegação sem inferência política',()=>{
   const counts=all.reduce((result,h)=>{const type=nav.kindOf(h);result[type]=(result[type]||0)+1;return result;},{} as Record<string,number>);
   expect(counts).toEqual({royal:1,vassal:141,major:10,historical:16,unconfirmed:4});
   expect(nav.matchesKind(byName(all,'Phelles'),'royal')).toBe(true);
-  expect(nav.matchesKind(byName(all,'Obarskyr'),'unconfirmed')).toBe(true);
+  expect(nav.matchesKind(byName(all,'Drauthglas'),'unconfirmed')).toBe(true);
   expect(html).toContain('id="noble-kind"');
   expect(html).toContain('nobility-navigation.js?v=20261127p34');
   expect(app).toContain("kind:params.get('kind')||''");
