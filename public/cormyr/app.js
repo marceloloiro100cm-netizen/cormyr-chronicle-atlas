@@ -385,8 +385,16 @@ function renderHouse(h){
  const suzerain=q.parent?(parent&&parent.nobleId!==h.nobleId
   ?`<button type="button" class="house-parent-link" data-parent-noble="${esc(parent.nobleId)}">${esc(q.parent)} · Ver ficha</button>`:esc(q.parent))
   :(q.kind==='crown'?'Coroa reinante':'Não definido no acervo');
+ const relations=window.CORMYR_NOBILITY_NAV?.relations(nobleHouses,h);
+ const renderRelations=(label,items)=>{
+  if(!items?.length)return '';
+  return `<section class="noble-profile-section noble-relationship-section"><h3>${esc(label)}</h3><ul class="noble-relationship-list">${items.map(relative=>`<li><button class="noble-related-link" type="button" data-noble-related="${esc(relative.nobleId)}">Casa ${esc(relative.name)}</button><span>${esc(relative.region)}</span></li>`).join('')}</ul></section>`;
+ };
+ const politicalRelations=renderRelations('Casas sob suserania documentada',relations?.direct)
+  +renderRelations('Vínculos históricos registrados',relations?.historical)
+  +renderRelations('Vínculos a confirmar',relations?.pending);
  const government=section('Governo e relações políticas',[
-  fact('Suserano',suzerain,{html:true,wide:true}),
+  fact(q.kind==='historical'?'Suserania (registro histórico)':'Suserano',suzerain,{html:true,wide:true}),
   fact('Lorde / Lady',h.leader),
   fact('Regência',h.regent),
   fact('Condição',h.status),
@@ -413,7 +421,7 @@ function renderHouse(h){
  const flag=h.crest?`<img src="${esc(h.crest)}" data-noble-crest alt="Brasão da Casa ${esc(h.name)}" width="220" height="330" loading="eager">`:'';
  $('house-details').innerHTML=`<article class="noble-profile">
   <header class="noble-profile-heading"><p class="eyebrow">${esc(h.region)} · ${esc(kind)}</p><h2 id="house-title" tabindex="-1">Casa ${esc(h.name)}</h2>${h.description?`<p class="noble-profile-intro">${esc(h.description)}</p>`:''}${portrait}</header>
-  <div class="noble-profile-layout"><div class="noble-profile-facts">${government}${territory}${lineage}</div>
+  <div class="noble-profile-layout"><div class="noble-profile-facts">${government}${politicalRelations}${territory}${lineage}</div>
    <aside class="noble-heraldry-panel" aria-label="Heráldica da Casa ${esc(h.name)}">
     <div class="noble-heraldry-info"><h3>Heráldica</h3>${heraldry?`<dl>${heraldry}</dl>`:'<p class="small">Símbolos heráldicos ainda não registrados.</p>'}</div>
     <figure class="noble-heraldry-flag${h.crest?'':' is-missing'}">${flag}</figure>
@@ -426,6 +434,11 @@ function renderHouse(h){
  watchNobleImages($('house-details'));
  renderHouseGallery(h);loadDriveGallery(h);
  $('house-details').querySelector('[data-parent-noble]')?.addEventListener('click',()=>{if(parent)openHouse(parent);});
+ $('house-details').querySelectorAll('[data-noble-related]').forEach(button=>button.addEventListener('click',()=>{
+  const related=nobleHouses.find(x=>x.nobleId===button.dataset.nobleRelated);
+  if(related)openHouse(related);
+ }));
+ const story=$('noble-detail').querySelector('.noble-story');if(story)story.open=false;
  loadHouseHistory(h);
 }
 
