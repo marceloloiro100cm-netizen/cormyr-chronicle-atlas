@@ -65,7 +65,9 @@ describe('Nobreza pública — fases 1 e 2',()=>{
   const parsed=fmt.parseHistory(original,ashkar);
   expect(original).toContain('Nome: Kael Ashkar.');
   expect(parsed.body.some(p=>p.text.includes('As terras de Vhal-Zar'))).toBe(true);
-  expect(parsed.body.some(p=>p.text.startsWith('Nome:'))).toBe(false);
+  expect(parsed.body.some(p=>p.text==='Nome: Kael Ashkar.')).toBe(false);
+  // Menções a outros personagens no restante do documento não são removidas.
+  expect(parsed.body.some(p=>p.text==='Nome: Phoinix')).toBe(true);
   expect(parsed.supplemental.some(p=>p.label==='Fama')).toBe(true);
   expect(parsed.supplemental.some(p=>p.label==='Vassalos')).toBe(true);
   // "Tons de ouro..." é diferente da lista do catálogo e deve ser preservado.
