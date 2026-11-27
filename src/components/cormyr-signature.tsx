@@ -6,8 +6,7 @@ export function CormyrSignature({subtitle='Crônicas do Reino',compact=false,chi
   compact?:boolean;
   children?:ReactNode;
 }){
-  return <span className={'cormyr-signature'+(compact?' cormyr-signature--compact':'')}
-    >
+  return <span className={'cormyr-signature'+(compact?' cormyr-signature--compact':'')}>
     <img className="cormyr-signature__mark" src="/cormyr/brand/cormyr-icone-favicon.svg"
       alt="" aria-hidden="true" width={67} height={74}/>
     <span className="cormyr-signature__copy">
