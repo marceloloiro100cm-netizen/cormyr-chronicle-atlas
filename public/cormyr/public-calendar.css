@@ -236,3 +236,11 @@ html.is-embedded .chronicle{padding:4px 0 28px;max-width:none}
   .harptos-days{grid-template-columns:repeat(5,minmax(0,1fr))}
   .chronicle-toolbar input[type="search"],.chronicle-era-bar input[type="search"]{width:100%;min-width:0;flex:1 1 100%}
 }
+
+/* A marca oficial aparece quando o calendário é aberto fora do Atlas. */
+.chronicle-brand{display:inline-flex;align-items:center;gap:0;margin-bottom:12px;color:#2f1b3d;text-decoration:none}
+.chronicle-brand img{width:47px;height:52px;object-fit:contain;margin-right:-7px}
+.chronicle-brand span{display:flex;flex-direction:column}
+.chronicle-brand small{font:700 9px/1.2 system-ui,sans-serif;letter-spacing:.16em}
+.chronicle-brand strong{font:700 23px/1.1 Georgia,serif;letter-spacing:.025em}
+html.is-embedded .chronicle-brand{display:none}
