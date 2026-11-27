@@ -70,7 +70,7 @@
   }
   const body=lines.slice(position).map(clean).filter(Boolean).map(line=>{
    if(/^[_━─—-]{4,}$/.test(line))return {type:'separator',text:''};
-   const isHeading=line.length<100&&!/[.!?;:]$/.test(line)&&!line.includes(':');
+   const isHeading=line.length>=4&&line.length<100&&!/[.!?;:]["”'’»]?$/.test(line)&&!line.includes(':')&&!/^[“"'‘«\d•–—]/.test(line);
    return {type:isHeading?'heading':'paragraph',text:line};
   });
   return {preface,supplemental,body};
