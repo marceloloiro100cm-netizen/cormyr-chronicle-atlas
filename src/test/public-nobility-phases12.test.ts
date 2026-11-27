@@ -8,7 +8,7 @@ const catalogue=()=>JSON.parse(archiveFile('data.js').replace(/^window\.CORMYR_D
 const formatter=()=>{
  const ctx:{window:Record<string,unknown>}={window:{}};
  runInNewContext(archiveFile('nobility-format.js'),ctx);
- return ctx.window.CORMYR_NOBILITY_FORMAT as {
+ return ctx.window['CORMYR_NOBILITY_FORMAT'] as {
   isMissingPlace:(value:string)=>boolean;
   colorTokens:(value:string)=>{label:string;swatch:string|null}[];
   parseHistory:(raw:string,house:Record<string,unknown>)=>{
@@ -19,7 +19,7 @@ const formatter=()=>{
 };
 const house=(name:string)=>{
  const all=catalogue().regions.flatMap((r:{houses:Record<string,unknown>[]})=>r.houses);
- const found=all.find((h:Record<string,unknown>)=>h.name===name);
+ const found=all.find((h:Record<string,unknown>)=>h['name']===name);
  if(!found)throw new Error('Casa ausente: '+name);
  return found as Record<string,unknown>;
 };
@@ -57,7 +57,7 @@ describe('Nobreza pública — fases 1 e 2',()=>{
   expect(fmt.colorTokens('Ferro & Laranja').map(t=>t.label)).toEqual(['Ferro','Laranja']);
   expect(fmt.isMissingPlace('Sem cidade')).toBe(true);
   expect(fmt.isMissingPlace('Cinzaria')).toBe(false);
-  expect(house('Ashkar').city).toBe('Sem cidade');
+  expect(house('Ashkar')['city']).toBe('Sem cidade');
  });
  it('remove apenas metadados idênticos da apresentação sem perder Fama e Vassalos',()=>{
   const fmt=formatter(),ashkar=house('Ashkar');
