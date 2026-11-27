@@ -7,7 +7,7 @@
  const PLAYER_HOUSES=new Set();
  const ROYAL_HOUSE='Phelles';
  const imageViewer=document.createElement('script');imageViewer.src='image-viewer.js';document.body.append(imageViewer);
-const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
+const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'houses',hierarchyEra:'post',kind:'mundanos',query:'',theme:'',eventPage:1,houseQuery:'',adventure:'pacto-varzea',houseHistory:[],noble:{region:'',kind:'',name:'',leader:'',castle:'',city:'',page:1,house:''}};
  const KINGDOM_TABS=['coroa','casas','pilares','linha'];
  const lawState={query:'',topic:'',page:1,article:null};
   const regionSelect=$('region-select');
@@ -30,7 +30,7 @@ const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'hou
  function readHash(){const [h,query='']=location.hash.slice(1).split('?');const params=new URLSearchParams(query);state.deepEvent=null;
   if(!h||h==='reino'){state.view='reino';state.kingdomTab=KINGDOM_TABS.includes(params.get('aba'))?params.get('aba'):'coroa';}
   else if(h==='regioes'){state.view='regioes';state.region='Crownlands';state.regionView='houses';state.hierarchyEra='post';}
-  else if(h==='nobreza'){state.view='nobreza';state.noble={region:params.get('region')||'',name:params.get('name')||'',leader:params.get('leader')||'',castle:params.get('castle')||'',city:params.get('city')||'',page:Math.max(1,parseInt(params.get('page'),10)||1),house:params.get('house')||''};}
+  else if(h==='nobreza'){state.view='nobreza';state.noble={region:params.get('region')||'',kind:params.get('kind')||'',name:params.get('name')||'',leader:params.get('leader')||'',castle:params.get('castle')||'',city:params.get('city')||'',page:Math.max(1,parseInt(params.get('page'),10)||1),house:params.get('house')||''};}
   else if(h==='eventos'){state.view='eventos';state.kind=params.get('tipo')==='misticos'?'misticos':'mundanos';state.query=params.get('busca')||'';state.theme=params.get('tema')||'';state.eventPage=Math.max(1,parseInt(params.get('pagina'),10)||1);}
   else if(h==='aventura'||h==='notebook-lm'||h==='constituicao'||h==='musicas'||h==='jornal'||h==='calendario'){state.view=h;
     if(h==='constituicao'){lawState.query=params.get('busca')||'';lawState.topic=params.get('tema')||'';
@@ -290,8 +290,28 @@ const state={view:'reino',kingdomTab:'coroa',region:'Crownlands',regionView:'hou
  document.querySelectorAll('[data-region-view]').forEach(b=>{const active=b.dataset.regionView===state.regionView;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 
  }
+ const nobleCatalogReturnKey='nobleCatalogReturn';
+ let nobleCatalogReturn=null;
+ function captureNobleCatalogPosition(h){
+  if(state.view==='nobreza'&&!$('noble-catalog').hidden){
+   nobleCatalogReturn={hash:location.hash,scrollY:window.scrollY,focusId:h.nobleId};
+   history.replaceState({...history.state,[nobleCatalogReturnKey]:nobleCatalogReturn},'',location.href);
+  }else if(!state.noble.house)nobleCatalogReturn=null;
+ }
+ function restoreNobleCatalogPosition(fromBrowser=false){
+  if(state.view!=='nobreza'||state.noble.house)return;
+  const remembered=fromBrowser?history.state?.[nobleCatalogReturnKey]:nobleCatalogReturn;
+  if(!remembered||remembered.hash!==location.hash)return;
+  requestAnimationFrame(()=>{
+   if(state.view!=='nobreza'||state.noble.house)return;
+   const focused=[...$('noble-list').querySelectorAll('[data-noble]')].find(b=>b.dataset.noble===remembered.focusId);
+   if(focused)focused.focus({preventScroll:true});
+   if(Number.isFinite(remembered.scrollY))window.scrollTo({top:Math.max(0,remembered.scrollY),behavior:'instant'});
+  });
+ }
  function openHouse(h){
   if(!h)return;
+  captureNobleCatalogPosition(h);
   const previous=nobleHouses.find(x=>x.nobleId===state.noble.house);
   if(previous&&previous.nobleId!==h.nobleId)state.houseHistory.push(previous.nobleId);
   state.noble.house=h.nobleId;renderNobility();showView('nobreza');$('noble-detail').scrollIntoView({block:'start',behavior:'instant'});document.getElementById('house-title')?.focus({preventScroll:true});
@@ -508,11 +528,13 @@ function renderHouse(h){
  adventureSelect.addEventListener('change',()=>{state.adventure=adventureSelect.value;renderAdventure();showView('aventura');});
  const nobleHouses=data.regions.flatMap(r=>r.houses).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
  $('noble-region').innerHTML='<option value="">Todas as regiões</option>'+data.regions.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
+ $('noble-kind').innerHTML=(window.CORMYR_NOBILITY_NAV?.TYPES||[{value:'',label:'Todas as categorias'}]).map(t=>`<option value="${esc(t.value)}">${esc(t.label)}</option>`).join('');
  const historyCache=new Map();let historyRequest=0;
- function nobleMatches(h){const n=state.noble;return (!n.region||h.region===n.region)&&['name','leader','castle','city'].every(key=>{const value=normalize(n[key].trim());return !value||normalize([h[key],...(h[key+'Aliases']||[]),...(key==='name'?h.aliases||[]:[])].join(' ')).includes(value);});}
+ function nobleMatches(h){const n=state.noble;return (!n.region||h.region===n.region)&&(!n.kind||window.CORMYR_NOBILITY_NAV?.matchesKind(h,n.kind))&&['name','leader','castle','city'].every(key=>{const value=normalize(n[key].trim());return !value||normalize([h[key],...(h[key+'Aliases']||[]),...(key==='name'?h.aliases||[]:[])].join(' ')).includes(value);});}
 function renderNobility(){
  const n=state.noble,fmt=window.CORMYR_NOBILITY_FORMAT;
  for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).value=n[key];
+ $('noble-kind').value=n.kind||'';
  const selected=nobleHouses.find(h=>h.nobleId===n.house);
  $('noble-detail').hidden=!selected;$('noble-catalog').hidden=!!selected;
  if(selected){renderHouse(selected);return;}historyRequest++;
@@ -569,8 +591,9 @@ async function loadHouseHistory(h){
 }
 
  for(const key of ['region','name','leader','castle','city'])document.getElementById('noble-'+key).addEventListener(key==='region'?'change':'input',e=>{state.noble[key]=e.target.value;state.noble.page=1;renderNobility();writeRoute();});
- $('noble-reset').addEventListener('click',()=>{Object.assign(state.noble,{region:'',name:'',leader:'',castle:'',city:'',page:1,house:''});renderNobility();writeRoute();$('noble-name').focus();});
- $('noble-back').addEventListener('click',()=>{state.houseHistory=[];state.noble.house='';renderNobility();writeRoute(true);$('nobility-title').focus();});
+ $('noble-kind').addEventListener('change',e=>{state.noble.kind=e.target.value;state.noble.page=1;renderNobility();writeRoute();});
+ $('noble-reset').addEventListener('click',()=>{Object.assign(state.noble,{region:'',kind:'',name:'',leader:'',castle:'',city:'',page:1,house:''});renderNobility();writeRoute();$('noble-name').focus();});
+ $('noble-back').addEventListener('click',()=>{state.houseHistory=[];state.noble.house='';renderNobility();writeRoute(true);restoreNobleCatalogPosition();if(!nobleCatalogReturn)$('nobility-title').focus();});
  function noblePage(delta){state.noble.page+=delta;renderNobility();writeRoute();$('noble-count').scrollIntoView({block:'start',behavior:'instant'});}
  $('noble-prev').addEventListener('click',()=>noblePage(-1));$('noble-next').addEventListener('click',()=>noblePage(1));
  const law=data.constitution;
@@ -642,7 +665,8 @@ async function loadHouseHistory(h){
  $('law-prev').addEventListener('click',()=>moveLawPage(-1));$('law-next').addEventListener('click',()=>moveLawPage(1));renderLaws();
  function restoreRoute(){state.houseQuery='';readHash();
   $('law-search').value=lawState.query;$('law-topic').value=lawState.topic;renderLaws();
-  renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();renderKingdomTabs();chooseKind(state.kind);showView(state.view,false);if(state.deepEvent)revealEvent(state.deepEvent,false);}
+  renderNobility();regionSelect.value=state.region;$('search').value=state.query;renderAdventure();renderRegion();renderKingdomTabs();chooseKind(state.kind);showView(state.view,false);if(state.view==='nobreza'&&!state.noble.house)restoreNobleCatalogPosition(true);if(state.deepEvent)revealEvent(state.deepEvent,false);}
  restoreRoute();
  window.addEventListener('hashchange',restoreRoute);
+ window.addEventListener('popstate',()=>{if(location.hash!==routeHash())restoreRoute();});
 })();
