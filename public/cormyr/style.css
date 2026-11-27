@@ -516,8 +516,8 @@
  * Brasão oficial sem moldura + filete com losango + CORMYR escrito por inteiro.
  * O tamanho se adapta à sidebar de 240/215px e ao cabeçalho mobile. */
 .brand{
-  min-height:123px;
-  padding:17px 10px;
+  min-height:133px;
+  padding:16px 9px;
   justify-content:center;
   align-items:center;
   gap:0;
@@ -539,8 +539,8 @@
 .brand .cormyr-signature-mark{
   display:block;
   flex:0 0 auto;
-  width:53px;
-  height:61px;
+  width:64px;
+  height:75px;
   object-fit:contain;
   margin:0;
   border:0;
@@ -548,9 +548,9 @@
   background:transparent;
 }
 .brand .cormyr-signature-divider{
-  width:11px;
-  flex:0 0 11px;
-  height:61px;
+  width:12px;
+  flex:0 0 12px;
+  height:75px;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -571,7 +571,7 @@
   display:block;
   margin:0;
   color:#aa7d31;
-  font:400 8px/1 Georgia,serif;
+  font:400 9px/1 Georgia,serif;
 }
 .brand .cormyr-signature-copy{
   display:flex;
@@ -586,7 +586,7 @@
   display:block;
   margin:0;
   color:#9a6b24;
-  font:700 8.5px/1.25 'Cinzel',Georgia,serif;
+  font:700 10px/1.25 'Cinzel',Georgia,serif;
   letter-spacing:.12em;
   white-space:nowrap;
 }
@@ -594,16 +594,16 @@
   display:block;
   margin:2px 0;
   color:#3f1863;
-  font:800 21.5px/1.02 'Cinzel',Georgia,serif;
-  letter-spacing:.012em;
+  font:800 25px/1.02 'Cinzel',Georgia,serif;
+  letter-spacing:-.02em;
   white-space:nowrap;
 }
 .brand .cormyr-signature-tagline{
   display:block;
   margin:0;
   color:#5c367c;
-  font:600 7.7px/1.25 'Cinzel',Georgia,serif;
-  letter-spacing:.02em;
+  font:600 8.8px/1.25 'Cinzel',Georgia,serif;
+  letter-spacing:0;
   white-space:nowrap;
 }
 .brand .cormyr-signature:hover .cormyr-signature-word,
@@ -614,29 +614,29 @@
   border-radius:3px;
 }
 @media(min-width:901px) and (max-width:1200px){
-  .brand{min-height:116px;padding:16px 8px}
+  .brand{min-height:128px;padding:16px 7px}
   .brand .cormyr-signature{gap:6px}
-  .brand .cormyr-signature-mark{width:45px;height:53px}
-  .brand .cormyr-signature-divider{width:9px;flex-basis:9px;height:56px}
-  .brand .cormyr-signature-word{font-size:19.5px}
-  .brand .cormyr-signature-kicker{font-size:8px}
-  .brand .cormyr-signature-tagline{font-size:7px;letter-spacing:0}
+  .brand .cormyr-signature-mark{width:54px;height:65px}
+  .brand .cormyr-signature-divider{width:10px;flex-basis:10px;height:65px}
+  .brand .cormyr-signature-word{font-size:22px;letter-spacing:-.025em}
+  .brand .cormyr-signature-kicker{font-size:9px;letter-spacing:.09em}
+  .brand .cormyr-signature-tagline{font-size:8.1px;letter-spacing:-.01em}
 }
 @media(max-width:900px){
   .brand{min-height:0;padding:14px 20px;justify-content:flex-start}
   .brand .cormyr-signature{width:max-content;max-width:100%;gap:11px}
-  .brand .cormyr-signature-mark{width:68px;height:73px}
-  .brand .cormyr-signature-divider{width:13px;flex-basis:13px;height:72px}
-  .brand .cormyr-signature-kicker{font-size:11px;letter-spacing:.19em}
-  .brand .cormyr-signature-word{font-size:28px;letter-spacing:.055em}
-  .brand .cormyr-signature-tagline{display:block;font-size:9.8px;letter-spacing:.09em}
+  .brand .cormyr-signature-mark{width:78px;height:84px}
+  .brand .cormyr-signature-divider{width:15px;flex-basis:15px;height:84px}
+  .brand .cormyr-signature-kicker{font-size:12px;letter-spacing:.18em}
+  .brand .cormyr-signature-word{font-size:32px;letter-spacing:.035em}
+  .brand .cormyr-signature-tagline{display:block;font-size:10.6px;letter-spacing:.07em}
 }
 @media(max-width:380px){
   .brand{padding:12px 13px}
   .brand .cormyr-signature{gap:8px}
-  .brand .cormyr-signature-mark{width:57px;height:64px}
-  .brand .cormyr-signature-divider{width:10px;flex-basis:10px;height:64px}
-  .brand .cormyr-signature-kicker{font-size:9px;letter-spacing:.14em}
-  .brand .cormyr-signature-word{font-size:25px;letter-spacing:.035em}
-  .brand .cormyr-signature-tagline{font-size:8.8px;letter-spacing:.02em}
+  .brand .cormyr-signature-mark{width:65px;height:73px}
+  .brand .cormyr-signature-divider{width:12px;flex-basis:12px;height:73px}
+  .brand .cormyr-signature-kicker{font-size:10.5px;letter-spacing:.12em}
+  .brand .cormyr-signature-word{font-size:29px;letter-spacing:.02em}
+  .brand .cormyr-signature-tagline{font-size:9.7px;letter-spacing:.01em}
 }
