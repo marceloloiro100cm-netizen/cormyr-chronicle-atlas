@@ -2,7 +2,11 @@ import {describe,it,expect,vi} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {runInNewContext} from 'node:vm';
-import {JSDOM} from 'jsdom';
+import {createRequire} from 'node:module';
+// jsdom já está instalado no projeto, mas @types/jsdom não integra o lockfile.
+const {JSDOM}=createRequire(import.meta.url)('jsdom') as {
+ JSDOM:new (html:string,options?:{url?:string})=>{window:Window & typeof globalThis};
+};
 
 const publicFile=(path:string)=>readFileSync(resolve(process.cwd(),'public/cormyr',path),'utf8');
 type StoryItem={type:'paragraph'|'heading'|'separator';text:string};
