@@ -88,11 +88,11 @@ describe('Ajustes de 20/11/2026: jornal no site aberto',()=>{
   expect(staff.map(s=>s.id)).toEqual(['a','b']);
   expect(staff[0]).not.toHaveProperty('photo_path');
  });
- it('o site aberto tem o item Jornal acima da Constituição e se chama Atlas Cormyr',()=>{
+ it('o site aberto tem o item Jornal acima da Constituição e se chama Atlas de Cormyr',()=>{
   const html=readFileSync('public/cormyr/index.html','utf8');
   expect(html.indexOf('data-view="jornal"')).toBeGreaterThan(0);
   expect(html.indexOf('data-view="jornal"')).toBeLessThan(html.indexOf('data-view="constituicao"'));
-  expect(html).toContain('<title>Atlas Cormyr</title>');
+  expect(html).toContain('<title>Atlas de Cormyr</title>');
   expect(html).not.toContain('Cormyr <em>Web</em>');
  });
 });

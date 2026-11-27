@@ -298,3 +298,9 @@
 @media(prefers-reduced-motion:reduce){
   .firebase-official *{scroll-behavior:auto!important;transition:none!important}
 }
+
+/* Conselho: mesma assinatura do Atlas público. */
+.firebase-official-brand .cormyr-signature__mark{width:69px;height:76px;object-fit:contain;filter:drop-shadow(0 2px 6px #0005)}
+.firebase-official-brand .cormyr-signature__word{color:#f5ead4}
+.firebase-official-brand .cormyr-signature__subtitle{color:#d6c6d4}
+@media(max-width:600px){.firebase-official-brand .cormyr-signature__mark{width:57px;height:65px}}
