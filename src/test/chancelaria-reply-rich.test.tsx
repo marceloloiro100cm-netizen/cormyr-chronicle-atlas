@@ -1,6 +1,8 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {ChancelariaReplyComposer,type ReplySubmitPayload} from '@/components/players/chancelaria/ChancelariaReplyComposer';
+import {formatConversationForAI} from '@/components/players/chancelaria/copy-thread';
+import type {Conversation} from '@/components/players/chancelaria/chancelaria-model';
 
 afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();});
 
@@ -67,5 +69,75 @@ describe('ChancelariaReplyComposer: data da désdia, imagens e semana',()=>{
   expect(screen.getByRole('button',{name:/22 de Marpenoth · 1522 CV/i})).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:/Outro mês/i})).toBeNull();
   expect(screen.getByRole('button',{name:/Anexar imagem/i})).toBeInTheDocument();
+ });
+
+ it('exibe o botão Copiar Fio e formata toda a conversa de forma estruturada para IA',async()=>{
+  const onCopyThread=vi.fn(async()=>true);
+  render(<ChancelariaReplyComposer
+   textareaId="copy-reply"
+   placeholder="Responder…"
+   draftKey="test:reply:3"
+   today="1522-10-21"
+   admin={true}
+   busy={false}
+   defaultDeliveryWeek={4}
+   note="Nota"
+   onCopyThread={onCopyThread}
+   onSubmit={vi.fn(async()=>true)}
+  />);
+
+  fireEvent.click(screen.getByRole('button',{name:'Copiar Fio'}));
+  await waitFor(()=>expect(onCopyThread).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('button',{name:'Fio copiado!'})).toBeInTheDocument();
+
+  const conv={
+   id:'l1',
+   kind:'narrador',
+   kindLabel:'Do Narrador',
+   lastAt:'2026-11-28T10:00:00Z',
+   root:{
+    id:'l1',sender_user_id:'gm',sender_name:'Narrador',origin_house_id:null,
+    recipient_house_id:'ashkar',subject:'Acampamento no Deserto',
+    content:'Relato inicial.\n\n[cormyr-image:private/gm/abc/0.png|Acampamento Ashkar no Deserto]',
+    created_at:'2026-11-27T10:00:00Z',creation_week:2,delivery_week:2,
+    publication_state:'delivered',deleted_at:null,campaign_date:'1522-10-21',
+    court_member_id:'c1',military_unit_id:null,
+   },
+   items:[
+    {
+     id:'r1',author:'Marcelo Belem',at:'2026-11-27T12:00:00Z',
+     content:'Direcionar os homens e mulheres aptos para a pedreira.',
+     letter:{
+      id:'r1',sender_user_id:'p1',sender_name:'Marcelo Belem',origin_house_id:'ashkar',
+      recipient_house_id:null,subject:'Re: Acampamento no Deserto',
+      content:'Direcionar os homens e mulheres aptos para a pedreira.',
+      created_at:'2026-11-27T12:00:00Z',creation_week:2,delivery_week:2,
+      publication_state:'delivered',deleted_at:null,campaign_date:'1522-10-22',
+     },
+     reply:null,
+     mine:()=>false,
+     isNewFor:()=>false,
+    },
+   ],
+  } as unknown as Conversation;
+
+  const formatted=formatConversationForAI({
+   conversation:conv,
+   houseName:(id)=>id==='ashkar'?'Ashkar':'Narrador',
+   groupLabel:'Grupo 1 · Costa do Dragão',
+   courtLabel:'Intendente Varek · Administrador',
+   unitLabel:null,
+  });
+
+  expect(formatted).toContain('# Fio de Missivas — Acampamento no Deserto');
+  expect(formatted).toContain('- **Total de mensagens:** 2');
+  expect(formatted).toContain('- **Vínculos:** Corte: Intendente Varek · Administrador');
+  expect(formatted).toContain('## Mensagem 1 (Missiva original)');
+  expect(formatted).toContain('[Imagem anexa: Acampamento Ashkar no Deserto]');
+  expect(formatted).not.toContain('private/gm/abc/0.png');
+  expect(formatted).toContain('## Mensagem 2 (Resposta 1)');
+  expect(formatted).toContain('- **Autor:** Marcelo Belem (Casa Ashkar)');
+  expect(formatted).toContain('- **Data:** 22 de Marpenoth · 1522 CV');
+  expect(formatted).toContain('Direcionar os homens e mulheres aptos para a pedreira.');
  });
 });

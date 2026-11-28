@@ -5,6 +5,7 @@ import {CampaignContent,ImagePicker,uploadImages,type PendingImage} from '@/comp
 import {DesdiaDateBar} from '@/components/calendar/desdia-date-bar';
 import {MailComposer,replaceMailDraft} from '@/components/players/mail-compose';
 import {ChancelariaReplyComposer,type ReplySubmitPayload} from './ChancelariaReplyComposer';
+import {copyTextToClipboard,formatConversationForAI} from './copy-thread';
 import {resolveLinkNames,useMailLinkCatalog,type MailLinkOptionHouse} from '@/lib/mail/link-labels';
 import {NarratorMailNotes} from '@/components/players/narrator-mail-notes';
 import {LetterConsequences,type LetterConsequenceRow} from '@/components/players/letter-consequences';
@@ -472,6 +473,14 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
   </form>;
 
   const rootDate=str(c.root['campaign_date']);
+  const copyWholeThread=async():Promise<boolean>=>{
+    const text=formatConversationForAI({
+      conversation:c,houseName,courtLabel,unitLabel,
+    });
+    const ok=await copyTextToClipboard(text);
+    if(!ok)onError('Não foi possível copiar o fio para a área de transferência.');
+    return ok;
+  };
   const itemHouse=(i:Conversation['items'][number])=>{
     const id=i.letter?.origin_house_id??str((i.reply as unknown as Record<string,unknown>|null)?.['house_id']);
     return houseOf(id);
@@ -543,7 +552,11 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
       busy={busy}
       uploading={uploading}
       note={<>Rascunho salvo automaticamente neste navegador · <kbd>Ctrl+Enter</kbd> envia</>}
+      onCopyThread={copyWholeThread}
       onSubmit={sendReply}/>
-    :<div className="chn-readonly"><Icon name="lock" size={15}/>{blockedReason}</div>}
+    :<div className="chn-readonly"><Icon name="lock" size={15}/><span>{blockedReason}</span>
+      <span className="chn-spacer"/>
+      <button type="button" className="chn-tool-chip" onClick={()=>{void copyWholeThread();}}>Copiar Fio</button>
+    </div>}
   </>;
 }
