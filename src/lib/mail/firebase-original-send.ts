@@ -5,6 +5,7 @@
  * their own private Storage implementation, so they are never dropped silently.
  */
 import type {CloudMailMessageRequest} from '../../../scripts/firebase/cloud-mail-service.mjs';
+import {parseDate} from '@/lib/calendar/harptos';
 const KEY=/^[a-zA-Z0-9_-]{8,128}$/;
 const ID=/^[^/\u0000-\u001f\u007f]{1,128}$/;
 const isObj=(x:unknown):x is Record<string,unknown>=>Boolean(x)&&
@@ -17,7 +18,26 @@ const invalid=():never=>{throw new OriginalMailBridgeError('invalid_mail_request
 const nullable=(v:unknown)=>v===null||v===undefined||v==='';
 const fields=new Set(['p_key','p_origin','p_targets','p_subject','p_content',
  'p_court','p_unit','p_role','p_draft','p_week','p_signed_by']);
-export function originalMailSend(input:unknown,canonicalDate:string):
+
+export type MailDatePolicy={allowAnyValidDate?:boolean};
+export function sameHarptosDesdia(chosenDate:string,canonicalDate:string):boolean{
+ const chosen=parseDate(chosenDate),canonical=parseDate(canonicalDate);
+ if(!chosen||!canonical)return false;
+ if(canonical.festival)return chosen.year===canonical.year&&chosen.festival===canonical.festival;
+ return chosen.festival===null&&chosen.year===canonical.year&&
+  chosen.month===canonical.month&&
+  Math.floor((chosen.day-1)/10)===Math.floor((canonical.day-1)/10);
+}
+function checkMailDate(chosenDate:unknown,canonicalDate:string,policy?:MailDatePolicy):string{
+ if(typeof chosenDate!=='string'||!parseDate(chosenDate))return invalid();
+ if(typeof canonicalDate!=='string'||!parseDate(canonicalDate))
+  throw new OriginalMailBridgeError('campaign_date_changed',409);
+ if(!policy?.allowAnyValidDate&&!sameHarptosDesdia(chosenDate,canonicalDate))
+  throw new OriginalMailBridgeError('campaign_date_changed',409);
+ return chosenDate;
+}
+
+export function originalMailSend(input:unknown,canonicalDate:string,policy?:MailDatePolicy):
  CloudMailMessageRequest&{expectedCampaignDate:string}{
  const envelope=isObj(input)?input:invalid();
  const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
@@ -25,8 +45,7 @@ export function originalMailSend(input:unknown,canonicalDate:string):
     typeof envelope['p_date']!=='string'||
     Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k)))
   return invalid();
- if(typeof canonicalDate!=='string'||envelope['p_date']!==canonicalDate)
-  throw new OriginalMailBridgeError('campaign_date_changed',409);
+ const chosenDate=checkMailDate(envelope['p_date'],canonicalDate,policy);
  if(Object.keys(args).some(k=>!fields.has(k)))return unsupported();
  const options=composerOptions(args);
  const key=args['p_key'],subject=args['p_subject'],content=args['p_content'];
@@ -49,7 +68,7 @@ export function originalMailSend(input:unknown,canonicalDate:string):
   recipientKind:kind,recipientHouseId:house,
   subject:subject as string,content:content as string,
   ...options,
-  expectedCampaignDate:canonicalDate,
+  expectedCampaignDate:chosenDate,
  };
 }
 
@@ -87,7 +106,7 @@ export function composerOptions(args:Record<string,unknown>){
  * Preserve the original composer request key across a single atomic batch.
  * Never turn a batch into sequential one-recipient sends.
  */
-export function originalMailBatch(input:unknown,canonicalDate:string):
+export function originalMailBatch(input:unknown,canonicalDate:string,policy?:MailDatePolicy):
  (CloudMailMessageRequest&{expectedCampaignDate:string})[]{
  const envelope=isObj(input)?input:invalid();
  const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
@@ -104,25 +123,24 @@ export function originalMailBatch(input:unknown,canonicalDate:string):
  const requests=targets.map((target,i)=>{
   const single={...envelope,p_args:{...args,p_targets:[target],
    p_key:String(args['p_key'])+'_'+i}};
-  return originalMailSend(single,canonicalDate);
+  return originalMailSend(single,canonicalDate,policy);
  });
  return requests;
 }
 
 /** Resolve an original or legacy reply by its immutable identifiers.
  * Destination and sender House are intentionally not part of the envelope. */
-export function originalMailReply(input:unknown,canonicalDate:string):{
+export function originalMailReply(input:unknown,canonicalDate:string,policy?:MailDatePolicy):{
   requestKey:string;letterId:string;content:string;expectedCampaignDate:string;
-  replyId?:string;draft?:boolean;signedBy?:string;
+  replyId?:string;draft?:boolean;signedBy?:string;deliveryRound?:number;
 }{
  const envelope=isObj(input)?input:invalid();
  const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
  if(envelope['p_action']!=='reply_weekly_message'||
     Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k))||
-    Object.keys(args).some(k=>!['p_letter','p_reply','p_content','p_key','p_draft','p_signed_by'].includes(k)))
+    Object.keys(args).some(k=>!['p_letter','p_reply','p_content','p_key','p_draft','p_signed_by','p_week'].includes(k)))
    return invalid();
- if(envelope['p_date']!==canonicalDate)
-   throw new OriginalMailBridgeError('campaign_date_changed',409);
+ const chosenDate=checkMailDate(envelope['p_date'],canonicalDate,policy);
  const replyId=args['p_reply'];
  if(!nullable(replyId)&&(typeof replyId!=='string'||!ID.test(replyId)))
   return invalid();
@@ -134,22 +152,30 @@ export function originalMailReply(input:unknown,canonicalDate:string):{
    return invalid();
  const signed=args['p_signed_by'];
  if(!nullable(signed)&&typeof signed!=='string')return invalid();
- return {requestKey:key,letterId:id,content,expectedCampaignDate:canonicalDate,
+ const week=args['p_week'];
+ let deliveryRound:number|undefined;
+ if(!nullable(week)){
+  if(typeof week!=='number'||!Number.isSafeInteger(week)||week<1)return invalid();
+  deliveryRound=week;
+ }
+ return {requestKey:key,letterId:id,content,expectedCampaignDate:chosenDate,
   ...(!nullable(replyId)?{replyId:replyId as string}:{}),
   ...(args['p_draft']?{draft:true}:{}),
-  ...(typeof signed==='string'&&signed.trim()?{signedBy:signed.trim()}:{})};
+  ...(typeof signed==='string'&&signed.trim()?{signedBy:signed.trim()}:{}),
+  ...(deliveryRound!==undefined?{deliveryRound}:{})};
 }
 
 /** "Salvar rascunho" of the original reply form: a private Cloud draft reply. */
-export function originalReplyDraft(input:unknown,canonicalDate:string){
+export function originalReplyDraft(input:unknown,canonicalDate:string,policy?:MailDatePolicy){
  const envelope=isObj(input)?input:invalid();
  const args=isObj(envelope['p_args'])?envelope['p_args']:invalid();
  if(envelope['p_action']!=='save_weekly_reply_draft'||
     Object.keys(envelope).some(k=>!['p_action','p_args','p_date'].includes(k))||
-    Object.keys(args).some(k=>!['p_id','p_letter','p_reply','p_content','p_signed_by'].includes(k)))
+    Object.keys(args).some(k=>!['p_id','p_letter','p_reply','p_content','p_signed_by','p_week'].includes(k)))
   return invalid();
  return originalMailReply({p_action:'reply_weekly_message',p_date:envelope['p_date'],p_args:{
   p_letter:args['p_letter'],p_reply:args['p_reply']??null,p_content:args['p_content'],
   p_key:args['p_id'],p_draft:true,p_signed_by:args['p_signed_by']??null,
- }},canonicalDate);
+  ...(args['p_week']!==undefined?{p_week:args['p_week']}:{}),
+ }},canonicalDate,policy);
 }

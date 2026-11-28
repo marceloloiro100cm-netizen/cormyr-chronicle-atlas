@@ -1134,6 +1134,22 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .ht-chk-item--warn{border-left:3px solid #b49048;background:#fcf8ee}
 .ht-chk-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
+/* Seletor rápido de dias da désdia (Harptos) em missivas, respostas e edição */
+.desdia-picker{display:grid;gap:8px;padding:10px 12px;border:1px solid #dfd4be;border-radius:8px;background:#fffdf8}
+.desdia-picker-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.desdia-picker-title{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#3f1863;flex-wrap:wrap}
+.desdia-picker-title svg{color:#9a6b24;flex:none}
+.desdia-picker-selected{color:#6a4c28;font-weight:600}
+.desdia-picker-toggle{border:1px solid #d4c4a4;background:#fff;color:#3f1863;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:600;cursor:pointer}
+.desdia-picker-toggle:hover{border-color:#b5893a;background:#f7efe0}
+.desdia-days{display:flex;flex-wrap:wrap;gap:5px}
+.desdia-day{min-width:34px;min-height:32px;padding:4px 8px;border:1px solid #d5c7ad;border-radius:7px;background:#fff;color:#2c1d35;font-size:12.5px;font-weight:700;cursor:pointer;transition:border-color .14s,background .14s,color .14s}
+.desdia-day:hover:not(:disabled){border-color:#b5893a;background:#f7eed9}
+.desdia-day--official{box-shadow:inset 0 -2px 0 #b5893a}
+.desdia-day--active{background:#3f1863;border-color:#b5893a;color:#fff8e8}
+.desdia-day--active:hover:not(:disabled){background:#51227a}
+.desdia-full-wrap{margin-top:4px;padding-top:8px;border-top:1px dashed #dfd4be}
+
 /* Identidade oficial compartilhada — o símbolo do dragão é o C inicial de Cormyr. */
 .cormyr-signature{display:inline-flex;align-items:center;gap:12px;max-width:100%;min-width:0;white-space:nowrap;vertical-align:middle;color:inherit}
 .cormyr-signature__mark{display:block;flex:none;width:74px;height:84px;object-fit:contain;margin:0;border:0;border-radius:0;background:transparent}

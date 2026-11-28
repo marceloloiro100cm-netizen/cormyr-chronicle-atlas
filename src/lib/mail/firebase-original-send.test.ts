@@ -32,8 +32,15 @@ describe('original composer -> one atomic Firebase Cloud delivery',()=>{
    {p_week:0},{p_week:'3'},{p_draft:'sim'},{p_unit:'../u'}])
    expect(()=>originalMailSend(form(changes),dt)).toThrow('invalid_mail_request');
  });
- it('denies forged origin/destination and stale date instead of sending',()=>{
-  expect(()=>originalMailSend(form(),'1522-01-02')).toThrow('campaign_date_changed');
+ it('denies forged origin/destination and dates outside the active désdia instead of sending',()=>{
+  expect(originalMailSend({...form(),p_date:'1522-01-04'},'1522-01-01')).toMatchObject({
+   expectedCampaignDate:'1522-01-04',
+  });
+  expect(()=>originalMailSend(form(),'1522-01-11')).toThrow('campaign_date_changed');
+  expect(originalMailSend(form(),'1522-01-11',{allowAnyValidDate:true})).toMatchObject({
+   expectedCampaignDate:'1522-01-01',
+  });
+  expect(()=>originalMailSend({...form(),p_date:'1522-01-31'},dt)).toThrow('invalid_mail_request');
   for(const changes of [{p_targets:['h:../private']},{p_targets:['p:some-user']},
     {p_key:'short'},{p_origin:'../other'},{p_content:''}])
     expect(()=>originalMailSend(form(changes),dt)).toThrow('invalid_mail_request');
@@ -72,7 +79,12 @@ describe('historically faithful Cloud reply routing',()=>{
    letterId:id,requestKey:'reply-key-1234',
    content:'Retorno',expectedCampaignDate:dt,
   });
-  expect(()=>originalMailReply(reply,'1522-01-02')).toThrow('campaign_date_changed');
+  expect(originalMailReply({...reply,p_date:'1522-01-06'},dt)).toMatchObject({
+   expectedCampaignDate:'1522-01-06',
+  });
+  expect(()=>originalMailReply(reply,'1522-01-11')).toThrow('campaign_date_changed');
+  expect(originalMailReply({...reply,p_args:{...reply.p_args,p_week:4}},'1522-01-11',{allowAnyValidDate:true}))
+   .toMatchObject({expectedCampaignDate:dt,deliveryRound:4});
   expect(originalMailReply({...reply,p_args:{...reply.p_args,p_letter:'legacy-letter-001',p_reply:'legacy-reply-001'}},dt))
    .toMatchObject({letterId:'legacy-letter-001',replyId:'legacy-reply-001',
     content:'Retorno',expectedCampaignDate:dt});

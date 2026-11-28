@@ -1,4 +1,5 @@
 import {CampaignDatePicker} from '@/components/calendar/date-picker';
+import {DesdiaDateBar} from '@/components/calendar/desdia-date-bar';
 import {useCampaignTime} from '@/lib/calendar/campaign-time';
 import {dateKey} from '@/lib/calendar/harptos';
 import {datedMail} from '@/lib/calendar/mail';
@@ -175,6 +176,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
   {selectedHouses.length>4&&<span className="mail-target-more">+{selectedHouses.length-4} outra(s) casa(s)</span>}
  </div>}
  <div className="mail-compose-meta">
+ {officialDate&&<DesdiaDateBar value={draft.campaignDate} officialDate={officialDate} allowFullCalendar={false} disabled={busy} label="Escolha rápida do dia na désdia atual" onChange={campaignDate=>change({...draft,campaignDate})}/>}
  <CampaignDatePicker value={draft.campaignDate} referenceDate={officialDate||undefined} onChange={campaignDate=>change({...draft,campaignDate})}/>
  {data.admin&&<MailPeriodNotice date={draft.campaignDate}/>}
  {data.admin&&<label>Semana de entrega<input type="number" min={1} value={draft.week} placeholder={String(suggested)} onChange={e=>change({...draft,week:e.target.value})}/></label>}
