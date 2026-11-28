@@ -5,6 +5,7 @@ import {CampaignContent,ImagePicker,uploadImages,type PendingImage} from '@/comp
 import {DesdiaDateBar} from '@/components/calendar/desdia-date-bar';
 import {MailComposer,replaceMailDraft} from '@/components/players/mail-compose';
 import {ChancelariaReplyComposer,type ReplySubmitPayload} from './ChancelariaReplyComposer';
+import {copyTextToClipboard,formatConversationForAI} from './copy-thread';
 import {loadRecentSignatures,rememberSignature,resolveLinkNames,useMailLinkCatalog} from '@/lib/mail/link-labels';
 import {NarratorMailNotes} from '@/components/players/narrator-mail-notes';
 import {LetterConsequences,type LetterConsequenceRow} from '@/components/players/letter-consequences';
@@ -474,6 +475,14 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
   const rootDate=str(c.root['campaign_date']);
   const group=narrationGroupOf(c.root.origin_house_id??c.root.recipient_house_id);
   const deliveryWeek=openRound!==null?replyDeliveryWeek(openRound,'narrator-to-player'):null;
+  const copyWholeThread=async():Promise<boolean>=>{
+    const text=formatConversationForAI({
+      conversation:c,houseName,groupLabel:group?.label??null,courtLabel,unitLabel,
+    });
+    const ok=await copyTextToClipboard(text);
+    if(!ok)onError('Não foi possível copiar o fio para a área de transferência.');
+    return ok;
+  };
   const itemHouse=(i:Conversation['items'][number])=>{
     if(i.mine(uid))return null;
     const id=i.letter?.origin_house_id??str((i.reply as unknown as Record<string,unknown>|null)?.['house_id']);
@@ -537,10 +546,14 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
       recentSigs={recentSigs}
       note={<><Icon name="hour" size={14}/> {deliveryWeek!==null?<>Chega à Casa na <b>Semana {deliveryWeek}</b> (próxima abertura). </>:null}
         Dá para editar ou cancelar até a entrega · <kbd>Ctrl+Enter</kbd> envia.</>}
+      onCopyThread={copyWholeThread}
       onSubmit={sendReply}/>
-    :<div className="chn-readonly"><Icon name="lock" size={15}/>{c.root['historical_source']||(openRound!==null&&(c.root.delivery_week??0)<openRound)
+    :<div className="chn-readonly"><Icon name="lock" size={15}/><span>{c.root['historical_source']||(openRound!==null&&(c.root.delivery_week??0)<openRound)
       ?'Semana encerrada: o fio fica para consulta.'
       :c.kind==='entre'?'Carta entre Casas: o Narrador acompanha e registra, mas não entra no fio.'
-      :'Nada a responder aqui no momento. Você pode escrever uma nova missiva a qualquer momento.'}</div>}
+      :'Nada a responder aqui no momento. Você pode escrever uma nova missiva a qualquer momento.'}</span>
+      <span className="chn-spacer"/>
+      <button type="button" className="chn-tool-chip" onClick={()=>{void copyWholeThread();}}>Copiar Fio</button>
+    </div>}
   </>;
 }

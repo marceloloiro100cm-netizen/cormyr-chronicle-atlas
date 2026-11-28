@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
-import {CalendarDays,ImagePlus,Maximize2,Minimize2} from 'lucide-react';
+import {CalendarDays,Check,Copy,ImagePlus,Maximize2,Minimize2} from 'lucide-react';
 import {ImagePicker,type PendingImage} from '@/components/campaign-content';
 import {DesdiaDateBar} from '@/components/calendar/desdia-date-bar';
 import {formatDate} from '@/lib/calendar/harptos';
@@ -26,6 +26,7 @@ export function ChancelariaReplyComposer({
  defaultDeliveryWeek=null,
  note,
  recentSigs=[],
+ onCopyThread,
  onSubmit,
 }:{
  textareaId:string;
@@ -38,6 +39,7 @@ export function ChancelariaReplyComposer({
  defaultDeliveryWeek?:number|null;
  note:ReactNode;
  recentSigs?:string[];
+ onCopyThread?:()=>Promise<boolean>|boolean;
  onSubmit:(payload:ReplySubmitPayload)=>Promise<boolean>;
 }){
  const readDraft=()=>{try{return localStorage.getItem(draftKey)??sessionStorage.getItem(draftKey)??'';}catch{return '';}};
@@ -50,7 +52,20 @@ export function ChancelariaReplyComposer({
  const [showImages,setShowImages]=useState(false);
  const [expanded,setExpanded]=useState(false);
  const [focused,setFocused]=useState(false);
+ const [copied,setCopied]=useState(false);
+ const copiedTimer=useRef<number|null>(null);
  const replyRef=useRef<HTMLTextAreaElement>(null);
+
+ useEffect(()=>()=>{if(copiedTimer.current!==null)window.clearTimeout(copiedTimer.current);},[]);
+
+ const handleCopyThread=async()=>{
+  if(!onCopyThread)return;
+  const ok=await onCopyThread();
+  if(!ok)return;
+  setCopied(true);
+  if(copiedTimer.current!==null)window.clearTimeout(copiedTimer.current);
+  copiedTimer.current=window.setTimeout(()=>setCopied(false),2200);
+ };
 
  // Atualiza a data padrão quando o relógio oficial termina de carregar ou muda de conversa.
  useEffect(()=>{if(today&&!replyDate)setReplyDate(today);},[today,replyDate]);
@@ -134,6 +149,13 @@ export function ChancelariaReplyComposer({
      aria-label="Semana de entrega da resposta"
      onChange={e=>setWeekInput(e.target.value)}/>
    </label>}
+
+   {onCopyThread&&<button type="button"
+    className={'chn-tool-chip'+(copied?' chn-tool-chip--copied':'')}
+    title="Copia todo o fio desta conversa em texto estruturado para colar em uma IA"
+    onClick={()=>{void handleCopyThread();}}>
+    {copied?<><Check size={14} aria-hidden="true"/><span>Fio copiado!</span></>:<><Copy size={14} aria-hidden="true"/><span>Copiar Fio</span></>}
+   </button>}
 
    <span className="chn-spacer"/>
    <button type="button" className="chn-tool-chip"
