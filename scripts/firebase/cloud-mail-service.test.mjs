@@ -407,9 +407,10 @@ test('Only Narrator can mark an imported, explicitly narrator-addressed letter a
   player.records.set(path,row);
   await rejects(()=>player.service().markRead(sampleToken,{source:'imported',letterId:id}),
     'access_denied',403);
-  const invalid=fixture('narrador');
-  invalid.records.set(path,{...row,recipientKind:'house'});
-  await rejects(()=>invalid.service().markRead(sampleToken,{source:'imported',letterId:id}),
+  // Rascunhos e excluídas continuam bloqueadas até para o Narrador.
+  const draftNarrator=fixture('narrador');
+  draftNarrator.records.set(path,{...row,publicationState:'draft'});
+  await rejects(()=>draftNarrator.service().markRead(sampleToken,{source:'imported',letterId:id}),
     'access_denied',403);
   assert.equal([...player.records].some(([k])=>k.includes('mailReadReceipts/')),false);
 });
@@ -466,14 +467,15 @@ test('Firebase Cloud runtime letters use separate source and reject forged sourc
   }),'mail_runtime_not_approved',503);
 });
 
-test('Narrator may acknowledge narrator-addressed Cloud mail, not player-house mail',async()=>{
+test('Narrator may acknowledge delivered Cloud mail (direct and mediation) without touching drafts',async()=>{
   const f=fixture('narrador');
   const root='campaignCloudRuntime/'+snapshot+'/letters/';
   const directId=h('to-narrator');
   const houseId=h('to-house');
-  for(const [id,kind] of [[directId,'narrator'],[houseId,'house']]){
+  const draftId=h('draft-house');
+  for(const [id,kind,state] of [[directId,'narrator','delivered'],[houseId,'house','delivered'],[draftId,'house','draft']]){
     f.records.set(root+id,{
-      id,source:'firebase-cloud',publicationState:'delivered',deletedAt:null,
+      id,source:'firebase-cloud',publicationState:state,deletedAt:null,
       senderUid:'player-other',recipientKind:kind,
       recipientHouseId:kind==='narrator'?null:'house-a',
       recipientPlayerId:null,
@@ -482,8 +484,13 @@ test('Narrator may acknowledge narrator-addressed Cloud mail, not player-house m
   assert.equal((await f.service().markRead(sampleToken,{
     source:'firebase-cloud',letterId:directId,
   })).recorded,true);
-  await rejects(()=>f.service().markRead(sampleToken,{
+  // Mediação (Entre Casas) entregue também pode ser marcada como analisada pelo Narrador.
+  assert.equal((await f.service().markRead(sampleToken,{
     source:'firebase-cloud',letterId:houseId,
+  })).recorded,true);
+  // Rascunho continua negado.
+  await rejects(()=>f.service().markRead(sampleToken,{
+    source:'firebase-cloud',letterId:draftId,
   }),'access_denied',403);
   // O Editor-Chefe lê toda missiva entregue e registra só a própria leitura.
   const editor=fixture('editor');

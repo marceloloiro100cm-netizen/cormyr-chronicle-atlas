@@ -19,8 +19,19 @@ export function mailReceiptId(uid,source,id){
 export function canAcknowledgeMail(actor,record,source,id){
   if(!record||!actor||!validMailIdentity(source,id)||
      record.publicationState!=='delivered'||record.deletedAt!==null||
-     record.senderUid===actor.uid||
      typeof record.senderUid!=='string')return false;
+
+  // Narrador (decisão do proprietário, 28/11/2026): pode marcar como lida/analisada
+  // qualquer missiva ENTREGUE (direta, Entre Casas/Mediação ou fio histórico com respostas)
+  // para tirá-la de "Precisa de atenção" sem alterar a confirmação de leitura da Casa.
+  if(actor.role==='narrador'){
+    if(source==='imported')
+      return record.sourceId===id&&record.source!=='firebase-cloud';
+    return record.source==='firebase-cloud'&&record.id===id&&
+      record.recipientPlayerId===null;
+  }
+
+  if(record.senderUid===actor.uid)return false;
 
   // Editor-Chefe (decisão do proprietário, 19/11/2026): lê toda missiva
   // ENTREGUE para escrever o Jornal, sem escrever, responder ou receber.
@@ -44,11 +55,9 @@ export function canAcknowledgeMail(actor,record,source,id){
     if(record.letterKind==='geral'&&record.originHouseId===null&&
        !direct&&!house&&actor.role==='jogador')
       return Array.isArray(actor.memberHouses)&&actor.memberHouses.length>0;
-    // A historical mail addressed explicitly to the Narrator has neither a
-    // player nor House recipient. Only the verified Narrator may acknowledge it.
     if(record.recipientKind==='narrator'&&
        record.recipientPlayerId===null&&record.recipientHouseId===null)
-      return actor.role==='narrador';
+      return false;
     if(direct===house||actor.role!=='jogador')return false;
     return direct
       ?record.recipientPlayerId===actor.playerId
@@ -58,10 +67,6 @@ export function canAcknowledgeMail(actor,record,source,id){
 
   if(record.source!=='firebase-cloud'||record.id!==id||
      record.recipientPlayerId!==null)return false;
-  if(record.recipientKind==='narrator'){
-    return actor.role==='narrador'&&
-      record.recipientHouseId===null;
-  }
   if(record.recipientKind!=='house'||
      typeof record.recipientHouseId!=='string'||
      record.recipientHouseId.length===0)return false;

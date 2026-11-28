@@ -871,16 +871,22 @@ export function createFirebaseCloudMail({
         if(!mail.exists||!canAcknowledgeMail(actor,
           source==='firebase-cloud'?effectiveCloudMail(mail.data(),round):mail.data(),source,letterId))
           deny('access_denied',403);
+        const readAt=clock();
+        if(typeof readAt!=='string'||!Number.isFinite(Date.parse(readAt)))
+          deny('invalid_server_clock',503);
         if(previous.exists){
           const row=previous.data();
           if(row?.viewerUid!==uid||row?.source!==source||
              row?.letterId!==letterId||typeof row?.readAt!=='string')
             deny('invalid_existing_receipt',409);
+          // Fios históricos compartilham o ID da carta raiz: se chegou resposta
+          // mais nova depois da leitura anterior, atualiza o horário da confirmação.
+          if(source==='imported'&&readAt>row.readAt){
+            tx.update(receipt,{readAt});
+            return {recorded:true,alreadyRecorded:true,readAt};
+          }
           return {recorded:true,alreadyRecorded:true,readAt:row.readAt};
         }
-        const readAt=clock();
-        if(typeof readAt!=='string'||!Number.isFinite(Date.parse(readAt)))
-          deny('invalid_server_clock',503);
         tx.create(receipt,{
           source,letterId,viewerUid:uid,readAt,
           schemaVersion:1,
