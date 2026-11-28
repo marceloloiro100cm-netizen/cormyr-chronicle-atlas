@@ -473,7 +473,7 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
     </div>
     <div className="chn-rbody">
       <article className="chn-sheet" aria-labelledby="chn-reader-title">
-        <img className="chn-wm" src="/newspaper/brasao_reino.webp" alt=""/>
+        <img className="chn-wm" src="/cormyr/brand/cormyr-brasao.svg" alt=""/>
         {editing?.id===c.root.id?editForm(c.root):<>
           <div className="chn-lh">
             <p className="chn-lh-eyebrow">Chancelaria Real de Cormyr{rootDate?' · '+formatDate(rootDate):''}{c.root['edited_at']?' · Editada':''}</p>

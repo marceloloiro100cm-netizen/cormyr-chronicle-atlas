@@ -212,6 +212,10 @@
  * monograma do novo kit. Menus, nove seções, ações, filtros, autosave,
  * permissões e os demais arquivos do baseline permanecem inalterados.
  * Diff revisado e SHA-1 recapturado estritamente para essa mudança de marca.
+ * 2026-11-27 (unificação total do brasão sem moldura): somente os dois src de
+ * brasão do cabeçalho em NewspaperCanvas.tsx foram atualizados de
+ * /newspaper/brasao_reino.webp para /cormyr/brand/cormyr-brasao.svg.
+ * Layout, edição inline, blocos, regras e permissões permanecem inalterados.
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -228,7 +232,7 @@ const originals={
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'88515c0abaa06ae3f05231466165f2c8129d6663',
   'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
   'src/components/newspaper/newspaper-editorial.css':'b9bbeeacdd54e7885066a94864f1612235f10a2d',
-  'src/components/newspaper/NewspaperCanvas.tsx':'a67dc51dbef2dea8aa53101091c932adaadd1693',
+  'src/components/newspaper/NewspaperCanvas.tsx':'3df6c40d4d9a47a2f19db08c946e8f09a526531d',
   'src/components/players/admin-panel.tsx':'5d228c335901891fdba102cd301f92b18927486a',
   'src/components/players/ficha-tab.tsx':'709de1b9b54ea1768b314ca9bbed4674dcdc01a0',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',

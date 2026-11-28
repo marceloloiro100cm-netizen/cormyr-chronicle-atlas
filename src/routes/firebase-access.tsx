@@ -53,7 +53,7 @@ const FirebaseCampaignWorkspace=lazy(()=>import('@/components/firebase/FirebaseC
 export const Route=createFileRoute('/firebase-access')({
   ssr:false,
   component:FirebaseAccess,
-  head:()=>({meta:[{title:'Atlas Cormyr · Campanha'}]}),
+  head:()=>({meta:[{title:'Atlas de Cormyr · Campanha'}]}),
 });
 
 type SessionView={authenticated:boolean;profile:'jogador'|'narrador'|'editor';

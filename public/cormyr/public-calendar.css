@@ -237,10 +237,14 @@ html.is-embedded .chronicle{padding:4px 0 28px;max-width:none}
   .chronicle-toolbar input[type="search"],.chronicle-era-bar input[type="search"]{width:100%;min-width:0;flex:1 1 100%}
 }
 
-/* A marca oficial aparece quando o calendário é aberto fora do Atlas. */
-.chronicle-brand{display:inline-flex;align-items:center;gap:0;margin-bottom:12px;color:#2f1b3d;text-decoration:none}
-.chronicle-brand img{width:47px;height:52px;object-fit:contain;margin-right:-7px}
-.chronicle-brand span{display:flex;flex-direction:column}
-.chronicle-brand small{font:700 9px/1.2 system-ui,sans-serif;letter-spacing:.16em}
-.chronicle-brand strong{font:700 23px/1.1 Georgia,serif;letter-spacing:.025em}
+/* A marca oficial aparece quando o calendário é aberto fora do Atlas, no estilo horizontal do front. */
+.chronicle-brand{display:inline-flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 16px 10px 12px;border-radius:10px;border:1px solid rgba(181,137,58,.45);background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);color:#3f1863;text-decoration:none}
+.chronicle-brand-mark{display:block;flex:0 0 auto;width:54px;height:62px;object-fit:contain;border:0;background:transparent}
+.chronicle-brand-divider{width:12px;flex:0 0 12px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.chronicle-brand-divider::before,.chronicle-brand-divider::after{content:"";display:block;flex:1;min-height:8px;width:1px;background:rgba(181,137,58,.65)}
+.chronicle-brand-gem{display:block;color:#aa7d31;font:400 9px/1 Georgia,serif}
+.chronicle-brand-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.chronicle-brand-copy small{color:#9a6b24;font:700 10px/1.2 'Cinzel',Georgia,serif;letter-spacing:.14em}
+.chronicle-brand-copy strong{color:#3f1863;font:800 24px/1.05 'Cinzel',Georgia,serif;letter-spacing:-.01em;margin:2px 0}
+.chronicle-brand-copy em{font-style:normal;color:#5c367c;font:600 9px/1.2 'Cinzel',Georgia,serif;letter-spacing:.04em}
 html.is-embedded .chronicle-brand{display:none}

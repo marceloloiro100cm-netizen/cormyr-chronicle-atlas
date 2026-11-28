@@ -4,7 +4,7 @@ import {heraldicCrestUrl,heraldicHouseKey} from '@/lib/house/heraldry';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
 
 /** Brasão do reino usado pelo Narrador e como reserva de Casas sem arte. */
-export const CORMYR_CREST='/newspaper/brasao_reino.webp';
+export const CORMYR_CREST='/cormyr/brand/cormyr-brasao.svg';
 
 /** Faixas de tela da visão do Narrador (as mesmas do CSS). */
 export const NARRATOR_MOBILE='(max-width: 767px)';

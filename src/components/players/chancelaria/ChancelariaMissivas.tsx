@@ -481,7 +481,7 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
 
     <div className="chn-rbody">
       <article className="chn-sheet" aria-labelledby="ch-reader-title">
-        <img className="chn-wm" src="/newspaper/brasao_reino.webp" alt=""/>
+        <img className="chn-wm" src="/cormyr/brand/cormyr-brasao.svg" alt=""/>
         {editing?.id===c.root.id?editForm(c.root):<>
           <div className="chn-lh">
             <p className="chn-lh-eyebrow">Chancelaria Real de Cormyr{rootDate?' · '+formatDate(rootDate):''}{c.root['edited_at']?' · Editada':''}</p>

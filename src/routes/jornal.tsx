@@ -22,9 +22,9 @@ export const Route=createFileRoute('/jornal')({
   ssr:false,
   component:PublicNewspaper,
   head:()=>({meta:[
-    {title:'A Folha Sem Selo · Atlas Cormyr'},
+    {title:'A Folha Sem Selo · Atlas de Cormyr'},
     {name:'description',content:'Leia as edições de A Folha Sem Selo, o jornal do reino de Cormyr, e conheça a Redação.'},
-    {property:'og:title',content:'A Folha Sem Selo · Atlas Cormyr'},
+    {property:'og:title',content:'A Folha Sem Selo · Atlas de Cormyr'},
   ]}),
 });
 
