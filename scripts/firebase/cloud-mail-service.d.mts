@@ -39,7 +39,7 @@ export interface CloudMailRuntime {
   }>;
   reply(idToken:string,input:{
     requestKey:unknown;letterId:unknown;replyId?:unknown;content:unknown;
-    expectedCampaignDate?:unknown;draft?:unknown;signedBy?:unknown;
+    expectedCampaignDate?:unknown;draft?:unknown;signedBy?:unknown;deliveryRound?:unknown;
   }):Promise<{
     id:string;duplicate:boolean;state:string;deliveryRound:number;
   }>;
@@ -64,7 +64,7 @@ export interface CloudMailRuntime {
   }>;
   edit(idToken:string,input:{
     letterId:unknown;expectedVersion:unknown;subject:unknown;content:unknown;
-    courtMemberId?:unknown;courtAssignment?:unknown;unitId?:unknown;
+    campaignDate?:unknown;courtMemberId?:unknown;courtAssignment?:unknown;unitId?:unknown;
   }):Promise<{edited:boolean;unchanged:boolean;version:number}>;
 }
 export function createFirebaseCloudMail(options:{

@@ -1,8 +1,10 @@
 import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
-import {CampaignContent} from '@/components/campaign-content';
+import {CampaignContent,ImagePicker,uploadImages,type PendingImage} from '@/components/campaign-content';
+import {DesdiaDateBar} from '@/components/calendar/desdia-date-bar';
 import {MailComposer,replaceMailDraft} from '@/components/players/mail-compose';
+import {ChancelariaReplyComposer,type ReplySubmitPayload} from './ChancelariaReplyComposer';
 import {loadRecentSignatures,rememberSignature,resolveLinkNames,useMailLinkCatalog} from '@/lib/mail/link-labels';
 import {NarratorMailNotes} from '@/components/players/narrator-mail-notes';
 import {LetterConsequences,type LetterConsequenceRow} from '@/components/players/letter-consequences';
@@ -377,19 +379,14 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
   // Rascunho da resposta guardado por conversa no navegador: trocar de carta,
   // fechar a aba ou uma falha de envio não apagam o texto.
   const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
-  const readDraft=()=>{try{return localStorage.getItem(draftKey)??sessionStorage.getItem(draftKey)??'';}catch{return '';}};
-  const [reply,setReplyState]=useState(readDraft);const [signed,setSigned]=useState('');
   const [recentSigs,setRecentSigs]=useState<string[]>(()=>loadRecentSignatures());
-  const setReply=(value:string)=>{setReplyState(value);
-    try{if(value)localStorage.setItem(draftKey,value);else{localStorage.removeItem(draftKey);sessionStorage.removeItem(draftKey);}}catch{/* só em memória */}};
   const linkCatalog=useMailLinkCatalog(Boolean(c.root.court_member_id||c.root.military_unit_id));
   const {courtLabel,unitLabel}=resolveLinkNames(linkCatalog.data?.houses,c.root.court_member_id,c.root.military_unit_id);
-  const [busy,setBusy]=useState(false);const [key,setKey]=useState(()=>crypto.randomUUID());
+  const [busy,setBusy]=useState(false);const [uploading,setUploading]=useState(false);
+  const [key,setKey]=useState(()=>crypto.randomUUID());
   const [editing,setEditing]=useState<MailRow|null>(null);const [editText,setEditText]=useState('');const [editSubject,setEditSubject]=useState('');
+  const [editDate,setEditDate]=useState('');const [editImages,setEditImages]=useState<PendingImage[]>([]);
   const [confirmCancel,setConfirmCancel]=useState<string|null>(null);
-  const [focused,setFocused]=useState(false);
-  const replyRef=useRef<HTMLTextAreaElement>(null);
-  useEffect(()=>{const t=replyRef.current;if(!t)return;t.style.height='auto';t.style.height=Math.min(t.scrollHeight+2,Math.round(window.innerHeight*.4))+'px';},[reply]);
   const target=c.replyTarget(uid,admin,editHouses);
   // Historical replies have their own immutable ID. Supplying that ID lets
   // Firebase derive the responding House from the authenticated source, even
@@ -403,16 +400,29 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
     if(r.error){onError(r.error.message);return false;}
     onDone();return true;
   };
-  const sendReply=async(draft:boolean)=>{
-    if(!target||!reply.trim())return;
-    if(!today){onError('Data oficial da campanha indisponível.');return;}
-    const cleanSigned=admin?signed.trim()||null:null;
-    const ok=await act(()=>draft
-      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:historicReplyId,p_content:reply,p_signed_by:cleanSigned},today)
-      :datedMail('reply_weekly_message',{p_letter:target,p_reply:historicReplyId,p_content:reply,p_key:key,p_draft:false,p_signed_by:cleanSigned},today));
-    if(!ok)return;
+  const sendReply=async(payload:ReplySubmitPayload):Promise<boolean>=>{
+    if(!target||!payload.text.trim())return false;
+    const chosenDate=payload.campaignDate||today;
+    if(!chosenDate){onError('Data oficial da campanha indisponível.');return false;}
+    setBusy(true);
+    let richContent=payload.text;
+    if(payload.images.length>0){
+      setUploading(true);
+      try{richContent=await uploadImages(payload.text,payload.images,key);}
+      catch(err){setUploading(false);setBusy(false);onError(err instanceof Error?err.message:'Não foi possível enviar a imagem.');return false;}
+      setUploading(false);
+    }
+    const cleanSigned=admin?payload.signedBy:null;
+    const weekArg=admin&&payload.deliveryWeek!==null?{p_week:payload.deliveryWeek}:{};
+    const r=await (payload.draft
+      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:target,p_reply:historicReplyId,p_content:richContent,p_signed_by:cleanSigned,...weekArg},chosenDate)
+      :datedMail('reply_weekly_message',{p_letter:target,p_reply:historicReplyId,p_content:richContent,p_key:key,p_draft:false,p_signed_by:cleanSigned,...weekArg},chosenDate));
+    setBusy(false);
+    if(r.error){onError(r.error.message);return false;}
     if(cleanSigned){rememberSignature(cleanSigned);setRecentSigs(loadRecentSignatures());}
-    setReply('');setKey(crypto.randomUUID());
+    setKey(crypto.randomUUID());
+    onDone();
+    return true;
   };
   const statusBar=(m:MailRow)=>{
     if(trashMode)return m.deleted_at?<div className="chn-status chn-status--trash"><Icon name="trash" size={15}/>
@@ -423,7 +433,7 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
     if(m.publication_state==='scheduled')parts.push(<span key="s"><Icon name="hour" size={14}/> Programada para a <b>Semana {m.delivery_week}</b>. Só o autor e o Narrador a veem até a abertura.</span>);
     if(m.publication_state==='draft')parts.push(<span key="d"><Icon name="file" size={14}/> Rascunho: ninguém recebeu ainda.</span>);
     if(editable(m)){
-      parts.push(<button key="e" type="button" className="chn-btn chn-btn--sm" onClick={()=>{setEditing(m);setEditText(m.content);setEditSubject(m.subject);}}><Icon name="edit" size={14}/>Editar envio</button>);
+      parts.push(<button key="e" type="button" className="chn-btn chn-btn--sm" onClick={()=>{setEditing(m);setEditText(m.content);setEditSubject(m.subject);setEditDate((m['campaign_date'] as string|null|undefined)??today);setEditImages([]);}}><Icon name="edit" size={14}/>Editar envio</button>);
       if(m.publication_state==='draft')parts.push(<button key="p" type="button" className="chn-btn chn-btn--sm chn-btn--primary" disabled={busy}
         onClick={()=>void act(()=>loose('schedule_letter_draft',{p_id:m.id,p_week:m.delivery_week??openRound}))}><Icon name="send" size={14}/>Enviar agora</button>);
       parts.push(confirmCancel===m.id?<span key="c" className="chn-confirm"><b>Cancelar este envio para todos?</b>
@@ -441,13 +451,24 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
       parts.push(<span key="r" className={'chn-pill'+(m['recipient_read']?' chn-pill--ok':'')}>{m['recipient_read']?'✓✓ lida pelo destinatário':'✓ entregue'}</span>);
     return parts.length?<div className="chn-status">{parts}</div>:null;
   };
-  const editForm=(m:MailRow)=><form className="chn-form" onSubmit={e=>{e.preventDefault();
-    void act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:editText},(m['campaign_date'] as string|null|undefined)??''))
-      .then(ok=>{if(ok)setEditing(null);});}}>
+  const editForm=(m:MailRow)=><form className="chn-form" onSubmit={async e=>{e.preventDefault();
+    if(busy)return;
+    setBusy(true);
+    let richContent=editText;
+    if(editImages.length>0){
+      try{richContent=await uploadImages(editText,editImages,crypto.randomUUID());}
+      catch(err){setBusy(false);onError(err instanceof Error?err.message:'Não foi possível enviar a imagem.');return;}
+    }
+    const r=await datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:richContent},editDate||((m['campaign_date'] as string|null|undefined)??''));
+    setBusy(false);
+    if(r.error){onError(r.error.message);return;}
+    setEditing(null);setEditImages([]);onDone();}}>
     <b>Editando o envio</b><span className="chn-muted">Quem já leu verá "Editada"; a versão anterior fica no histórico.</span>
+    <DesdiaDateBar value={editDate} officialDate={today||undefined} allowFullCalendar={admin} disabled={busy} label="Data do envio editado" onChange={setEditDate}/>
     {!m['conversation_id']||m['conversation_id']===m.id?<label>Assunto<input value={editSubject} onChange={e=>setEditSubject(e.target.value)} required/></label>:null}
     <label>Texto<textarea rows={8} value={editText} onChange={e=>setEditText(e.target.value)} required/></label>
-    <div className="chn-row"><button type="button" className="chn-btn" onClick={()=>setEditing(null)}>Descartar</button>
+    <ImagePicker images={editImages} onChange={setEditImages} disabled={busy}/>
+    <div className="chn-row"><button type="button" className="chn-btn" onClick={()=>{setEditing(null);setEditImages([]);}}>Descartar</button>
       <button type="submit" className="chn-btn chn-btn--primary" disabled={busy}>Salvar nova versão</button></div>
   </form>;
   const rootDate=str(c.root['campaign_date']);
@@ -504,28 +525,19 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
       </section>
     </div>
     {trashMode?<div className="chn-readonly"><Icon name="trash" size={15}/>Conversa na Lixeira. Restaure para continuar o fio.</div>
-    :target?<form className={'chn-reply'+(focused||reply.trim()?' chn-reply--active':'')} onSubmit={e=>{e.preventDefault();void sendReply(false);}}
-      onFocus={()=>setFocused(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setFocused(false);}}>
-      <div className="chn-reply-main">
-        <textarea id="chn-reply" ref={replyRef} rows={1} value={reply} onChange={e=>setReply(e.target.value)}
-          onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&reply.trim()&&!busy){e.preventDefault();void sendReply(false);}}}
-          placeholder={`Responder como Narrador para ${houseName(c.root.origin_house_id??c.root.recipient_house_id)}… (Ctrl+Enter envia)`} aria-label="Texto da resposta"/>
-        <button type="submit" className="chn-btn chn-btn--primary" disabled={busy||!reply.trim()}><Icon name="send" size={15}/>Enviar</button>
-      </div>
-      <div className="chn-reply-extra">
-        {admin&&<div className="chn-sign-row">
-          <input className="chn-sign" list="chn-npc-sigs" maxLength={120} value={signed} onChange={e=>setSigned(e.target.value)}
-            placeholder="Assinado por (NPC ou cargo), opcional" aria-label="Assinado por (NPC ou cargo)"/>
-          <datalist id="chn-npc-sigs">{recentSigs.map(s=><option key={s} value={s}/>)}</datalist>
-          {recentSigs.length>0&&<div className="chn-sign-chips" aria-label="Assinaturas recentes">
-            {recentSigs.slice(0,4).map(s=><button key={s} type="button" className="chn-sign-chip" onClick={()=>setSigned(s)}>{s}</button>)}
-          </div>}
-        </div>}
-        <span className="chn-note"><Icon name="hour" size={14}/> {deliveryWeek!==null?<>Chega à Casa na <b>Semana {deliveryWeek}</b> (próxima abertura). </>:null}
-          Dá para editar ou cancelar até a entrega · <kbd>Ctrl+Enter</kbd> envia.</span>
-        <button type="button" className="chn-btn chn-btn--sm" disabled={busy||!reply.trim()} onClick={()=>void sendReply(true)}>Salvar rascunho</button>
-      </div>
-    </form>
+    :target?<ChancelariaReplyComposer
+      textareaId="chn-reply"
+      placeholder={`Responder como Narrador para ${houseName(c.root.origin_house_id??c.root.recipient_house_id)}… (Ctrl+Enter envia)`}
+      draftKey={draftKey}
+      today={today}
+      admin={admin}
+      busy={busy}
+      uploading={uploading}
+      defaultDeliveryWeek={deliveryWeek}
+      recentSigs={recentSigs}
+      note={<><Icon name="hour" size={14}/> {deliveryWeek!==null?<>Chega à Casa na <b>Semana {deliveryWeek}</b> (próxima abertura). </>:null}
+        Dá para editar ou cancelar até a entrega · <kbd>Ctrl+Enter</kbd> envia.</>}
+      onSubmit={sendReply}/>
     :<div className="chn-readonly"><Icon name="lock" size={15}/>{c.root['historical_source']||(openRound!==null&&(c.root.delivery_week??0)<openRound)
       ?'Semana encerrada: o fio fica para consulta.'
       :c.kind==='entre'?'Carta entre Casas: o Narrador acompanha e registra, mas não entra no fio.'

@@ -79,6 +79,44 @@ function campaignDateOf(value){
        String(value.day).padStart(2,'0');
 }
 
+const HARPTOS_FESTIVAL_MONTH={
+  midwinter:0,greengrass:3,midsummer:6,shieldmeet:6,highharvestide:8,'feast-moon':10,
+};
+function parseHarptosDateKey(raw){
+  if(typeof raw!=='string')return null;
+  const m=/^(\d{4})-(?:(\d{2})-(\d{2})|F-([a-z-]+))$/.exec(raw);
+  if(!m)return null;
+  const year=Number(m[1]);
+  if(!Number.isInteger(year)||year<1||year>9999)return null;
+  if(m[4]){
+    const month=HARPTOS_FESTIVAL_MONTH[m[4]];
+    if(month===undefined)return null;
+    return validateHarptosDate(year,month,30,m[4])
+      ?{year,month,day:30,festival:m[4]}:null;
+  }
+  const month=Number(m[2])-1,day=Number(m[3]);
+  return validateHarptosDate(year,month,day,null)
+    ?{year,month,day,festival:null}:null;
+}
+function sameHarptosPeriod(chosenKey,canonicalKey){
+  const chosen=parseHarptosDateKey(chosenKey);
+  const canonical=parseHarptosDateKey(canonicalKey);
+  if(!chosen||!canonical)return false;
+  if(canonical.festival)
+    return chosen.year===canonical.year&&chosen.festival===canonical.festival;
+  return chosen.festival===null&&chosen.year===canonical.year&&
+    chosen.month===canonical.month&&
+    Math.floor((chosen.day-1)/10)===Math.floor((canonical.day-1)/10);
+}
+function resolveCampaignDate(actor,requestedDate,canonicalDate,invalidCode='invalid_mail_request'){
+  if(requestedDate===undefined)return canonicalDate;
+  if(!parseHarptosDateKey(requestedDate))deny(invalidCode,400);
+  if(actor.role==='narrador')return requestedDate;
+  if(!sameHarptosPeriod(requestedDate,canonicalDate))
+    deny('campaign_date_changed',409);
+  return requestedDate;
+}
+
 function accessOf(uid,v){
   if(!v||v.userId!==uid||v.active!==true||
      v.requirePasswordChange!==false)
@@ -368,10 +406,10 @@ export function createFirebaseCloudMail({
   // All Cloud writes use the same atomic idempotency, House validation,
   // rate limit and immutable migration-source safeguards.
   async function persist(tx,{uid,actor,date,round,req,replyToId=null,threadRootId=null,realActorUid=null,sessionNonce=null}){
-    // Original composer submits an explicit campaign date. Compare it inside
-    // the same transaction to prevent a clock rollover from misdating a letter.
-    if(req.expectedCampaignDate!==undefined&&req.expectedCampaignDate!==date)
-      deny('campaign_date_changed',409);
+    // Author date must be a valid Harptos date. Players stay inside the open
+    // HUB désdia (preventing week rollover misdating while allowing day 21, 22, 24...);
+    // Narrator may pick any valid Harptos date.
+    const effectiveDate=resolveCampaignDate(actor,req.expectedCampaignDate,date);
     writerOnly(actor);
     if(actor.role==='narrador'){
       if(req.originHouseId!==null||req.recipientKind!=='house')
@@ -431,7 +469,7 @@ export function createFirebaseCloudMail({
           ...storedOptions(req),
           subject:req.subject,content:req.content,
           createdAt:timestamp,deliveredAt:plan.state==='delivered'?timestamp:null,
-          campaignDate:date,creationRound:round,deliveryRound:plan.deliveryRound,
+          campaignDate:effectiveDate,creationRound:round,deliveryRound:plan.deliveryRound,
           publicationState:plan.state,deletedAt:null,version:1,
         });
         tx.create(audit,{action:replyToId?'reply':'send',actorUid:realActorUid??uid,
@@ -510,8 +548,7 @@ export function createFirebaseCloudMail({
       const input=validateRepresentedReply(raw);
       return db.runTransaction(async tx=>{
         const {actor,uid,date,round,realActorUid,sessionNonce}=await represented(tx,realUid);
-        if(input.expectedCampaignDate!==undefined&&input.expectedCampaignDate!==date)
-          deny('campaign_date_changed',409);
+        const effectiveDate=resolveCampaignDate(actor,input.expectedCampaignDate,date,'invalid_reply_request');
         const {parent,route,replyToId,threadRootId}=
           await resolveReply(tx,actor,input,round);
         const prefix=/^Re:\s/i.test(parent.subject)?'':'Re: ';
@@ -522,8 +559,7 @@ export function createFirebaseCloudMail({
           requestKey:input.requestKey,...route,
           subject:prefix+chars.join(''),content:input.content,
           ...(input.draft===true?{draft:true}:{}),
-          ...(input.expectedCampaignDate!==undefined?
-            {expectedCampaignDate:input.expectedCampaignDate}:{}),
+          expectedCampaignDate:effectiveDate,
         });
         return persist(tx,{uid,actor,date,round,req,replyToId,threadRootId,
           realActorUid,sessionNonce});
@@ -701,18 +737,19 @@ export function createFirebaseCloudMail({
     async edit(idToken,input){
       const uid=await uidFromToken(idToken);
       const req=lifecycleInput(input,['letterId','expectedVersion','subject','content',
-        'courtMemberId','courtAssignment','unitId']);
+        'campaignDate','courtMemberId','courtAssignment','unitId']);
       const links=deliveryOptions({courtMemberId:req.courtMemberId,
         courtAssignment:req.courtAssignment,unitId:req.unitId},
         ()=>deny('invalid_mail_lifecycle_request',400));
       const linkEdit=['courtMemberId','courtAssignment','unitId'].some(k=>k in req);
       if(!validText(req.subject,MAX_SUBJECT_BYTES)||
-         !validText(req.content,MAX_CONTENT_BYTES))
+         !validText(req.content,MAX_CONTENT_BYTES)||
+         (req.campaignDate!==undefined&&!parseHarptosDateKey(req.campaignDate)))
         deny('invalid_mail_lifecycle_request',400);
       const subject=req.subject.trim();
       const ref=letters.doc(req.letterId);
       return db.runTransaction(async tx=>{
-        const {actor,round}=await readyTransaction(tx,uid);
+        const {actor,date,round}=await readyTransaction(tx,uid);
         writerOnly(actor);
         const v=cloudLetterOf(await tx.get(ref),req.letterId,round);
         if(v.deletedAt!==null)deny('letter_removed',409);
@@ -725,20 +762,32 @@ export function createFirebaseCloudMail({
         // Court and unit links are part of the order: only while a draft.
         if(linkEdit&&(v.publicationState!=='draft'||actor.role!=='jogador'))
           deny('links_not_allowed',400);
+        const nextDate=req.campaignDate===undefined||req.campaignDate===v.campaignDate
+          ?v.campaignDate
+          :resolveCampaignDate(actor,req.campaignDate,date,'invalid_mail_lifecycle_request');
         const linksChanged=linkEdit&&(links.courtMemberId!==v.courtMemberId||
           links.courtAssignment!==v.courtAssignment||links.unitId!==v.unitId);
-        if(subject===v.subject&&req.content===v.content&&!linksChanged)
+        const dateChanged=nextDate!==v.campaignDate;
+        if(subject===v.subject&&req.content===v.content&&!linksChanged&&!dateChanged)
           return {edited:false,unchanged:true,version:v.version};
+        if(req.content!==v.content){
+          try{await verifyMediaReferences({tx,root:runtime,snapshotId,uid,
+            content:req.content});}
+          catch(e){if(e instanceof MediaReferenceError)
+            deny(e.code,e.status);throw e;}
+        }
         const at=serverTime(),version=v.version+1;
         tx.create(versions.doc(hash('mail-version:'+req.letterId+':'+v.version)),{
           letterId:req.letterId,version:v.version,subject:v.subject,
-          content:v.content,replacedAt:at,actorUid:uid,schemaVersion:1});
+          content:v.content,campaignDate:v.campaignDate??null,
+          replacedAt:at,actorUid:uid,schemaVersion:1});
         tx.update(ref,{subject,content:req.content,version,editedAt:at,updatedAt:at,
+          ...(dateChanged?{campaignDate:nextDate}:{}),
           ...(linkEdit?{courtMemberId:links.courtMemberId??null,
             courtAssignment:links.courtAssignment??null,unitId:links.unitId??null}:{})});
         tx.create(audits.doc(hash('mail-edit:'+req.letterId+':'+version)),{
           action:'edit',actorUid:uid,letterId:req.letterId,version,
-          contentFingerprint:hash(JSON.stringify({subject,content:req.content})),
+          contentFingerprint:hash(JSON.stringify({subject,content:req.content,campaignDate:nextDate})),
           occurredAt:at});
         return {edited:true,unchanged:false,version};
       });
@@ -864,9 +913,7 @@ export function createFirebaseCloudMail({
       }
       return db.runTransaction(async tx=>{
         const {actor,date,round}=await readyTransaction(tx,uid);
-        if(first.expectedCampaignDate!==undefined&&
-           first.expectedCampaignDate!==date)
-          deny('campaign_date_changed',409);
+        const effectiveDate=resolveCampaignDate(actor,first.expectedCampaignDate,date);
         writerOnly(actor);
         if(actor.role==='narrador'){
           if(first.originHouseId!==null||
@@ -932,7 +979,7 @@ export function createFirebaseCloudMail({
             recipientPlayerId:null,subject:req.subject,content:req.content,
             ...storedOptions(req),
             createdAt:timestamp,deliveredAt:plan.state==='delivered'?timestamp:null,
-            campaignDate:date,creationRound:round,deliveryRound:plan.deliveryRound,
+            campaignDate:effectiveDate,creationRound:round,deliveryRound:plan.deliveryRound,
             publicationState:plan.state,deletedAt:null,version:1,
             batchKey:first.requestKey,
           });
@@ -961,10 +1008,12 @@ export function createFirebaseCloudMail({
     async reply(idToken,input){
       const uid=await uidFromToken(idToken);
       if(!input||typeof input!=='object'||Array.isArray(input)||
-         Object.keys(input).some(k=>!['requestKey','letterId','replyId','content','expectedCampaignDate','draft','signedBy'].includes(k))||
+         Object.keys(input).some(k=>!['requestKey','letterId','replyId','content','expectedCampaignDate','draft','signedBy','deliveryRound'].includes(k))||
          (input.expectedCampaignDate!==undefined&&
           (typeof input.expectedCampaignDate!=='string'||
            !/^\d{4}-(?:\d{2}-\d{2}|F-[a-z-]+)$/.test(input.expectedCampaignDate)))||
+         (input.deliveryRound!==undefined&&
+          (!Number.isSafeInteger(input.deliveryRound)||input.deliveryRound<1))||
          !validId(input.letterId)||
       (input.replyId!==undefined&&!validId(input.replyId))||
          typeof input.requestKey!=='string'||!REQUEST_KEY.test(input.requestKey)||
@@ -973,9 +1022,7 @@ export function createFirebaseCloudMail({
       return db.runTransaction(async tx=>{
         const {actor,date,round}=await readyTransaction(tx,uid);
         writerOnly(actor);
-        if(input.expectedCampaignDate!==undefined&&
-           input.expectedCampaignDate!==date)
-          deny('campaign_date_changed',409);
+        const effectiveDate=resolveCampaignDate(actor,input.expectedCampaignDate,date,'invalid_reply_request');
         const {parent,route,replyToId,threadRootId}=
           await resolveReply(tx,actor,input,round);
         // Subject and delivery address come solely from the original letter.
@@ -989,8 +1036,8 @@ export function createFirebaseCloudMail({
           subject:prefix+chars.join(''),content:input.content,
           ...(input.draft!==undefined?{draft:input.draft}:{}),
           ...(input.signedBy!==undefined?{signedBy:input.signedBy}:{}),
-          ...(input.expectedCampaignDate!==undefined?
-            {expectedCampaignDate:input.expectedCampaignDate}:{}),
+          ...(input.deliveryRound!==undefined?{deliveryRound:input.deliveryRound}:{}),
+          expectedCampaignDate:effectiveDate,
         });
         return persist(tx,{uid,actor,date,round,req,replyToId,threadRootId});
       });

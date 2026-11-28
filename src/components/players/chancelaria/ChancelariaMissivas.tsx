@@ -1,8 +1,10 @@
 import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '@/integrations/supabase/client';
-import {CampaignContent} from '@/components/campaign-content';
+import {CampaignContent,ImagePicker,uploadImages,type PendingImage} from '@/components/campaign-content';
+import {DesdiaDateBar} from '@/components/calendar/desdia-date-bar';
 import {MailComposer,replaceMailDraft} from '@/components/players/mail-compose';
+import {ChancelariaReplyComposer,type ReplySubmitPayload} from './ChancelariaReplyComposer';
 import {resolveLinkNames,useMailLinkCatalog,type MailLinkOptionHouse} from '@/lib/mail/link-labels';
 import {NarratorMailNotes} from '@/components/players/narrator-mail-notes';
 import {LetterConsequences,type LetterConsequenceRow} from '@/components/players/letter-consequences';
@@ -365,23 +367,15 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
 }){
   const unread=conversationUnread(c,ctx);
   const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
-  const [reply,setReplyState]=useState(()=>readLocalReplyDraft(draftKey));
-  const setReply=(value:string)=>{setReplyState(value);writeLocalReplyDraft(draftKey,value);};
   const [busy,setBusy]=useState(false);
+  const [uploading,setUploading]=useState(false);
   const [key,setKey]=useState(()=>crypto.randomUUID());
   const [editing,setEditing]=useState<MailRow|null>(null);
   const [editText,setEditText]=useState('');
   const [editSubject,setEditSubject]=useState('');
+  const [editDate,setEditDate]=useState('');
+  const [editImages,setEditImages]=useState<PendingImage[]>([]);
   const [confirmCancel,setConfirmCancel]=useState<string|null>(null);
-  const [focused,setFocused]=useState(false);
-  const replyRef=useRef<HTMLTextAreaElement>(null);
-
-  useEffect(()=>{
-    const t=replyRef.current;
-    if(!t)return;
-    t.style.height='auto';
-    t.style.height=Math.min(t.scrollHeight+2,Math.round(window.innerHeight*.38))+'px';
-  },[reply]);
 
   const consequences=useQuery({queryKey:['letter-consequences',uid,c.root.id],enabled:!trashMode,queryFn:async()=>{
     const r=await supabase.from('campaign_letter_consequences').select('id,letter_id,house_id,changes,active,created_at').eq('letter_id',c.root.id);
@@ -407,20 +401,28 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
     if(r.error){onError(r.error.message);return false;}
     onDone();return true;
   };
-  const sendReply=async(draft:boolean)=>{
-    if(!canSend||!target||!reply.trim())return;
-    if(!today){onError('Data oficial da campanha indisponível.');return;}
+  const sendReply=async(payload:ReplySubmitPayload):Promise<boolean>=>{
+    if(!canSend||!target||!payload.text.trim())return false;
+    const chosenDate=payload.campaignDate||today;
+    if(!chosenDate){onError('Data oficial da campanha indisponível.');return false;}
     const letterId=historicalReplyId?c.root.id:target;
     setBusy(true);
-    const r=await (draft
-      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:letterId,p_reply:historicalReplyId,p_content:reply,p_signed_by:null},today)
-      :datedMail('reply_weekly_message',{p_letter:letterId,p_reply:historicalReplyId,p_content:reply,p_key:key,p_draft:false,p_signed_by:null},today));
-    if(r.error){setBusy(false);onError(r.error.message);return;}
-    if(!draft){await onAutoRead();}
+    let richContent=payload.text;
+    if(payload.images.length>0){
+      setUploading(true);
+      try{richContent=await uploadImages(payload.text,payload.images,key);}
+      catch(err){setUploading(false);setBusy(false);onError(err instanceof Error?err.message:'Não foi possível enviar a imagem.');return false;}
+      setUploading(false);
+    }
+    const r=await (payload.draft
+      ?datedMail('save_weekly_reply_draft',{p_id:key,p_letter:letterId,p_reply:historicalReplyId,p_content:richContent,p_signed_by:null},chosenDate)
+      :datedMail('reply_weekly_message',{p_letter:letterId,p_reply:historicalReplyId,p_content:richContent,p_key:key,p_draft:false,p_signed_by:null},chosenDate));
+    if(r.error){setBusy(false);onError(r.error.message);return false;}
+    if(!payload.draft){await onAutoRead();}
     setBusy(false);
-    setReply('');
     setKey(crypto.randomUUID());
     onDone();
+    return true;
   };
 
   const {courtLabel,unitLabel}=resolveLinkNames(mailOptions,c.root.court_member_id,c.root.military_unit_id);
@@ -434,7 +436,7 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
     if(m.publication_state==='scheduled')parts.push(<span key="s"><Icon name="hour" size={14}/> Programada para a <b>Semana {m.delivery_week}</b>.</span>);
     if(m.publication_state==='draft')parts.push(<span key="d"><Icon name="file" size={14}/> Rascunho: ninguém recebeu ainda.</span>);
     if(editable(m)){
-      parts.push(<button key="e" type="button" className="chn-btn chn-btn--sm" onClick={()=>{setEditing(m);setEditText(m.content);setEditSubject(m.subject);}}><Icon name="edit" size={14}/>Editar envio</button>);
+      parts.push(<button key="e" type="button" className="chn-btn chn-btn--sm" onClick={()=>{setEditing(m);setEditText(m.content);setEditSubject(m.subject);setEditDate((m['campaign_date'] as string|null|undefined)??today);setEditImages([]);}}><Icon name="edit" size={14}/>Editar envio</button>);
       if(m.publication_state==='draft')parts.push(<button key="p" type="button" className="chn-btn chn-btn--sm chn-btn--primary" disabled={busy}
         onClick={()=>void act(()=>loose('schedule_letter_draft',{p_id:m.id,p_week:m.delivery_week??openRound}))}><Icon name="send" size={14}/>Enviar agora</button>);
       parts.push(confirmCancel===m.id?<span key="c" className="chn-confirm"><b>Cancelar este envio para todos?</b>
@@ -448,13 +450,24 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
     return parts.length?<div className="chn-status">{parts}</div>:null;
   };
 
-  const editForm=(m:MailRow)=><form className="chn-form" onSubmit={e=>{e.preventDefault();
-    void act(()=>datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:editText},(m['campaign_date'] as string|null|undefined)??''))
-      .then(ok=>{if(ok)setEditing(null);});}}>
+  const editForm=(m:MailRow)=><form className="chn-form" onSubmit={async e=>{e.preventDefault();
+    if(busy)return;
+    setBusy(true);
+    let richContent=editText;
+    if(editImages.length>0){
+      try{richContent=await uploadImages(editText,editImages,crypto.randomUUID());}
+      catch(err){setBusy(false);onError(err instanceof Error?err.message:'Não foi possível enviar a imagem.');return;}
+    }
+    const r=await datedMail('edit_campaign_letter',{p_id:m.id,p_version:(m['version'] as number)??1,p_subject:editSubject,p_content:richContent},editDate||((m['campaign_date'] as string|null|undefined)??''));
+    setBusy(false);
+    if(r.error){onError(r.error.message);return;}
+    setEditing(null);setEditImages([]);onDone();}}>
     <b>Editando o envio</b><span className="chn-muted">Quem já leu verá "Editada"; a versão anterior fica preservada.</span>
+    <DesdiaDateBar value={editDate} officialDate={today||undefined} allowFullCalendar={admin} disabled={busy} label="Data do envio editado" onChange={setEditDate}/>
     {!m['conversation_id']||m['conversation_id']===m.id?<label>Assunto<input value={editSubject} onChange={e=>setEditSubject(e.target.value)} required/></label>:null}
     <label>Texto<textarea rows={8} value={editText} onChange={e=>setEditText(e.target.value)} required/></label>
-    <div className="chn-row"><button type="button" className="chn-btn" onClick={()=>setEditing(null)}>Descartar</button>
+    <ImagePicker images={editImages} onChange={setEditImages} disabled={busy}/>
+    <div className="chn-row"><button type="button" className="chn-btn" onClick={()=>{setEditing(null);setEditImages([]);}}>Descartar</button>
       <button type="submit" className="chn-btn chn-btn--primary" disabled={busy}>Salvar nova versão</button></div>
   </form>;
 
@@ -521,19 +534,16 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
     </div>
 
     {trashMode?<div className="chn-readonly"><Icon name="trash" size={15}/>Conversa na Lixeira. Restaure para continuar o fio.</div>
-    :canSend?<form className={'chn-reply'+(focused||reply.trim()?' chn-reply--active':'')} onSubmit={e=>{e.preventDefault();void sendReply(false);}}
-      onFocus={()=>setFocused(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setFocused(false);}}>
-      <div className="chn-reply-main">
-        <textarea id={'ch-responder-'+c.root.id} ref={replyRef} rows={2} value={reply} onChange={e=>setReply(e.target.value)}
-          onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&reply.trim()&&!busy){e.preventDefault();void sendReply(false);}}}
-          placeholder="Escreva sua resposta ou ordem… (Ctrl+Enter envia)" aria-label="Texto da resposta"/>
-        <button type="submit" className="chn-btn chn-btn--primary" disabled={busy||!reply.trim()}><Icon name="send" size={15}/>Enviar</button>
-      </div>
-      <div className="chn-reply-extra">
-        <span className="chn-note">Rascunho salvo automaticamente neste navegador · <kbd>Ctrl+Enter</kbd> envia</span>
-        <button type="button" className="chn-btn chn-btn--sm" disabled={busy||!reply.trim()} onClick={()=>void sendReply(true)}>Salvar rascunho</button>
-      </div>
-    </form>
+    :canSend?<ChancelariaReplyComposer
+      textareaId={'ch-responder-'+c.root.id}
+      placeholder="Escreva sua resposta ou ordem… (Ctrl+Enter envia)"
+      draftKey={draftKey}
+      today={today}
+      admin={false}
+      busy={busy}
+      uploading={uploading}
+      note={<>Rascunho salvo automaticamente neste navegador · <kbd>Ctrl+Enter</kbd> envia</>}
+      onSubmit={sendReply}/>
     :<div className="chn-readonly"><Icon name="lock" size={15}/>{blockedReason}</div>}
   </>;
 }

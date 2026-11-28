@@ -881,14 +881,16 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
      try{links=composerOptions({p_court:p['p_court'],p_role:p['p_role'],p_unit:p['p_unit']});}
      catch(e){if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);throw e;}
      await checkLinks(row.origin_house_id,links);
+     const editedDate=typeof args['p_date']==='string'&&args['p_date'].trim()?args['p_date'].trim():undefined;
      return asAccess(()=>cloudMail().edit(token,{letterId:row.id,expectedVersion:version,
       subject:p['p_subject'],content:p['p_content'],
+      ...(editedDate&&editedDate!==(row['campaign_date']??'')?{campaignDate:editedDate}:{}),
       ...(row.origin_house_id?{courtMemberId:links.courtMemberId??null,
        courtAssignment:links.courtAssignment??null,unitId:links.unitId??null}:{})}));
     }
     if(args['p_action']==='edit_campaign_letter'){
-     // Author edit during the open week. The campaign date is not editable
-     // here: the original form must submit the letter's own date unchanged.
+     // Author edit during the open week. Campaign date may be adjusted within
+     // the active désdia (or any valid Harptos date for Narrator).
      const p=args['p_args'];
      if(!p||typeof p!=='object'||Array.isArray(p)||
         Object.keys(args).some(k=>!['p_action','p_args','p_date'].includes(k))||
@@ -897,10 +899,12 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
       throw new CloudAccessError('invalid_mail_lifecycle_request',400);
      const {row,version}=await lifecycleTarget(p['p_id'],{deleted:false});
      if(p['p_version']!==version)throw new CloudAccessError('letter_version_conflict',409);
-     if((args['p_date']??'')!==(row['campaign_date']??''))
-      throw new CloudAccessError('workspace_operation_not_implemented',501);
+     const editedDate=typeof args['p_date']==='string'&&args['p_date'].trim()?args['p_date'].trim():undefined;
+     if(editedDate&&!parseDate(editedDate))
+      throw new CloudAccessError('invalid_mail_lifecycle_request',400);
      return asAccess(()=>cloudMail().edit(token,{letterId:row.id,expectedVersion:version,
-      subject:p['p_subject'],content:p['p_content']}));
+      subject:p['p_subject'],content:p['p_content'],
+      ...(editedDate&&editedDate!==(row['campaign_date']??'')?{campaignDate:editedDate}:{})}));
     }
     const clock=await cloud.workspaceCalendar(token);
     if(!clock||typeof clock!=='object'||Array.isArray(clock))
@@ -910,19 +914,20 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     if(!parsed||parsed.year!==t.year||parsed.month!==t.month||
        parsed.day!==t.day||parsed.festival!==t.festival)
      throw new CloudAccessError('calendar_unavailable',503);
+    const datePolicy={allowAnyValidDate:scope.profile==='narrador'};
     let request;
     let batch;
     let reply;
     try{
      if(args['p_action']==='reply_weekly_message')
-      reply=originalMailReply(args,key);
+      reply=originalMailReply(args,key,datePolicy);
      else if(args['p_action']==='save_weekly_reply_draft')
-      reply=originalReplyDraft(args,key);
+      reply=originalReplyDraft(args,key,datePolicy);
      else{
      const targets=args['p_args']?.['p_targets'];
      if(Array.isArray(targets)&&targets.length>1)
-      batch=originalMailBatch(args,key);
-     else request=originalMailSend(args,key);
+      batch=originalMailBatch(args,key,datePolicy);
+     else request=originalMailSend(args,key,datePolicy);
      }
     }catch(e){
      if(e instanceof OriginalMailBridgeError)throw new CloudAccessError(e.code,e.status);

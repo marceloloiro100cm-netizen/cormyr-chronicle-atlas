@@ -180,17 +180,25 @@ test('The enabled owner can send once; retries do not double-send or double-coun
   assert.deepEqual([...records].filter(([k])=>k.startsWith('migration')),before);
 });
 
-test('Original composer explicit date is checked inside the write transaction',async()=>{
+test('Original composer explicit date allows any day in the open désdia and rejects outside dates',async()=>{
   const f=fixture();
   const sent=await f.service().send(sampleToken,req({expectedCampaignDate:'1522-01-10'}));
   assert.equal(sent.state,'delivered');
+  const inDesdia=await f.service().send(sampleToken,req({
+   requestKey:'fresh-date-key-same-desdia',expectedCampaignDate:'1522-01-04',
+  }));
+  assert.equal(inDesdia.state,'delivered');
+  assert.equal(f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+inDesdia.id).campaignDate,'1522-01-04');
   await rejects(()=>f.service().send(sampleToken,req({
-   requestKey:'fresh-date-key-1',expectedCampaignDate:'1522-01-09',
+   requestKey:'fresh-date-key-1',expectedCampaignDate:'1522-01-11',
   })),'campaign_date_changed',409);
   await rejects(()=>f.service().send(sampleToken,req({
    requestKey:'fresh-date-key-2',expectedCampaignDate:'../tampered',
   })),'invalid_mail_request',400);
-  assert.equal([...f.records].filter(([k])=>k.includes('/letters/')).length,1);
+  await rejects(()=>f.service().send(sampleToken,req({
+   requestKey:'fresh-date-key-3',expectedCampaignDate:'1522-01-31',
+  })),'invalid_mail_request',400);
+  assert.equal([...f.records].filter(([k])=>k.includes('/letters/')).length,2);
 });
 
 test('One private gate or stale calendar stops every write',async()=>{
@@ -211,7 +219,7 @@ test('One private gate or stale calendar stops every write',async()=>{
     'migration_stage_not_ready',503);
 });
 
-test('Cloud replies reject stale explicit dates without altering the original letter',async()=>{
+test('Cloud replies allow days inside the open désdia and reject dates outside it',async()=>{
  const f=fixture();
  const id='e'.repeat(64);
  f.records.set('campaignCloudRuntime/'+snapshot+'/letters/'+id,{
@@ -220,11 +228,17 @@ test('Cloud replies reject stale explicit dates without altering the original le
   recipientKind:'house',recipientHouseId:'house-a',recipientPlayerId:null,
   subject:'Conversa',content:'Pergunta',publicationState:'delivered',deletedAt:null,
  });
+ const okReply=await f.service().reply(sampleToken,{
+  requestKey:'reply-same-desdia-1',letterId:id,content:'Resposta no dia 5',
+  expectedCampaignDate:'1522-01-05',
+ });
+ assert.equal(okReply.state,'delivered');
+ assert.equal(f.records.get('campaignCloudRuntime/'+snapshot+'/letters/'+okReply.id).campaignDate,'1522-01-05');
  await rejects(()=>f.service().reply(sampleToken,{
   requestKey:'reply-test-123',letterId:id,content:'Resposta',
-  expectedCampaignDate:'1522-01-09',
+  expectedCampaignDate:'1522-01-11',
  }),'campaign_date_changed',409);
- assert.equal([...f.records].filter(([path])=>path.includes('/letters/')).length,1);
+ assert.equal([...f.records].filter(([path])=>path.includes('/letters/')).length,2);
 });
 test('Independent mail runtime must be approved for sends, replies and receipts',async()=>{
   const f=fixture();
