@@ -18,44 +18,96 @@
 .folha-editorial button:focus-visible,.folha-editorial a:focus-visible{
  outline:3px solid #d8a450;outline-offset:3px
 }
-/* Cabeçalho: faixa contínua (fundo que repete), cantos e arte central na mesma escala.
-   Nada estica: em telas largas sobra faixa lisa, a arte mantém a proporção. */
+/* Cabeçalho editorial da Redação: pergaminho claro harmônico com o front do Atlas,
+   brasão centralizado em destaque com filete dourado vertical e moldura tipográfica. */
 .folha-topbar{
- height:clamp(138px,10.6vw,176px);padding:0 clamp(58px,4.8vw,92px);
- display:flex;align-items:center;justify-content:space-between;gap:20px;
- position:relative;isolation:isolate;overflow:hidden;
- border-bottom:4px ridge #a67a3c;
- box-shadow:0 5px 11px #371e143e;
+ min-height:clamp(124px,10.5vw,158px);
+ padding:16px clamp(20px,3vw,48px);
+ display:grid;
+ grid-template-columns:minmax(180px,1fr) auto minmax(220px,1fr);
+ align-items:center;
+ gap:18px;
+ position:relative;isolation:isolate;overflow:visible;
+ border-top:3px solid #3f1863;
+ border-bottom:4px double #b5893a;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 6px 22px rgba(42,18,48,.12);
  background:
-  url('/newspaper/cab_esq.webp') left center/auto 100% no-repeat,
-  url('/newspaper/cab_dir.webp') right center/auto 100% no-repeat,
-  url('/newspaper/cab_centro.webp') center/auto 100% no-repeat,
-  #250011 url('/newspaper/cab_fundo.png') center/auto 100% repeat-x;
- color:var(--folha-gold-soft)
+  repeating-linear-gradient(135deg,rgba(153,120,56,.032) 0 2px,transparent 2px 14px),
+  radial-gradient(ellipse at 50% 22%,#fffcf4 0%,#f7ecd2 58%,#ead6ad 100%);
+ color:#3f1863;
 }
-.folha-top-brand{position:relative;z-index:1;min-width:0;max-width:min(31%,430px)}
-/* Véu escuro atrás do título: mantém a leitura quando a arte central chega perto, em telas médias. */
-.folha-top-brand::before{content:"";position:absolute;inset:-14px -46px -14px -30px;z-index:-1;pointer-events:none;
- background:radial-gradient(ellipse at 38% 50%,#250011e6 0,#250011b0 48%,transparent 74%)}
-.folha-top-brand p{margin:0;letter-spacing:.16em;font:bold .72rem Georgia,serif;color:#e8c588}
-.folha-top-brand p span{color:#e6af53;font-size:1.05rem;vertical-align:-1px;margin-right:3px}
-.folha-top-brand h1{font:italic 700 clamp(1.7rem,2.75vw,2.75rem)/1.02 Georgia,serif;letter-spacing:-.03em;
- margin:2px 0 3px;color:#f4dca9;text-shadow:0 2px 4px #000c;overflow-wrap:anywhere}
-.folha-top-slogan{display:flex;align-items:center;gap:8px;font:italic clamp(.74rem,1vw,.92rem) Georgia,serif;color:#ead0a3;
- text-shadow:0 1px 3px #000c}
-.folha-top-slogan::before,.folha-top-slogan::after{content:"";flex:0 0 18px;height:1px;background:#d4a864}
-.folha-top-account{position:relative;z-index:3;display:flex;align-items:end;flex-direction:column;gap:7px}
-.folha-role{display:flex;align-items:center;justify-content:center;gap:12px;
- min-width:208px;padding:6px 16px;background:#3b102ce6;border:1px solid #a67b4b;
- color:#fae9d0;border-radius:9px;font-weight:bold!important;box-shadow:inset 0 0 9px #9d713d55}
-.folha-account-menu{position:absolute;top:42px;right:0;background:#f2deb7;
- border:1px solid #8e673c;border-radius:7px;padding:7px;box-shadow:0 6px 20px #0005}
+.folha-topbar::before{
+ content:"";position:absolute;inset:7px 14px;pointer-events:none;z-index:0;
+ border-top:1px solid rgba(181,137,58,.36);
+ border-bottom:1px solid rgba(181,137,58,.36);
+}
+.folha-top-folio{
+ position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+ max-width:230px;color:#5c367c;
+}
+.folha-top-folio-kicker{
+ font:700 .66rem/1.2 'Cinzel',Georgia,serif;letter-spacing:.2em;color:#9a6b24;
+}
+.folha-top-folio-rule{
+ width:74px;height:1px;background:linear-gradient(90deg,#b5893a,rgba(181,137,58,.15));
+}
+.folha-top-folio-note{
+ font:italic .82rem/1.3 Georgia,serif;color:#5f422d;
+}
+.folha-top-brand{
+ position:relative;z-index:1;min-width:0;max-width:none;justify-self:center;
+ transition:transform .16s ease;
+}
+.folha-top-brand:hover{transform:translateY(-1px)}
+.folha-top-brand:hover h1{color:#5e258d}
+.folha-top-brand p{
+ margin:0;letter-spacing:.22em;font:700 .72rem/1.2 'Cinzel',Georgia,serif;color:#9a6b24;
+}
+.folha-top-brand p span{color:#b5893a;font-size:.95rem;vertical-align:-1px;margin-right:4px}
+.folha-top-brand h1{
+ font:700 clamp(1.75rem,2.75vw,2.85rem)/1.06 Georgia,"Times New Roman",serif;
+ letter-spacing:-.015em;margin:3px 0 5px;color:#3f1863;
+ text-shadow:0 1px 0 rgba(255,255,255,.72);overflow-wrap:anywhere;
+}
+.folha-top-slogan{
+ display:flex;align-items:center;gap:10px;
+ font:italic clamp(.78rem,.98vw,.95rem)/1.25 Georgia,serif;color:#68452a;
+ letter-spacing:.03em;
+}
+.folha-top-slogan::before,.folha-top-slogan::after{
+ content:"";flex:0 0 22px;height:1px;background:linear-gradient(90deg,transparent,#b5893a,transparent);
+}
+.folha-top-account{
+ position:relative;z-index:3;justify-self:end;
+ display:flex;align-items:flex-end;flex-direction:column;gap:8px;
+}
+.folha-role{
+ display:inline-flex;align-items:center;justify-content:center;gap:10px;
+ min-width:200px;padding:7px 15px;
+ background:#fffdf8;border:1px solid #c49d56;
+ color:#3f1863;border-radius:999px;font-weight:700!important;font-size:.86rem;
+ box-shadow:0 2px 8px rgba(63,24,99,.08),inset 0 1px 0 #fff;
+}
+.folha-role:hover{background:#f7ebd0;border-color:#9a6b24}
+.folha-role svg{color:#9a6b24;flex:none}
+.folha-account-menu{
+ position:absolute;top:calc(100% + 6px);right:0;min-width:230px;
+ background:#fffaf0;color:#341d16;
+ border:1px solid #b5893a;border-radius:8px;padding:10px 12px;
+ box-shadow:0 10px 24px rgba(42,18,48,.18);font-size:.86rem;
+}
+.folha-account-menu p{margin:0;line-height:1.45}
 .folha-account-menu button{border:0;background:transparent;padding:8px;white-space:nowrap}
 .folha-account-buttons{display:flex;align-items:center;gap:8px}
-.folha-account-buttons button{background:linear-gradient(#fff6e1,#eed3a0)!important;
- color:#34231d!important;border:1px solid #b48954!important;
- border-radius:7px;padding:8px 15px!important;font-size:.89rem!important;font-weight:bold!important;
- box-shadow:0 2px 5px #0003}
+.folha-account-buttons button{
+ background:linear-gradient(#fffdf8,#f3e3be)!important;
+ color:#3f1863!important;border:1px solid #c49d56!important;
+ border-radius:7px;padding:7px 14px!important;font-size:.84rem!important;font-weight:700!important;
+ box-shadow:0 1px 4px rgba(63,24,99,.08)!important;
+}
+.folha-account-buttons button:hover{
+ background:linear-gradient(#fffaf0,#ebd5a3)!important;border-color:#9a6b24!important;
+}
 .folha-layout{display:grid;grid-template-columns:265px minmax(0,1fr);gap:14px;
  width:100%;max-width:2000px;margin:0 auto;padding:12px 15px 30px}
 .folha-navigation{
@@ -283,16 +335,26 @@
  .folha-navigation nav button svg,.folha-navigation nav a svg{width:17px;height:17px}
  .folha-workspace{grid-template-columns:minmax(0,1fr) 240px}
 }
-@media(max-width:1240px){
- .folha-topbar{background-position:left center,right center,68% center,center}
- .folha-top-brand{max-width:min(34%,330px)}
+@media(max-width:1160px){
+ .folha-topbar{grid-template-columns:minmax(0,1fr) auto;padding:14px 20px}
+ .folha-top-folio{display:none}
+ .folha-top-brand{justify-self:start}
 }
 @media(max-width:760px){
- .folha-topbar{height:auto;padding:14px;align-items:flex-start;flex-direction:column;
-  background:linear-gradient(120deg,#2a0718,#3a1226 55%,#250011);border-top:2px solid #d4a864}
- .folha-top-brand{max-width:100%}
- .folha-top-brand h1{font-size:2.1rem}
- .folha-top-account{width:100%;align-items:flex-start;flex-direction:row;justify-content:space-between}
+ .folha-topbar{
+  display:flex;height:auto;min-height:0;padding:14px 16px;
+  align-items:stretch;flex-direction:column;gap:12px;
+  border-top:3px solid #3f1863;border-bottom:4px double #b5893a;
+ }
+ .folha-topbar::before{inset:5px 8px}
+ .folha-top-folio{display:none}
+ .folha-top-brand{justify-self:auto;justify-content:center;max-width:100%}
+ .folha-top-brand h1{font-size:clamp(1.45rem,6vw,2rem)}
+ .folha-top-account{
+  width:100%;justify-self:auto;align-items:center;flex-direction:row;
+  flex-wrap:wrap;justify-content:space-between;
+  padding-top:10px;border-top:1px solid rgba(181,137,58,.32);
+ }
  .folha-role{min-width:unset}
  .folha-masthead{grid-template-columns:auto minmax(0,1fr);padding:10px;gap:8px}
  .folha-sigil{width:51px;height:65px}.folha-sigil svg:first-child{width:36px}
@@ -422,7 +484,8 @@
 /* ---- O título segue a fonte escolhida em Configurações ---- */
 .folha-font-classico h1,.folha-font-classico h2{font-family:"Times New Roman",Times,serif}
 .folha-font-editorial h1,.folha-font-editorial h2{font-family:Georgia,"Times New Roman",serif}
-.folha-font-condensado h1,.folha-font-condensado h2{font-family:Impact,"Arial Narrow",sans-serif;letter-spacing:.01em;font-style:normal}
+.folha-font-condensado h1,.folha-font-condensado h2{font-family:Impact,"Arial Narrow",sans-serif;letter-spacing:.025em;font-style:normal;font-weight:400}
+.folha-topbar.folha-font-condensado h1{font-family:'Cinzel',Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:.04em}
 
 /* ---- Redação: formulário claro, campos alinhados ---- */
 .folha-staff-form{display:grid;gap:14px;max-width:560px;padding:16px;border:2px solid #ad824f;background:rgba(255,248,230,.85);border-radius:8px}
@@ -515,16 +578,16 @@
    Em notebook (por volta de 1366x768) tudo fica mais compacto, em telas grandes volta ao tamanho cheio.
    Só vale acima de 760 px; abaixo disso o layout de celular acima continua mandando. */
 @media(min-width:761px){
- .folha-topbar{height:clamp(84px,min(8.2vw,15vh),160px);padding:0 clamp(34px,4.2vw,92px);gap:14px}
- .folha-top-brand p{font-size:clamp(.58rem,.75vw,.72rem)}
- .folha-top-brand h1{font-size:clamp(1.25rem,min(2.5vw,4.6vh),2.75rem);margin:1px 0 2px}
- .folha-top-slogan{font-size:clamp(.62rem,.85vw,.92rem)}
- .folha-top-account{gap:clamp(3px,.6vh,7px)}
- .folha-role{min-width:clamp(150px,13vw,208px);padding:clamp(3px,.6vh,6px) clamp(8px,1vw,16px);gap:8px;
-  font-size:clamp(.76rem,.95vw,1rem)}
- .folha-account-menu{top:calc(100% + 4px)}
- .folha-account-buttons button{padding:clamp(4px,.7vh,8px) clamp(8px,1vw,15px)!important;
-  font-size:clamp(.72rem,.85vw,.89rem)!important}
+ .folha-topbar{min-height:clamp(112px,min(10vw,16vh),156px);padding:14px clamp(20px,3vw,48px);gap:16px}
+ .folha-top-brand p{font-size:clamp(.62rem,.78vw,.74rem)}
+ .folha-top-brand h1{font-size:clamp(1.55rem,min(2.6vw,4.8vh),2.85rem);margin:2px 0 4px}
+ .folha-top-slogan{font-size:clamp(.72rem,.92vw,.94rem)}
+ .folha-top-account{gap:clamp(5px,.7vh,8px)}
+ .folha-role{min-width:clamp(165px,13.5vw,210px);padding:clamp(5px,.7vh,7px) clamp(10px,1.1vw,15px);gap:8px;
+  font-size:clamp(.78rem,.9vw,.9rem)}
+ .folha-account-menu{top:calc(100% + 6px)}
+ .folha-account-buttons button{padding:clamp(5px,.7vh,7px) clamp(10px,1vw,14px)!important;
+  font-size:clamp(.74rem,.84vw,.85rem)!important}
  .folha-masthead{min-height:clamp(84px,min(8.6vw,15vh),130px);padding:clamp(7px,1.2vh,13px) clamp(10px,1.3vw,18px);
   gap:clamp(10px,1.4vw,20px)}
  .folha-sigil-img{height:clamp(72px,min(8vw,14vh),158px);margin:0 2px 4px 4px}
@@ -539,7 +602,6 @@
 /* Janelas baixas (notebooks, janelas partidas): corta o que só enfeita para sobrar espaço ao trabalho. */
 @media(min-width:761px) and (max-height:820px){
  .folha-navigation-emblem{display:none}
- .folha-top-brand::before{inset:-8px -36px -8px -20px}
 }
 @media(min-width:761px){
  /* Coluna da data enxuta: a data numa linha só (reticências se faltar espaço), dicas menores. */
@@ -626,9 +688,9 @@
 .folha-date-button{min-height:42px}
 .folha-date-button span{min-width:0;overflow-wrap:anywhere}
 @media(min-width:761px){
- .folha-topbar{height:auto;min-height:clamp(90px,min(8.2vw,15vh),160px);overflow:visible}
- .folha-top-brand{padding-block:8px}
- .folha-top-brand h1{line-height:1.14}
+ .folha-topbar{height:auto;min-height:clamp(112px,min(10vw,16vh),156px);overflow:visible}
+ .folha-top-brand{padding-block:4px}
+ .folha-top-brand h1{line-height:1.08}
 }
 @media(max-width:600px){
  .folha-staff-card:has(.folha-staff-order){grid-template-columns:32px 64px minmax(0,1fr)}
@@ -677,11 +739,32 @@
  }
 }
 
-/* Cormyr crest/title returns to the public Atlas; preserves editorial masthead. */
-.folha-site-home{display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit}
-.folha-site-home>img{object-fit:contain;flex:none;width:74px;height:82px;max-width:none;padding:6px 8px;border-radius:10px;border:2px solid #b5893a;background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);box-shadow:0 4px 12px #0006}
-.folha-site-home-title{min-width:0;display:block}
-.folha-site-home:focus-visible{outline:3px solid #c59e57;outline-offset:4px}
+/* Cormyr crest/title returns to the public Atlas; framed like the front signature. */
+.folha-site-home{display:inline-flex;gap:18px;align-items:center;text-decoration:none;color:inherit}
+.folha-site-home>img{
+ object-fit:contain;flex:none;
+ width:clamp(76px,7.2vw,104px);height:clamp(86px,8.1vw,116px);
+ max-width:none;padding:0;border:0;border-radius:0;background:transparent;
+ filter:drop-shadow(0 2px 6px rgba(63,24,99,.14));
+}
+.folha-brand-divider{
+ width:16px;flex:0 0 16px;height:clamp(74px,6.8vw,100px);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+}
+.folha-brand-divider::before,.folha-brand-divider::after{
+ content:"";display:block;flex:1;min-height:14px;width:1px;
+ background:linear-gradient(180deg,rgba(181,137,58,.2),rgba(181,137,58,.85),rgba(181,137,58,.2));
+}
+.folha-brand-gem{
+ display:block;color:#aa7d31;font:400 11px/1 Georgia,serif;
+}
+.folha-site-home-title{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.folha-site-home:focus-visible{outline:3px solid #9a6b24;outline-offset:6px;border-radius:6px}
+@media(max-width:760px){
+ .folha-site-home{gap:12px}
+ .folha-site-home>img{width:64px;height:72px}
+ .folha-brand-divider{width:12px;flex-basis:12px;height:64px}
+}
 .folha-calendar-public{margin-top:24px}
 
 

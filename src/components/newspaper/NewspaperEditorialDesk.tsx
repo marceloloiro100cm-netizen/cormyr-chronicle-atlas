@@ -261,9 +261,17 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
  };
  return <div className="folha-editorial" aria-label="Redação A Folha Sem Selo">
   <header className={`folha-topbar folha-font-${identity.font_style}`}>
+   <div className="folha-top-folio" aria-hidden="true">
+    <span className="folha-top-folio-kicker">ATLAS DE CORMYR</span>
+    <span className="folha-top-folio-rule"/>
+    <span className="folha-top-folio-note">Mesa Editorial · Imprensa Livre</span>
+   </div>
    <a className="folha-top-brand folha-site-home" href="/cormyr/index.html"
      aria-label="Atlas Cormyr: voltar ao site público">
-    <img src="/cormyr/brand/cormyr-brasao.svg" width={74} height={82} alt="Brasão de Cormyr"/>
+    <img src="/cormyr/brand/cormyr-brasao.svg" width={96} height={108} alt="Brasão de Cormyr"/>
+    <span className="folha-brand-divider" aria-hidden="true">
+     <span className="folha-brand-gem">◆</span>
+    </span>
     <span className="folha-site-home-title">
      <p><span aria-hidden="true">✦</span> JORNAL</p>
      <h1>{identity.title}</h1>
