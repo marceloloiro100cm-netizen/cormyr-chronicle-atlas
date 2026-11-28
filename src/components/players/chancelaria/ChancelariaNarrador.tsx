@@ -138,7 +138,7 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
     if(r.error){onError(r.error.message);setMessage(r.error.message);}
     else{setMessage(label);refresh();}
   };
-  const markRead=(c:Conversation)=>run('Marcada como lida.',async()=>{
+  const markRead=(c:Conversation)=>run('Marcada como analisada.',async()=>{
     for(const id of c.unreadLetterIds(ctx)){
       const r=await loose('mark_letter_read',{p_id:id});
       if(r.error&&!/23505/.test(r.error.message))return r;
@@ -497,8 +497,8 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
       <button type="button" className="chn-btn chn-btn--sm chn-back" onClick={onBack}><Icon name="back" size={15}/>Voltar</button>
       <span className={'chn-kind chn-kind--'+c.kind}>{c.kindLabel}</span>
       <span className="chn-rh-tl">{mailWeekTimeline(c.root.creation_week,c.root.delivery_week,c.root.publication_state)}{group?' · '+group.label:''}</span>
-      {!trashMode&&(unread?<button type="button" className="chn-btn chn-btn--sm chn-btn--primary" aria-label="Marcar como lida" onClick={onRead}><Icon name="check" size={15}/><span className="chn-bl">Marcar como lida</span></button>
-        :<button type="button" className="chn-btn chn-btn--sm" aria-label="Marcar como não lida" onClick={onUnread}><Icon name="mailopen" size={15}/><span className="chn-bl">Marcar como não lida</span></button>)}
+      {!trashMode&&(unread?<button type="button" className="chn-btn chn-btn--sm chn-btn--primary" aria-label="Marcar como lida" title="Marca como analisada e tira de Precisa de atenção (mantém em Sua vez, Mediação ou Todas)" onClick={onRead}><Icon name="check" size={15}/><span className="chn-bl">Marcar como lida</span></button>
+        :<button type="button" className="chn-btn chn-btn--sm" aria-label="Marcar como não lida" title="Retorna esta conversa para Precisa de atenção" onClick={onUnread}><Icon name="mailopen" size={15}/><span className="chn-bl">Marcar como não lida</span></button>)}
       {onContext&&<button type="button" className="chn-btn chn-btn--sm" aria-label="Contexto da conversa" onClick={onContext}><Icon name="castle" size={15}/><span className="chn-bl">Contexto</span></button>}
     </div>
     <div className="chn-rbody">

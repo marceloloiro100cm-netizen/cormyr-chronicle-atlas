@@ -2,7 +2,7 @@ import {afterEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {ChancelariaReplyComposer,type ReplySubmitPayload} from '@/components/players/chancelaria/ChancelariaReplyComposer';
 import {formatConversationForAI} from '@/components/players/chancelaria/copy-thread';
-import type {Conversation} from '@/components/players/chancelaria/chancelaria-model';
+import {buildConversations,queueMembers,type Conversation,type MailRow} from '@/components/players/chancelaria/chancelaria-model';
 
 afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();});
 
@@ -139,5 +139,36 @@ describe('ChancelariaReplyComposer: data da désdia, imagens e semana',()=>{
   expect(formatted).toContain('- **Autor:** Marcelo Belem (Casa Ashkar)');
   expect(formatted).toContain('- **Data:** 22 de Marpenoth · 1522 CV');
   expect(formatted).toContain('Direcionar os homens e mulheres aptos para a pedreira.');
+ });
+
+ it('marcar como lida remove a conversa de Precisa de atenção mantendo em Sua vez e Mediação',()=>{
+  const toNarrator={
+   id:'a'.repeat(64),source:'firebase-cloud',sender_user_id:'p1',sender_name:'Ashkar',
+   origin_house_id:'ashkar',recipient_house_id:null,subject:'Pedido ao Narrador',
+   content:'Texto',created_at:'2026-11-27T10:00:00Z',delivered_at:'2026-11-27T10:00:00Z',
+   creation_week:3,delivery_week:3,publication_state:'delivered',deleted_at:null,
+  } as unknown as MailRow;
+  const mediation={
+   id:'b'.repeat(64),source:'firebase-cloud',sender_user_id:'p2',sender_name:'Grantass',
+   origin_house_id:'grantass',recipient_house_id:'ashkar',subject:'Aceite de convite',
+   content:'Texto',created_at:'2026-11-27T11:00:00Z',delivered_at:'2026-11-27T11:00:00Z',
+   creation_week:3,delivery_week:3,publication_state:'delivered',deleted_at:null,
+  } as unknown as MailRow;
+  const convs=buildConversations([toNarrator,mediation],[]);
+  const unreadCtx={uid:'gm-uid',admin:true,receipts:[],openRound:3,editHouses:new Set<string>()};
+  expect(queueMembers('attention',convs,unreadCtx)).toHaveLength(2);
+  expect(queueMembers('yourturn',convs,unreadCtx).map(c=>c.root.id)).toEqual([toNarrator.id]);
+  expect(queueMembers('mediation',convs,unreadCtx).map(c=>c.root.id)).toEqual([mediation.id]);
+
+  // Após o Narrador marcar ambas como lidas/analisadas, saem de Precisa de atenção,
+  // mas continuam presentes em Sua vez, Mediação e Todas.
+  const readCtx={...unreadCtx,receipts:[
+   {letter_id:toNarrator.id,user_id:'gm-uid',read_at:'2026-11-28T12:00:00Z'},
+   {letter_id:mediation.id,user_id:'gm-uid',read_at:'2026-11-28T12:00:00Z'},
+  ]};
+  expect(queueMembers('attention',convs,readCtx)).toHaveLength(0);
+  expect(queueMembers('yourturn',convs,readCtx).map(c=>c.root.id)).toEqual([toNarrator.id]);
+  expect(queueMembers('mediation',convs,readCtx).map(c=>c.root.id)).toEqual([mediation.id]);
+  expect(queueMembers('all',convs,readCtx)).toHaveLength(2);
  });
 });
