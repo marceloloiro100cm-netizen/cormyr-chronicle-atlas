@@ -31,7 +31,7 @@ describe('Visão do Narrador v5: casca', () => {
    account={<button type="button">Sair</button>} message="" onDismissMessage={()=>{}}><p>conteúdo</p></NarratorWorkspace></I18nProvider></QueryClientProvider>);
   expect(screen.getByRole('navigation',{name:'Menu do Narrador'})).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Conselho das casas'})).toHaveAttribute('aria-current','page');
-  fireEvent.click(screen.getByRole('button',{name:'Missivas: 2 conversas com correspondência não lida'}));
+  fireEvent.click(screen.getByRole('button',{name:'Missivas: 2 missivas aguardando sua resposta'}));
   expect(onSection).toHaveBeenLastCalledWith('missivas');
   fireEvent.click(screen.getByRole('button',{name:/^Semana 3 aberta/}));
   expect(onSection).toHaveBeenLastCalledWith('calendario');
