@@ -18,7 +18,7 @@ import {readUrlParam,setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@
 import {HouseMark,Icon,NARRATOR_NARROW,useMedia} from '@/components/players/narrator/narrator-ui';
 import {HouseQuickDrawer} from './HouseQuickDrawer';
 import {
-  buildConversations,conversationUnread,lastAuthor,queueMembers,
+  buildConversations,conversationNoAction,conversationUnread,isActionableTurn,lastAuthor,queueMembers,
   type MailRow,type ReplyRow,type Conversation,type QueueId,type QueueContext,
 } from './chancelaria-model';
 import './chancelaria-narrador.css';
@@ -173,6 +173,19 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage}:{
   const markRead=(c:Conversation)=>run('Marcada como lida.',()=>markReadSilent(c));
   const markUnread=(c:Conversation)=>run('Marcada como não lida.',()=>loose('mark_letter_unread',{p_id:c.lastIncomingLetterId(uid)??c.root.id}));
   const toggleRead=(c:Conversation)=>void(conversationUnread(c,ctx)?markRead(c):markUnread(c));
+  const setNoAction=(c:Conversation,noAction:boolean)=>run(
+    noAction?'Marcada como Sem ação (saiu de Sua vez).':'Retornou para Sua vez.',
+    async()=>{
+      if(noAction){
+        for(const id of c.unreadLetterIds(ctx)){
+          if(id===c.root.id)continue;
+          const r=await loose('mark_letter_read',{p_id:id});
+          if(r.error&&!/23505/.test(r.error.message))return r;
+        }
+      }
+      return loose('set_letter_no_action',{p_id:c.root.id,p_no_action:noAction});
+    },
+  );
 
   const openCompose=(initial:{subject:string;content:string}|null=null)=>{
     if(!replaceMailDraft(uid))return;
@@ -248,6 +261,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage}:{
             {c.root.publication_state==='scheduled'&&<span className="chn-chip chn-chip--sched">Programada</span>}
             {c.root.publication_state==='draft'&&<span className="chn-chip chn-chip--draft">Rascunho</span>}
             {unread&&<span className="chn-chip chn-chip--new">Nova</span>}
+            {conversationNoAction(c,ctx)&&<span className="chn-chip chn-chip--noaction">Sem ação</span>}
             {c.items.length>0&&<span>{c.items.length} resp.</span>}
           </span>
           <span className="chn-it-title">{c.root.subject}</span>
@@ -332,7 +346,7 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage}:{
             <Icon name="castle" size={14}/>Minha Casa</button>}
           <button type="button" className="chn-btn chn-btn--sm" onClick={closeCompose}><Icon name="close" size={15}/>Fechar</button>
         </div>
-        <div className="chn-rbody"><div className="chn-sheet chn-compose">
+        <div className="chn-rbody"><div className="chn-compose-wrap">
           <MailComposer key={compose?compose.subject:'nova'} data={data} me={me} initial={compose}
             onSave={()=>{closeCompose();setMessage('Missiva registrada.');refresh();}} onManage={onManage}/>
         </div></div></>
@@ -342,6 +356,8 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage}:{
           onBack={()=>setPane('list')}
           onRead={()=>void markRead(current)}
           onUnread={()=>void markUnread(current)}
+          onNoAction={()=>void setNoAction(current,true)}
+          onReopenAction={()=>void setNoAction(current,false)}
           onAutoRead={async()=>{if(conversationUnread(current,ctx))await markReadSilent(current);}}
           onForward={()=>{openCompose({subject:'Enc.: '+current.root.subject,
             content:`\n\n--- Missiva encaminhada ---\nDe: ${current.root.sender_name}\nAssunto: ${current.root.subject}\n\n${current.root.content}`});}}
@@ -360,13 +376,15 @@ export function ChancelariaMissivas({data,me,onSave,onError,onManage}:{
 
 type HouseRow=Panel['houses'][number];
 
-function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,houseOf,trashMode,ctx,mailOptions,onBack,onRead,onUnread,onAutoRead,onForward,onDone,onError}:{
+function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,houseOf,trashMode,ctx,mailOptions,onBack,onRead,onUnread,onNoAction,onReopenAction,onAutoRead,onForward,onDone,onError}:{
   c:Conversation;data:Panel;uid:string;admin:boolean;today:string;openRound:number|null;editHouses:Set<string>;
   houseName:(id:string|null|undefined)=>string;houseOf:(id:string|null|undefined)=>HouseRow|null;
   trashMode:boolean;ctx:QueueContext;mailOptions:MailLinkOptionHouse[]|undefined;
-  onBack:()=>void;onRead:()=>void;onUnread:()=>void;onAutoRead:()=>Promise<void>;onForward:()=>void;onDone:()=>void;onError:(m:string)=>void;
+  onBack:()=>void;onRead:()=>void;onUnread:()=>void;onNoAction:()=>void;onReopenAction:()=>void;onAutoRead:()=>Promise<void>;onForward:()=>void;onDone:()=>void;onError:(m:string)=>void;
 }){
   const unread=conversationUnread(c,ctx);
+  const noAction=conversationNoAction(c,ctx);
+  const actionable=isActionableTurn(c,ctx);
   const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
   const [busy,setBusy]=useState(false);
   const [uploading,setUploading]=useState(false);
@@ -498,6 +516,9 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
       <span className="chn-rh-tl">{mailWeekTimeline(c.root.creation_week,c.root.delivery_week,c.root.publication_state)}</span>
       {!trashMode&&(unread?<button type="button" className="chn-btn chn-btn--sm chn-btn--primary" aria-label="Marcar como lida" onClick={onRead}><Icon name="check" size={15}/><span className="chn-bl">Marcar como lida</span></button>
         :<button type="button" className="chn-btn chn-btn--sm" aria-label="Marcar como não lida" onClick={onUnread}><Icon name="mailopen" size={15}/><span className="chn-bl">Não lida</span></button>)}
+      {!trashMode&&(actionable||noAction)&&(noAction
+        ?<button type="button" className="chn-btn chn-btn--sm chn-btn--noaction-on" aria-pressed="true" aria-label="Reabrir ação" title="Retorna esta conversa para a fila Sua vez" onClick={onReopenAction}><Icon name="reply" size={14}/><span className="chn-bl">Reabrir ação</span></button>
+        :<button type="button" className="chn-btn chn-btn--sm" aria-pressed="false" aria-label="Marcar como Sem ação" title="Dispensa resposta: tira de Sua vez e mantém em Todas" onClick={onNoAction}><Icon name="check" size={14}/><span className="chn-bl">Sem ação</span></button>)}
       {!trashMode&&c.root.publication_state==='delivered'&&<button type="button" className="chn-btn chn-btn--sm" onClick={onForward}><span className="chn-bl">↪ Encaminhar</span></button>}
     </div>
 
@@ -512,6 +533,7 @@ function PlayerReader({c,data,uid,admin,today,openRound,editHouses,houseName,hou
               <span><b>De:</b> <HouseMark house={houseOf(c.root.origin_house_id)} size="xs"/>{c.root.sender_name==='Narrador'&&c.root.origin_house_id===null?'Narrador':`${c.root.sender_name}${c.root.origin_house_id?` (${houseName(c.root.origin_house_id)})`:''}`}</span>
               <span><b>Para:</b> <HouseMark house={houseOf(c.root.recipient_house_id)} size="xs"/>{houseName(c.root.recipient_house_id)}</span>
               {unread&&<span className="chn-chip chn-chip--new">Nova</span>}
+              {noAction&&<span className="chn-chip chn-chip--noaction">Sem ação</span>}
               {c.root['historical_source']?<span className="chn-muted">Arquivo histórico</span>:null}
             </div>
             {(c.root.court_member_id||c.root.military_unit_id)&&<div className="chn-links">

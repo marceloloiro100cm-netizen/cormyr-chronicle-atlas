@@ -271,8 +271,14 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
        typeof at!=='string'||at.length>56||!Number.isFinite(Date.parse(at))||
        doc.id!==mailReceiptId(uid,data.source,letterId))continue;
     const k=key(letterId,uid),current=existing.get(k);
-    if(!current||String(current['read_at'])<at)
-      existing.set(k,{letter_id:letterId,user_id:uid,read_at:at});
+    const noActionAt=typeof data?.noActionAt==='string'&&data.noActionAt.length<=56&&
+      Number.isFinite(Date.parse(data.noActionAt))?data.noActionAt:null;
+    if(!current||String(current['read_at'])<at){
+      existing.set(k,{letter_id:letterId,user_id:uid,read_at:at,
+        ...(noActionAt?{no_action_at:noActionAt}:{})});
+    }else if(noActionAt){
+      existing.set(k,{...current,no_action_at:noActionAt});
+    }
    }
    operationalApproved=true;
    return {letters:all,receipts:[...existing.values()],
@@ -984,6 +990,19 @@ export function createWorkspaceService({db,auth,snapshotId,cacheImportedTables=f
     if(!match)throw new CloudAccessError('access_denied',403);
     const source=match['source']==='firebase-cloud'?'firebase-cloud':'imported';
     return asAccess(()=>cloudMail().markUnread(token,{source,letterId:id}));
+   }
+   if(name==='set_letter_no_action'){
+    if(scope.profile==='editor')denied();
+    const id=args['p_id'],noAction=args['p_no_action'];
+    if(Object.keys(args).some(k=>!['p_id','p_no_action'].includes(k))||
+       typeof id!=='string'||!SAFE.test(id)||typeof noAction!=='boolean')
+     throw new CloudAccessError('invalid_receipt_request',400);
+    mailFlag();
+    const ds=await mail();
+    const match=ds.letters.find(l=>l.id===id&&canReadLetterAs(ds,l,scope.uid));
+    if(!match)throw new CloudAccessError('access_denied',403);
+    const source=match['source']==='firebase-cloud'?'firebase-cloud':'imported';
+    return asAccess(()=>cloudMail().setNoAction(token,{source,letterId:id,noAction}));
    }
    if(name==='apply_letter_consequence'||name==='reverse_letter_consequence'){
     if(!admin)denied();

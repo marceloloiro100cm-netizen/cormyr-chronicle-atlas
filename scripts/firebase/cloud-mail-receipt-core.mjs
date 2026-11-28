@@ -73,3 +73,22 @@ export function canAcknowledgeMail(actor,record,source,id){
   return actor.role==='jogador'&&Array.isArray(actor.memberHouses)&&
     actor.memberHouses.includes(record.recipientHouseId);
 }
+
+/**
+ * Pure predicate for per-user "Sem ação" (dismiss from "Sua vez").
+ * Allows Narrator on any delivered non-deleted letter, and active House players
+ * on any delivered non-deleted letter they sent or can acknowledge.
+ * Editor-Chefe is read-only and never allowed.
+ */
+export function canSetNoAction(actor,record,source,id){
+  if(!record||!actor||!validMailIdentity(source,id)||
+     record.publicationState!=='delivered'||record.deletedAt!==null||
+     typeof record.senderUid!=='string')return false;
+  if(actor.role==='editor')return false;
+  if(canAcknowledgeMail(actor,record,source,id))return true;
+  if(actor.role==='jogador'&&record.senderUid===actor.uid){
+    if(source==='imported')return record.sourceId===id&&record.source!=='firebase-cloud';
+    return record.source==='firebase-cloud'&&record.id===id&&record.recipientPlayerId===null;
+  }
+  return false;
+}

@@ -814,6 +814,35 @@ test('reading only counts when marked: markUnread removes the own receipt',async
     'invalid_receipt_request',400);
 });
 
+test('Narrator and player can toggle Sem ação (noAction) on delivered mail while Editor stays read-only',async()=>{
+  const f=fixture();
+  asRole(f,'narrador');
+  const toA=await f.service().send(sampleToken,req({originHouseId:null,recipientHouseId:'house-a'}));
+  f.records.set(letterPath(toA.id),{...f.records.get(letterPath(toA.id)),senderUid:'gm-uid'});
+  // Narrador marca e desmarca Sem ação.
+  const nOn=await f.service().setNoAction(sampleToken,{source:'firebase-cloud',letterId:toA.id,noAction:true});
+  assert.equal(nOn.noAction,true);
+  assert.equal(typeof nOn.noActionAt,'string');
+  const nOff=await f.service().setNoAction(sampleToken,{source:'firebase-cloud',letterId:toA.id,noAction:false});
+  assert.equal(nOff.noAction,false);
+  assert.equal(nOff.noActionAt,null);
+  // Jogador destinatário também pode marcar Sem ação.
+  asRole(f,'jogador');
+  const pOn=await f.service().setNoAction(sampleToken,{source:'firebase-cloud',letterId:toA.id,noAction:true});
+  assert.equal(pOn.noAction,true);
+  assert.equal(typeof pOn.noActionAt,'string');
+  // Jogador remetente de uma conversa (para dispensar resposta recebida no fio) também pode marcar Sem ação na raiz.
+  const fromA=await f.service().send(sampleToken,req({requestKey:'player-root-noact',originHouseId:'house-a',recipientKind:'narrator',recipientHouseId:null}));
+  const pOwn=await f.service().setNoAction(sampleToken,{source:'firebase-cloud',letterId:fromA.id,noAction:true});
+  assert.equal(pOwn.noAction,true);
+  // Editor-Chefe é somente leitura e nunca pode marcar Sem ação.
+  asRole(f,'editor');
+  await rejects(()=>f.service().setNoAction(sampleToken,{source:'firebase-cloud',letterId:toA.id,noAction:true}),
+    'editor_read_only',403);
+  await rejects(()=>f.service().setNoAction(sampleToken,{source:'firebase-cloud',letterId:toA.id,noAction:'yes'}),
+    'invalid_receipt_request',400);
+});
+
 test('Editor-Chefe reads and marks delivered mail but never writes',async()=>{
   const f=fixture();
   asRole(f,'narrador');

@@ -18,7 +18,7 @@ import type {Panel} from '@/components/players/panel-data';
 import {isPlainLeftClick,readUrlParam,setUrlParams,urlLinkProps,useUrlParam,useUrlSearch} from '@/lib/navigation/url-state';
 import {HouseMark,Icon,NARRATOR_DRAWER_CONTEXT,NARRATOR_NARROW,narrationGroupOf,useMedia} from '@/components/players/narrator/narrator-ui';
 import {
-  buildConversations,conversationUnread,lastAuthor,queueMembers,
+  buildConversations,conversationNoAction,conversationUnread,isActionableTurn,lastAuthor,queueMembers,
   type MailRow,type ReplyRow,type Conversation,type QueueId,type QueueContext,
 } from './chancelaria-model';
 import './chancelaria-narrador.css';
@@ -147,6 +147,19 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
   });
   const markUnread=(c:Conversation)=>run('Marcada como não lida.',()=>loose('mark_letter_unread',{p_id:c.lastIncomingLetterId(uid)??c.root.id}));
   const toggleRead=(c:Conversation)=>void(conversationUnread(c,ctx)?markRead(c):markUnread(c));
+  const setNoAction=(c:Conversation,noAction:boolean)=>run(
+    noAction?'Marcada como Sem ação (saiu de Sua vez).':'Retornou para Sua vez.',
+    async()=>{
+      if(noAction){
+        for(const id of c.unreadLetterIds(ctx)){
+          if(id===c.root.id)continue;
+          const r=await loose('mark_letter_read',{p_id:id});
+          if(r.error&&!/23505/.test(r.error.message))return r;
+        }
+      }
+      return loose('set_letter_no_action',{p_id:c.root.id,p_no_action:noAction});
+    },
+  );
   const openCompose=(initial:{subject:string;content:string}|null=null)=>{
     if(!replaceMailDraft(uid))return;
     setCompose(initial);setPane('compose');setContextOpen(false);setFiltersOpen(false);
@@ -228,6 +241,7 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
             <span className={'chn-kind chn-kind--'+c.kind}>{c.kindLabel}</span>
             {c.root.publication_state==='scheduled'&&<span className="chn-chip chn-chip--sched">Programada · Sem. {c.root.delivery_week??'?'}</span>}
             {c.root.publication_state==='draft'&&<span className="chn-chip chn-chip--draft">Rascunho</span>}
+            {conversationNoAction(c,ctx)&&<span className="chn-chip chn-chip--noaction">Sem ação</span>}
             {c.root.deleted_at&&<span className="chn-chip chn-chip--cancel">{c.root['removal_kind']==='cancelada'?'Cancelada':'Excluída'}</span>}
             <span>Sem. {c.root.delivery_week??'?'}</span>
             <span>· {c.items.length>0?`${c.items.length} resp.`:'sem resposta'}</span>
@@ -302,13 +316,14 @@ export function ChancelariaNarrador({data,me,onSave,onError,onManage,onOpenHub,i
         <div className="chn-rh"><button type="button" className="chn-btn chn-btn--sm chn-back" onClick={closeCompose}><Icon name="back" size={15}/>Voltar</button>
           <b className="chn-rh-title"><Icon name="feather" size={16}/>Nova missiva</b><span className="chn-spacer"/>
           <button type="button" className="chn-btn chn-btn--sm" onClick={closeCompose}><Icon name="close" size={15}/>Fechar</button></div>
-        <div className="chn-rbody"><div className="chn-sheet chn-compose">
+        <div className="chn-rbody"><div className="chn-compose-wrap">
           <MailComposer key={compose?compose.subject:'nova'} data={data} me={me} initial={compose}
             onSave={()=>{setCompose(false);setPane(narrow?'list':'reader');setMessage('Missiva registrada.');refresh();}} onManage={onManage}/>
         </div></div></>
       :current?<NarratorReader key={current.root.id} c={current} data={data} uid={uid} admin={admin} today={today} openRound={openRound}
           editHouses={editHouses} houseName={houseName} houseOf={houseOf} trashMode={queue==='trash'} ctx={ctx}
           onBack={()=>setPane('list')} onRead={()=>void markRead(current)} onUnread={()=>void markUnread(current)}
+          onNoAction={()=>void setNoAction(current,true)} onReopenAction={()=>void setNoAction(current,false)}
           onDone={refresh} onError={(m)=>{onError(m);setMessage(m);}}/>
       :<div className="chn-rbody"><div className="chn-empty"><Icon name="missivas" size={28}/><p>Selecione uma missiva para ler.</p></div></div>}
     </section>
@@ -371,12 +386,14 @@ function ConversationContext({c,data,uid,houses,related,isUnread,trashMode,onSel
   </>;
 }
 
-function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,houseOf,trashMode,ctx,onBack,onRead,onUnread,onContext,onDone,onError}:{
+function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,houseOf,trashMode,ctx,onBack,onRead,onUnread,onNoAction,onReopenAction,onContext,onDone,onError}:{
   c:Conversation;data:Panel;uid:string;admin:boolean;today:string;openRound:number|null;editHouses:Set<string>;
   houseName:(id:string|null|undefined)=>string;houseOf:(id:string|null|undefined)=>HouseRow|null;trashMode:boolean;ctx:QueueContext;
-  onBack:()=>void;onRead:()=>void;onUnread:()=>void;onContext?:(()=>void)|undefined;onDone:()=>void;onError:(m:string)=>void;
+  onBack:()=>void;onRead:()=>void;onUnread:()=>void;onNoAction:()=>void;onReopenAction:()=>void;onContext?:(()=>void)|undefined;onDone:()=>void;onError:(m:string)=>void;
 }){
   const unread=conversationUnread(c,ctx);
+  const noAction=conversationNoAction(c,ctx);
+  const actionable=isActionableTurn(c,ctx);
   // Rascunho da resposta guardado por conversa no navegador: trocar de carta,
   // fechar a aba ou uma falha de envio não apagam o texto.
   const draftKey=`chancelaria:resposta:${uid}:${c.root.id}`;
@@ -499,6 +516,9 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
       <span className="chn-rh-tl">{mailWeekTimeline(c.root.creation_week,c.root.delivery_week,c.root.publication_state)}{group?' · '+group.label:''}</span>
       {!trashMode&&(unread?<button type="button" className="chn-btn chn-btn--sm chn-btn--primary" aria-label="Marcar como lida" title="Marca como analisada e tira de Precisa de atenção (mantém em Sua vez, Mediação ou Todas)" onClick={onRead}><Icon name="check" size={15}/><span className="chn-bl">Marcar como lida</span></button>
         :<button type="button" className="chn-btn chn-btn--sm" aria-label="Marcar como não lida" title="Retorna esta conversa para Precisa de atenção" onClick={onUnread}><Icon name="mailopen" size={15}/><span className="chn-bl">Marcar como não lida</span></button>)}
+      {!trashMode&&(actionable||noAction)&&(noAction
+        ?<button type="button" className="chn-btn chn-btn--sm chn-btn--noaction-on" aria-pressed="true" aria-label="Reabrir ação" title="Retorna esta conversa para a fila Sua vez" onClick={onReopenAction}><Icon name="reply" size={14}/><span className="chn-bl">Reabrir ação</span></button>
+        :<button type="button" className="chn-btn chn-btn--sm" aria-pressed="false" aria-label="Marcar como Sem ação" title="Dispensa resposta: tira de Sua vez e mantém em Todas" onClick={onNoAction}><Icon name="check" size={14}/><span className="chn-bl">Sem ação</span></button>)}
       {onContext&&<button type="button" className="chn-btn chn-btn--sm" aria-label="Contexto da conversa" onClick={onContext}><Icon name="castle" size={15}/><span className="chn-bl">Contexto</span></button>}
     </div>
     <div className="chn-rbody">
@@ -512,6 +532,7 @@ function NarratorReader({c,data,uid,admin,today,openRound,editHouses,houseName,h
               <span><b>De:</b> <HouseMark house={houseOf(c.root.origin_house_id)} size="xs"/>{c.root.sender_name}{c.root.origin_house_id?` (${houseName(c.root.origin_house_id)})`:''}</span>
               <span><b>Para:</b> <HouseMark house={houseOf(c.root.recipient_house_id)} size="xs"/>{houseName(c.root.recipient_house_id)}</span>
               {unread&&<span className="chn-chip chn-chip--new">Nova</span>}
+              {noAction&&<span className="chn-chip chn-chip--noaction">Sem ação</span>}
               {c.root['historical_source']?<span className="chn-muted">Arquivo histórico</span>:null}
             </div>
             {c.root.court_member_id||c.root.military_unit_id?<div className="chn-links">

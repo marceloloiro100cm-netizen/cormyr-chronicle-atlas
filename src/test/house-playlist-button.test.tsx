@@ -9,18 +9,19 @@ describe('música exclusiva de cada Casa',()=>{
   expect(findHouseTrack('Erdenor')?.youtubeId).toBe('n7GFlxcM3m8');
   expect(findHouseTrack('Evenhand')).toBeNull();
  });
- it('não carrega o YouTube antes de clique e repete somente a faixa da Casa',()=>{
+ it('não carrega o YouTube antes de clique, toca em segundo plano sem pop-up e para ao clicar novamente',()=>{
   const view=render(<HousePlaylistButton houseName="Goldfin"/>);
   expect(view.container.querySelector('iframe')).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:/Reproduzir música da Casa Goldfin/}));
   const frame=view.container.querySelector('iframe');
   expect(frame).not.toBeNull();
+  expect(view.container.querySelector('aside')).toBeNull();
   const url=new URL(frame!.src);
   expect(url.pathname).toBe('/embed/M5bnGEYw3SY');
   expect(url.searchParams.get('autoplay')).toBe('1');
   expect(url.searchParams.get('loop')).toBe('1');
   expect(url.searchParams.get('playlist')).toBe('M5bnGEYw3SY');
-  fireEvent.click(screen.getByRole('button',{name:'Parar e fechar a música'}));
+  fireEvent.click(screen.getByRole('button',{name:/Parar música da Casa Goldfin/}));
   expect(view.container.querySelector('iframe')).toBeNull();
   view.unmount();
  });

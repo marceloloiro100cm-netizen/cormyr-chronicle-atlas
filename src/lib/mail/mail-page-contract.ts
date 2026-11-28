@@ -54,7 +54,7 @@ export type MailReply = {
   creation_week: number | null;
   [field: string]: unknown;
 };
-export type MailReceipt = {letter_id: string; user_id: string; read_at: string};
+export type MailReceipt = {letter_id: string; user_id: string; read_at: string; no_action_at?: string | null};
 export type MailPlayer = {id: string; user_id: string | null; roster_house_id: string | null; active: boolean; require_password_change: boolean};
 export type MailMembership = {player_id: string; house_id: string};
 export type MailHouse = {id: string; name: string};

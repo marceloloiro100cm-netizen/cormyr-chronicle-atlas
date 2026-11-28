@@ -54,7 +54,7 @@ export function NarratorWorkspace({menu,extra,section,onSection,sectionHref,unre
  // Link real quando há endereço; clique comum continua trocando o módulo aqui mesmo.
  const nav=(id:string)=>sectionHref?{href:sectionHref(id),
   onClick:(e:ReactMouseEvent<HTMLAnchorElement>)=>{if(!isPlainLeftClick(e))return;e.preventDefault();go(id);}}:null;
- const label=(id:string,name:string)=>id==='missivas'&&unread>0?`${name}: ${unread} conversa${unread===1?'':'s'} com correspondência não lida`:name;
+ const label=(id:string,name:string)=>id==='missivas'&&unread>0?`${name}: ${unread} missiva${unread===1?'':'s'} aguardando sua resposta`:name;
  const navBody=(id:string,name:string)=><>
   <Icon name={id} size={21}/><span>{SHORT[id]??name}</span>
   {id==='missivas'&&unread>0&&<span className="nw-badge" aria-hidden="true">{unread}</span>}

@@ -84,7 +84,7 @@ export function PlayerWeekDashboard({house,data,unreadMail,newspaperUnread,weekF
      <span className="pwd-ic"><Mail size={18}/></span>
      <h3>Chancelaria</h3>
     </div>
-    <p className="pwd-big">{unreadMail>0?`${unreadMail} precisa${unreadMail===1?'':'m'} de atenção`:'Caixa em dia'}</p>
+    <p className="pwd-big">{unreadMail>0?`${unreadMail} em Sua vez`:'Caixa em dia'}</p>
     <p className="pwd-sub">
      {openRound!==null
       ?`${weekMail.sent} enviada${weekMail.sent===1?'':'s'} na Semana ${openRound}${weekMail.drafts>0?` · ${weekMail.drafts} rascunho${weekMail.drafts===1?'':'s'}`:''}`

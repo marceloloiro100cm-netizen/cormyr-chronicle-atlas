@@ -162,7 +162,7 @@ export function MailComposer({data,me,initial,onSave,onManage}:{data:Panel;me:Pa
  setMessage(mailSubmissionStatus(result));
  key.current=null;discardMailComposerDraft(scope);setDraft({...draft,subject:'',content:'',images:[]});onSave();
  }catch(err){setMessage(err instanceof Error?err.message:typeof err==='object'&&err&&'message'in err?String(err.message):'Não foi possível salvar. Seu texto foi preservado.');}finally{setBusy(false);}}}>
- <fieldset disabled={busy} className="campaign-form mail-compose-body"><legend>Composição da missiva</legend>
+ <fieldset disabled={busy} className="mail-compose-body">
  <MailRecipientPicker data={data} me={me} targets={draft.targets} onChange={targets=>change({...draft,targets})}/>
  {draft.targets.length===0&&<p role="status" className="text-muted-foreground text-sm">Nenhum destinatário selecionado. Escolha uma casa ou o Narrador.</p>}
  {selectedHouses.length>0&&<div className="mail-target-cards" aria-label="Resumo dos destinatários selecionados">

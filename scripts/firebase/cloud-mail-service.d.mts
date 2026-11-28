@@ -53,6 +53,9 @@ export interface CloudMailRuntime {
   markUnread(idToken:string,input:unknown):Promise<{
     recorded:false;alreadyUnread:boolean;
   }>;
+  setNoAction(idToken:string,input:unknown):Promise<{
+    noAction:boolean;noActionAt:string|null;readAt:string;
+  }>;
   cancel(idToken:string,input:{letterId:unknown;expectedVersion:unknown}):Promise<{
     removed:true;alreadyRemoved:boolean;version:number;removalKind:string|null;
   }>;

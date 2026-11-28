@@ -16,7 +16,7 @@ import {runtimeApprovalEnabled} from './runtime-approval-policy.mjs';
  */
 import {createHash} from 'node:crypto';
 import {validateHarptosDate} from './stage-temporal-emulator.mjs';
-import {canAcknowledgeMail,mailReceiptId,validMailIdentity} from './cloud-mail-receipt-core.mjs';
+import {canAcknowledgeMail,canSetNoAction,mailReceiptId,validMailIdentity} from './cloud-mail-receipt-core.mjs';
 import {cloudReplyRoute} from './cloud-mail-reply-core.mjs';
 import {cloudMailRuntimeApproved} from './cloud-mail-runtime-approval.mjs';
 import {activeSeason2HouseScopeValid} from './cloud-season2-house-scope.mjs';
@@ -892,6 +892,48 @@ export function createFirebaseCloudMail({
           schemaVersion:1,
         });
         return {recorded:true,alreadyRecorded:false,readAt};
+      });
+    },
+
+    async setNoAction(idToken,input){
+      const uid=await uidFromToken(idToken);
+      const source=input?.source;
+      const letterId=input?.letterId;
+      const noAction=input?.noAction;
+      if(!input||typeof input!=='object'||Array.isArray(input)||
+         Object.keys(input).some(k=>!['source','letterId','noAction'].includes(k))||
+         !validMailIdentity(source,letterId)||typeof noAction!=='boolean')
+        deny('invalid_receipt_request',400);
+      const receiptId=mailReceiptId(uid,source,letterId);
+      const target=source==='imported'
+        ?stage.collection('letters').doc(hash('letter:'+letterId))
+        :letters.doc(letterId);
+      const receipt=readReceipts.doc(receiptId);
+      return db.runTransaction(async tx=>{
+        const {actor,round}=await readyTransaction(tx,uid);
+        writerOnly(actor);
+        const [mail,previous]=await Promise.all([tx.get(target),tx.get(receipt)]);
+        if(!mail.exists||!canSetNoAction(actor,
+          source==='firebase-cloud'?effectiveCloudMail(mail.data(),round):mail.data(),source,letterId))
+          deny('access_denied',403);
+        const now=clock();
+        if(typeof now!=='string'||!Number.isFinite(Date.parse(now)))
+          deny('invalid_server_clock',503);
+        const noActionAt=noAction?now:null;
+        if(previous.exists){
+          const row=previous.data();
+          if(row?.viewerUid!==uid||row?.source!==source||
+             row?.letterId!==letterId||typeof row?.readAt!=='string')
+            deny('invalid_existing_receipt',409);
+          const readAt=noAction&&now>row.readAt?now:row.readAt;
+          tx.update(receipt,{readAt,noActionAt});
+          return {noAction,noActionAt,readAt};
+        }
+        tx.create(receipt,{
+          source,letterId,viewerUid:uid,readAt:now,noActionAt,
+          schemaVersion:1,
+        });
+        return {noAction,noActionAt,readAt:now};
       });
     },
 

@@ -25,7 +25,7 @@ type WorkspaceMailSourceField =
   'deleted_at'|'creation_week'|'delivery_week'|'letter_number'|'letter_kind'|
   'court_member_id'|'court_assignment'|'military_unit_id'|'batch_key'|
   'letter_id'|'author_user_id'|'author_name'|'recipient_user_id'|
-  'read_at'|'number'|'status';
+  'read_at'|'no_action_at'|'number'|'status';
 export type WorkspaceMailRow=Record<string,unknown> &
   Partial<Record<WorkspaceMailSourceField,unknown>>;
 export type WorkspaceMailTables={
@@ -152,8 +152,10 @@ export function projectWorkspaceMailTables(
   });
   const receipts=rows.letter_receipts.map(rr=>{
     if(!str(rr.letter_id)||!str(rr.user_id)||!str(rr.read_at))invalid();
+    if(!optional(rr.no_action_at))invalid();
+    const noActionAt=(rr.no_action_at??null) as string|null;
     return {letter_id:rr.letter_id as string,user_id:rr.user_id as string,
-      read_at:rr.read_at as string};
+      read_at:rr.read_at as string,...(noActionAt?{no_action_at:noActionAt}:{})};
   });
   const rounds:MailRound[]=rows.letter_rounds.map(rr=>{
     if(!integer(rr.number,1,2147483647)||typeof rr.status!=='string')invalid();

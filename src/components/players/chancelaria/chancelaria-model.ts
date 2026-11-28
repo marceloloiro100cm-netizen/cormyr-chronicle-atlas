@@ -124,6 +124,13 @@ export function conversationUnread(c:Conversation,ctx:QueueContext):boolean{
   return c.unreadLetterIds(ctx).length>0;
 }
 
+/** Conversa dispensada pelo usuário ("Sem ação"): sai de "Sua vez" até chegar nova mensagem. */
+export function conversationNoAction(c:Conversation,ctx:QueueContext):boolean{
+  const noActionAt=receiptOf(ctx,c.root.id)?.no_action_at;
+  if(!noActionAt)return false;
+  return !c.lastAt||noActionAt>=c.lastAt;
+}
+
 /** Autor do último turno já entregue (rascunhos e programadas não contam). */
 export function lastAuthor(c:Conversation):string|undefined{
   const turns=[...(delivered(c.root)?[{uid:c.root.sender_user_id,at:at(c.root)}]:[]),
@@ -136,13 +143,18 @@ const pendingOwn=(c:Conversation,ctx:QueueContext,state:string)=>c.letters.some(
   m.publication_state===state&&(m.sender_user_id===ctx.uid||(ctx.admin&&state==='scheduled')))||
   c.historical.some(r=>!r.deleted_at&&r.publication_state===state&&(r.author_user_id===ctx.uid||(ctx.admin&&state==='scheduled')));
 
+/** Verdadeiro quando a última palavra é do outro lado e o usuário pode responder (independente de "Sem ação"). */
+export function isActionableTurn(c:Conversation,ctx:QueueContext):boolean{
+  const edit=ctx.editHouses??new Set<string>();
+  return !c.root.deleted_at&&c.replyTarget(ctx.uid,ctx.admin,edit)!==null&&lastAuthor(c)!==ctx.uid&&
+    !pendingOwn(c,ctx,'draft')&&!c.letters.some(m=>m.sender_user_id===ctx.uid&&m.publication_state==='scheduled'&&!m.deleted_at);
+}
+
 export function queueMembers(q:QueueId,list:Conversation[],ctx:QueueContext):Conversation[]{
   const live=list.filter(c=>!c.root.deleted_at);
-  const edit=ctx.editHouses??new Set<string>();
   switch(q){
     case 'attention':return live.filter(c=>conversationUnread(c,ctx));
-    case 'yourturn':return live.filter(c=>c.replyTarget(ctx.uid,ctx.admin,edit)!==null&&lastAuthor(c)!==ctx.uid&&
-      !pendingOwn(c,ctx,'draft')&&!c.letters.some(m=>m.sender_user_id===ctx.uid&&m.publication_state==='scheduled'&&!m.deleted_at));
+    case 'yourturn':return live.filter(c=>isActionableTurn(c,ctx)&&!conversationNoAction(c,ctx));
     case 'waiting':return live.filter(c=>delivered(c.root)&&lastAuthor(c)===ctx.uid);
     case 'mediation':return live.filter(c=>c.kind==='entre');
     case 'scheduled':return live.filter(c=>pendingOwn(c,ctx,'scheduled'));
@@ -150,4 +162,13 @@ export function queueMembers(q:QueueId,list:Conversation[],ctx:QueueContext):Con
     case 'trash':return list.filter(c=>Boolean(c.root.deleted_at));
     default:return live;
   }
+}
+
+/** Quantidade de conversas na fila "Sua vez" (mesma regra da Chancelaria, já excluindo "Sem ação"). */
+export function yourTurnCount(
+  letters:MailRow[],replies:ReplyRow[],receipts:ReceiptRef[],
+  uid:string,admin:boolean,openRound:number|null,editHouses?:Set<string>,
+):number{
+  const convs=buildConversations(letters,replies);
+  return queueMembers('yourturn',convs,{uid,admin,receipts,openRound,...(editHouses?{editHouses}:{})}).length;
 }

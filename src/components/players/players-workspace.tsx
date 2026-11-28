@@ -22,6 +22,7 @@ import { RecordList, RecordEditor, RecordForm } from '@/components/players/recor
 import { MissivasTab } from '@/components/players/missivas-tab';
 import {EditorMailReader} from '@/components/players/editor-mail-reader';
 import {MissivasArea} from '@/components/players/chancelaria/MissivasArea';
+import {yourTurnCount,type MailRow,type ReplyRow} from '@/components/players/chancelaria/chancelaria-model';
 import {CouncilOpening} from '@/components/firebase/CouncilOpening';
 import {firebaseWorkspaceClient} from '@/lib/firebase-workspace/state';
 import {NewspaperHub,useUnreadNewspaperCount,useUnseenCommissionAnswers} from '@/components/newspaper/NewspaperHub';
@@ -246,7 +247,11 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
   const authorized=data.admin?data.houses.filter(h=>h.active&&h.season===2):data.houses.filter(h=>data.members.some(m=>m.house_id===h.id&&m.player_id===me?.id));
   const current=data.admin?(authorized.find(h=>h.id===house)??authorized[0]):(authorized.find(h=>h.id===me?.roster_house_id)??authorized[0]);
   const canEdit=data.admin||data.members.some(m=>m.player_id===me?.id&&m.house_id===current?.id&&m.can_edit);
-  const unread=unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id,data.admin);
+  const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
+  const editHouses=new Set(data.members.filter(m=>m.player_id===me?.id&&m.can_edit).map(m=>m.house_id));
+  const unread=firebaseMode
+    ?yourTurnCount(data.letters as MailRow[],data.replies as ReplyRow[],data.receipts,data.user.id,data.admin,openRound,editHouses)
+    :unreadReceivedCount(data.letters as LetterRow[],data.replies,data.receipts,data.user.id,data.admin);
   const afterSave=async()=>{await refresh();if(!current)return;try{const result=await sync({data:{houseId:data.admin?'':current.id,importFiles:false}});setMessage(result.message);await refresh();}catch{setMessage('Salvo no site.');}};
   const conselho=!current&&!data.admin?<section><h2>Vínculo aguardando autorização</h2><p>Sua identidade foi autenticada, mas nenhuma casa foi autorizada para esta conta. O administrador precisa cadastrar seu jogador e aprovar o vínculo.</p><p>Identificador da conta: <code>{data.user.id}</code></p><p>Não há acesso a documentos, personagens ou missivas de outras casas.</p></section>:<>
     <div className="campaign-toolbar">
@@ -254,7 +259,7 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
       {current&&<HousePlaylistButton key={current.id} houseName={current.name}/>}
       {data.admin&&<select aria-label="Selecionar casa para administração" value={current?.id??''} onChange={e=>{setHouse(e.target.value);sessionStorage.setItem('campaign-selected-house',e.target.value);}}>{authorized.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select>}
     </div>
-    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button asChild key={id} variant={tab===id?'default':'outline'}><a {...tabLink({aba:id??'casa'},()=>setTab(id??'casa'))} aria-current={tab===id?'page':undefined} aria-label={id==='calendario'&&weekFestivals.unseen?'Calendário: festival nesta semana':id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} não lida${unread===1?'':'s'}`:undefined}>{label}{id==='calendario'&&weekFestivals.unseen&&<span className="campaign-tab-count" aria-hidden="true">✦</span>}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</a></Button>)}</nav>
+    <nav className="campaign-tabs" aria-label="Painel do jogador">{[['casa','Casa'],['ficha','Ficha'],['galeria','Galeria'],['calendario','Calendário'],['documentos','Documentos'],...(!data.admin?[['missivas','Missivas'],['jornal','Jornal']]:[]),...(!data.admin&&BATTLE_MODULE_ENABLED&&BATTLE_PLAYERS_ENABLED?[['batalha','Batalha']]:[])].map(([id,label])=><Button asChild key={id} variant={tab===id?'default':'outline'}><a {...tabLink({aba:id??'casa'},()=>setTab(id??'casa'))} aria-current={tab===id?'page':undefined} aria-label={id==='calendario'&&weekFestivals.unseen?'Calendário: festival nesta semana':id==='jornal'&&newspaperUnread>0?`Jornal: ${newspaperUnread} novidade(s)`:id==='missivas'&&unread>0?`${label}: ${unread} missiva${unread===1?'':'s'} aguardando sua resposta`:undefined}>{label}{id==='calendario'&&weekFestivals.unseen&&<span className="campaign-tab-count" aria-hidden="true">✦</span>}{id==='missivas'&&unread>0&&<span className="campaign-tab-count" aria-hidden="true">{unread}</span>}{id==='jornal'&&newspaperUnread>0&&<span className="campaign-tab-count" aria-hidden="true">{newspaperUnread}</span>}</a></Button>)}</nav>
     <Suspense fallback={tabLoading}>
     {tab==='casa'&&current&&<>{!data.admin&&<PlayerWeekDashboard house={current} data={data} unreadMail={unread} newspaperUnread={newspaperUnread} weekFestivals={weekFestivals.festivals} onOpenTab={(nextTab,extra)=>setUrlParams({aba:nextTab,...(extra??{})},{reset:NESTED_URL_PARAMS})}/>}<section><p className="campaign-eyebrow">{current.region} · CASA NOBRE</p><h2>{current.name}</h2><CampaignContent content={narrativeText(current.details)}/></section><CollapsibleText title={<h2>Textos da casa</h2>}><RecordList rows={data.records.filter(r=>r.house_id===current.id&&r.kind!=='document'&&r.kind!=='character'&&!isFichaCasa(r.title,r.content)&&!isFichaPersonagem(r.title,r.content)&&Boolean(narrativeText(r.content)))} narrativeOnly canEdit={canEdit} onSave={afterSave}/></CollapsibleText></>}
     {tab==='galeria'&&current&&<GalleryTab key={current.id} houseId={current.id}
@@ -273,7 +278,6 @@ function PlayersWorkspace({expectedUserId,onSignOut,hideBattle}:{expectedUserId:
     const goSection=(id:string)=>setSection(id);
     const manage=(id:string)=>{sessionStorage.setItem('campaign-selected-house',id);setUrlParams({casa:id,aba:'ficha',secao:null},{reset:NESTED_URL_PARAMS});
       requestAnimationFrame(()=>document.getElementById('nw-house-admin')?.scrollIntoView({behavior:'smooth',block:'start'}));};
-    const openRound=data.rounds.filter(r=>r.status==='open').map(r=>r.number).sort((a,b)=>b-a)[0]??null;
     const narratorSection=data.admin?<div className={'narrator-section'+(section==='missivas'?' narrator-section--app':'')}><Suspense fallback={tabLoading}>{section==='acessos-firebase'?
       // Contas: gestão unificada de jogadores e Editor-Chefe (sem chaves técnicas de migração).
       <div className="nw-page nw-accounts">

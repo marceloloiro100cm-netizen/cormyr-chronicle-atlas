@@ -455,17 +455,16 @@
 .mail-compose-panel{margin:14px 0 22px;padding:16px 18px;background:var(--campaign-paper);border:1px solid var(--border);border-top:3px solid var(--campaign-gold);border-radius:9px}
 .mail-compose-panel h2{margin:0;font-size:24px}
 .mail-compose-intro{font-size:13px;color:var(--muted-foreground);margin:6px 0 10px}
-.mail-compose-form,.mail-compose-body{width:100%;max-width:none;display:grid;gap:12px;margin:8px 0}
-.mail-compose-body{padding:0;border:0;min-width:0}
-.mail-compose-body>legend{font-weight:700;font-size:13px;margin-bottom:4px}
+.mail-compose-form,.mail-compose-body{width:100%;max-width:none;display:grid;gap:14px;margin:8px 0}
+.campaign-theme .mail-compose-body{padding:0;border:0;margin:0;min-width:0}
 .mail-compose-panel .campaign-form label{gap:4px;font-size:13px}
 .mail-compose-panel .campaign-theme input,.mail-compose-panel input:not([type=checkbox]),.mail-compose-panel select{min-height:36px;padding:7px 10px}
 .mail-compose-panel .campaign-form button{min-height:36px}
 .mail-compose-panel textarea{min-height:175px;line-height:1.5;padding:9px 11px}
 .mail-compose-panel .campaign-actions{margin:6px 0}
 .mail-compose-panel .campaign-actions button{min-height:38px}
-.mail-recipient-picker{min-width:0;margin:0;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
-.mail-recipient-picker>legend{font-size:14px;font-weight:700;padding:0 6px}
+.campaign-theme .mail-recipient-picker{min-width:0;margin:0;border:0;border-bottom:1px solid var(--border);border-radius:0;padding:0 0 14px}
+.campaign-theme .mail-recipient-picker>legend{font-size:14px;font-weight:700;padding:0;margin-bottom:8px;color:var(--foreground)}
 .mail-recipient-toolbar{display:flex;align-items:end;gap:12px;justify-content:space-between;margin-bottom:9px;flex-wrap:wrap}
 .mail-recipient-search{flex:1;min-width:200px}
 .mail-recipient-search input{width:100%}
@@ -491,8 +490,8 @@
 .mail-recipient-empty,.mail-recipient-help{margin:6px 0 0;font-size:11px;color:var(--muted-foreground)}
 .mail-compose-meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,.4fr);align-items:start;gap:10px}
 .mail-compose-meta>.harptos-picker{min-width:0;margin:0}
-.mail-link-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0;border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin:0}
-.mail-link-fields>legend{padding:0 5px;font-weight:700}
+.campaign-theme .mail-link-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0;border:0;border-top:1px solid var(--border);border-radius:0;padding:12px 0 0;margin:0}
+.campaign-theme .mail-link-fields>legend{padding:0;margin-bottom:6px;font-weight:700;color:var(--foreground)}
 .mail-link-fields>.mail-link-note,.mail-link-fields>div[role="status"]{grid-column:1/-1}
 .mail-link-note summary{font-size:12px;cursor:pointer}
 .mail-link-note p{margin:4px 0}
@@ -993,7 +992,8 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 }
 .campaign-theme[data-house-theme] .campaign-main{
  width:100%;
- max-width:1320px;
+ max-width:min(1920px,100%);
+ padding:clamp(16px,2vw,28px) clamp(14px,2.2vw,32px) 48px;
  min-height:calc(100vh - 100px);
 }
 .campaign-theme[data-house-theme] .campaign-heading{
@@ -1149,6 +1149,40 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .desdia-day--active{background:#3f1863;border-color:#b5893a;color:#fff8e8}
 .desdia-day--active:hover:not(:disabled){background:#51227a}
 .desdia-full-wrap{margin-top:4px;padding-top:8px;border-top:1px dashed #dfd4be}
+
+/* Tema escuro das Casas nobres: contraste de Painel Minha Semana, Compositor e Seletor da Désdia */
+.campaign-theme[data-house-theme] .player-week-dash{background:#231c20;border-color:var(--border);border-top-color:var(--house-page-metal);color:#f6ece0}
+.campaign-theme[data-house-theme] .pwd-head h2,
+.campaign-theme[data-house-theme] .pwd-big{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .pwd-card{background:#2d2429;border-color:var(--border);color:#f6ece0}
+.campaign-theme[data-house-theme] .pwd-card-top h3,
+.campaign-theme[data-house-theme] .pwd-sub{color:#d8c8b7}
+.campaign-theme[data-house-theme] .pwd-ic{background:#3a2e34;color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .pwd-res-chip{background:#20191d;border-color:var(--border);color:#f6ece0}
+.campaign-theme[data-house-theme] .pwd-res-chip--neg{background:#3e1f22;border-color:#b54444;color:#ffd0d0}
+.campaign-theme[data-house-theme] .pwd-pill--gold{background:#3c2e14;color:#ffe4a1;border-color:var(--house-page-metal)}
+.campaign-theme[data-house-theme] .pwd-pill--warn{background:#422022;color:#ffcbcb;border-color:#b54444}
+.campaign-theme[data-house-theme] .mail-target-card{background:#2d2429;border-color:var(--border)}
+.campaign-theme[data-house-theme] .mail-target-card-info strong{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .mail-template-btn{background:#2d2429;border-color:var(--border);color:#f6ece0}
+.campaign-theme[data-house-theme] .mail-template-btn:hover{background:#3a2e34;border-color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .mail-link-optional{background:#292025;border-color:var(--border)}
+.campaign-theme[data-house-theme] .mail-link-optional summary{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .mail-recipient-region{background:#2a2126;border-color:var(--border)}
+.campaign-theme[data-house-theme] .mail-recipient-region-head h3{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .mail-compose-panel .campaign-form .mail-recipient-select-all{background:#34292f;border-color:var(--border);color:#f6ece0}
+.campaign-theme[data-house-theme] .desdia-picker{background:#2a2126;border-color:var(--border);color:#f6ece0}
+.campaign-theme[data-house-theme] .desdia-picker-title{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .desdia-picker-title svg{color:var(--house-page-metal)}
+.campaign-theme[data-house-theme] .desdia-picker-selected{color:#f0dfc8}
+.campaign-theme[data-house-theme] .desdia-picker-toggle{background:#342a2f;border-color:var(--border);color:#f6ece0}
+.campaign-theme[data-house-theme] .desdia-picker-toggle:hover{border-color:var(--house-page-lustre);background:#41343b}
+.campaign-theme[data-house-theme] .desdia-day{background:#32282d;border-color:#68574c;color:#f7eee2}
+.campaign-theme[data-house-theme] .desdia-day:hover:not(:disabled){border-color:var(--house-page-lustre);background:#41343b}
+.campaign-theme[data-house-theme] .desdia-day--official{box-shadow:inset 0 -2px 0 var(--house-page-metal)}
+.campaign-theme[data-house-theme] .desdia-day--active{background:var(--house-page-metal);border-color:var(--house-page-lustre);color:#1a1210}
+.campaign-theme[data-house-theme] .desdia-day--active:hover:not(:disabled){background:var(--house-page-lustre);color:#1a1210}
+.campaign-theme[data-house-theme] .desdia-full-wrap{border-top-color:var(--border)}
 
 /* Identidade oficial compartilhada — o símbolo do dragão é o C inicial de Cormyr. */
 .cormyr-signature{display:inline-flex;align-items:center;gap:12px;max-width:100%;min-width:0;white-space:nowrap;vertical-align:middle;color:inherit}
