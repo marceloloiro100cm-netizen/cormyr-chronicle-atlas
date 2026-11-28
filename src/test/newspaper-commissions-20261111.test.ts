@@ -138,12 +138,13 @@ describe('Gravuras do Reino e calendário do Editor-Chefe',()=>{
   expect(sql4).toContain('published_date IS NOT NULL');
   expect(sql4).not.toMatch(/TO anon/);
  });
- it('a tela usa o banner, só Jornal e o emblema dourado',()=>{
+ it('a tela usa o cabeçalho editorial, só Jornal e o emblema dourado',()=>{
   const desk=read('src/components/newspaper/NewspaperEditorialDesk.tsx');
   const css=read('src/components/newspaper/newspaper-editorial.css');
   expect(desk).not.toContain('SEGUNDA TEMPORADA');
   expect(desk).toContain('emblema_integrado.webp');
-  expect(css).toContain('cab_centro.webp');
+  expect(desk).toContain('folha-brand-divider');
+  expect(css).toContain('.folha-brand-divider');
   expect(desk).toContain('folha-font-');
  });
 });
@@ -162,9 +163,9 @@ describe('Pente fino: data do HUB, configurações sem edição e cabeçalho con
   expect(sql5).toContain('USING (public.can_edit_campaign_newspaper())');
   expect(sql5).not.toMatch(/TO anon/);
  });
- it('o cabeçalho é uma faixa contínua, sem imagem esticada',()=>{
-  expect(css).toContain('cab_fundo.png');
-  expect(css).toContain('cab_centro.webp');
+ it('o cabeçalho editorial não usa imagem esticada e traz o divisor dourado do front',()=>{
+  expect(css).toContain('.folha-brand-divider');
+  expect(css).toContain('.folha-top-folio');
   expect(css).not.toContain('cabecalho_folha.webp');
   expect(css).not.toContain('100% 100%');
  });

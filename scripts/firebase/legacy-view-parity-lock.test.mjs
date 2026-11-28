@@ -222,6 +222,12 @@
  * 2026-11-27 (brasão do jornal com degradê na folha): a pedido do proprietário,
  * NewspaperCanvas.tsx volta a usar o brasão próprio do jornal
  * (/newspaper/brasao_folha.webp) com tratamento editorial em newspaper.css.
+ * 2026-11-27 (redesign do cabeçalho editorial do Editor-Chefe): a pedido do
+ * proprietário, somente a faixa superior (.folha-topbar) de
+ * NewspaperEditorialDesk.tsx e newspaper-editorial.css foi redesenhada em
+ * pergaminho creme editorial com brasão central ampliado, divisor vertical
+ * dourado com losango (◆) como no front e controles de conta em alto contraste.
+ * Todas as 9 seções, barra lateral, masthead interno, filtros e ações permanecem.
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -235,9 +241,9 @@ const originals={
   'src/components/players/players-workspace.tsx':'92e17b0fa8792ff5c040bd07d654bc8f71834520',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'a03e691790b73e0597c833001eb16f1cdaf8faad',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'c6b088718206696a94cbd62a3af45d42932a9b07',
   'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
-  'src/components/newspaper/newspaper-editorial.css':'008b73491be45ab19b687d6b685fcc420aff715a',
+  'src/components/newspaper/newspaper-editorial.css':'25e3603dc0c85092d122a0a881fde754595f6e70',
   'src/components/newspaper/NewspaperCanvas.tsx':'f0ddd7f2a87bda94a33427e7122a7e5a258639b6',
   'src/components/players/admin-panel.tsx':'5d228c335901891fdba102cd301f92b18927486a',
   'src/components/players/ficha-tab.tsx':'709de1b9b54ea1768b314ca9bbed4674dcdc01a0',
