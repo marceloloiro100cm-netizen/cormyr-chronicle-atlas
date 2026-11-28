@@ -216,6 +216,9 @@
  * brasão do cabeçalho em NewspaperCanvas.tsx foram atualizados de
  * /newspaper/brasao_reino.webp para /cormyr/brand/cormyr-brasao.svg.
  * Layout, edição inline, blocos, regras e permissões permanecem inalterados.
+ * 2026-11-27 (fundo creme e brasão ampliado na Redação): somente o selo de
+ * retorno ao Atlas em NewspaperEditorialDesk.tsx e .folha-site-home>img em
+ * newspaper-editorial.css foram ajustados (74x82px sobre fundo creme do front).
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -229,9 +232,9 @@ const originals={
   'src/components/players/players-workspace.tsx':'92e17b0fa8792ff5c040bd07d654bc8f71834520',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
-  'src/components/newspaper/NewspaperEditorialDesk.tsx':'88515c0abaa06ae3f05231466165f2c8129d6663',
+  'src/components/newspaper/NewspaperEditorialDesk.tsx':'a03e691790b73e0597c833001eb16f1cdaf8faad',
   'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
-  'src/components/newspaper/newspaper-editorial.css':'b9bbeeacdd54e7885066a94864f1612235f10a2d',
+  'src/components/newspaper/newspaper-editorial.css':'008b73491be45ab19b687d6b685fcc420aff715a',
   'src/components/newspaper/NewspaperCanvas.tsx':'3df6c40d4d9a47a2f19db08c946e8f09a526531d',
   'src/components/players/admin-panel.tsx':'5d228c335901891fdba102cd301f92b18927486a',
   'src/components/players/ficha-tab.tsx':'709de1b9b54ea1768b314ca9bbed4674dcdc01a0',

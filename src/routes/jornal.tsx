@@ -115,7 +115,7 @@ function PublicNewspaper(){
 
   return <div className={'public-folha'+(embed?' public-folha--embed':'')}>
     {!embed&&<header className="public-folha-top">
-      <a href="/cormyr/index.html" className="public-folha-brand" aria-label="Atlas de Cormyr: voltar ao reino"><CormyrSignature compact subtitle=""/></a>
+      <a href="/cormyr/index.html" className="public-folha-brand" aria-label="Atlas de Cormyr: voltar ao reino"><CormyrSignature compact tone="light" subtitle="Crônicas do Reino"/></a>
       <a href="/cormyr/index.html">Voltar ao Atlas</a>
     </header>}
     <div className="public-folha-masthead">

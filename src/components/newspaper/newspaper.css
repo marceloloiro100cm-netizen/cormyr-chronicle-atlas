@@ -302,7 +302,7 @@
 .newspaper-commission-empty{margin:8px 0 14px}
 
 /* Facilidades do modelo: leões no cabeçalho, setas no bloco e subtítulo */
-.newspaper-crest{height:clamp(52px,8vw,104px);width:auto;flex:none;filter:drop-shadow(0 1px 1px rgba(60,35,10,.35))}
+.newspaper-crest{height:clamp(68px,9.5vw,122px);width:auto;flex:none;filter:drop-shadow(0 1px 1px rgba(60,35,10,.28))}
 .newspaper-crest-mirror{transform:scaleX(-1)}
 .newspaper-subhead{margin:0;font:italic 600 1.2rem Georgia,serif;border-bottom:1px solid #bda074;padding-bottom:4px}
 .newspaper-move-buttons{position:absolute;top:4px;right:34px;display:flex;gap:2px;z-index:3}
@@ -455,8 +455,8 @@
 /* ---- A Folha Sem Selo no site aberto (/jornal) ---- */
 .public-folha{min-height:100vh;background:#f3ecdd;color:#231d2a;padding:0 0 40px;font-family:Georgia,'Times New Roman',serif}
 .public-folha--embed{min-height:0;background:transparent;padding:0 0 24px}
-.public-folha-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:#241334;color:#fffdf7;border-bottom:2px solid #a98b54}
-.public-folha-top a{color:#fffdf7;text-decoration:none;font-family:system-ui,sans-serif;font-size:14px}
+.public-folha-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);color:#3f1863;border-bottom:4px solid #b5893a}
+.public-folha-top a{color:#3f1863;text-decoration:none;font-family:system-ui,sans-serif;font-size:14px;font-weight:600}
 .public-folha-brand{display:inline-flex;align-items:center;gap:10px;font:600 19px Georgia,serif}
 .public-folha-brand em{color:#dcc28f;font-style:normal}
 .public-folha-brand img{border-radius:4px;object-fit:cover}

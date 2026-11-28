@@ -238,13 +238,13 @@ html.is-embedded .chronicle{padding:4px 0 28px;max-width:none}
 }
 
 /* A marca oficial aparece quando o calendário é aberto fora do Atlas, no estilo horizontal do front. */
-.chronicle-brand{display:inline-flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 16px 10px 12px;border-radius:10px;border:1px solid rgba(181,137,58,.45);background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);color:#3f1863;text-decoration:none}
-.chronicle-brand-mark{display:block;flex:0 0 auto;width:54px;height:62px;object-fit:contain;border:0;background:transparent}
-.chronicle-brand-divider{width:12px;flex:0 0 12px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-.chronicle-brand-divider::before,.chronicle-brand-divider::after{content:"";display:block;flex:1;min-height:8px;width:1px;background:rgba(181,137,58,.65)}
-.chronicle-brand-gem{display:block;color:#aa7d31;font:400 9px/1 Georgia,serif}
+.chronicle-brand{display:inline-flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 18px 12px 14px;border-radius:10px;border:1px solid rgba(181,137,58,.55);background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);color:#3f1863;text-decoration:none}
+.chronicle-brand-mark{display:block;flex:0 0 auto;width:68px;height:78px;object-fit:contain;border:0;background:transparent}
+.chronicle-brand-divider{width:14px;flex:0 0 14px;height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.chronicle-brand-divider::before,.chronicle-brand-divider::after{content:"";display:block;flex:1;min-height:10px;width:1px;background:rgba(181,137,58,.65)}
+.chronicle-brand-gem{display:block;color:#aa7d31;font:400 10px/1 Georgia,serif}
 .chronicle-brand-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
-.chronicle-brand-copy small{color:#9a6b24;font:700 10px/1.2 'Cinzel',Georgia,serif;letter-spacing:.14em}
-.chronicle-brand-copy strong{color:#3f1863;font:800 24px/1.05 'Cinzel',Georgia,serif;letter-spacing:-.01em;margin:2px 0}
-.chronicle-brand-copy em{font-style:normal;color:#5c367c;font:600 9px/1.2 'Cinzel',Georgia,serif;letter-spacing:.04em}
+.chronicle-brand-copy small{color:#9a6b24;font:700 11px/1.2 'Cinzel',Georgia,serif;letter-spacing:.15em}
+.chronicle-brand-copy strong{color:#3f1863;font:800 28px/1.03 'Cinzel',Georgia,serif;letter-spacing:-.01em;margin:2px 0}
+.chronicle-brand-copy em{font-style:normal;color:#5c367c;font:600 9.5px/1.2 'Cinzel',Georgia,serif;letter-spacing:.05em}
 html.is-embedded .chronicle-brand{display:none}

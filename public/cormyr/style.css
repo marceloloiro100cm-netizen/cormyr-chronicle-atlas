@@ -470,10 +470,10 @@
 .kingdom-region-chip:hover,.kingdom-region-chip.is-hover{border-color:var(--gold);transform:translateY(-2px)}
 .kingdom-geo-note{margin:16px 0 0}
 .kingdom-infobox{padding:0;overflow:hidden;position:sticky;top:20px;border-top:3px solid var(--gold)}
-.kingdom-infobox header{display:flex;gap:14px;align-items:center;padding:20px;background:var(--purple);color:white}
-.kingdom-infobox header img{width:64px;height:64px;object-fit:contain;border-radius:0;background:transparent;flex-shrink:0}
-.kingdom-infobox header .eyebrow{color:#d5b681;font-size:10px;margin:0 0 4px}
-.kingdom-infobox header h2{font-size:23px;color:white}
+.kingdom-infobox header{display:flex;gap:16px;align-items:center;padding:18px 20px;background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);color:#3f1863;border-bottom:3px solid #b5893a}
+.kingdom-infobox header img{width:80px;height:88px;object-fit:contain;border-radius:0;background:transparent;flex-shrink:0}
+.kingdom-infobox header .eyebrow{color:#9a6b24;font-size:10.5px;margin:0 0 4px}
+.kingdom-infobox header h2{font-size:24px;color:#3f1863}
 .kingdom-infobox dl{margin:0;padding:6px 20px 18px}
 .kingdom-infobox dt{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-top:14px}
 .kingdom-infobox dd{margin:3px 0 0;font-size:15px;line-height:1.5;padding-bottom:12px;border-bottom:1px solid var(--line)}

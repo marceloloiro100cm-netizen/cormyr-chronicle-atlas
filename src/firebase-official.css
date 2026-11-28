@@ -29,36 +29,36 @@
   outline-offset:3px;
 }
 .firebase-official-top{
-  min-height:91px;
-  background:linear-gradient(116deg,#21142b,#321c3c 76%,#402448);
-  border-bottom:3px solid var(--fo-gold);
+  min-height:102px;
+  background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);
+  border-bottom:4px solid #b5893a;
   display:flex;
   justify-content:space-between;
   align-items:center;
   gap:20px;
   padding:12px clamp(20px,3.7vw,70px);
-  color:#f9f0df;
-  box-shadow:0 8px 28px #20122928;
+  color:#3f1863;
+  box-shadow:0 6px 22px #20122918;
 }
 .firebase-official-brand{
-  display:inline-flex;align-items:center;min-width:0;text-decoration:none;
+  display:inline-flex;align-items:center;min-width:0;text-decoration:none;color:#3f1863;
 }
-.firebase-official-brand .cormyr-signature__mark{filter:drop-shadow(0 2px 6px #0005)}
+.firebase-official-brand .cormyr-signature__mark{filter:none}
 .firebase-official-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:13px;flex-wrap:wrap}
-.firebase-official-kingdom{text-decoration:none;font-size:13px;opacity:.88}
+.firebase-official-kingdom{text-decoration:none;font-size:13.5px;font-weight:600;color:#3f1863;opacity:.92}
 .firebase-official-kingdom:hover{text-decoration:underline;opacity:1}
 .firebase-official-profile{
-  display:inline-flex;align-items:center;gap:7px;color:#f5e6c6;
-  border-left:1px solid #a08aa155;padding-left:15px;
-  font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:7px;color:#3f1863;
+  border-left:1px solid rgba(181,137,58,.5);padding-left:15px;
+  font-size:13px;font-weight:700;
 }
-.firebase-official-profile svg{color:var(--fo-gold)}
+.firebase-official-profile svg{color:#9a6b24}
 .firebase-official-exit{
   display:inline-flex;align-items:center;gap:8px;padding:9px 14px;
-  border:1px solid #d0b48f88;border-radius:6px;
-  background:#fff1;color:#f6eada;font-size:13px;
+  border:1px solid #b5893a;border-radius:6px;
+  background:#fffaf0;color:#3f1863;font-size:13px;font-weight:600;
 }
-.firebase-official-exit:hover{background:#fff2;border-color:#e2c68e}
+.firebase-official-exit:hover{background:#f7eccf;border-color:#9a6b24}
 .firebase-official-layout{min-height:calc(100vh - 91px);display:grid;grid-template-columns:258px minmax(0,1fr)}
 .firebase-official-sidebar{
   min-width:0;

@@ -263,7 +263,7 @@ export function NewspaperEditorialDesk(props:NewspaperEditorialProps){
   <header className={`folha-topbar folha-font-${identity.font_style}`}>
    <a className="folha-top-brand folha-site-home" href="/cormyr/index.html"
      aria-label="Atlas Cormyr: voltar ao site público">
-    <img src="/cormyr/brand/cormyr-icone-favicon.svg" width={35} height={45} alt="Monograma de Cormyr"/>
+    <img src="/cormyr/brand/cormyr-brasao.svg" width={74} height={82} alt="Brasão de Cormyr"/>
     <span className="folha-site-home-title">
      <p><span aria-hidden="true">✦</span> JORNAL</p>
      <h1>{identity.title}</h1>
