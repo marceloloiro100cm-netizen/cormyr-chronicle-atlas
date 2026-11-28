@@ -243,7 +243,7 @@ const originals={
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'c6b088718206696a94cbd62a3af45d42932a9b07',
   'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
-  'src/components/newspaper/newspaper-editorial.css':'25e3603dc0c85092d122a0a881fde754595f6e70',
+  'src/components/newspaper/newspaper-editorial.css':'c9492268317dd68815ff17197c476cc94c3dfad2',
   'src/components/newspaper/NewspaperCanvas.tsx':'f0ddd7f2a87bda94a33427e7122a7e5a258639b6',
   'src/components/players/admin-panel.tsx':'5d228c335901891fdba102cd301f92b18927486a',
   'src/components/players/ficha-tab.tsx':'709de1b9b54ea1768b314ca9bbed4674dcdc01a0',

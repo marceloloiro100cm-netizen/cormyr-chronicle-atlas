@@ -21,38 +21,47 @@
 /* Cabeçalho editorial da Redação: pergaminho claro harmônico com o front do Atlas,
    brasão centralizado em destaque com filete dourado vertical e moldura tipográfica. */
 .folha-topbar{
- min-height:clamp(124px,10.5vw,158px);
- padding:16px clamp(20px,3vw,48px);
+ min-height:clamp(128px,10.8vw,164px);
+ padding:16px clamp(20px,3vw,48px) 26px;
  display:grid;
- grid-template-columns:minmax(180px,1fr) auto minmax(220px,1fr);
+ grid-template-columns:minmax(220px,1fr) auto minmax(220px,1fr);
  align-items:center;
  gap:18px;
  position:relative;isolation:isolate;overflow:visible;
  border-top:3px solid #3f1863;
- border-bottom:4px double #b5893a;
- box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 6px 22px rgba(42,18,48,.12);
+ border-bottom:0;
+ margin-bottom:4px;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 8px 22px rgba(38,14,33,.18);
  background:
   repeating-linear-gradient(135deg,rgba(153,120,56,.032) 0 2px,transparent 2px 14px),
   radial-gradient(ellipse at 50% 22%,#fffcf4 0%,#f7ecd2 58%,#ead6ad 100%);
  color:#3f1863;
 }
 .folha-topbar::before{
- content:"";position:absolute;inset:7px 14px;pointer-events:none;z-index:0;
+ content:"";position:absolute;inset:7px 14px 16px;pointer-events:none;z-index:0;
  border-top:1px solid rgba(181,137,58,.36);
  border-bottom:1px solid rgba(181,137,58,.36);
 }
+.folha-topbar::after{
+ content:"";position:absolute;left:0;right:0;bottom:0;height:10px;pointer-events:none;z-index:2;
+ background:linear-gradient(90deg,#260e21 0%,#4b1a42 28%,#5c2150 50%,#4b1a42 72%,#260e21 100%);
+ border-top:2px solid #cfa354;
+ border-bottom:2px solid #9a6f2e;
+ box-shadow:0 3px 10px rgba(38,14,33,.28);
+}
 .folha-top-folio{
- position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:5px;
- max-width:230px;color:#5c367c;
+ position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+ max-width:290px;color:#3f1863;
 }
 .folha-top-folio-kicker{
- font:700 .66rem/1.2 'Cinzel',Georgia,serif;letter-spacing:.2em;color:#9a6b24;
+ font:800 .92rem/1.2 'Cinzel',Georgia,serif;letter-spacing:.15em;color:#3f1863;
 }
 .folha-top-folio-rule{
- width:74px;height:1px;background:linear-gradient(90deg,#b5893a,rgba(181,137,58,.15));
+ width:124px;height:2px;background:linear-gradient(90deg,#b5893a,rgba(181,137,58,.18));
 }
 .folha-top-folio-note{
- font:italic .82rem/1.3 Georgia,serif;color:#5f422d;
+ font:600 .95rem/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:#4e2c3e;
+ letter-spacing:.01em;
 }
 .folha-top-brand{
  position:relative;z-index:1;min-width:0;max-width:none;justify-self:center;
@@ -342,11 +351,11 @@
 }
 @media(max-width:760px){
  .folha-topbar{
-  display:flex;height:auto;min-height:0;padding:14px 16px;
+  display:flex;height:auto;min-height:0;padding:14px 16px 24px;
   align-items:stretch;flex-direction:column;gap:12px;
-  border-top:3px solid #3f1863;border-bottom:4px double #b5893a;
+  border-top:3px solid #3f1863;border-bottom:0;
  }
- .folha-topbar::before{inset:5px 8px}
+ .folha-topbar::before{inset:5px 8px 14px}
  .folha-top-folio{display:none}
  .folha-top-brand{justify-self:auto;justify-content:center;max-width:100%}
  .folha-top-brand h1{font-size:clamp(1.45rem,6vw,2rem)}
@@ -578,7 +587,7 @@
    Em notebook (por volta de 1366x768) tudo fica mais compacto, em telas grandes volta ao tamanho cheio.
    Só vale acima de 760 px; abaixo disso o layout de celular acima continua mandando. */
 @media(min-width:761px){
- .folha-topbar{min-height:clamp(112px,min(10vw,16vh),156px);padding:14px clamp(20px,3vw,48px);gap:16px}
+ .folha-topbar{min-height:clamp(118px,min(10.5vw,16.5vh),162px);padding:14px clamp(20px,3vw,48px) 24px;gap:16px}
  .folha-top-brand p{font-size:clamp(.62rem,.78vw,.74rem)}
  .folha-top-brand h1{font-size:clamp(1.55rem,min(2.6vw,4.8vh),2.85rem);margin:2px 0 4px}
  .folha-top-slogan{font-size:clamp(.72rem,.92vw,.94rem)}
