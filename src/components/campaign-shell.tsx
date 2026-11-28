@@ -26,7 +26,7 @@ function PublicClock(){
   },retry:false,refetchInterval:30000,
  });
  return <small aria-live="polite">{clock.data&&!clock.isError?
-  `Crônicas do Reino · ${clock.data.period}`:
+  clock.data.period:
   clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small>;
 }
 export function CampaignShell({ children,publicTime=false,heraldry=null }: {

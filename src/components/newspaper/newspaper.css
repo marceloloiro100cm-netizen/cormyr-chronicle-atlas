@@ -302,7 +302,7 @@
 .newspaper-commission-empty{margin:8px 0 14px}
 
 /* Facilidades do modelo: leões no cabeçalho, setas no bloco e subtítulo */
-.newspaper-crest{height:clamp(68px,9.5vw,122px);width:auto;flex:none;filter:drop-shadow(0 1px 1px rgba(60,35,10,.28))}
+.newspaper-crest{height:clamp(68px,9.5vw,122px);width:auto;flex:none;mix-blend-mode:multiply;filter:sepia(.34) contrast(1.06) brightness(.97);opacity:.86;-webkit-mask-image:radial-gradient(ellipse 74% 78% at 50% 50%,#000 58%,rgba(0,0,0,.55) 82%,transparent 100%);mask-image:radial-gradient(ellipse 74% 78% at 50% 50%,#000 58%,rgba(0,0,0,.55) 82%,transparent 100%)}
 .newspaper-crest-mirror{transform:scaleX(-1)}
 .newspaper-subhead{margin:0;font:italic 600 1.2rem Georgia,serif;border-bottom:1px solid #bda074;padding-bottom:4px}
 .newspaper-move-buttons{position:absolute;top:4px;right:34px;display:flex;gap:2px;z-index:3}
@@ -796,6 +796,7 @@
 }
 
 /* Jornal em tela cheia: monograma e nome conectados. */
-.public-folha-brand .cormyr-signature__mark{width:47px;height:54px;object-fit:contain;border-radius:0}
-.public-folha-brand .cormyr-signature__word{color:#fff4d9}
-.public-folha-brand .cormyr-signature__kicker{color:#d8bf8d}
+.public-folha-brand .cormyr-signature__mark{width:58px;height:66px;object-fit:contain;border-radius:0}
+.public-folha-brand .cormyr-signature__word{color:#3f1863}
+.public-folha-brand .cormyr-signature__kicker{color:#9a6b24}
+.public-folha-brand .cormyr-signature__subtitle{color:#5c367c}

@@ -131,7 +131,7 @@ export function FirebaseOfficialHome({
         </button>
       </div>
       <div className="firebase-official-hero-insignia" aria-hidden="true">
-        <img src="/cormyr/brand/cormyr-brasao-escuro.svg" alt=""/>
+        <img src="/cormyr/brand/cormyr-brasao.svg" alt=""/>
       </div>
     </div>
     <div className="firebase-official-quickstats" aria-label="Resumo dos serviços">

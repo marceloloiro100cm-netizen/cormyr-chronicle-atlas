@@ -219,6 +219,9 @@
  * 2026-11-27 (fundo creme e brasão ampliado na Redação): somente o selo de
  * retorno ao Atlas em NewspaperEditorialDesk.tsx e .folha-site-home>img em
  * newspaper-editorial.css foram ajustados (74x82px sobre fundo creme do front).
+ * 2026-11-27 (brasão do jornal com degradê na folha): a pedido do proprietário,
+ * NewspaperCanvas.tsx volta a usar o brasão próprio do jornal
+ * (/newspaper/brasao_folha.webp) com tratamento editorial em newspaper.css.
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -235,7 +238,7 @@ const originals={
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'a03e691790b73e0597c833001eb16f1cdaf8faad',
   'src/components/newspaper/NewspaperHub.tsx':'8cff58c97444efe61f99d0f43c20ba8ce59f1f03',
   'src/components/newspaper/newspaper-editorial.css':'008b73491be45ab19b687d6b685fcc420aff715a',
-  'src/components/newspaper/NewspaperCanvas.tsx':'3df6c40d4d9a47a2f19db08c946e8f09a526531d',
+  'src/components/newspaper/NewspaperCanvas.tsx':'f0ddd7f2a87bda94a33427e7122a7e5a258639b6',
   'src/components/players/admin-panel.tsx':'5d228c335901891fdba102cd301f92b18927486a',
   'src/components/players/ficha-tab.tsx':'709de1b9b54ea1768b314ca9bbed4674dcdc01a0',
   'src/components/calendar/narrator-calendar.tsx':'d4d8a268f8af0f002dcffee0a610b9d712466c7b',

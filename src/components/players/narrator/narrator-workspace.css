@@ -91,8 +91,11 @@
 
 @media (max-width:1023px){.nw-represent{max-width:170px}}
 @media (max-width:767px){
- .nw-top{height:50px;gap:8px;padding-right:8px}
- .nw-brand img{height:32px}.nw-brand b{font-size:16px}.nw-brand b em,.nw-clock{display:none}
+ .nw-top{min-height:62px;height:auto;gap:8px;padding-right:8px}
+ .nw-brand .cormyr-signature__mark{width:42px;height:48px}
+ .nw-brand .cormyr-signature__divider{height:44px}
+ .nw-brand .cormyr-signature__word{font-size:18px}
+ .nw-brand b{font-size:16px}.nw-brand b em,.nw-clock{display:none}
  .nw-week{padding:0 10px}.nw-week-long{display:none}.nw-week-short{display:inline}
  .nw-represent{max-width:118px;font-size:12px}
  .nw-body{grid-template-columns:minmax(0,1fr)}
