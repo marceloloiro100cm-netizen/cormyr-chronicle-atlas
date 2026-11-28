@@ -987,9 +987,9 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .campaign-theme[data-house-theme]>.campaign-top,
 .campaign-theme[data-house-theme]>.campaign-main{position:relative;z-index:1}
 .campaign-theme[data-house-theme]>.campaign-top{
- background:linear-gradient(100deg,#141015,color-mix(in srgb,var(--house-page-main) 37%,#191417));
- border-bottom:2px solid var(--house-page-metal);
- color:#f4e9dc;
+ background:repeating-linear-gradient(135deg,rgba(153,120,56,.028) 0 2px,transparent 2px 12px),radial-gradient(ellipse at 45% 30%,#fffaf0,#f7eccf 67%,#ead6ad 100%);
+ border-bottom:4px solid var(--house-page-metal,#b5893a);
+ color:#3f1863;
 }
 .campaign-theme[data-house-theme] .campaign-main{
  width:100%;
@@ -1150,7 +1150,7 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .cormyr-signature--light .cormyr-signature__kicker{color:#9a6b24}
 .cormyr-signature--light .cormyr-signature__word{color:#3f1863}
 .cormyr-signature--light .cormyr-signature__subtitle{color:#5c367c}
-.cormyr-signature--light .cormyr-signature__extra{color:#5c367c;font-weight:500}
+.cormyr-signature--light .cormyr-signature__extra{color:#4a2a67;font-size:12.5px;font-weight:600}
 .cormyr-signature--compact{gap:10px}
 .cormyr-signature--compact .cormyr-signature__mark{width:58px;height:66px}
 .cormyr-signature--compact .cormyr-signature__divider{width:12px;flex-basis:12px;height:60px}
@@ -1159,5 +1159,5 @@ button.military-pip:disabled{opacity:.35;cursor:not-allowed}
 .cormyr-signature--compact .cormyr-signature__subtitle{font-size:8.8px}
 .campaign-brand .cormyr-signature__mark{width:74px;height:84px;object-fit:contain}
 .campaign-brand .cormyr-signature__subtitle{color:#5c367c}
-.campaign-brand .cormyr-signature__extra small{margin-top:0;color:#5c367c}
+.campaign-brand .cormyr-signature__extra small{margin-top:0;color:#4a2a67;font-size:12.5px;font-weight:600}
 @media(max-width:600px){.cormyr-signature__mark,.campaign-brand .cormyr-signature__mark{width:56px;height:64px}.cormyr-signature__divider{height:58px}.cormyr-signature__word{font-size:23px}.cormyr-signature__subtitle{font-size:8.5px}}

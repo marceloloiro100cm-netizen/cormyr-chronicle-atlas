@@ -272,10 +272,10 @@ export function NewspaperCanvas({edition,editing=false,compactMasthead=false,sel
     {!editing&&minutes>0&&<span className="newspaper-reading-time">Leitura: cerca de {minutes} min</span>}
    </div>:<p>O CORREIO DO REINO · CORMYR · EDIÇÃO {String(edition.edition_no).padStart(3,'0')}</p>}
    <div className="newspaper-page-masthead">
-    <img className="newspaper-crest" src="/cormyr/brand/cormyr-brasao.svg" alt="" aria-hidden="true"/>
+    <img className="newspaper-crest" src="/newspaper/brasao_folha.webp" alt="" aria-hidden="true"/>
     <InlineText tag="h1" value={edition.title} editing={editing&&Boolean(onChangeEdition)}
      label="Editar nome do jornal" single onChange={title=>{if(title)onChangeEdition?.({title});}}/>
-    <img className="newspaper-crest newspaper-crest-mirror" src="/cormyr/brand/cormyr-brasao.svg" alt="" aria-hidden="true"/>
+    <img className="newspaper-crest newspaper-crest-mirror" src="/newspaper/brasao_folha.webp" alt="" aria-hidden="true"/>
    </div>
    {!compactMasthead&&<div className="newspaper-meta"><span>{formatDate(edition.campaign_date)}</span><span>Folha independente de Cormyr</span></div>}
    {(edition.subtitle||(editing&&onChangeEdition))&&<InlineText tag="h2" className="newspaper-subtitle"

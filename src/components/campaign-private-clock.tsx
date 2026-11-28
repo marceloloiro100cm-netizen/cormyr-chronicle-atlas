@@ -10,6 +10,6 @@ export default function PrivateClockBody(){
  const clock=useCampaignTime();
  useCampaignCalendarRealtime();
  return <small aria-live="polite">{clock.data&&!clock.isError?
-  `Crônicas do Reino · ${campaignTimeView(clock.data).period}`:
+  campaignTimeView(clock.data).period:
   clock.isError?'Data oficial indisponível':'Consultando data oficial…'}</small>;
 }
