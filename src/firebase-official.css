@@ -41,20 +41,9 @@
   box-shadow:0 8px 28px #20122928;
 }
 .firebase-official-brand{
-  display:inline-flex;align-items:center;gap:15px;min-width:0;text-decoration:none;
-  font:clamp(23px,2.1vw,29px)/1.1 Georgia,'Times New Roman',serif;
-  letter-spacing:.015em;
+  display:inline-flex;align-items:center;min-width:0;text-decoration:none;
 }
-.firebase-official-brand img{width:54px;height:64px;object-fit:contain;filter:drop-shadow(0 2px 6px #0005)}
-.firebase-official-brand em{color:#e1c58c;font-style:normal}
-.firebase-official-brand small{
-  display:block;
-  font:11px/1.55 system-ui,sans-serif;
-  margin-top:7px;
-  letter-spacing:.13em;
-  text-transform:uppercase;
-  color:#d6c6d4;
-}
+.firebase-official-brand .cormyr-signature__mark{filter:drop-shadow(0 2px 6px #0005)}
 .firebase-official-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:13px;flex-wrap:wrap}
 .firebase-official-kingdom{text-decoration:none;font-size:13px;opacity:.88}
 .firebase-official-kingdom:hover{text-decoration:underline;opacity:1}

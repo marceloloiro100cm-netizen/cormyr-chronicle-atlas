@@ -3,7 +3,8 @@ import {isPlainLeftClick,useUrlSearch} from '@/lib/navigation/url-state';
 import {LanguageSwitcher} from '@/components/language-switcher';
 import {useTranslation} from '@/lib/i18n/context';
 import {NARRATION_GROUPS,narrationHouseIds} from '@/lib/mail-groups';
-import {CORMYR_CREST,Icon,NARRATOR_MOBILE,useMedia} from './narrator-ui';
+import {CormyrSignature} from '@/components/cormyr-signature';
+import {Icon,NARRATOR_MOBILE,useMedia} from './narrator-ui';
 import './narrator-workspace.css';
 
 // O relógio completo só existe na área autenticada; carregado sob demanda como em CampaignShell.
@@ -70,11 +71,11 @@ export function NarratorWorkspace({menu,extra,section,onSection,sectionHref,unre
  const inMore=secondary.some(([id])=>id===section);
  return <div className="campaign-theme nw-root">
   <header className="nw-top">
-   {(()=>{const body=<><img src={CORMYR_CREST} alt="" width={34} height={42}/>
-    <span><b>Atlas <em>Cormyr</em></b>
-     <span className="nw-clock"><Suspense fallback={<small>Consultando data oficial…</small>}><PrivateClockBody/></Suspense></span></span></>;
-    return <a className="nw-brand" href="/cormyr/index.html"
-      aria-label="Atlas Cormyr: voltar ao site público">{body}</a>;})()}
+   <a className="nw-brand" href="/cormyr/index.html" aria-label="Atlas de Cormyr: voltar ao site público">
+    <CormyrSignature compact subtitle="">
+     <span className="nw-clock"><Suspense fallback={<small>Consultando data oficial…</small>}><PrivateClockBody/></Suspense></span>
+    </CormyrSignature>
+   </a>
    <span className="nw-spacer"/>
    {(()=>{const props={className:'nw-week'+(openRound===null?' nw-week--closed':''),title:'Abrir o Hub Temporal',
      'aria-label':(openRound!==null?`Semana ${openRound} aberta`:'Nenhuma semana aberta')+'. Abrir o Hub Temporal'};

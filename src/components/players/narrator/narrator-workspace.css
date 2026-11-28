@@ -12,11 +12,11 @@
 .nw-spacer{flex:1}
 
 /* Cabeçalho */
-.nw-top{height:58px;display:flex;align-items:center;gap:12px;padding:0 14px 0 12px;background:var(--nw-purple);color:#fffdf7;border-bottom:3px solid var(--nw-gold);z-index:30;min-width:0}
-.nw-brand{display:flex;align-items:center;gap:10px;min-width:0;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer}
-.nw-brand img{height:42px;width:auto;filter:drop-shadow(0 1px 2px rgb(0 0 0/.4))}
-.nw-brand b{display:block;font:600 19px/1.1 Georgia,serif;white-space:nowrap}
-.nw-brand b em{font-style:normal;color:var(--nw-gold)}
+.nw-top{min-height:66px;display:flex;align-items:center;gap:12px;padding:6px 14px 6px 12px;background:var(--nw-purple);color:#fffdf7;border-bottom:3px solid var(--nw-gold);z-index:30;min-width:0}
+.nw-brand{display:inline-flex;align-items:center;min-width:0;background:none;border:0;padding:0;color:inherit;text-align:left;text-decoration:none;cursor:pointer}
+.nw-brand .cormyr-signature__mark{width:44px;height:50px;filter:drop-shadow(0 1px 2px rgb(0 0 0/.35))}
+.nw-brand .cormyr-signature__divider{height:48px}
+.nw-brand .cormyr-signature__word{font-size:19px}
 .nw-clock,.nw-clock small{display:block;font-size:11.5px;line-height:1.3;color:#d9cfe4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 .nw-week{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgb(191 155 94/.7);background:rgb(255 255 255/.06);color:#f4ead6;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer}
 .nw-week:hover{background:rgb(255 255 255/.12)}

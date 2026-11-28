@@ -92,7 +92,7 @@ export function FirebaseOfficialFrame({
         <main className="firebase-official-main">
           <div className="firebase-official-pagehead">
             <p className="firebase-official-breadcrumb">
-              ATLAS CORMYR <span aria-hidden="true">/</span> {MODES[current].label.toUpperCase()}
+              ATLAS DE CORMYR <span aria-hidden="true">/</span> {MODES[current].label.toUpperCase()}
             </p>
             <h1>{MODES[current].label}</h1>
             <p>{subtitle}</p>
@@ -131,7 +131,7 @@ export function FirebaseOfficialHome({
         </button>
       </div>
       <div className="firebase-official-hero-insignia" aria-hidden="true">
-        <img src="/cormyr/brand/cormyr-icone-favicon.svg" alt=""/>
+        <img src="/cormyr/brand/cormyr-brasao-escuro.svg" alt=""/>
       </div>
     </div>
     <div className="firebase-official-quickstats" aria-label="Resumo dos serviços">

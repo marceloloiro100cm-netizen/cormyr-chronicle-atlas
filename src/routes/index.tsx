@@ -5,9 +5,9 @@ import { useEffect } from "react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Atlas Cormyr: Crônicas do Reino" },
-      { name: "description", content: "Atlas Cormyr: casas nobres, hierarquias, aventuras e 200 eventos para narrar a campanha em Cormyr." },
-      { property: "og:title", content: "Atlas Cormyr: Casas, regiões e crônicas" },
+      { title: "Atlas de Cormyr: Crônicas do Reino" },
+      { name: "description", content: "Atlas de Cormyr: casas nobres, hierarquias, aventuras e 200 eventos para narrar a campanha em Cormyr." },
+      { property: "og:title", content: "Atlas de Cormyr: Casas, regiões e crônicas" },
       { property: "og:description", content: "Casas nobres, hierarquias, aventuras e eventos da campanha em Cormyr." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -22,7 +22,7 @@ function Index() {
   }, []);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-      <a href="/cormyr/index.html">Abrindo o Atlas Cormyr…</a>
+      <a href="/cormyr/index.html">Abrindo o Atlas de Cormyr…</a>
     </div>
   );
 }

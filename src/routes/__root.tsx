@@ -112,6 +112,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       {
         rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&display=swap",
+      },
+      {
+        rel: "stylesheet",
         href: appCss,
       },
       { rel: "icon", href: "/cormyr/brand/cormyr-icone-favicon.svg", type: "image/svg+xml" },
