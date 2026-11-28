@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {buildConversations,canReplyTo,conversationUnread,lastAuthor,queueMembers,type MailRow,type ReplyRow} from '@/components/players/chancelaria/chancelaria-model';
+import {buildConversations,canReplyTo,conversationNoAction,conversationUnread,isActionableTurn,lastAuthor,queueMembers,yourTurnCount,type MailRow,type ReplyRow} from '@/components/players/chancelaria/chancelaria-model';
 
 const h=(c:string)=>c.repeat(64);
 const N='narrador-uid',P='jogador-uid';
@@ -123,5 +123,31 @@ describe('Chancelaria: modelo de filas e fios',()=>{
     const ctx={uid:P,admin:false,receipts:[],openRound:5};
     expect(queueMembers('all',list,ctx)).toHaveLength(0);
     expect(queueMembers('trash',list,ctx)).toHaveLength(1);
+  });
+  it('Sem ação remove a conversa de Sua vez e da contagem, mantém em Todas e reabre se chegar nova resposta',()=>{
+    const list=buildConversations([root,answer],[]);
+    const narratorBase={uid:N,admin:true,receipts:[],openRound:5,editHouses:new Set<string>()};
+    expect(queueMembers('yourturn',list,narratorBase)).toHaveLength(1);
+    expect(yourTurnCount([root,answer],[],[],N,true,5,new Set())).toBe(1);
+    expect(isActionableTurn(list[0]!,narratorBase)).toBe(true);
+    // Narrador marca como Sem ação depois da última mensagem (11/11 10:00).
+    const noActionReceipts=[{letter_id:root.id,user_id:N,read_at:'2026-11-11T12:00:00Z',no_action_at:'2026-11-11T12:00:00Z'}];
+    const narratorDismissed={...narratorBase,receipts:noActionReceipts};
+    expect(conversationNoAction(list[0]!,narratorDismissed)).toBe(true);
+    expect(queueMembers('yourturn',list,narratorDismissed)).toHaveLength(0);
+    expect(queueMembers('all',list,narratorDismissed)).toHaveLength(1);
+    expect(yourTurnCount([root,answer],[],noActionReceipts,N,true,5,new Set())).toBe(0);
+    // Se chegar uma resposta mais nova depois de no_action_at, volta para Sua vez automaticamente.
+    const newerReply:MailRow={...answer,id:h('f'),created_at:'2026-11-12T08:00:00Z',delivered_at:'2026-11-12T08:00:00Z'};
+    const updated=buildConversations([root,answer,newerReply],[]);
+    expect(conversationNoAction(updated[0]!,narratorDismissed)).toBe(false);
+    expect(queueMembers('yourturn',updated,narratorDismissed)).toHaveLength(1);
+    expect(yourTurnCount([root,answer,newerReply],[],noActionReceipts,N,true,5,new Set())).toBe(1);
+    // Jogador também pode dispensar com Sem ação uma carta recebida do Narrador.
+    const playerOnly=buildConversations([root],[]);
+    const pReceipts=[{letter_id:root.id,user_id:P,read_at:'2026-11-10T11:00:00Z',no_action_at:'2026-11-10T11:00:00Z'}];
+    expect(yourTurnCount([root],[],[],P,false,5,edit)).toBe(1);
+    expect(yourTurnCount([root],[],pReceipts,P,false,5,edit)).toBe(0);
+    expect(queueMembers('all',playerOnly,{uid:P,admin:false,receipts:pReceipts,openRound:5,editHouses:edit})).toHaveLength(1);
   });
 });

@@ -100,7 +100,9 @@
 .chn-chip--new{background:var(--chn-wax);color:#fff}
 .chn-chip--sched{background:var(--chn-sched);color:#fff}
 .chn-chip--draft{background:#e8e3ec;color:var(--primary);border:1px dashed var(--primary)}
+.chn-chip--noaction{background:#e7e4dc;color:#4a4134;border:1px solid #cabfa8}
 .chn-chip--cancel{background:#f4e3e3;color:var(--chn-wax)}
+.chn-btn--noaction-on{background:#efe8d6;border-color:var(--chn-gold);color:#3a2a14}
 .chn-pill{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px}
 .chn-pill--ok{border-color:var(--chn-ok);color:var(--chn-ok)}
 .chn-lfoot{padding:7px 12px;border-top:1px solid var(--chn-line);font-size:11.5px;color:var(--muted-foreground);display:flex;gap:10px;flex-wrap:wrap}
@@ -161,6 +163,10 @@
 .chn-note{font-size:12px;color:var(--muted-foreground);flex:1;min-width:200px}
 .chn-readonly{padding:10px 14px;border-top:1px solid var(--chn-line);font-size:12.5px;color:var(--muted-foreground);display:flex;gap:8px;align-items:center;background:var(--chn-light);border-radius:0 0 9px 9px}
 .chn-compose{padding:20px 22px}
+/* Escrita de missiva em superfície única (sem molduras aninhadas). */
+.chn-compose-wrap{width:100%;max-width:1080px;margin:0 auto;background:var(--chn-paper);border:1px solid var(--chn-line);border-radius:10px;padding:20px 24px;box-shadow:0 2px 10px rgb(39 17 53/.06)}
+.chn-compose-wrap .mail-compose-panel{margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.chn-compose-wrap .mail-compose-panel>h2{margin:0 0 4px;font-size:24px;color:var(--chn-purple)}
 
 /* Contexto */
 .chn-ctx{display:flex;flex-direction:column;overflow:hidden}
@@ -242,8 +248,8 @@
 a.chn-q,a.chn-it-open{text-decoration:none}
 
 
-/* Chancelaria do Jogador v5: altura confortável dentro da página do Conselho + gaveta Minha Casa */
-.chn--player{height:min(78vh,860px);min-height:600px;padding:0;margin-top:8px}
+/* Chancelaria do Jogador v5: altura ampla e responsiva dentro da página do Conselho + gaveta Minha Casa */
+.chn--player{height:max(620px,calc(100vh - 205px));min-height:600px;padding:0;margin-top:8px}
 .chn-house-drawer{position:fixed;top:0;right:0;bottom:0;width:min(360px,92vw);z-index:66;display:flex;flex-direction:column;border-radius:0;box-shadow:-10px 0 30px rgb(20 8 28/.25)}
 .chn-house-drawer .chn-ph{border-radius:0}
 .chn-drawer-close{color:#fffdf7!important;border-color:transparent!important}
@@ -260,6 +266,127 @@ a.chn-q,a.chn-it-open{text-decoration:none}
 .chn-sign-chip{border:1px solid var(--chn-line);background:#fffdf8;color:var(--chn-purple);border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s}
 .chn-sign-chip:hover{border-color:var(--chn-gold);background:#f6eedc}
 
+/* Tema escuro das Casas nobres: contraste alto e legível em toda a Chancelaria do jogador,
+   preservando o pergaminho claro da carta com tinta escura nítida. */
+.campaign-theme[data-house-theme] .chn{
+ --chn-paper:#221b1f;
+ --chn-light:#2d2429;
+ --chn-line:color-mix(in srgb,var(--house-page-metal) 32%,#43353b);
+ --chn-gold-2:var(--house-page-lustre);
+ color:#f6ece0;
+}
+.campaign-theme[data-house-theme] .chn-panel{background:#221b1f;border-color:var(--chn-line);box-shadow:0 4px 16px rgb(0 0 0/.28)}
+.campaign-theme[data-house-theme] .chn-ph{background:#140f12;color:#fff7ea;border-bottom-color:var(--house-page-metal)}
+.campaign-theme[data-house-theme] .chn-ph-t{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn .chn-titles h2,
+.campaign-theme[data-house-theme] .chn-rh-title,
+.campaign-theme[data-house-theme] .chn-sheet-h,
+.campaign-theme[data-house-theme] .chn .chn-hcard h3,
+.campaign-theme[data-house-theme] .chn-compose-wrap .mail-compose-panel>h2{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn-eyebrow,
+.campaign-theme[data-house-theme] .chn-wsep,
+.campaign-theme[data-house-theme] .chn-thread h4,
+.campaign-theme[data-house-theme] .chn .chn-box h5{color:var(--house-page-metal)}
+.campaign-theme[data-house-theme] .chn-thread h4::after{border-top-color:var(--chn-line)}
+.campaign-theme[data-house-theme] .chn-muted,
+.campaign-theme[data-house-theme] .chn-hint,
+.campaign-theme[data-house-theme] .chn-factive,
+.campaign-theme[data-house-theme] .chn-inline,
+.campaign-theme[data-house-theme] .chn-rh-tl,
+.campaign-theme[data-house-theme] .chn-empty,
+.campaign-theme[data-house-theme] .chn-lfoot,
+.campaign-theme[data-house-theme] .chn-readonly,
+.campaign-theme[data-house-theme] .chn-note{color:#d8c8b7}
+.campaign-theme[data-house-theme] .chn-link{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn kbd{background:#342a2f;color:#f8efe2;border-color:var(--chn-line)}
+.campaign-theme[data-house-theme] .chn-btn{background:#2d2429;border-color:color-mix(in srgb,var(--house-page-metal) 45%,#4f4046);color:#f7eee2}
+.campaign-theme[data-house-theme] .chn-btn:hover:not(:disabled){background:#3a2e34;border-color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn-btn--primary{background:var(--house-page-metal);border-color:var(--house-page-lustre);color:#1a1210}
+.campaign-theme[data-house-theme] .chn-btn--primary:hover:not(:disabled){background:var(--house-page-lustre);color:#1a1210}
+.campaign-theme[data-house-theme] .chn-btn--noaction-on{background:color-mix(in srgb,var(--house-page-metal) 24%,#2d2429);border-color:var(--house-page-lustre);color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn-seg{background:#181316;border-color:var(--chn-line)}
+.campaign-theme[data-house-theme] .chn-seg button{color:#e2d3c1}
+.campaign-theme[data-house-theme] .chn-seg button:hover{color:#fff7ea}
+.campaign-theme[data-house-theme] .chn-seg button[aria-pressed=true]{background:var(--house-page-metal);color:#1a1210;box-shadow:none}
+.campaign-theme[data-house-theme] .chn-q{background:#2b2226;border-color:var(--chn-line);border-left-color:color-mix(in srgb,var(--house-page-metal) 58%,#4c3c42);color:#f7eee2;box-shadow:0 1px 3px rgb(0 0 0/.22)}
+.campaign-theme[data-house-theme] .chn-q:hover{background:#362b30;border-color:var(--house-page-metal);border-left-color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn-q .nw-icon{color:var(--house-page-metal)}
+.campaign-theme[data-house-theme] .chn-q-label small{color:#d5c4b2}
+.campaign-theme[data-house-theme] .chn-cnt{background:#3e3137;color:#f8efe2}
+.campaign-theme[data-house-theme] .chn-cnt--hot{background:#b83232;color:#fff}
+.campaign-theme[data-house-theme] .chn-q[aria-current=true]{background:linear-gradient(120deg,color-mix(in srgb,var(--house-page-main) 55%,#1b1417),#261c20);border-color:var(--house-page-lustre);border-left-color:var(--house-page-lustre);color:#fff8ec}
+.campaign-theme[data-house-theme] .chn-q[aria-current=true] .chn-q-label small{color:#f0dfc8}
+.campaign-theme[data-house-theme] .chn-q[aria-current=true] .chn-cnt:not(.chn-cnt--hot){background:var(--house-page-metal);color:#1a1210}
+.campaign-theme[data-house-theme] .chn select,
+.campaign-theme[data-house-theme] .chn input[type=search],
+.campaign-theme[data-house-theme] .chn input:not([type]),
+.campaign-theme[data-house-theme] .chn textarea{background:#2e252a;color:#fbf1e5;border-color:#7d6958}
+.campaign-theme[data-house-theme] .chn .chn-search .nw-icon{color:#cbb9a6}
+.campaign-theme[data-house-theme] .chn-it{color:#f6ece0;border-color:transparent}
+.campaign-theme[data-house-theme] .chn-it:hover{background:#2f252a}
+.campaign-theme[data-house-theme] .chn-it-title{color:#f8efe3}
+.campaign-theme[data-house-theme] .chn-it--unread .chn-it-title{color:#fffaf1;font-weight:700}
+.campaign-theme[data-house-theme] .chn-it-who,
+.campaign-theme[data-house-theme] .chn-it-pv,
+.campaign-theme[data-house-theme] .chn-tags{color:#d8c8b6}
+.campaign-theme[data-house-theme] .chn-it[aria-current=true]{background:color-mix(in srgb,var(--house-page-main) 28%,#31252b);border-color:var(--house-page-metal);box-shadow:inset 3px 0 var(--house-page-lustre),0 2px 8px rgb(0 0 0/.24)}
+.campaign-theme[data-house-theme] .chn-it[aria-current=true] .chn-it-title{color:#fffaf1}
+.campaign-theme[data-house-theme] .chn-it[aria-current=true] .chn-it-who,
+.campaign-theme[data-house-theme] .chn-it[aria-current=true] .chn-it-pv,
+.campaign-theme[data-house-theme] .chn-it[aria-current=true] .chn-tags{color:#eadbc8}
+.campaign-theme[data-house-theme] .chn-it-read{border-left-color:var(--chn-line);color:#d8c8b6}
+.campaign-theme[data-house-theme] .chn-it-read:hover{color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn-kind--narrador{background:#4c2666;color:#fffaf0}
+.campaign-theme[data-house-theme] .chn-kind--ao-narrador{background:var(--house-page-metal);color:#1a1210}
+.campaign-theme[data-house-theme] .chn-kind--entre{background:#345780;color:#fff}
+.campaign-theme[data-house-theme] .chn-kind--geral{background:#524438;color:#f8efe2}
+.campaign-theme[data-house-theme] .chn-chip--draft{background:#3a2f40;color:#e8d9f5;border-color:#9e81b8}
+.campaign-theme[data-house-theme] .chn-chip--noaction{background:#3d352c;color:#f3e4cb;border-color:#8a7657}
+.campaign-theme[data-house-theme] .chn-rh{background:#1b1518;border-bottom-color:var(--house-page-metal);color:#f6ece0}
+.campaign-theme[data-house-theme] .chn-rbody{background:radial-gradient(rgb(239 172 83/.08) 1px,transparent 0) 0 0/22px 22px,#181316}
+.campaign-theme[data-house-theme] .chn-lfoot{background:#1b1518}
+.campaign-theme[data-house-theme] .chn-reply{background:#221b1f;border-top-color:var(--chn-line)}
+.campaign-theme[data-house-theme] .chn-readonly{background:#1b1518;border-top-color:var(--chn-line)}
+.campaign-theme[data-house-theme] .chn-tool-chip{background:#31272c;border-color:color-mix(in srgb,var(--house-page-metal) 42%,#4f4046);color:#f7eee2}
+.campaign-theme[data-house-theme] .chn-tool-chip:hover{background:#3d3036;border-color:var(--house-page-lustre)}
+.campaign-theme[data-house-theme] .chn-tool-chip--on{background:var(--house-page-metal);border-color:var(--house-page-lustre);color:#1a1210}
+.campaign-theme[data-house-theme] .chn-tool-chip--copied{background:#24482f;border-color:#53a86b;color:#e7faec}
+.campaign-theme[data-house-theme] .chn-week-chip{background:#31272c;border-color:var(--chn-line);color:#e4d5c3}
+.campaign-theme[data-house-theme] .chn-reply-drawer{background:#2a2126;border-color:var(--chn-line);border-left-color:var(--house-page-metal);color:#f6ece0}
+.campaign-theme[data-house-theme] .chn-hd-res-item{background:#2c2327;border-color:var(--chn-line);color:#f6ece0}
+.campaign-theme[data-house-theme] .chn-hd-res-item--neg{background:#3e1f22;border-color:#b54444;color:#ffd0d0}
+/* Pergaminho da carta e das respostas: tinta escura garantida sobre fundo creme. */
+.campaign-theme[data-house-theme] .chn-sheet,
+.campaign-theme[data-house-theme] .chn-msg{
+ --foreground:#231b2a;
+ --muted-foreground:#574b5e;
+ --primary:#4a2666;
+ --border:#d8ccb6;
+ --campaign-paper:#fffdf8;
+ --campaign-light:#f6f0e2;
+ background:#fffdf8;
+ color:#231b2a;
+}
+.campaign-theme[data-house-theme] .chn-sheet .chn-lh h3{color:#35184d}
+.campaign-theme[data-house-theme] .chn-sheet .chn-who,
+.campaign-theme[data-house-theme] .chn-sheet .chn-muted,
+.campaign-theme[data-house-theme] .chn-msg .chn-muted{color:#574b5e}
+.campaign-theme[data-house-theme] .chn-sheet .chn-who b,
+.campaign-theme[data-house-theme] .chn-msg .chn-mh b{color:#1f1626}
+.campaign-theme[data-house-theme] .chn-sheet .chn-pill,
+.campaign-theme[data-house-theme] .chn-msg .chn-pill{color:#2f2438;border-color:#cbbca2;background:#f9f4e8}
+.campaign-theme[data-house-theme] .chn-sheet .chn-pill--ok,
+.campaign-theme[data-house-theme] .chn-msg .chn-pill--ok{color:#225a30;border-color:#3c6e47;background:#ebf6ee}
+.campaign-theme[data-house-theme] .chn-sheet .chn-chip--noaction{background:#efe8d6;color:#4a3d28;border-color:#c6b696}
+.campaign-theme[data-house-theme] .chn-msg--mine{background:#faf6fc;border-left-color:#683c87}
+.campaign-theme[data-house-theme] .chn-sheet :is(input,select,textarea),
+.campaign-theme[data-house-theme] .chn-msg :is(input,select,textarea){background:#fff;color:#231b2a;border-color:#c6b89e}
+.campaign-theme[data-house-theme] .chn-sheet .chn-btn,
+.campaign-theme[data-house-theme] .chn-msg .chn-btn{background:#fffdf8;color:#231b2a;border-color:#c6b89e}
+.campaign-theme[data-house-theme] .chn-sheet .chn-btn--primary,
+.campaign-theme[data-house-theme] .chn-msg .chn-btn--primary{background:#3a1d4d;color:#fffdf7;border-color:#b5893a}
+
 @media (max-width:767px){
  .chn--player{height:calc(100vh - 190px);min-height:480px}
+ .chn-compose-wrap{padding:14px}
 }

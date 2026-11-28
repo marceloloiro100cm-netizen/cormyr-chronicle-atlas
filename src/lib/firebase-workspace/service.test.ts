@@ -1,7 +1,7 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const f=vi.hoisted(()=>({scope:{uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']} as any,tables:{} as Record<string,any[]>,after:null as any,calls:0,
  runtimeReady:false,liveRound:2,cloudReceipts:[] as any[],cloudLetters:[] as any[],cloudModeration:[] as any[],cloudVersions:[] as any[],cloudNotes:[] as any[],hubAudit:[] as any[],events:[] as any[],economies:[] as any[],writes:[] as any[],schedule:vi.fn(),ack:vi.fn(),send:vi.fn(),batch:vi.fn(),reply:vi.fn(),
- unread:vi.fn(),cancel:vi.fn(),restore:vi.fn(),edit:vi.fn()}));
+ unread:vi.fn(),noAction:vi.fn(),cancel:vi.fn(),restore:vi.fn(),edit:vi.fn()}));
 vi.mock('../../../scripts/firebase/workspace-import.mjs',()=>({workspaceTables:new Set(),readWorkspaceTable:async(_d:any,_s:any,n:string)=>{
  if(!(n in f.tables))throw Error('workspace_source_table_missing');return f.tables[n];
 }}));
@@ -12,7 +12,7 @@ vi.mock('../../../scripts/firebase/cloud-readonly-service.mjs',()=>({CloudAccess
 vi.mock('../../../scripts/firebase/cloud-mail-service.mjs',()=>({
  CloudMailError:class extends Error{constructor(public code:string,public status=403){super(code);}},
  createFirebaseCloudMail:()=>({markRead:f.ack,send:f.send,sendBatch:f.batch,reply:f.reply,
-  markUnread:f.unread,cancel:f.cancel,restore:f.restore,edit:f.edit,schedule:f.schedule}),
+  markUnread:f.unread,setNoAction:f.noAction,cancel:f.cancel,restore:f.restore,edit:f.edit,schedule:f.schedule}),
 }));
 import {createWorkspaceService} from './service';
 const access=[{userId:'a',playerId:'pa',profile:'jogador',admin:false,active:true,requirePasswordChange:false,memberHouseIds:['ashkar'],editHouseIds:['ashkar']},
@@ -37,7 +37,7 @@ const run=(input:any)=>createWorkspaceService({db,auth:{},snapshotId:'a'.repeat(
 const letter=(id:string,house:string,extra:any={})=>({id,sender_user_id:'gm',sender_player_id:'pg',sender_name:'Narrador',recipient_house_id:house,recipient_player_id:null,origin_house_id:null,subject:id,content:'real source '+id,created_at:'2026-11-01T00:00:00Z',delivered_at:'2026-11-01T00:00:00Z',deleted_at:null,publication_state:'delivered',delivery_week:2,creation_week:2,letter_number:2,letter_kind:'reservada',court_member_id:null,court_assignment:null,military_unit_id:null,batch_key:null,...extra});
 beforeEach(()=>{
  f.calls=0;f.after=null;f.runtimeReady=false;f.liveRound=2;f.cloudReceipts=[];f.cloudLetters=[];f.cloudModeration=[];f.cloudVersions=[];f.cloudNotes=[];f.hubAudit=[];f.events=[];f.economies=[];f.writes=[];f.schedule.mockReset();f.ack.mockReset();f.send.mockReset();f.batch.mockReset();f.reply.mockReset();
- f.unread.mockReset();f.cancel.mockReset();f.restore.mockReset();f.edit.mockReset();vi.unstubAllEnvs();
+ f.unread.mockReset();f.noAction.mockReset();f.cancel.mockReset();f.restore.mockReset();f.edit.mockReset();vi.unstubAllEnvs();
  f.scope={uid:'a',profile:'jogador',playerId:'pa',memberHouseIds:['ashkar'],editHouseIds:['ashkar']};
  f.tables={campaign_players:[{id:'pa',user_id:'a',roster_house_id:'ashkar'},{id:'pg',user_id:'gm'}],campaign_houses:[{id:'ashkar',name:'Ashkar',active:true}],
  campaign_letters:[letter('mine','ashkar'),letter('secret','other'),letter('draft','ashkar',{publication_state:'draft'})],

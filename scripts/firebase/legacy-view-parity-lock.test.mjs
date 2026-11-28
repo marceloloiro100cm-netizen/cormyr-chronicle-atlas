@@ -228,6 +228,11 @@
  * pergaminho creme editorial com brasão central ampliado, divisor vertical
  * dourado com losango (◆) como no front e controles de conta em alto contraste.
  * Todas as 9 seções, barra lateral, masthead interno, filtros e ações permanecem.
+ * 2026-11-28 (contador Sua vez na aba/menu de Missivas): a pedido expresso do
+ * proprietário, players-workspace.tsx passa a contar no distintivo de Missivas
+ * (tanto do Narrador quanto dos jogadores) exclusivamente as conversas na fila
+ * "Sua vez" (aguardando resposta e não marcadas como "Sem ação"), mantendo
+ * todas as abas, menus, filtros, controles e fluxos originais intactos.
  */
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -238,7 +243,7 @@ import assert from 'node:assert/strict';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const originals={
-  'src/components/players/players-workspace.tsx':'92e17b0fa8792ff5c040bd07d654bc8f71834520',
+  'src/components/players/players-workspace.tsx':'78f293c17dd83aed5db26d8afa895cfb46be6420',
   'src/components/players/narrator-missives-hub.tsx':'0d0dd9d9d0a3c5e8df4da7285062551bcb845b9c',
   'src/components/players/missivas-tab.tsx':'c52a9ec0184a8721c44f5be73b5d2e2dc98b746e',
   'src/components/newspaper/NewspaperEditorialDesk.tsx':'c6b088718206696a94cbd62a3af45d42932a9b07',

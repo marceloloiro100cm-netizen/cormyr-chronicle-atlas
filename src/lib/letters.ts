@@ -59,7 +59,7 @@ export function relatedConversationLetters(letter:LetterRow,letters:LetterRow[])
    &&(!letter.batch_key||other.batch_key!==letter.batch_key))
    .sort((a,b)=>a.created_at.localeCompare(b.created_at));
 }
-export type ReceiptRef = {letter_id:string;user_id:string;read_at?:string};
+export type ReceiptRef = {letter_id:string;user_id:string;read_at?:string;no_action_at?:string|null};
 
 /** Momento da informação mais recente de uma missiva (a resposta entregue mais nova). */
 export function lastReplyActivity(letterId:string, replies:ReplyRef[], userId?:string):string {
